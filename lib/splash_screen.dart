@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -22,18 +23,7 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
-
-     Future.delayed(const Duration(seconds: 3), () {
-
-    if (!mounted) return;
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
-      ),
-    );
-     });
-    /// NAVIGATE AFTER 3 SECONDS
+    // Navigate after 3 seconds
     _navigateToLogin();
   }
 
@@ -137,32 +127,26 @@ class _SplashScreenState extends State<SplashScreen>
                 /// APP NAME
 
                 RichText(
-
-                  text: const TextSpan(
-
+                  text: TextSpan(
                     children: [
-
                       TextSpan(
                         text: "Journey",
-                        style: TextStyle(
-                          color: Color(0xFF2F2F2F),
+                        style: GoogleFonts.plusJakartaSans(
+                          color: const Color(0xFF2F2F2F),
                           fontSize: 34,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-
                       TextSpan(
                         text: "Sync",
-                        style: TextStyle(
-                          color: Color(0xFFD97706),
+                        style: GoogleFonts.plusJakartaSans(
+                          color: const Color(0xFFF26C0D),
                           fontSize: 34,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-
                     ],
                   ),
-
                 ),
 
                 const SizedBox(height: 10),
@@ -186,11 +170,12 @@ class _SplashScreenState extends State<SplashScreen>
 
                 /// TAGLINE
 
-                const Text(
+                Text(
                   "Ride Together. Ride Safe.",
-                  style: TextStyle(
-                    color: Color(0xFF2F2F2F),
+                  style: GoogleFonts.plusJakartaSans(
+                    color: const Color(0xFF2F2F2F),
                     fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
 
@@ -233,11 +218,12 @@ class _SplashScreenState extends State<SplashScreen>
 
                 /// VERSION
 
-                const Text(
+                Text(
                   "v1.0.2 Beta",
-                  style: TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                     color: Colors.grey,
                     fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
 
