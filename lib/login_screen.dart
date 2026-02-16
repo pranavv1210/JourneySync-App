@@ -12,10 +12,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final phoneController = TextEditingController();
+  final nameController = TextEditingController();
+  final bikeController = TextEditingController();
 
   @override
   void dispose() {
     phoneController.dispose();
+    nameController.dispose();
+    bikeController.dispose();
     super.dispose();
   }
 
@@ -68,7 +72,65 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
+
+                  // Full name field
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Full name',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: nameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      hintText: 'Your name',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Bike model field
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Bike model',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: bikeController,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Royal Enfield Classic 350',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
 
                   // Phone label
                   Align(
@@ -130,8 +192,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
+                        final name = nameController.text.trim();
+                        final bike = bikeController.text.trim();
+                        final phone = phoneController.text.trim();
+
+                        if (name.isEmpty || phone.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Please enter your name and phone number')),
+                          );
+                          return;
+                        }
+
                         final prefs = await SharedPreferences.getInstance();
                         await prefs.setBool('isLoggedIn', true);
+                        await prefs.setString('userName', name);
+                        await prefs.setString('userBike', bike);
+                        await prefs.setString('userPhone', phone);
+
                         if (!mounted) return;
                         Navigator.pushReplacement(
                           context,
