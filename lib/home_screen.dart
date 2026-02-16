@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,34 +11,24 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
 
-  final supabase = Supabase.instance.client;
-
-  String userName = "Rider";
-  String bikeName = "No bike";
+  String userName = "";
+  String userBike = "";
 
   @override
   void initState() {
     super.initState();
-    loadUserData();
+    loadUser();
   }
 
-  Future loadUserData() async {
+  Future loadUser() async {
 
-    final user = supabase.auth.currentUser;
-
-    if(user == null) return;
-
-    final data = await supabase
-        .from('profiles')
-        .select()
-        .eq('id', user.id)
-        .single();
+    final prefs = await SharedPreferences.getInstance();
 
     setState(() {
 
-      userName = data['name'] ?? "Rider";
+      userName = prefs.getString("userName") ?? "Rider";
 
-      bikeName = data['bike'] ?? "Add Bike";
+      userBike = prefs.getString("userBike") ?? "Add Bike";
 
     });
 
@@ -46,17 +37,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
 
+    const primary = Color(0xFFD46211);
+    const forest = Color(0xFF1E3A2F);
+    const background = Color(0xFFF8F7F6);
+
     return Scaffold(
 
-      backgroundColor: const Color(0xFFF8F7F6),
+      backgroundColor: background,
 
       body: SafeArea(
 
-        child: Padding(
+        child: SingleChildScrollView(
 
           padding: const EdgeInsets.all(20),
 
           child: Column(
+
+            crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
 
@@ -69,24 +66,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
 
                   Column(
+
                     crossAxisAlignment: CrossAxisAlignment.start,
+
                     children: [
 
-                      const Text(
+                      Text(
                         "WELCOME BACK",
-                        style: TextStyle(
-                          color: Color(0xFFD46211),
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
+                          color: primary,
                         ),
                       ),
 
                       Text(
                         "Let's ride, $userName",
-                        style: const TextStyle(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E3A2F),
+                          color: forest,
                         ),
                       ),
 
@@ -95,15 +94,123 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const CircleAvatar(
                     radius: 25,
-                    backgroundColor: Colors.orange,
-                  )
+                    backgroundImage: AssetImage("assets/logo.png"),
+                  ),
 
                 ],
               ),
 
               const SizedBox(height: 30),
 
-              /// BIKE CARD
+              /// WEATHER + BIKE
+
+              Row(
+
+                children: [
+
+                  Expanded(
+
+                    child: containerCard(
+
+                      icon: Icons.wb_sunny,
+                      title: "Weather",
+                      value: "27°C Clear",
+
+                    ),
+
+                  ),
+
+                  const SizedBox(width: 15),
+
+                  Expanded(
+
+                    child: containerCard(
+
+                      icon: Icons.motorcycle,
+                      title: "My Bike",
+                      value: userBike,
+
+                    ),
+
+                  ),
+
+                ],
+              ),
+
+              const SizedBox(height: 30),
+
+              /// CREATE RIDE
+
+              GestureDetector(
+
+                onTap: () {
+
+                  print("Create Ride");
+
+                },
+
+                child: Container(
+
+                  height: 170,
+
+                  width: double.infinity,
+
+                  decoration: BoxDecoration(
+
+                    color: primary,
+
+                    borderRadius: BorderRadius.circular(25),
+
+                  ),
+
+                  child: Padding(
+
+                    padding: const EdgeInsets.all(20),
+
+                    child: Column(
+
+                      crossAxisAlignment: CrossAxisAlignment.start,
+
+                      mainAxisAlignment: MainAxisAlignment.end,
+
+                      children: [
+
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          padding: const EdgeInsets.all(10),
+                          child: const Icon(Icons.add,color: Colors.white),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        Text(
+                          "Create Ride",
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        Text(
+                          "Plan a route and invite friends",
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white70,
+                          ),
+                        ),
+
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              /// NEARBY RIDES
 
               Container(
 
@@ -111,93 +218,198 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 decoration: BoxDecoration(
 
-                  color: Colors.white,
+                  border: Border.all(color: primary,width: 2),
 
                   borderRadius: BorderRadius.circular(20),
 
+                  color: Colors.white,
+
                 ),
 
-                child: Row(
+                child: Column(
+
+                  crossAxisAlignment: CrossAxisAlignment.start,
 
                   children: [
 
-                    const Icon(Icons.motorcycle),
+                    Row(
 
-                    const SizedBox(width: 10),
-
-                    Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
                       children: [
 
-                        const Text("My Bike"),
+                        const Icon(Icons.near_me,color: primary),
 
-                        Text(
-                          bikeName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal:10,vertical:5),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade100,
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                        ),
+                          child: const Text("LIVE"),
+                        )
 
                       ],
-                    )
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Text(
+                      "Nearby Active Rides",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: forest,
+                      ),
+                    ),
+
+                    const Text("3 groups riding near you"),
 
                   ],
                 ),
-
               ),
 
               const SizedBox(height: 30),
 
-              /// CREATE RIDE BUTTON
+              /// RECENT
 
-              GestureDetector(
+              Row(
 
-                onTap: () {
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
-                  print("Create Ride Clicked");
+                children: [
 
-                },
-
-                child: Container(
-
-                  height: 160,
-
-                  decoration: BoxDecoration(
-
-                    color: const Color(0xFFD46211),
-
-                    borderRadius: BorderRadius.circular(30),
-
-                  ),
-
-                  child: const Center(
-
-                    child: Text(
-                      "Create Ride",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  Text(
+                    "Recent Journeys",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
-
                   ),
 
-                ),
+                  Text(
+                    "View All",
+                    style: GoogleFonts.plusJakartaSans(
+                      color: primary,
+                    ),
+                  ),
 
+                ],
               ),
+
+              const SizedBox(height: 15),
+
+              journeyCard("Sunday Canyon Run","45 km","1h 20m"),
+
+              const SizedBox(height: 10),
+
+              journeyCard("Mountain Ride","80 km","2h 30m"),
 
             ],
           ),
-
         ),
+      ),
 
+      /// BOTTOM NAV
+
+      bottomNavigationBar: BottomNavigationBar(
+
+        selectedItemColor: primary,
+
+        items: const [
+
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: "Home"),
+
+          BottomNavigationBarItem(
+              icon: Icon(Icons.map),
+              label: "Map"),
+
+          BottomNavigationBarItem(
+              icon: Icon(Icons.garage),
+              label: "Garage"),
+
+          BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: "Settings"),
+
+        ],
       ),
 
     );
+  }
 
+  Widget containerCard({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+
+    return Container(
+
+      padding: const EdgeInsets.all(15),
+
+      decoration: BoxDecoration(
+
+        color: Colors.white,
+
+        borderRadius: BorderRadius.circular(15),
+
+      ),
+
+      child: Row(
+
+        children: [
+
+          Icon(icon),
+
+          const SizedBox(width:10),
+
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title),
+              Text(
+                value,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          )
+
+        ],
+      ),
+    );
+  }
+
+  Widget journeyCard(String title,String distance,String time){
+
+    return Container(
+
+      padding: const EdgeInsets.all(15),
+
+      decoration: BoxDecoration(
+
+        color: Colors.white,
+
+        borderRadius: BorderRadius.circular(15),
+
+      ),
+
+      child: Column(
+
+        crossAxisAlignment: CrossAxisAlignment.start,
+
+        children: [
+
+          Text(title,
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+
+          Text("$distance • $time"),
+
+        ],
+      ),
+    );
   }
 
 }
