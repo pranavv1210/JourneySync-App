@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sos_alert_screen.dart';
@@ -24,6 +26,13 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   String userBike = "No bike added";
 
   late final AnimationController pulseController;
+  StreamSubscription<Position>? _positionSubscription;
+  Position? _latestPosition;
+  Position? _lastSyncedPosition;
+  DateTime? _lastSyncedAt;
+  bool _locationSyncInFlight = false;
+  bool _isTrackingLocation = false;
+  String _trackingStatus = "Starting GPS...";
 
   @override
   void initState() {
@@ -45,6 +54,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       ride = data;
       loading = false;
     });
+    await _startLocationTracking();
   }
 
   String _rideTitle() {
@@ -71,6 +81,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
 
   @override
   void dispose() {
+    _positionSubscription?.cancel();
     pulseController.dispose();
     super.dispose();
   }
@@ -100,6 +111,8 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                 _rideStatsHeader(primary, warmSand),
                 const SizedBox(height: 10),
                 _activeRideButton(forest),
+                const SizedBox(height: 8),
+                _locationStatusPill(forest),
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerRight,
@@ -360,7 +373,12 @@ class _LiveRideScreenState extends State<LiveRideScreen>
             _divider(),
             _statBlock("Dist", "—"),
             _divider(),
-            _statBlock("MPH", "—", highlight: true, highlightColor: primary),
+            _statBlock(
+              "MPH",
+              _currentSpeedMph(),
+              highlight: true,
+              highlightColor: primary,
+            ),
           ],
         ),
       ),
@@ -434,9 +452,40 @@ class _LiveRideScreenState extends State<LiveRideScreen>
             ),
           ),
           const SizedBox(width: 8),
-          Text("Active Ride", style: TextStyle(fontWeight: FontWeight.w800)),
+          Text(_rideTitle(), style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(width: 8),
           Icon(Icons.expand_more, size: 16, color: Colors.grey.shade600),
+        ],
+      ),
+    );
+  }
+
+  Widget _locationStatusPill(Color forest) {
+    final accent = _isTrackingLocation ? forest : Colors.orange.shade700;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.92),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: accent.withOpacity(0.22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _isTrackingLocation ? Icons.gps_fixed : Icons.gps_off,
+            size: 14,
+            color: accent,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            _trackingStatus,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: accent,
+            ),
+          ),
         ],
       ),
     );
@@ -445,6 +494,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   Widget _stopRideButton(Color danger) {
     return TextButton.icon(
       onPressed: () async {
+        await _stopLocationTracking();
         try {
           await supabase
               .from('rides')
@@ -785,6 +835,135 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         ],
       ),
     );
+  }
+
+  Future<void> _startLocationTracking() async {
+    if (!mounted) return;
+    setState(() {
+      _trackingStatus = "Checking location...";
+    });
+
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (!mounted) return;
+      setState(() {
+        _isTrackingLocation = false;
+        _trackingStatus = "Location service disabled";
+      });
+      return;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      if (!mounted) return;
+      setState(() {
+        _isTrackingLocation = false;
+        _trackingStatus = "GPS permission denied";
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isTrackingLocation = true;
+      _trackingStatus = "Sharing live location";
+    });
+
+    try {
+      final current = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      await _syncLocationToRide(current);
+    } catch (_) {}
+
+    await _positionSubscription?.cancel();
+    _positionSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 12,
+      ),
+    ).listen(
+      (position) {
+        _latestPosition = position;
+        _syncLocationToRide(position);
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _isTrackingLocation = false;
+          _trackingStatus = "GPS tracking unavailable";
+        });
+      },
+    );
+  }
+
+  Future<void> _stopLocationTracking() async {
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _isTrackingLocation = false;
+  }
+
+  Future<void> _syncLocationToRide(Position position) async {
+    if (_locationSyncInFlight) return;
+
+    final now = DateTime.now();
+    final lastPosition = _lastSyncedPosition;
+    final lastSyncedAt = _lastSyncedAt;
+    final movedEnough =
+        lastPosition == null ||
+        Geolocator.distanceBetween(
+              lastPosition.latitude,
+              lastPosition.longitude,
+              position.latitude,
+              position.longitude,
+            ) >=
+            15;
+    final waitedEnough =
+        lastSyncedAt == null || now.difference(lastSyncedAt).inSeconds >= 10;
+
+    if (!movedEnough && !waitedEnough) return;
+
+    _locationSyncInFlight = true;
+    try {
+      await supabase
+          .from('rides')
+          .update({
+            'current_lat': position.latitude,
+            'current_lng': position.longitude,
+            'current_speed_mps': position.speed >= 0 ? position.speed : null,
+            'current_heading': position.heading >= 0 ? position.heading : null,
+            'location_updated_at': now.toIso8601String(),
+          })
+          .eq('id', widget.rideId);
+      _lastSyncedPosition = position;
+      _lastSyncedAt = now;
+      if (!mounted) return;
+      setState(() {
+        _isTrackingLocation = true;
+        _trackingStatus = "Live location synced";
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _trackingStatus = "Location sync failed";
+      });
+    } finally {
+      _locationSyncInFlight = false;
+    }
+  }
+
+  String _currentSpeedMph() {
+    final speedMps = _latestPosition?.speed;
+    if (speedMps == null || speedMps <= 0) return "â€”";
+    return (speedMps * 2.23694).toStringAsFixed(0);
   }
 }
 

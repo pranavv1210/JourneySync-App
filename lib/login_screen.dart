@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'home_screen.dart';
 
+enum AuthMode { newAccount, existingAccount }
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,21 +21,14 @@ class _LoginScreenState extends State<LoginScreen> {
   String jwtToken = "";
 
   String verifiedPhone = "";
+  bool isSubmitting = false;
 
   final nameController = TextEditingController();
 
   final bikeController = TextEditingController();
 
-  final phoneController = TextEditingController();
-
-  final List<TextEditingController> otpControllers = List.generate(
-    6,
-    (_) => TextEditingController(),
-  );
-
-  final List<FocusNode> otpFocusNodes = List.generate(6, (_) => FocusNode());
-
-  bool showOtp = false;
+  AuthMode authMode = AuthMode.existingAccount;
+  bool showPhoneVerification = false;
 
   final primary = const Color(0xFFDB7706);
   final forest = const Color(0xFF1E2D24);
@@ -76,6 +71,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           subtitleSize: subtitleSize,
                         ),
                         SizedBox(height: sectionGap),
+                        _accountModeToggle(),
+                        const SizedBox(height: 16),
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 320),
                           switchInCurve: Curves.easeOutCubic,
@@ -94,14 +91,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             );
                           },
                           child:
-                              showOtp
-                                  ? _otpForm(
+                              _showPhoneVerificationStep
+                                  ? _phoneVerificationStep(
                                     fieldGap: fieldGap,
-                                    keyValue: "otp",
+                                    keyValue:
+                                        "phone_email_${authMode.name}_${verifiedPhone.isNotEmpty}",
                                   )
                                   : _registrationForm(
                                     fieldGap: fieldGap,
-                                    keyValue: "reg",
+                                    keyValue: "reg_${authMode.name}",
                                   ),
                         ),
                         const SizedBox(height: 24),
@@ -174,6 +172,11 @@ class _LoginScreenState extends State<LoginScreen> {
     required double titleSize,
     required double subtitleSize,
   }) {
+    final subtitle =
+        authMode == AuthMode.newAccount
+            ? "Create your profile once, then verify your phone to get started."
+            : "Already have an account? Verify your phone and continue instantly.";
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -193,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          "Enter your details to coordinate your next legendary ride.",
+          subtitle,
           style: TextStyle(
             fontSize: subtitleSize,
             height: 1.5,
@@ -204,6 +207,78 @@ class _LoginScreenState extends State<LoginScreen> {
       ],
     );
   }
+
+  Widget _accountModeToggle() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: forest.withOpacity(0.12)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _modeOption(
+              label: "Existing Account",
+              selected: authMode == AuthMode.existingAccount,
+              onTap: () => _switchAuthMode(AuthMode.existingAccount),
+            ),
+          ),
+          Expanded(
+            child: _modeOption(
+              label: "New Account",
+              selected: authMode == AuthMode.newAccount,
+              onTap: () => _switchAuthMode(AuthMode.newAccount),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _modeOption({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          color: selected ? forest : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+            color: selected ? Colors.white : sandText.withOpacity(0.85),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _switchAuthMode(AuthMode mode) {
+    if (authMode == mode) return;
+    setState(() {
+      authMode = mode;
+      showPhoneVerification = mode == AuthMode.existingAccount;
+      verifiedPhone = "";
+      accessToken = "";
+      jwtToken = "";
+    });
+  }
+
+  bool get _showPhoneVerificationStep =>
+      authMode == AuthMode.existingAccount || showPhoneVerification;
 
   Widget _registrationForm({
     required double fieldGap,
@@ -228,91 +303,92 @@ class _LoginScreenState extends State<LoginScreen> {
           hint: "e.g. Desert Sled",
           textInputType: TextInputType.text,
         ),
-        SizedBox(height: fieldGap),
-        _labeledField(
-          label: "Phone Number",
-          icon: Icons.phone_iphone,
-          controller: phoneController,
-          hint: "+1 (555) 000-0000",
-          textInputType: TextInputType.phone,
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: forest.withOpacity(0.12)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: primary, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Register once, then returning logins only need phone verification (+91).",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: sandText.withOpacity(0.85),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _otpForm({required double fieldGap, required String keyValue}) {
+  Widget _phoneVerificationStep({
+    required double fieldGap,
+    required String keyValue,
+  }) {
+    final helpText =
+        authMode == AuthMode.existingAccount
+            ? "Verify your mobile number to fetch your profile from JourneySync."
+            : "Tap the button below, complete Phone.Email verification, and use an Indian mobile number (+91).";
+
     return Column(
       key: ValueKey(keyValue),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              "Verification Code",
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.6,
-                color: forest,
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              child: Text(
-                "Resend Code",
-                style: TextStyle(fontWeight: FontWeight.w700, color: primary),
-              ),
-            ),
-          ],
+        Text(
+          "VERIFY PHONE",
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.6,
+            color: forest,
+          ),
         ),
-        SizedBox(height: fieldGap - 8),
-        Row(
-          children: List.generate(6, (index) {
-            return Expanded(
-              child: Container(
-                margin: EdgeInsets.only(right: index == 5 ? 0 : 8),
-                child: TextField(
-                  controller: otpControllers[index],
-                  focusNode: otpFocusNodes[index],
-                  textAlign: TextAlign.center,
-                  maxLength: 1,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-                  decoration: InputDecoration(
-                    counterText: "",
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: forest.withOpacity(0.1),
-                        width: 2,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: primary, width: 2),
+        const SizedBox(height: 8),
+        Text(
+          helpText,
+          style: TextStyle(
+            fontSize: 13,
+            color: sandText.withOpacity(0.75),
+            fontWeight: FontWeight.w600,
+            height: 1.4,
+          ),
+        ),
+        SizedBox(height: fieldGap),
+        if (verifiedPhone.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.green.withOpacity(0.25)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.verified, color: Colors.green, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Verified: $verifiedPhone",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.green,
                     ),
                   ),
-                  onChanged: (value) {
-                    if (value.isNotEmpty && index < 5) {
-                      FocusScope.of(
-                        context,
-                      ).requestFocus(otpFocusNodes[index + 1]);
-                    }
-                    if (value.isEmpty && index > 0) {
-                      FocusScope.of(
-                        context,
-                      ).requestFocus(otpFocusNodes[index - 1]);
-                    }
-                  },
                 ),
-              ),
-            );
-          }),
-        ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -379,18 +455,17 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!showOtp)
+        if (!_showPhoneVerificationStep)
           ElevatedButton(
             onPressed: () {
               if (nameController.text.trim().isEmpty ||
-                  bikeController.text.trim().isEmpty ||
-                  phoneController.text.trim().isEmpty) {
+                  bikeController.text.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Please fill in all fields.")),
+                  const SnackBar(content: Text("Please fill name and bike.")),
                 );
                 return;
               }
-              setState(() => showOtp = true);
+              setState(() => showPhoneVerification = true);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: primary,
@@ -417,15 +492,64 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           )
+        else if (verifiedPhone.isNotEmpty)
+          ElevatedButton(
+            onPressed: isSubmitting ? null : _completeSignIn,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primary,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 8,
+              shadowColor: primary.withOpacity(0.2),
+            ),
+            child:
+                isSubmitting
+                    ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: Colors.white,
+                      ),
+                    )
+                    : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          authMode == AuthMode.existingAccount
+                              ? "Fetch Account"
+                              : "Continue to Home",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(Icons.arrow_forward, color: Colors.white),
+                      ],
+                    ),
+          )
         else
           PhoneLoginButton(
             borderRadius: 16,
             buttonColor: primary,
-            label: "Continue",
+            label:
+                authMode == AuthMode.existingAccount
+                    ? "Login with Number (+91)"
+                    : "Verify Phone (+91)",
             onSuccess: (access, jwt) {
               accessToken = access;
               jwtToken = jwt;
               getPhoneNumber();
+            },
+            onFailure: (message) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Phone.Email login failed: $message")),
+              );
             },
           ),
       ],
@@ -488,53 +612,104 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     nameController.dispose();
     bikeController.dispose();
-    phoneController.dispose();
-    for (final controller in otpControllers) {
-      controller.dispose();
-    }
-    for (final node in otpFocusNodes) {
-      node.dispose();
-    }
     super.dispose();
   }
 
   /// GET VERIFIED PHONE
 
   void getPhoneNumber() {
+    if (accessToken.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Missing access token. Try again.")),
+      );
+      return;
+    }
+
     PhoneEmail.getUserInfo(
       accessToken: accessToken,
-      clientId: "12548171843307398404",
-
+      clientId: PhoneEmail().clientId,
       onSuccess: (userData) async {
-        verifiedPhone = userData.phoneNumber ?? "";
+        final countryCode = (userData.countryCode ?? "").trim();
+        final phoneNumber = (userData.phoneNumber ?? "").trim();
+        final normalizedIndian = _normalizeIndianPhone(
+          countryCode: countryCode,
+          phoneNumber: phoneNumber,
+        );
 
-        await saveUser();
+        if (normalizedIndian == null) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Please verify using an Indian mobile number (+91).",
+              ),
+            ),
+          );
+          return;
+        }
+
+        setState(() {
+          verifiedPhone = normalizedIndian;
+        });
+
+        await _completeSignIn();
       },
     );
   }
 
-  /// SAVE USER TO SUPABASE
+  Future<void> _completeSignIn() async {
+    if (isSubmitting) return;
 
-  Future saveUser() async {
+    setState(() {
+      isSubmitting = true;
+    });
+
+    try {
+      if (authMode == AuthMode.existingAccount) {
+        await _signInExistingUser();
+      } else {
+        await _registerNewUser();
+      }
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Could not continue: $error")));
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _registerNewUser() async {
     final name = nameController.text.trim();
-
     final bike = bikeController.text.trim();
+    final userId = await _upsertUser(name: name, bike: bike);
+    await _saveLocalSession(name: name, bike: bike, userId: userId);
+  }
 
-    /// SAVE LOCALLY
+  Future<void> _signInExistingUser() async {
+    final user = await _fetchUserByPhone();
+    await _saveLocalSession(
+      name: user.name,
+      bike: user.bike,
+      userId: user.userId,
+    );
+  }
 
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.setBool("isLoggedIn", true);
-
-    await prefs.setString("userName", name);
-
-    await prefs.setString("userBike", bike);
-
-    await prefs.setString("userPhone", verifiedPhone);
-
+  Future<String> _upsertUser({
+    required String name,
+    required String bike,
+  }) async {
     String userId = "";
-
-    /// SAVE TO SUPABASE
 
     try {
       final userRow =
@@ -542,20 +717,22 @@ class _LoginScreenState extends State<LoginScreen> {
               .from('users')
               .upsert({
                 'phone': verifiedPhone,
-
                 'name': name,
-
                 'bike': bike,
               }, onConflict: 'phone')
               .select('id')
               .maybeSingle();
       userId = userRow?['id']?.toString() ?? "";
     } catch (_) {
-      await supabase.from('users').upsert({
-        'phone': verifiedPhone,
-        'name': name,
-        'bike': bike,
-      });
+      try {
+        await supabase.from('users').upsert({
+          'phone': verifiedPhone,
+          'name': name,
+          'bike': bike,
+        });
+      } catch (_) {
+        throw Exception("Failed to save user profile.");
+      }
       try {
         final existingUser =
             await supabase
@@ -567,20 +744,61 @@ class _LoginScreenState extends State<LoginScreen> {
       } catch (_) {}
     }
 
+    return userId;
+  }
+
+  Future<_ExistingUser> _fetchUserByPhone() async {
+    Map<String, dynamic>? userRow;
+    try {
+      userRow =
+          await supabase
+              .from('users')
+              .select('id,name,bike')
+              .eq('phone', verifiedPhone)
+              .maybeSingle();
+    } catch (_) {
+      throw Exception("Could not fetch your account. Try again.");
+    }
+
+    if (userRow == null) {
+      throw Exception(
+        "No account found for this number. Switch to New Account to register.",
+      );
+    }
+
+    final name = (userRow['name'] ?? "").toString().trim();
+    final bike = (userRow['bike'] ?? "").toString().trim();
+    final userId = (userRow['id'] ?? "").toString().trim();
+
+    return _ExistingUser(
+      name: name.isNotEmpty ? name : "Rider",
+      bike: bike.isNotEmpty ? bike : "No bike added",
+      userId: userId,
+    );
+  }
+
+  Future<void> _saveLocalSession({
+    required String name,
+    required String bike,
+    required String userId,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setBool("isLoggedIn", true);
+
+    await prefs.setString("userName", name);
+
+    await prefs.setString("userBike", bike);
+
+    await prefs.setString("userPhone", verifiedPhone);
+    await prefs.setString("phoneEmailAccessToken", accessToken);
+    await prefs.setString("phoneEmailJwtToken", jwtToken);
+
     if (_looksLikeUuid(userId)) {
       await prefs.setString("userId", userId);
     } else {
       await prefs.remove("userId");
     }
-
-    /// GO HOME
-
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
   }
 
   bool _looksLikeUuid(String value) {
@@ -589,4 +807,33 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     return uuidPattern.hasMatch(value.trim());
   }
+
+  String? _normalizeIndianPhone({
+    required String countryCode,
+    required String phoneNumber,
+  }) {
+    final ccDigits = countryCode.replaceAll(RegExp(r'[^0-9]'), '');
+    final phoneDigits = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (ccDigits != '91') return null;
+    if (phoneDigits.length == 10) {
+      return "+91$phoneDigits";
+    }
+    if (phoneDigits.length == 12 && phoneDigits.startsWith('91')) {
+      return "+$phoneDigits";
+    }
+    return null;
+  }
+}
+
+class _ExistingUser {
+  const _ExistingUser({
+    required this.name,
+    required this.bike,
+    required this.userId,
+  });
+
+  final String name;
+  final String bike;
+  final String userId;
 }

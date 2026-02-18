@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>JourneySync uses your location during live rides to share real-time position with your group.</string>
 </dict>
 </plist>

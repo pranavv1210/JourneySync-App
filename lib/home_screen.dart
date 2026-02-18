@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'create_ride_screen.dart';
+import 'map_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -642,14 +644,19 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.home,
             label: "Home",
             active: true,
-            onTap: () {},
+            onTap: _showComingSoonToast,
             primary: primary,
           ),
           _navItem(
             icon: Icons.map,
             label: "Map",
             active: false,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MapScreen()),
+              );
+            },
             primary: primary,
           ),
           const SizedBox(width: 46),
@@ -657,19 +664,31 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.garage,
             label: "Garage",
             active: false,
-            onTap: () {},
+            onTap: _showComingSoonToast,
             primary: primary,
           ),
           _navItem(
             icon: Icons.settings,
             label: "Settings",
             active: false,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
             primary: primary,
           ),
         ],
       ),
     );
+  }
+
+  void _showComingSoonToast() {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Coming soon!")));
   }
 
   Widget _navItem({
