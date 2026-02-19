@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phone_email_auth/phone_email_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth_service.dart';
 import 'home_screen.dart';
 
@@ -687,6 +688,43 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (error) {
       if (!mounted) return;
+      final errorText = error.toString();
+      final noAccountFound = errorText.contains(
+        "No account found for this number",
+      );
+
+      if (noAccountFound && authMode == AuthMode.existingAccount) {
+        setState(() {
+          authMode = AuthMode.newAccount;
+          showPhoneVerification = false;
+          if (nameController.text.trim().isEmpty) {
+            nameController.text = identity.fullName;
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "No account found. Please add your name and bike to create one.",
+            ),
+          ),
+        );
+        return;
+      }
+
+      final rlsBlocked =
+          (error is PostgrestException && (error.code ?? '') == '42501') ||
+          errorText.toLowerCase().contains('row-level security');
+      if (rlsBlocked) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Supabase RLS blocked this request. Enable users SELECT/INSERT policy for anon.",
+            ),
+          ),
+        );
+        return;
+      }
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Could not continue: $error")));

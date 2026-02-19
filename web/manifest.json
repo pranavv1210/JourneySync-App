@@ -1,6 +1,6 @@
 {
-    "name": "journeysync",
-    "short_name": "journeysync",
+    "name": "JourneySync",
+    "short_name": "JourneySync",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

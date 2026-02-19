@@ -125,6 +125,47 @@ class SupabaseService {
     return row;
   }
 
+  Future<void> addParticipant({
+    required String rideId,
+    required String userId,
+  }) async {
+    await _client.from('participants').insert({
+      'ride_id': rideId.trim(),
+      'user_id': userId.trim(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> fetchParticipantsByRideIds(
+    List<String> rideIds,
+  ) async {
+    final ids =
+        rideIds.map((id) => id.trim()).where((id) => id.isNotEmpty).toList();
+    if (ids.isEmpty) {
+      return <Map<String, dynamic>>[];
+    }
+
+    final rows = await _client
+        .from('participants')
+        .select('id,ride_id,user_id')
+        .inFilter('ride_id', ids);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchParticipantsByUser(
+    String userId,
+  ) async {
+    final normalized = userId.trim();
+    if (normalized.isEmpty) {
+      return <Map<String, dynamic>>[];
+    }
+
+    final rows = await _client
+        .from('participants')
+        .select('id,ride_id,user_id')
+        .eq('user_id', normalized);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   Stream<List<Map<String, dynamic>>> watchRides() {
     return _client
         .from('rides')

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'create_ride_screen.dart';
 import 'map_screen.dart';
+import 'nearby_rides_screen.dart';
 import 'ride_service.dart';
 import 'settings_screen.dart';
 import 'supabase_service.dart';
@@ -49,19 +51,36 @@ class _HomeScreenState extends State<HomeScreen> {
       final cachedName = prefs.getString('userName') ?? 'Rider';
       final cachedBike = prefs.getString('userBike') ?? 'No bike added';
 
+      var resolvedId = cachedUserId.trim();
+      var resolvedPhone = cachedPhone.trim();
+      var resolvedName = cachedName.trim();
+      var resolvedBike = cachedBike.trim();
+      var errorText = '';
+      var fetchedRecent = <RideRecord>[];
+      var fetchedNearby = <RideRecord>[];
+
       Map<String, dynamic>? userRow;
       if (cachedUserId.trim().isNotEmpty) {
-        userRow = await _supabaseService.fetchUserById(cachedUserId);
+        try {
+          userRow = await _supabaseService.fetchUserById(cachedUserId);
+        } catch (error) {
+          errorText = _humanizeLoadError(error);
+        }
       }
       if (userRow == null && cachedPhone.trim().isNotEmpty) {
-        userRow = await _supabaseService.fetchUserByPhone(cachedPhone);
+        try {
+          userRow = await _supabaseService.fetchUserByPhone(cachedPhone);
+        } catch (error) {
+          if (errorText.isEmpty) {
+            errorText = _humanizeLoadError(error);
+          }
+        }
       }
 
-      final resolvedId = (userRow?['id'] ?? cachedUserId).toString().trim();
-      final resolvedPhone =
-          (userRow?['phone'] ?? cachedPhone).toString().trim();
-      final resolvedName = (userRow?['name'] ?? cachedName).toString().trim();
-      final resolvedBike = (userRow?['bike'] ?? cachedBike).toString().trim();
+      resolvedId = (userRow?['id'] ?? resolvedId).toString().trim();
+      resolvedPhone = (userRow?['phone'] ?? resolvedPhone).toString().trim();
+      resolvedName = (userRow?['name'] ?? resolvedName).toString().trim();
+      resolvedBike = (userRow?['bike'] ?? resolvedBike).toString().trim();
 
       if (resolvedId.isNotEmpty) {
         await prefs.setString('userId', resolvedId);
@@ -78,11 +97,21 @@ class _HomeScreenState extends State<HomeScreen> {
         resolvedBike.isNotEmpty ? resolvedBike : 'No bike added',
       );
 
-      List<RideRecord> fetchedRecent = <RideRecord>[];
-      List<RideRecord> fetchedNearby = <RideRecord>[];
       if (resolvedId.isNotEmpty) {
-        fetchedRecent = await _rideService.fetchRecentRides(resolvedId);
-        fetchedNearby = await _rideService.fetchNearbyRides(resolvedId);
+        try {
+          fetchedRecent = await _rideService.fetchRecentRides(resolvedId);
+        } catch (error) {
+          if (errorText.isEmpty) {
+            errorText = _humanizeLoadError(error);
+          }
+        }
+        try {
+          fetchedNearby = await _rideService.fetchNearbyRides(resolvedId);
+        } catch (error) {
+          if (errorText.isEmpty) {
+            errorText = _humanizeLoadError(error);
+          }
+        }
       }
 
       if (!mounted) {
@@ -95,13 +124,14 @@ class _HomeScreenState extends State<HomeScreen> {
         userPhone = resolvedPhone;
         recentRides = fetchedRecent;
         nearbyRides = fetchedNearby;
+        loadError = errorText;
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       setState(() {
-        loadError = 'Failed to load latest data. Showing cached profile.';
+        loadError = _humanizeLoadError(error);
       });
     } finally {
       if (mounted) {
@@ -138,7 +168,6 @@ class _HomeScreenState extends State<HomeScreen> {
           SafeArea(
             child: Column(
               children: [
-                _statusBarMock(forest),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
@@ -205,40 +234,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _statusBarMock(Color forest) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            "9:41",
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: forest.withOpacity(0.8),
-            ),
-          ),
-          Row(
-            children: [
-              Icon(
-                Icons.signal_cellular_alt,
-                size: 16,
-                color: forest.withOpacity(0.7),
-              ),
-              const SizedBox(width: 6),
-              Icon(Icons.wifi, size: 16, color: forest.withOpacity(0.7)),
-              const SizedBox(width: 6),
-              Icon(
-                Icons.battery_full,
-                size: 16,
-                color: forest.withOpacity(0.7),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  String _humanizeLoadError(Object error) {
+    if (error is PostgrestException) {
+      final code = (error.code ?? '').trim();
+      final message = error.message.toLowerCase();
+      if (code == '42501' || message.contains('row-level security')) {
+        return 'Supabase RLS is blocking reads. Add SELECT policy for users/rides.';
+      }
+    }
+    final raw = error.toString().toLowerCase();
+    if (raw.contains('socket') || raw.contains('timeout')) {
+      return 'Network issue while loading data. Showing cached profile.';
+    }
+    return 'Failed to load latest data. Showing cached profile.';
   }
 
   Widget _header(Color primary, Color forest) {
@@ -398,11 +406,10 @@ class _HomeScreenState extends State<HomeScreen> {
     Color forest,
     List<RideRecord> nearby,
   ) {
-    final RideRecord? firstNearby = nearby.isNotEmpty ? nearby.first : null;
     final nearbySubtitle =
-        firstNearby == null
+        nearby.isEmpty
             ? "No nearby rides"
-            : "${firstNearby.title} to ${firstNearby.endLocation}";
+            : "${nearby.length} ride(s) found nearby";
 
     return Column(
       children: [
@@ -483,71 +490,80 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 14),
-        Container(
-          height: 150,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: primary, width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: forest.withOpacity(0.06),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: Opacity(
-                  opacity: 0.06,
-                  child: Image.asset(
-                    "assets/pattern.png",
-                    width: 120,
-                    fit: BoxFit.cover,
+        GestureDetector(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NearbyRidesScreen()),
+            );
+            await _loadHomeData();
+          },
+          child: Container(
+            height: 150,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: primary, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: forest.withOpacity(0.06),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: Opacity(
+                    opacity: 0.06,
+                    child: Image.asset(
+                      "assets/pattern.png",
+                      width: 120,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(999),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Icon(Icons.near_me, color: primary, size: 24),
                     ),
-                    child: Icon(Icons.near_me, color: primary, size: 24),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Nearby Active Rides",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: forest,
+                    const SizedBox(height: 8),
+                    Text(
+                      "Nearby Active Rides",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: forest,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    nearbySubtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 4),
+                    Text(
+                      nearbySubtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -643,7 +659,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                destination,
+                                "$destination • ${ride.participantCount} riders",
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(

@@ -98,7 +98,7 @@ class AuthService {
     required String enteredName,
     required String enteredBike,
   }) async {
-    final existing = await _supabaseService.fetchUserByPhone(identity.phone);
+    final existing = await _findExistingUser(identity);
     if (existing != null) {
       return _toSessionUser(existing, fallbackPhone: identity.phone);
     }
@@ -120,6 +120,50 @@ class AuthService {
     );
 
     return _toSessionUser(inserted, fallbackPhone: identity.phone);
+  }
+
+  Future<Map<String, dynamic>?> _findExistingUser(
+    PhoneIdentity identity,
+  ) async {
+    final variants = _phoneVariants(identity);
+    for (final candidate in variants) {
+      final row = await _supabaseService.fetchUserByPhone(candidate);
+      if (row != null) {
+        return row;
+      }
+    }
+    return null;
+  }
+
+  Set<String> _phoneVariants(PhoneIdentity identity) {
+    final variants = <String>{};
+    final normalized = identity.phone.trim();
+    if (normalized.isNotEmpty) {
+      variants.add(normalized);
+    }
+
+    final cc = identity.countryCode.replaceAll(RegExp(r'[^0-9]'), '');
+    final digits = normalized.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isNotEmpty) {
+      variants.add(digits);
+      variants.add('+$digits');
+    }
+
+    if (cc.isNotEmpty && digits.isNotEmpty) {
+      if (digits.startsWith(cc)) {
+        // Legacy fallback for earlier buggy format: +<cc><cc><local>
+        variants.add('+$cc$digits');
+        final local = digits.substring(cc.length);
+        if (local.isNotEmpty) {
+          variants.add(local);
+          variants.add('+$local');
+        }
+      } else {
+        variants.add('+$cc$digits');
+      }
+    }
+
+    return variants;
   }
 
   Future<void> saveSession({
@@ -174,10 +218,27 @@ class AuthService {
     required String phoneNumber,
   }) {
     final cc = countryCode.replaceAll(RegExp(r'[^0-9]'), '');
-    final phoneDigits = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    var phoneDigits = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
     if (cc.isEmpty || phoneDigits.isEmpty) {
       return null;
     }
+
+    // Handle numbers provided as 00<country><number>
+    if (phoneDigits.startsWith('00')) {
+      phoneDigits = phoneDigits.substring(2);
+    }
+
+    // If provider already returns country code in phoneNumber, keep as-is.
+    if (phoneDigits.startsWith(cc)) {
+      return '+$phoneDigits';
+    }
+
+    // Trim trunk prefix zeros before attaching country code.
+    phoneDigits = phoneDigits.replaceFirst(RegExp(r'^0+'), '');
+    if (phoneDigits.isEmpty) {
+      return null;
+    }
+
     return '+$cc$phoneDigits';
   }
 }
