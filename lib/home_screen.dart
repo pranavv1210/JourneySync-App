@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'create_ride_screen.dart';
 import 'map_screen.dart';
+import 'ride_service.dart';
 import 'settings_screen.dart';
+import 'supabase_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,84 +14,102 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final supabase = Supabase.instance.client;
+  final SupabaseService _supabaseService = SupabaseService();
+  final RideService _rideService = RideService();
 
-  String name = "";
-  String bike = "";
+  String name = "Rider";
+  String bike = "No bike added";
   String userPhone = "";
   String userId = "";
+  String loadError = "";
 
   bool loading = true;
-  List<Map<String, dynamic>> recentRides = [];
+  List<RideRecord> recentRides = [];
+  List<RideRecord> nearbyRides = [];
 
   @override
   void initState() {
     super.initState();
-    loadUser();
+    _loadHomeData();
   }
 
-  Future<void> loadUser() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    setState(() {
-      name = prefs.getString("userName") ?? "Rider";
-
-      bike = prefs.getString("userBike") ?? "No bike added";
-      userPhone = prefs.getString("userPhone") ?? "";
-      userId = prefs.getString("userId") ?? "";
-
-      loading = false;
-    });
-
-    await loadRecentRides();
-  }
-
-  Future<void> loadRecentRides() async {
-    final rideLeaderId = _resolveRideLeaderId();
-    if (rideLeaderId == null) {
-      setState(() {
-        recentRides = [];
-      });
+  Future<void> _loadHomeData() async {
+    if (!mounted) {
       return;
     }
-    List<dynamic> data = [];
+    setState(() {
+      loading = true;
+      loadError = "";
+    });
+
     try {
-      data = await supabase
-          .from('rides')
-          .select()
-          .eq('leader_id', rideLeaderId)
-          .eq('status', 'ended')
-          .order('ended_at', ascending: false)
-          .limit(5);
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUserId = prefs.getString('userId') ?? '';
+      final cachedPhone = prefs.getString('userPhone') ?? '';
+      final cachedName = prefs.getString('userName') ?? 'Rider';
+      final cachedBike = prefs.getString('userBike') ?? 'No bike added';
+
+      Map<String, dynamic>? userRow;
+      if (cachedUserId.trim().isNotEmpty) {
+        userRow = await _supabaseService.fetchUserById(cachedUserId);
+      }
+      if (userRow == null && cachedPhone.trim().isNotEmpty) {
+        userRow = await _supabaseService.fetchUserByPhone(cachedPhone);
+      }
+
+      final resolvedId = (userRow?['id'] ?? cachedUserId).toString().trim();
+      final resolvedPhone =
+          (userRow?['phone'] ?? cachedPhone).toString().trim();
+      final resolvedName = (userRow?['name'] ?? cachedName).toString().trim();
+      final resolvedBike = (userRow?['bike'] ?? cachedBike).toString().trim();
+
+      if (resolvedId.isNotEmpty) {
+        await prefs.setString('userId', resolvedId);
+      }
+      if (resolvedPhone.isNotEmpty) {
+        await prefs.setString('userPhone', resolvedPhone);
+      }
+      await prefs.setString(
+        'userName',
+        resolvedName.isNotEmpty ? resolvedName : 'Rider',
+      );
+      await prefs.setString(
+        'userBike',
+        resolvedBike.isNotEmpty ? resolvedBike : 'No bike added',
+      );
+
+      List<RideRecord> fetchedRecent = <RideRecord>[];
+      List<RideRecord> fetchedNearby = <RideRecord>[];
+      if (resolvedId.isNotEmpty) {
+        fetchedRecent = await _rideService.fetchRecentRides(resolvedId);
+        fetchedNearby = await _rideService.fetchNearbyRides(resolvedId);
+      }
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        name = resolvedName.isNotEmpty ? resolvedName : 'Rider';
+        bike = resolvedBike.isNotEmpty ? resolvedBike : 'No bike added';
+        userId = resolvedId;
+        userPhone = resolvedPhone;
+        recentRides = fetchedRecent;
+        nearbyRides = fetchedNearby;
+      });
     } catch (_) {
-      try {
-        data = await supabase
-            .from('rides')
-            .select()
-            .eq('leader_id', rideLeaderId)
-            .eq('status', 'ended')
-            .order('created_at', ascending: false)
-            .limit(5);
-      } catch (_) {
-        data = [];
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        loadError = 'Failed to load latest data. Showing cached profile.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
       }
     }
-    setState(() {
-      recentRides = List<Map<String, dynamic>>.from(data);
-    });
-  }
-
-  String? _resolveRideLeaderId() {
-    if (_looksLikeUuid(userId)) return userId;
-    if (_looksLikeUuid(userPhone)) return userPhone;
-    return null;
-  }
-
-  bool _looksLikeUuid(String value) {
-    final uuidPattern = RegExp(
-      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
-    );
-    return uuidPattern.hasMatch(value.trim());
   }
 
   @override
@@ -126,11 +145,48 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (loadError.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: primary.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: primary,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    loadError,
+                                    style: TextStyle(
+                                      color: forest,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         _header(primary, forest),
                         const SizedBox(height: 18),
                         _quickStatus(primary, forest, sandDarker, bike),
                         const SizedBox(height: 22),
-                        _primaryActions(primary, primaryDark, forest),
+                        _primaryActions(
+                          primary,
+                          primaryDark,
+                          forest,
+                          nearbyRides,
+                        ),
                         const SizedBox(height: 22),
                         _recentJourneysSection(primary, forest, sandDarker),
                         const SizedBox(height: 16),
@@ -203,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              "Let's ride, $name.",
+              "Let's ride, $name",
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
@@ -252,7 +308,7 @@ class _HomeScreenState extends State<HomeScreen> {
             iconBg: const Color(0xFFEFF6FF),
             iconColor: Colors.blue,
             title: "Weather",
-            value: "72°F Clear",
+            value: "72F Clear",
             borderColor: sandDarker,
             textColor: forest,
           ),
@@ -336,15 +392,27 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _primaryActions(Color primary, Color primaryDark, Color forest) {
+  Widget _primaryActions(
+    Color primary,
+    Color primaryDark,
+    Color forest,
+    List<RideRecord> nearby,
+  ) {
+    final RideRecord? firstNearby = nearby.isNotEmpty ? nearby.first : null;
+    final nearbySubtitle =
+        firstNearby == null
+            ? "No nearby rides"
+            : "${firstNearby.title} to ${firstNearby.endLocation}";
+
     return Column(
       children: [
         GestureDetector(
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            await Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const CreateRideScreen()),
             );
+            await _loadHomeData();
           },
           child: Container(
             height: 190,
@@ -469,7 +537,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "No nearby rides found",
+                    nearbySubtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.grey,
                       fontWeight: FontWeight.w600,
@@ -522,7 +592,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Center(
               child: Text(
-                "No recent journeys yet",
+                "No recent rides",
                 style: TextStyle(
                   color: Colors.grey,
                   fontWeight: FontWeight.w600,
@@ -534,13 +604,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Column(
             children:
                 recentRides.map((ride) {
-                  final name = (ride['name'] ?? "Ride").toString();
+                  final title =
+                      ride.title.trim().isNotEmpty ? ride.title : "Ride";
                   final destination =
-                      (ride['destination'] ?? "Destination").toString();
-                  final endedAt =
-                      ride['ended_at']?.toString() ??
-                      ride['created_at']?.toString();
-                  final dateLabel = _formatDate(endedAt);
+                      ride.endLocation.trim().isNotEmpty
+                          ? ride.endLocation
+                          : "Destination";
+                  final dateLabel = _formatDate(ride.createdAt);
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(14),
@@ -566,7 +636,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                name,
+                                title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(fontWeight: FontWeight.w800),
@@ -602,10 +672,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  String _formatDate(String? raw) {
-    if (raw == null || raw.isEmpty) return "—";
-    final parsed = DateTime.tryParse(raw);
-    if (parsed == null) return "—";
+  String _formatDate(DateTime? date) {
+    if (date == null) return "-";
     const months = [
       "Jan",
       "Feb",
@@ -620,7 +688,7 @@ class _HomeScreenState extends State<HomeScreen> {
       "Nov",
       "Dec",
     ];
-    return "${months[(parsed.month - 1).clamp(0, 11)]} ${parsed.day}";
+    return "${months[(date.month - 1).clamp(0, 11)]} ${date.day}";
   }
 
   Widget _bottomNav(Color primary) {
@@ -722,11 +790,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return FloatingActionButton(
       backgroundColor: primary,
       elevation: 8,
-      onPressed: () {
-        Navigator.push(
+      onPressed: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const CreateRideScreen()),
         );
+        await _loadHomeData();
       },
       shape: const CircleBorder(),
       child: const Icon(Icons.navigation, color: Colors.white, size: 28),

@@ -14,9 +14,11 @@ Future<void> _initializeServices() async {
     url: 'https://vvhzofxwiwlffyzyovlw.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2aHpvZnh3aXdsZmZ5enlvdmx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyMjc4MzAsImV4cCI6MjA4NjgwMzgzMH0.eSlUSJMJtANHnS91VG_ofZW_jO1j-d9zR51w7XqtFKU',
-  );
+  ).timeout(const Duration(seconds: 20));
 
-  await PhoneEmail.initializeApp(clientId: "12548171843307398404");
+  await PhoneEmail.initializeApp(
+    clientId: "12548171843307398404",
+  ).timeout(const Duration(seconds: 20));
 }
 
 class JourneySyncApp extends StatelessWidget {

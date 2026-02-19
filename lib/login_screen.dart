@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phone_email_auth/phone_email_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'auth_service.dart';
 import 'home_screen.dart';
 
 enum AuthMode { newAccount, existingAccount }
@@ -14,13 +13,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final supabase = Supabase.instance.client;
+  final AuthService authService = AuthService();
 
   String accessToken = "";
 
   String jwtToken = "";
 
   String verifiedPhone = "";
+  PhoneIdentity? verifiedIdentity;
   bool isSubmitting = false;
 
   final nameController = TextEditingController();
@@ -272,6 +272,7 @@ class _LoginScreenState extends State<LoginScreen> {
       authMode = mode;
       showPhoneVerification = mode == AuthMode.existingAccount;
       verifiedPhone = "";
+      verifiedIdentity = null;
       accessToken = "";
       jwtToken = "";
     });
@@ -540,10 +541,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 authMode == AuthMode.existingAccount
                     ? "Login with Number (+91)"
                     : "Verify Phone (+91)",
-            onSuccess: (access, jwt) {
+            onSuccess: (access, jwt) async {
               accessToken = access;
               jwtToken = jwt;
-              getPhoneNumber();
+              await getPhoneNumber();
             },
             onFailure: (message) {
               if (!mounted) return;
@@ -617,59 +618,68 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// GET VERIFIED PHONE
 
-  void getPhoneNumber() {
+  Future<void> getPhoneNumber() async {
     if (accessToken.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Missing access token. Try again.")),
       );
       return;
     }
 
-    PhoneEmail.getUserInfo(
-      accessToken: accessToken,
-      clientId: PhoneEmail().clientId,
-      onSuccess: (userData) async {
-        final countryCode = (userData.countryCode ?? "").trim();
-        final phoneNumber = (userData.phoneNumber ?? "").trim();
-        final normalizedIndian = _normalizeIndianPhone(
-          countryCode: countryCode,
-          phoneNumber: phoneNumber,
-        );
-
-        if (normalizedIndian == null) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                "Please verify using an Indian mobile number (+91).",
-              ),
-            ),
-          );
-          return;
-        }
-
-        setState(() {
-          verifiedPhone = normalizedIndian;
-        });
-
-        await _completeSignIn();
-      },
-    );
+    try {
+      final identity = await authService.getPhoneIdentity(accessToken);
+      if (!mounted) return;
+      setState(() {
+        verifiedIdentity = identity;
+        verifiedPhone = identity.phone;
+      });
+      await _completeSignIn();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Phone verification failed: $error")),
+      );
+    }
   }
 
   Future<void> _completeSignIn() async {
     if (isSubmitting) return;
+    final identity = verifiedIdentity;
+    if (identity == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Verify your phone number first.")),
+      );
+      return;
+    }
 
     setState(() {
       isSubmitting = true;
     });
 
     try {
-      if (authMode == AuthMode.existingAccount) {
-        await _signInExistingUser();
-      } else {
-        await _registerNewUser();
+      final enteredName = nameController.text.trim();
+      final enteredBike = bikeController.text.trim();
+
+      if (authMode == AuthMode.newAccount &&
+          (enteredName.isEmpty || enteredBike.isEmpty)) {
+        throw Exception("Please fill name and bike.");
       }
+
+      final user = await authService.resolveUser(
+        identity: identity,
+        isNewAccount: authMode == AuthMode.newAccount,
+        enteredName: enteredName,
+        enteredBike: enteredBike,
+      );
+
+      await authService.saveSession(
+        user: user,
+        accessToken: accessToken,
+        jwtToken: jwtToken,
+      );
+
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -688,152 +698,4 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
-
-  Future<void> _registerNewUser() async {
-    final name = nameController.text.trim();
-    final bike = bikeController.text.trim();
-    final userId = await _upsertUser(name: name, bike: bike);
-    await _saveLocalSession(name: name, bike: bike, userId: userId);
-  }
-
-  Future<void> _signInExistingUser() async {
-    final user = await _fetchUserByPhone();
-    await _saveLocalSession(
-      name: user.name,
-      bike: user.bike,
-      userId: user.userId,
-    );
-  }
-
-  Future<String> _upsertUser({
-    required String name,
-    required String bike,
-  }) async {
-    String userId = "";
-
-    try {
-      final userRow =
-          await supabase
-              .from('users')
-              .upsert({
-                'phone': verifiedPhone,
-                'name': name,
-                'bike': bike,
-              }, onConflict: 'phone')
-              .select('id')
-              .maybeSingle();
-      userId = userRow?['id']?.toString() ?? "";
-    } catch (_) {
-      try {
-        await supabase.from('users').upsert({
-          'phone': verifiedPhone,
-          'name': name,
-          'bike': bike,
-        });
-      } catch (_) {
-        throw Exception("Failed to save user profile.");
-      }
-      try {
-        final existingUser =
-            await supabase
-                .from('users')
-                .select('id')
-                .eq('phone', verifiedPhone)
-                .maybeSingle();
-        userId = existingUser?['id']?.toString() ?? "";
-      } catch (_) {}
-    }
-
-    return userId;
-  }
-
-  Future<_ExistingUser> _fetchUserByPhone() async {
-    Map<String, dynamic>? userRow;
-    try {
-      userRow =
-          await supabase
-              .from('users')
-              .select('id,name,bike')
-              .eq('phone', verifiedPhone)
-              .maybeSingle();
-    } catch (_) {
-      throw Exception("Could not fetch your account. Try again.");
-    }
-
-    if (userRow == null) {
-      throw Exception(
-        "No account found for this number. Switch to New Account to register.",
-      );
-    }
-
-    final name = (userRow['name'] ?? "").toString().trim();
-    final bike = (userRow['bike'] ?? "").toString().trim();
-    final userId = (userRow['id'] ?? "").toString().trim();
-
-    return _ExistingUser(
-      name: name.isNotEmpty ? name : "Rider",
-      bike: bike.isNotEmpty ? bike : "No bike added",
-      userId: userId,
-    );
-  }
-
-  Future<void> _saveLocalSession({
-    required String name,
-    required String bike,
-    required String userId,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.setBool("isLoggedIn", true);
-
-    await prefs.setString("userName", name);
-
-    await prefs.setString("userBike", bike);
-
-    await prefs.setString("userPhone", verifiedPhone);
-    await prefs.setString("phoneEmailAccessToken", accessToken);
-    await prefs.setString("phoneEmailJwtToken", jwtToken);
-
-    if (_looksLikeUuid(userId)) {
-      await prefs.setString("userId", userId);
-    } else {
-      await prefs.remove("userId");
-    }
-  }
-
-  bool _looksLikeUuid(String value) {
-    final uuidPattern = RegExp(
-      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
-    );
-    return uuidPattern.hasMatch(value.trim());
-  }
-
-  String? _normalizeIndianPhone({
-    required String countryCode,
-    required String phoneNumber,
-  }) {
-    final ccDigits = countryCode.replaceAll(RegExp(r'[^0-9]'), '');
-    final phoneDigits = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-
-    if (ccDigits != '91') return null;
-    if (phoneDigits.length == 10) {
-      return "+91$phoneDigits";
-    }
-    if (phoneDigits.length == 12 && phoneDigits.startsWith('91')) {
-      return "+$phoneDigits";
-    }
-    return null;
-  }
-}
-
-class _ExistingUser {
-  const _ExistingUser({
-    required this.name,
-    required this.bike,
-    required this.userId,
-  });
-
-  final String name;
-  final String bike;
-  final String userId;
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'ride_lobby_screen.dart';
+import 'ride_service.dart';
 
 class CreateRideScreen extends StatefulWidget {
   const CreateRideScreen({super.key});
@@ -14,12 +14,24 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   final TextEditingController rideNameController = TextEditingController();
   final TextEditingController rideDescController = TextEditingController();
   final TextEditingController destinationController = TextEditingController();
+  final RideService _rideService = RideService();
+  bool isCreating = false;
 
-  final supabase = Supabase.instance.client;
+  @override
+  void initState() {
+    super.initState();
+    destinationController.addListener(_onDestinationChanged);
+  }
+
+  void _onDestinationChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
 
   Future<void> createRide() async {
+    if (isCreating) return;
+
     final rideName = rideNameController.text.trim();
-    final rideDesc = rideDescController.text.trim();
     final destination = destinationController.text.trim();
 
     if (rideName.isEmpty) {
@@ -36,69 +48,41 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       return;
     }
 
+    setState(() {
+      isCreating = true;
+    });
+
     final prefs = await SharedPreferences.getInstance();
-    final leaderPhone = prefs.getString("userPhone") ?? "";
-    String leaderId = prefs.getString("userId") ?? "";
+    try {
+      final creatorId = prefs.getString("userId") ?? "";
+      if (!_looksLikeUuid(creatorId)) {
+        throw Exception("User session missing. Please login again.");
+      }
 
-    if (!_looksLikeUuid(leaderId) && _looksLikeUuid(leaderPhone)) {
-      leaderId = leaderPhone;
-    }
+      final startLocation = await _resolveStartLocation();
+      await _rideService.createRide(
+        creatorId: creatorId,
+        title: rideName,
+        startLocation: startLocation,
+        endLocation: destination,
+      );
 
-    if (!_looksLikeUuid(leaderId) && leaderPhone.isNotEmpty) {
-      try {
-        final userRow =
-            await supabase
-                .from('users')
-                .select('id')
-                .eq('phone', leaderPhone)
-                .maybeSingle();
-        leaderId = userRow?['id']?.toString() ?? "";
-        if (_looksLikeUuid(leaderId)) {
-          await prefs.setString("userId", leaderId);
-        }
-      } catch (_) {}
-    }
-
-    if (!_looksLikeUuid(leaderId)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("User ID missing. Please login again.")),
+        const SnackBar(content: Text("Ride created successfully")),
       );
-      return;
-    }
-
-    final payload = <String, dynamic>{
-      'name': rideName,
-      'leader_id': leaderId,
-      'status': 'waiting',
-      'description': rideDesc,
-      'destination': destination,
-      'leader_phone': leaderPhone,
-    };
-
-    late final Map<String, dynamic> ride;
-    try {
-      ride = await supabase.from('rides').insert(payload).select().single();
-    } catch (_) {
-      payload.remove('leader_phone');
-      ride = await supabase.from('rides').insert(payload).select().single();
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Ride created successfully")));
-
-    rideNameController.clear();
-    rideDescController.clear();
-    destinationController.clear();
-
-    final rideId = ride['id']?.toString();
-    if (rideId != null && rideId.isNotEmpty) {
-      Navigator.pushReplacement(
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
         context,
-        MaterialPageRoute(builder: (_) => RideLobbyScreen(rideId: rideId)),
-      );
+      ).showSnackBar(SnackBar(content: Text("Failed to create ride: $error")));
+    } finally {
+      if (mounted) {
+        setState(() {
+          isCreating = false;
+        });
+      }
     }
   }
 
@@ -403,7 +387,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           ),
         ),
         child: ElevatedButton(
-          onPressed: createRide,
+          onPressed: isCreating ? null : createRide,
           style: ElevatedButton.styleFrom(
             backgroundColor: primary,
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -416,20 +400,31 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                "Go Live",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
+              if (isCreating)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Colors.white,
+                  ),
+                )
+              else ...[
+                Text(
+                  "Go Live",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.arrow_forward,
-                color: Colors.white.withOpacity(0.9),
-                size: 18,
-              ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.arrow_forward,
+                  color: Colors.white.withOpacity(0.9),
+                  size: 18,
+                ),
+              ],
             ],
           ),
         ),
@@ -437,8 +432,39 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     );
   }
 
+  Future<String> _resolveStartLocation() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return "Unknown start";
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return "Unknown start";
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+
+      return "${position.latitude.toStringAsFixed(6)},${position.longitude.toStringAsFixed(6)}";
+    } catch (_) {
+      return "Unknown start";
+    }
+  }
+
   @override
   void dispose() {
+    destinationController.removeListener(_onDestinationChanged);
     rideNameController.dispose();
     rideDescController.dispose();
     destinationController.dispose();
