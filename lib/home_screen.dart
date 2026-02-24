@@ -268,52 +268,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _header(Color primary, Color forest) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "WELCOME BACK",
-              style: TextStyle(
-                fontSize: 12,
-                color: primary.withOpacity(0.8),
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.6,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Let's ride, $name",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: forest,
-              ),
-            ),
-          ],
+        Text(
+          "WELCOME BACK",
+          style: TextStyle(
+            fontSize: 12,
+            color: primary.withOpacity(0.8),
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.6,
+          ),
         ),
-        Stack(
-          children: [
-            const CircleAvatar(
-              radius: 24,
-              backgroundImage: AssetImage("assets/profile.png"),
-            ),
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-              ),
-            ),
-          ],
+        const SizedBox(height: 4),
+        Text(
+          "Let's ride, $name",
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: forest,
+          ),
         ),
       ],
     );
@@ -461,9 +435,36 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.25,
-                    child: Image.asset("assets/pattern.png", fit: BoxFit.cover),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.network(
+                      "https://images.unsplash.com/photo-1558980664-10ea9b4b3bd3?auto=format&fit=crop&w=1200&q=80",
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) {
+                        return Opacity(
+                          opacity: 0.25,
+                          child: Image.asset(
+                            "assets/pattern.png",
+                            fit: BoxFit.cover,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      gradient: LinearGradient(
+                        colors: [
+                          primary.withOpacity(0.82),
+                          primaryDark.withOpacity(0.88),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
                   ),
                 ),
                 Padding(
@@ -518,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
             await _loadHomeData();
           },
           child: Container(
-            height: 150,
+            height: 190,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -560,11 +561,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: Icon(Icons.near_me, color: primary, size: 24),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
                     Text(
                       "Nearby Active Rides",
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: forest,
                       ),
@@ -580,6 +581,35 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ],
+                ),
+                Positioned(
+                  top: 4,
+                  right: 2,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD9F5E5),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.circle, size: 8, color: Color(0xFF2FA865)),
+                        SizedBox(width: 6),
+                        Text(
+                          "LIVE",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF2FA865),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),

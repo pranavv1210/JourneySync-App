@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'login_screen.dart';
+import 'supabase_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -14,11 +16,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final forest = const Color(0xFF1E3A2F);
   final background = const Color(0xFFF8F7F6);
   final sandBorder = const Color(0xFFE8E4DE);
+  final SupabaseService _supabaseService = SupabaseService();
 
+  bool loading = true;
   bool isLoggingOut = false;
+  bool notificationsEnabled = true;
+  bool liveLocationEnabled = true;
+  bool nearbyRideAlertsEnabled = true;
+  bool sosAutoShareEnabled = true;
+  String distanceUnit = 'km';
+
+  String userId = '';
+  String userName = 'Rider';
+  String userPhone = '';
+  String userBike = 'No bike added';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      userId = prefs.getString('userId') ?? '';
+      userName = prefs.getString('userName') ?? 'Rider';
+      userPhone = prefs.getString('userPhone') ?? '';
+      userBike = prefs.getString('userBike') ?? 'No bike added';
+      notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
+      liveLocationEnabled = prefs.getBool('liveLocationEnabled') ?? true;
+      nearbyRideAlertsEnabled =
+          prefs.getBool('nearbyRideAlertsEnabled') ?? true;
+      sosAutoShareEnabled = prefs.getBool('sosAutoShareEnabled') ?? true;
+      distanceUnit = prefs.getString('distanceUnit') ?? 'km';
+      loading = false;
+    });
+  }
+
+  Future<void> _saveBool(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
+
+  Future<void> _saveString(String key, String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, value);
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return Scaffold(
+        backgroundColor: background,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: background,
       body: Stack(
@@ -39,9 +94,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _aboutUsCard(),
+                        _profileCard(),
                         const SizedBox(height: 14),
-                        _logoutCard(),
+                        _ridePreferencesCard(),
+                        const SizedBox(height: 14),
+                        _notificationsCard(),
+                        const SizedBox(height: 14),
+                        _supportCard(),
+                        const SizedBox(height: 14),
+                        _accountCard(),
                       ],
                     ),
                   ),
@@ -77,66 +138,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _aboutUsCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: sandBorder.withOpacity(0.8)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+  Widget _profileCard() {
+    return _settingsCard(
+      title: 'Profile',
+      icon: Icons.person_outline,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.info_outline, color: primary),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                "About Us",
-                style: TextStyle(
-                  color: forest,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "JourneySync is built for riders who travel together and care about safety. "
-            "You can create group rides, track live ride status, and keep your community coordinated "
-            "from start to finish.",
-            style: TextStyle(
-              color: forest.withOpacity(0.8),
-              height: 1.45,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+          _infoRow('Name', userName),
+          const SizedBox(height: 8),
+          _infoRow(
+            'Phone',
+            userPhone.trim().isNotEmpty ? userPhone : 'Not available',
           ),
           const SizedBox(height: 8),
-          Text(
-            "Our goal is simple: make every group ride easier to manage and safer for everyone on the road.",
-            style: TextStyle(
-              color: forest.withOpacity(0.65),
-              height: 1.45,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+          _infoRow('Bike', userBike),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _editProfile,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: primary,
+                side: BorderSide(color: primary.withOpacity(0.5)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              icon: const Icon(Icons.edit_rounded),
+              label: const Text(
+                'Edit Profile',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
           ),
         ],
@@ -144,42 +177,114 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _logoutCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: sandBorder.withOpacity(0.8)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+  Widget _ridePreferencesCard() {
+    return _settingsCard(
+      title: 'Ride Preferences',
+      icon: Icons.route_rounded,
+      child: Column(
+        children: [
+          _switchRow(
+            title: 'Live Location Sharing',
+            subtitle: 'Show your position during active rides.',
+            value: liveLocationEnabled,
+            onChanged: (value) async {
+              setState(() => liveLocationEnabled = value);
+              await _saveBool('liveLocationEnabled', value);
+            },
+          ),
+          const Divider(height: 18),
+          _switchRow(
+            title: 'Nearby Ride Alerts',
+            subtitle: 'Get notified when rides are posted near you.',
+            value: nearbyRideAlertsEnabled,
+            onChanged: (value) async {
+              setState(() => nearbyRideAlertsEnabled = value);
+              await _saveBool('nearbyRideAlertsEnabled', value);
+            },
+          ),
+          const Divider(height: 18),
+          _switchRow(
+            title: 'SOS Auto Share',
+            subtitle: 'Auto share SOS details with current ride members.',
+            value: sosAutoShareEnabled,
+            onChanged: (value) async {
+              setState(() => sosAutoShareEnabled = value);
+              await _saveBool('sosAutoShareEnabled', value);
+            },
+          ),
+          const Divider(height: 18),
+          _tapRow(
+            title: 'Distance Unit',
+            subtitle: distanceUnit == 'km' ? 'Kilometers (km)' : 'Miles (mi)',
+            trailing: Icon(Icons.chevron_right, color: forest.withOpacity(0.5)),
+            onTap: _selectDistanceUnit,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _notificationsCard() {
+    return _settingsCard(
+      title: 'Notifications',
+      icon: Icons.notifications_none_rounded,
+      child: _switchRow(
+        title: 'Push Notifications',
+        subtitle: 'Ride updates, join requests, and safety alerts.',
+        value: notificationsEnabled,
+        onChanged: (value) async {
+          setState(() => notificationsEnabled = value);
+          await _saveBool('notificationsEnabled', value);
+        },
+      ),
+    );
+  }
+
+  Widget _supportCard() {
+    return _settingsCard(
+      title: 'Support & Legal',
+      icon: Icons.info_outline_rounded,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Account",
-            style: TextStyle(
-              color: forest,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
+          _tapRow(
+            title: 'Help Center',
+            subtitle: 'App usage guide and troubleshooting.',
+            onTap: _showHelpCenterModal,
           ),
-          const SizedBox(height: 8),
-          Text(
-            "Log out from this device. You can sign in again using your mobile number.",
-            style: TextStyle(
-              color: forest.withOpacity(0.7),
-              fontSize: 13,
-              height: 1.4,
-              fontWeight: FontWeight.w600,
-            ),
+          const Divider(height: 18),
+          _tapRow(
+            title: 'Privacy Policy',
+            subtitle: 'How JourneySync handles your data.',
+            onTap: _showPrivacyPolicyModal,
+          ),
+          const Divider(height: 18),
+          _tapRow(
+            title: 'Terms of Service',
+            subtitle: 'Usage rules and responsibilities.',
+            onTap: _showTermsModal,
+          ),
+          const Divider(height: 18),
+          _tapRow(
+            title: 'About JourneySync',
+            subtitle:
+                'Group ride planning, live coordination, and rider safety.',
+            onTap: _showAboutModal,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _accountCard() {
+    return _settingsCard(
+      title: 'Account',
+      icon: Icons.manage_accounts_outlined,
+      child: Column(
+        children: [
+          _tapRow(
+            title: 'Clear Local Cache',
+            subtitle: 'Keep account, refresh local app data.',
+            onTap: _clearLocalCache,
           ),
           const SizedBox(height: 14),
           SizedBox(
@@ -215,6 +320,431 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _settingsCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: sandBorder.withOpacity(0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: primary),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: TextStyle(
+                  color: forest,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: forest.withOpacity(0.7),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: forest,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _switchRow({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: forest,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: forest.withOpacity(0.65),
+                  fontSize: 12,
+                  height: 1.3,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Switch(
+          value: value,
+          activeColor: primary,
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
+  Widget _tapRow({
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Widget? trailing,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: forest,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: forest.withOpacity(0.65),
+                      fontSize: 12,
+                      height: 1.3,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            trailing ?? Icon(Icons.chevron_right, color: forest.withOpacity(0.5)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectDistanceUnit() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('Kilometers (km)'),
+                trailing:
+                    distanceUnit == 'km'
+                        ? Icon(Icons.check, color: primary)
+                        : null,
+                onTap: () => Navigator.pop(context, 'km'),
+              ),
+              ListTile(
+                title: const Text('Miles (mi)'),
+                trailing:
+                    distanceUnit == 'mi'
+                        ? Icon(Icons.check, color: primary)
+                        : null,
+                onTap: () => Navigator.pop(context, 'mi'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null || selected == distanceUnit) return;
+    setState(() => distanceUnit = selected);
+    await _saveString('distanceUnit', selected);
+  }
+
+  Future<void> _editProfile() async {
+    final nameController = TextEditingController(text: userName);
+    final bikeController = TextEditingController(text: userBike);
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Profile'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: bikeController,
+                decoration: const InputDecoration(labelText: 'Bike'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                'Save',
+                style: TextStyle(color: primary, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (saved != true) return;
+    final updatedName = nameController.text.trim();
+    final updatedBike = bikeController.text.trim();
+    if (updatedName.isEmpty || updatedBike.isEmpty) {
+      _showInfo('Profile', 'Name and bike cannot be empty.');
+      return;
+    }
+
+    await _saveString('userName', updatedName);
+    await _saveString('userBike', updatedBike);
+
+    if (userId.trim().isNotEmpty) {
+      try {
+        await _supabaseService.updateUserProfile(
+          userId: userId,
+          name: updatedName,
+          bike: updatedBike,
+        );
+      } catch (_) {
+        // Local profile still updates even if network fails.
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      userName = updatedName;
+      userBike = updatedBike;
+    });
+    _showInfo('Profile', 'Profile updated.');
+  }
+
+  Future<void> _clearLocalCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('distanceUnit');
+    await prefs.remove('liveLocationEnabled');
+    await prefs.remove('nearbyRideAlertsEnabled');
+    await prefs.remove('sosAutoShareEnabled');
+    await prefs.remove('notificationsEnabled');
+    if (!mounted) return;
+    _showInfo('Cache', 'Local cache cleared.');
+  }
+
+  void _showInfo(String title, String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$title: $message')));
+  }
+
+  Future<void> _showHelpCenterModal() {
+    return _showContentModal(
+      title: 'Help Center',
+      content:
+          'Welcome to JourneySync.\n\n'
+          '1. Getting Started\n'
+          '- Verify your phone number using OTP.\n'
+          '- For new users, add your name and bike.\n'
+          '- Continue to Home to create or discover rides.\n\n'
+          '2. Creating a Ride\n'
+          '- Tap Create Ride.\n'
+          '- Enter title, start location, and destination.\n'
+          '- Submit to publish your ride to nearby riders.\n\n'
+          '3. Nearby Active Rides\n'
+          '- Tap Nearby Active Rides to search.\n'
+          '- Select a ride and join to enter the lobby.\n\n'
+          '4. Live Ride & SOS\n'
+          '- During ride sessions, location and rider context may be shared.\n'
+          '- SOS sends emergency ride context to support quick response.\n\n'
+          'Need help?\n'
+          'Contact: journeysync.app@gmail.com',
+    );
+  }
+
+  Future<void> _showPrivacyPolicyModal() {
+    return _showContentModal(
+      title: 'Privacy Policy',
+      content:
+          'Effective date: February 24, 2026\n\n'
+          'JourneySync collects only the data needed to run the app safely:\n'
+          '- Phone number (for account verification)\n'
+          '- Profile details (name, bike)\n'
+          '- Ride data (title, start, destination, participants)\n'
+          '- Optional location data during map/live ride use\n\n'
+          'How we use data:\n'
+          '- Account authentication and profile retrieval\n'
+          '- Ride creation, discovery, and coordination\n'
+          '- Safety workflows like SOS context sharing\n\n'
+          'Data sharing:\n'
+          '- We do not sell user data.\n'
+          '- Ride-related information is shared only with app participants as required by features.\n\n'
+          'Data control:\n'
+          '- You can update profile fields in Settings.\n'
+          '- You can logout from this device anytime.\n\n'
+          'Questions about privacy:\n'
+          'journeysync.app@gmail.com',
+    );
+  }
+
+  Future<void> _showTermsModal() {
+    return _showContentModal(
+      title: 'Terms of Service',
+      content:
+          'By using JourneySync, you agree to:\n\n'
+          '- Provide accurate account and ride details.\n'
+          '- Use the app responsibly and lawfully.\n'
+          '- Avoid posting harmful, abusive, or misleading content.\n'
+          '- Respect local traffic laws and ride safely at all times.\n\n'
+          'Safety notice:\n'
+          'JourneySync is a coordination platform and does not guarantee rider behavior, route safety, or emergency outcomes.\n\n'
+          'Account rules:\n'
+          '- You are responsible for activity performed through your verified number.\n'
+          '- We may restrict access for misuse, fraud, or safety violations.\n\n'
+          'Service updates:\n'
+          '- Features may be updated to improve reliability and safety.\n\n'
+          'Support contact:\n'
+          'journeysync.app@gmail.com',
+    );
+  }
+
+  Future<void> _showAboutModal() {
+    return _showContentModal(
+      title: 'About JourneySync',
+      content:
+          'JourneySync is a motorcycle ride planning and coordination app.\n\n'
+          'Core purpose:\n'
+          '- Help riders create, discover, and join group rides.\n'
+          '- Improve coordination with live ride context.\n'
+          '- Keep safety-first workflows like SOS available.\n\n'
+          'What you can do:\n'
+          '- OTP login\n'
+          '- Profile and bike setup\n'
+          '- Create rides and find nearby active rides\n'
+          '- View map context for ride activity\n\n'
+          'Built for riders who value smooth planning and safer group journeys.\n\n'
+          'Contact:\n'
+          'journeysync.app@gmail.com',
+    );
+  }
+
+  Future<void> _showContentModal({
+    required String title,
+    required String content,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Text(
+                content,
+                style: TextStyle(
+                  color: forest.withOpacity(0.85),
+                  height: 1.5,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Close',
+                style: TextStyle(color: primary, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
