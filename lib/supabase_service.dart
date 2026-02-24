@@ -57,6 +57,24 @@ class SupabaseService {
     return row;
   }
 
+  Future<Map<String, dynamic>> updateUserProfile({
+    required String userId,
+    required String name,
+    required String bike,
+  }) async {
+    final row =
+        await _client
+            .from('users')
+            .update({
+              'name': name.trim(),
+              'bike': bike.trim(),
+            })
+            .eq('id', userId.trim())
+            .select('id,phone,name,bike,created_at')
+            .single();
+    return row;
+  }
+
   Future<List<Map<String, dynamic>>> fetchRecentRidesByCreator({
     required String creatorId,
     int limit = 5,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:phone_email_auth/phone_email_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase_service.dart';
 
@@ -100,6 +101,23 @@ class AuthService {
   }) async {
     final existing = await _findExistingUser(identity);
     if (existing != null) {
+      if (isNewAccount &&
+          enteredName.trim().isNotEmpty &&
+          enteredBike.trim().isNotEmpty) {
+        try {
+          final existingId = (existing['id'] ?? '').toString().trim();
+          if (existingId.isNotEmpty) {
+            final updated = await _supabaseService.updateUserProfile(
+              userId: existingId,
+              name: enteredName,
+              bike: enteredBike,
+            );
+            return _toSessionUser(updated, fallbackPhone: identity.phone);
+          }
+        } catch (_) {
+          // If update fails, continue with existing profile to keep login flowing.
+        }
+      }
       return _toSessionUser(existing, fallbackPhone: identity.phone);
     }
 
@@ -113,13 +131,22 @@ class AuthService {
         enteredName.trim().isNotEmpty ? enteredName : identity.fullName;
     final bike = enteredBike.trim().isNotEmpty ? enteredBike : 'No bike added';
 
-    final inserted = await _supabaseService.createUser(
-      phone: identity.phone,
-      name: name,
-      bike: bike,
-    );
-
-    return _toSessionUser(inserted, fallbackPhone: identity.phone);
+    try {
+      final inserted = await _supabaseService.createUser(
+        phone: identity.phone,
+        name: name,
+        bike: bike,
+      );
+      return _toSessionUser(inserted, fallbackPhone: identity.phone);
+    } catch (error) {
+      if (error is PostgrestException && (error.code ?? '').trim() == '23505') {
+        final afterConflict = await _findExistingUser(identity);
+        if (afterConflict != null) {
+          return _toSessionUser(afterConflict, fallbackPhone: identity.phone);
+        }
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>?> _findExistingUser(
@@ -138,28 +165,21 @@ class AuthService {
   Set<String> _phoneVariants(PhoneIdentity identity) {
     final variants = <String>{};
     final normalized = identity.phone.trim();
-    if (normalized.isNotEmpty) {
-      variants.add(normalized);
-    }
-
     final cc = identity.countryCode.replaceAll(RegExp(r'[^0-9]'), '');
-    final digits = normalized.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isNotEmpty) {
-      variants.add(digits);
-      variants.add('+$digits');
+    final fullDigits = normalized.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (normalized.isNotEmpty) variants.add(normalized);
+    if (fullDigits.isNotEmpty) {
+      variants.add(fullDigits);
+      variants.add('+$fullDigits');
     }
 
-    if (cc.isNotEmpty && digits.isNotEmpty) {
-      if (digits.startsWith(cc)) {
-        // Legacy fallback for earlier buggy format: +<cc><cc><local>
-        variants.add('+$cc$digits');
-        final local = digits.substring(cc.length);
-        if (local.isNotEmpty) {
-          variants.add(local);
-          variants.add('+$local');
-        }
-      } else {
-        variants.add('+$cc$digits');
+    if (cc.isNotEmpty && fullDigits.startsWith(cc)) {
+      final local = fullDigits.substring(cc.length);
+      if (local.isNotEmpty) {
+        variants.add(local);
+        variants.add('+$local');
+        variants.add('+$cc$local');
       }
     }
 
@@ -223,22 +243,20 @@ class AuthService {
       return null;
     }
 
-    // Handle numbers provided as 00<country><number>
     if (phoneDigits.startsWith('00')) {
       phoneDigits = phoneDigits.substring(2);
     }
 
-    // If provider already returns country code in phoneNumber, keep as-is.
-    if (phoneDigits.startsWith(cc)) {
-      return '+$phoneDigits';
+    var local = phoneDigits;
+    if (local.startsWith(cc)) {
+      local = local.substring(cc.length);
     }
 
-    // Trim trunk prefix zeros before attaching country code.
-    phoneDigits = phoneDigits.replaceFirst(RegExp(r'^0+'), '');
-    if (phoneDigits.isEmpty) {
+    local = local.replaceFirst(RegExp(r'^0+'), '');
+    if (local.isEmpty) {
       return null;
     }
 
-    return '+$cc$phoneDigits';
+    return '+$cc$local';
   }
 }

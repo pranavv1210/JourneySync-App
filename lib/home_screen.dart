@@ -7,6 +7,7 @@ import 'nearby_rides_screen.dart';
 import 'ride_service.dart';
 import 'settings_screen.dart';
 import 'supabase_service.dart';
+import 'weather_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,12 +19,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   final RideService _rideService = RideService();
+  final WeatherService _weatherService = WeatherService();
 
   String name = "Rider";
   String bike = "No bike added";
   String userPhone = "";
   String userId = "";
   String loadError = "";
+  String weatherText = "Weather unavailable";
 
   bool loading = true;
   List<RideRecord> recentRides = [];
@@ -55,24 +58,28 @@ class _HomeScreenState extends State<HomeScreen> {
       var resolvedPhone = cachedPhone.trim();
       var resolvedName = cachedName.trim();
       var resolvedBike = cachedBike.trim();
-      var errorText = '';
+      var profileErrorText = '';
       var fetchedRecent = <RideRecord>[];
       var fetchedNearby = <RideRecord>[];
+      var weatherValue = weatherText;
+      var fetchedProfileFromServer = false;
 
       Map<String, dynamic>? userRow;
       if (cachedUserId.trim().isNotEmpty) {
         try {
           userRow = await _supabaseService.fetchUserById(cachedUserId);
+          fetchedProfileFromServer = userRow != null;
         } catch (error) {
-          errorText = _humanizeLoadError(error);
+          profileErrorText = _humanizeLoadError(error);
         }
       }
       if (userRow == null && cachedPhone.trim().isNotEmpty) {
         try {
           userRow = await _supabaseService.fetchUserByPhone(cachedPhone);
+          fetchedProfileFromServer = userRow != null;
         } catch (error) {
-          if (errorText.isEmpty) {
-            errorText = _humanizeLoadError(error);
+          if (profileErrorText.isEmpty) {
+            profileErrorText = _humanizeLoadError(error);
           }
         }
       }
@@ -100,18 +107,19 @@ class _HomeScreenState extends State<HomeScreen> {
       if (resolvedId.isNotEmpty) {
         try {
           fetchedRecent = await _rideService.fetchRecentRides(resolvedId);
-        } catch (error) {
-          if (errorText.isEmpty) {
-            errorText = _humanizeLoadError(error);
-          }
-        }
-        try {
           fetchedNearby = await _rideService.fetchNearbyRides(resolvedId);
         } catch (error) {
-          if (errorText.isEmpty) {
-            errorText = _humanizeLoadError(error);
-          }
+          // Keep home usable even if ride list fetch fails.
+          debugPrint("Home ride fetch failed: $error");
         }
+      }
+      try {
+        final weather = await _weatherService.fetchCurrentWeather();
+        if (weather != null && weather.displayText.trim().isNotEmpty) {
+          weatherValue = weather.displayText.trim();
+        }
+      } catch (error) {
+        debugPrint("Weather fetch failed: $error");
       }
 
       if (!mounted) {
@@ -124,7 +132,11 @@ class _HomeScreenState extends State<HomeScreen> {
         userPhone = resolvedPhone;
         recentRides = fetchedRecent;
         nearbyRides = fetchedNearby;
-        loadError = errorText;
+        weatherText = weatherValue;
+        loadError =
+            !fetchedProfileFromServer && profileErrorText.isNotEmpty
+                ? profileErrorText
+                : "";
       });
     } catch (error) {
       if (!mounted) {
@@ -208,7 +220,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         _header(primary, forest),
                         const SizedBox(height: 18),
-                        _quickStatus(primary, forest, sandDarker, bike),
+                        _quickStatus(
+                          primary,
+                          forest,
+                          sandDarker,
+                          weatherText,
+                          bike,
+                        ),
                         const SizedBox(height: 22),
                         _primaryActions(
                           primary,
@@ -305,23 +323,25 @@ class _HomeScreenState extends State<HomeScreen> {
     Color primary,
     Color forest,
     Color sandDarker,
+    String weather,
     String bike,
   ) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _statusCard(
+    return Row(
+      children: [
+        Expanded(
+          child: _statusCard(
             icon: Icons.wb_sunny,
             iconBg: const Color(0xFFEFF6FF),
             iconColor: Colors.blue,
             title: "Weather",
-            value: "72F Clear",
+            value: weather,
             borderColor: sandDarker,
             textColor: forest,
           ),
-          const SizedBox(width: 12),
-          _statusCard(
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _statusCard(
             icon: Icons.two_wheeler,
             iconBg: primary.withOpacity(0.1),
             iconColor: primary,
@@ -330,8 +350,8 @@ class _HomeScreenState extends State<HomeScreen> {
             borderColor: sandDarker,
             textColor: forest,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -369,20 +389,19 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Icon(icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w600,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              SizedBox(
-                width: 140,
-                child: Text(
+                Text(
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -392,8 +411,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: textColor,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -659,7 +678,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                "$destination • ${ride.participantCount} riders",
+                                "$destination - ${ride.participantCount} riders",
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
