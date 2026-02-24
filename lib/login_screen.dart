@@ -719,7 +719,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SnackBar(
             content: Text(
               "Supabase RLS blocked this request. Enable users SELECT/INSERT policy for anon.",
-            ),
+/*  */            ),
           ),
         );
         return;
