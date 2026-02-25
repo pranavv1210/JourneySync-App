@@ -14,7 +14,8 @@ class SupabaseService {
 
   static const String _userColumnsWithAvatar =
       'id,phone,name,bike,avatar_url,created_at';
-  static const String _userColumnsWithoutAvatar = 'id,phone,name,bike,created_at';
+  static const String _userColumnsWithoutAvatar =
+      'id,phone,name,bike,created_at';
 
   Future<Map<String, dynamic>?> fetchUserByPhone(String phone) async {
     final normalized = phone.trim();
@@ -77,10 +78,7 @@ class SupabaseService {
       final row =
           await _client
               .from('users')
-              .update({
-                'name': name.trim(),
-                'bike': bike.trim(),
-              })
+              .update({'name': name.trim(), 'bike': bike.trim()})
               .eq('id', userId.trim())
               .select(_userColumnsWithAvatar)
               .single();
@@ -90,10 +88,7 @@ class SupabaseService {
         final row =
             await _client
                 .from('users')
-                .update({
-                  'name': name.trim(),
-                  'bike': bike.trim(),
-                })
+                .update({'name': name.trim(), 'bike': bike.trim()})
                 .eq('id', userId.trim())
                 .select(_userColumnsWithoutAvatar)
                 .single();
@@ -126,14 +121,13 @@ class SupabaseService {
     final path =
         'user_${userId.trim().isEmpty ? 'unknown' : userId.trim()}_${DateTime.now().millisecondsSinceEpoch}.jpg';
     try {
-      await _client.storage.from(bucket).uploadBinary(
-        path,
-        bytes,
-        fileOptions: FileOptions(
-          contentType: contentType,
-          upsert: true,
-        ),
-      );
+      await _client.storage
+          .from(bucket)
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
+          );
       return _client.storage.from(bucket).getPublicUrl(path);
     } on StorageException catch (error) {
       if (error.message.toLowerCase().contains('bucket not found')) {

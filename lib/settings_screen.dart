@@ -535,11 +535,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         const SizedBox(width: 8),
-        Switch(
-          value: value,
-          activeColor: primary,
-          onChanged: onChanged,
-        ),
+        Switch(value: value, activeColor: primary, onChanged: onChanged),
       ],
     );
   }
@@ -582,7 +578,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            trailing ?? Icon(Icons.chevron_right, color: forest.withOpacity(0.5)),
+            trailing ??
+                Icon(Icons.chevron_right, color: forest.withOpacity(0.5)),
           ],
         ),
       ),
