@@ -31,12 +31,14 @@ class SessionUser {
     required this.phone,
     required this.name,
     required this.bike,
+    required this.avatarUrl,
   });
 
   final String id;
   final String phone;
   final String name;
   final String bike;
+  final String avatarUrl;
 }
 
 class AuthService {
@@ -197,6 +199,7 @@ class AuthService {
     await prefs.setString('userPhone', user.phone);
     await prefs.setString('userName', user.name);
     await prefs.setString('userBike', user.bike);
+    await prefs.setString('userAvatarUrl', user.avatarUrl);
     await prefs.setString('phoneEmailAccessToken', accessToken);
     await prefs.setString('phoneEmailJwtToken', jwtToken);
   }
@@ -208,6 +211,7 @@ class AuthService {
     await prefs.remove('userPhone');
     await prefs.remove('userName');
     await prefs.remove('userBike');
+    await prefs.remove('userAvatarUrl');
     await prefs.remove('phoneEmailAccessToken');
     await prefs.remove('phoneEmailJwtToken');
   }
@@ -220,6 +224,7 @@ class AuthService {
     final phone = (row['phone'] ?? fallbackPhone).toString().trim();
     final name = (row['name'] ?? 'Rider').toString().trim();
     final bike = (row['bike'] ?? 'No bike added').toString().trim();
+    final avatarUrl = (row['avatar_url'] ?? '').toString().trim();
 
     if (id.isEmpty) {
       throw Exception('User record is missing id.');
@@ -230,6 +235,7 @@ class AuthService {
       phone: phone.isNotEmpty ? phone : fallbackPhone,
       name: name.isNotEmpty ? name : 'Rider',
       bike: bike.isNotEmpty ? bike : 'No bike added',
+      avatarUrl: avatarUrl,
     );
   }
 

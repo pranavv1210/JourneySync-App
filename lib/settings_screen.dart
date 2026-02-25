@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'login_screen.dart';
@@ -17,6 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final background = const Color(0xFFF8F7F6);
   final sandBorder = const Color(0xFFE8E4DE);
   final SupabaseService _supabaseService = SupabaseService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   bool loading = true;
   bool isLoggingOut = false;
@@ -30,6 +34,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String userName = 'Rider';
   String userPhone = '';
   String userBike = 'No bike added';
+  String userAvatarUrl = '';
+  bool isUploadingAvatar = false;
 
   @override
   void initState() {
@@ -45,6 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       userName = prefs.getString('userName') ?? 'Rider';
       userPhone = prefs.getString('userPhone') ?? '';
       userBike = prefs.getString('userBike') ?? 'No bike added';
+      userAvatarUrl = prefs.getString('userAvatarUrl') ?? '';
       notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
       liveLocationEnabled = prefs.getBool('liveLocationEnabled') ?? true;
       nearbyRideAlertsEnabled =
@@ -53,6 +60,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
       distanceUnit = prefs.getString('distanceUnit') ?? 'km';
       loading = false;
     });
+
+    if (userId.trim().isNotEmpty) {
+      try {
+        final row = await _supabaseService.fetchUserById(userId);
+        final serverAvatar = (row?['avatar_url'] ?? '').toString().trim();
+        if (serverAvatar.isNotEmpty) {
+          await _saveString('userAvatarUrl', serverAvatar);
+          if (!mounted) return;
+          setState(() {
+            userAvatarUrl = serverAvatar;
+          });
+        }
+      } catch (_) {
+        // Keep cached avatar if remote fetch fails.
+      }
+    }
   }
 
   Future<void> _saveBool(String key, bool value) async {
@@ -144,6 +167,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
       icon: Icons.person_outline,
       child: Column(
         children: [
+          Row(
+            children: [
+              _profileAvatar(size: 72),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SizedBox(
+                  height: 42,
+                  child: OutlinedButton.icon(
+                    onPressed: isUploadingAvatar ? null : _pickAndUploadAvatar,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: primary,
+                      side: BorderSide(color: primary.withOpacity(0.5)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon:
+                        isUploadingAvatar
+                            ? const SizedBox(
+                              height: 14,
+                              width: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                            : const Icon(Icons.camera_alt_outlined, size: 18),
+                    label: Text(
+                      isUploadingAvatar ? 'Uploading...' : 'Change Photo',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           _infoRow('Name', userName),
           const SizedBox(height: 8),
           _infoRow(
@@ -173,6 +230,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _profileAvatar({double size = 56}) {
+    final hasNetworkAvatar = userAvatarUrl.trim().isNotEmpty;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: sandBorder, width: 2),
+        color: Colors.white,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child:
+          hasNetworkAvatar
+              ? Image.network(
+                userAvatarUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _avatarFallback(size),
+              )
+              : _avatarFallback(size),
+    );
+  }
+
+  Widget _avatarFallback(double size) {
+    final trimmed = userName.trim();
+    final first = trimmed.isNotEmpty ? trimmed.substring(0, 1) : 'R';
+    return Container(
+      color: primary.withOpacity(0.1),
+      alignment: Alignment.center,
+      child: Text(
+        first.toUpperCase(),
+        style: TextStyle(
+          color: primary,
+          fontSize: size * 0.35,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -603,6 +699,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _showInfo('Profile', 'Profile updated.');
   }
 
+  Future<void> _pickAndUploadAvatar() async {
+    if (userId.trim().isEmpty) {
+      _showInfo('Profile', 'Login again to upload profile picture.');
+      return;
+    }
+
+    try {
+      final file = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+      if (file == null) return;
+
+      setState(() {
+        isUploadingAvatar = true;
+      });
+
+      final bytes = await file.readAsBytes();
+      final contentType = _contentTypeForFile(file.name);
+      final url = await _supabaseService.uploadAvatar(
+        userId: userId,
+        bytes: Uint8List.fromList(bytes),
+        contentType: contentType,
+      );
+      await _supabaseService.updateUserAvatar(userId: userId, avatarUrl: url);
+      await _saveString('userAvatarUrl', url);
+
+      if (!mounted) return;
+      setState(() {
+        userAvatarUrl = url;
+      });
+      _showInfo('Profile', 'Profile photo updated.');
+    } catch (error) {
+      _showInfo('Profile', _avatarUploadErrorMessage(error));
+    } finally {
+      if (mounted) {
+        setState(() {
+          isUploadingAvatar = false;
+        });
+      }
+    }
+  }
+
+  String _contentTypeForFile(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
+  }
+
+  String _avatarUploadErrorMessage(Object error) {
+    final text = error.toString();
+    final lower = text.toLowerCase();
+    if (lower.contains('bucket not found')) {
+      return 'Photo upload is not configured on the server yet. Please contact support/admin to create the storage bucket.';
+    }
+    return 'Could not upload photo: $text';
+  }
+
   Future<void> _clearLocalCache() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('distanceUnit');
@@ -785,6 +942,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setBool("isLoggedIn", false);
     await prefs.remove("userName");
     await prefs.remove("userBike");
+    await prefs.remove("userAvatarUrl");
     await prefs.remove("userPhone");
     await prefs.remove("userId");
     await prefs.remove("phoneEmailAccessToken");

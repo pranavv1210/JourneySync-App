@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
@@ -5,6 +7,14 @@ class SupabaseService {
     : _client = client ?? Supabase.instance.client;
 
   final SupabaseClient _client;
+  static const String _avatarBucket = String.fromEnvironment(
+    'SUPABASE_AVATAR_BUCKET',
+    defaultValue: 'avatars',
+  );
+
+  static const String _userColumnsWithAvatar =
+      'id,phone,name,bike,avatar_url,created_at';
+  static const String _userColumnsWithoutAvatar = 'id,phone,name,bike,created_at';
 
   Future<Map<String, dynamic>?> fetchUserByPhone(String phone) async {
     final normalized = phone.trim();
@@ -12,13 +22,7 @@ class SupabaseService {
       return null;
     }
 
-    final row =
-        await _client
-            .from('users')
-            .select('id,phone,name,bike,created_at')
-            .eq('phone', normalized)
-            .maybeSingle();
-    return row;
+    return _fetchUserSingle(eqColumn: 'phone', eqValue: normalized);
   }
 
   Future<Map<String, dynamic>?> fetchUserById(String userId) async {
@@ -27,13 +31,7 @@ class SupabaseService {
       return null;
     }
 
-    final row =
-        await _client
-            .from('users')
-            .select('id,phone,name,bike,created_at')
-            .eq('id', normalized)
-            .maybeSingle();
-    return row;
+    return _fetchUserSingle(eqColumn: 'id', eqValue: normalized);
   }
 
   Future<Map<String, dynamic>> createUser({
@@ -48,13 +46,26 @@ class SupabaseService {
       'created_at': DateTime.now().toIso8601String(),
     };
 
-    final row =
-        await _client
-            .from('users')
-            .insert(payload)
-            .select('id,phone,name,bike,created_at')
-            .single();
-    return row;
+    try {
+      final row =
+          await _client
+              .from('users')
+              .insert(payload)
+              .select(_userColumnsWithAvatar)
+              .single();
+      return row;
+    } on PostgrestException catch (error) {
+      if (_isMissingAvatarColumn(error)) {
+        final row =
+            await _client
+                .from('users')
+                .insert(payload)
+                .select(_userColumnsWithoutAvatar)
+                .single();
+        return row;
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> updateUserProfile({
@@ -62,17 +73,76 @@ class SupabaseService {
     required String name,
     required String bike,
   }) async {
+    try {
+      final row =
+          await _client
+              .from('users')
+              .update({
+                'name': name.trim(),
+                'bike': bike.trim(),
+              })
+              .eq('id', userId.trim())
+              .select(_userColumnsWithAvatar)
+              .single();
+      return row;
+    } on PostgrestException catch (error) {
+      if (_isMissingAvatarColumn(error)) {
+        final row =
+            await _client
+                .from('users')
+                .update({
+                  'name': name.trim(),
+                  'bike': bike.trim(),
+                })
+                .eq('id', userId.trim())
+                .select(_userColumnsWithoutAvatar)
+                .single();
+        return row;
+      }
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> updateUserAvatar({
+    required String userId,
+    required String avatarUrl,
+  }) async {
     final row =
         await _client
             .from('users')
-            .update({
-              'name': name.trim(),
-              'bike': bike.trim(),
-            })
+            .update({'avatar_url': avatarUrl.trim()})
             .eq('id', userId.trim())
-            .select('id,phone,name,bike,created_at')
+            .select(_userColumnsWithAvatar)
             .single();
     return row;
+  }
+
+  Future<String> uploadAvatar({
+    required String userId,
+    required Uint8List bytes,
+    String contentType = 'image/jpeg',
+  }) async {
+    final bucket = _avatarBucket.trim().isEmpty ? 'avatars' : _avatarBucket;
+    final path =
+        'user_${userId.trim().isEmpty ? 'unknown' : userId.trim()}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    try {
+      await _client.storage.from(bucket).uploadBinary(
+        path,
+        bytes,
+        fileOptions: FileOptions(
+          contentType: contentType,
+          upsert: true,
+        ),
+      );
+      return _client.storage.from(bucket).getPublicUrl(path);
+    } on StorageException catch (error) {
+      if (error.message.toLowerCase().contains('bucket not found')) {
+        throw Exception(
+          'Storage bucket "$bucket" not found. Create this bucket in Supabase Storage or pass --dart-define=SUPABASE_AVATAR_BUCKET=<bucket-name>.',
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> fetchRecentRidesByCreator({
@@ -189,5 +259,36 @@ class SupabaseService {
         .from('rides')
         .stream(primaryKey: const ['id'])
         .order('created_at', ascending: false);
+  }
+
+  Future<Map<String, dynamic>?> _fetchUserSingle({
+    required String eqColumn,
+    required String eqValue,
+  }) async {
+    try {
+      final row =
+          await _client
+              .from('users')
+              .select(_userColumnsWithAvatar)
+              .eq(eqColumn, eqValue)
+              .maybeSingle();
+      return row;
+    } on PostgrestException catch (error) {
+      if (_isMissingAvatarColumn(error)) {
+        final row =
+            await _client
+                .from('users')
+                .select(_userColumnsWithoutAvatar)
+                .eq(eqColumn, eqValue)
+                .maybeSingle();
+        return row;
+      }
+      rethrow;
+    }
+  }
+
+  bool _isMissingAvatarColumn(PostgrestException error) {
+    return (error.code ?? '').trim() == '42703' ||
+        error.message.toLowerCase().contains('avatar_url');
   }
 }
