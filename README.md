@@ -1,26 +1,30 @@
-<h1>
-  <img src="assets/app_icon.png" alt="JourneySync App Icon" width="36" height="36" />
-  JourneySync
-</h1>
+<div align="center">
+  <h1>
+    <img src="assets/app_icon.png" alt="JourneySync App Icon" width="36" height="36" />
+    JourneySync
+  </h1>
 
-## Tech Stack
+  <h2>Tech Stack</h2>
 
-![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
-![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![Phone Auth](https://img.shields.io/badge/Phone.Email%20Auth-111827?style=for-the-badge&logo=auth0&logoColor=white)
-![SharedPreferences](https://img.shields.io/badge/SharedPreferences-5B21B6?style=for-the-badge&logo=googlechrome&logoColor=white)
-![Geolocator](https://img.shields.io/badge/Geolocator-0EA5E9?style=for-the-badge&logo=googlemaps&logoColor=white)
-![Flutter Map](https://img.shields.io/badge/Flutter%20Map-1D4ED8?style=for-the-badge&logo=mapbox&logoColor=white)
-![OpenStreetMap](https://img.shields.io/badge/OpenStreetMap-7EBC6F?style=for-the-badge&logo=openstreetmap&logoColor=white)
-![Open-Meteo](https://img.shields.io/badge/Open--Meteo-2563EB?style=for-the-badge&logo=cloudflare&logoColor=white)
-![HTTP](https://img.shields.io/badge/HTTP-334155?style=for-the-badge&logo=fastapi&logoColor=white)
-![Image Picker](https://img.shields.io/badge/Image%20Picker-F97316?style=for-the-badge&logo=googlephotos&logoColor=white)
-![Android](https://img.shields.io/badge/Android-34A853?style=for-the-badge&logo=android&logoColor=white)
-![iOS](https://img.shields.io/badge/iOS-111827?style=for-the-badge&logo=apple&logoColor=white)
-![Web](https://img.shields.io/badge/Web-0EA5E9?style=for-the-badge&logo=googlechrome&logoColor=white)
+  <p>
+    <img alt="Flutter" src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" />
+    <img alt="Dart" src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" />
+    <img alt="Supabase" src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" />
+    <img alt="Phone Auth" src="https://img.shields.io/badge/Phone.Email%20Auth-111827?style=for-the-badge&logo=auth0&logoColor=white" />
+    <img alt="SharedPreferences" src="https://img.shields.io/badge/SharedPreferences-5B21B6?style=for-the-badge&logo=googlechrome&logoColor=white" />
+    <img alt="Geolocator" src="https://img.shields.io/badge/Geolocator-0EA5E9?style=for-the-badge&logo=googlemaps&logoColor=white" />
+    <img alt="Flutter Map" src="https://img.shields.io/badge/Flutter%20Map-1D4ED8?style=for-the-badge&logo=mapbox&logoColor=white" />
+    <img alt="OpenStreetMap" src="https://img.shields.io/badge/OpenStreetMap-7EBC6F?style=for-the-badge&logo=openstreetmap&logoColor=white" />
+    <img alt="Open-Meteo" src="https://img.shields.io/badge/Open--Meteo-2563EB?style=for-the-badge&logo=cloudflare&logoColor=white" />
+    <img alt="HTTP" src="https://img.shields.io/badge/HTTP-334155?style=for-the-badge&logo=fastapi&logoColor=white" />
+    <img alt="Image Picker" src="https://img.shields.io/badge/Image%20Picker-F97316?style=for-the-badge&logo=googlephotos&logoColor=white" />
+    <img alt="Android" src="https://img.shields.io/badge/Android-34A853?style=for-the-badge&logo=android&logoColor=white" />
+    <img alt="iOS" src="https://img.shields.io/badge/iOS-111827?style=for-the-badge&logo=apple&logoColor=white" />
+    <img alt="Web" src="https://img.shields.io/badge/Web-0EA5E9?style=for-the-badge&logo=googlechrome&logoColor=white" />
+  </p>
 
-A production-oriented group ride coordination and rider safety app for motorcycle communities.
+  <p>A production-oriented group ride coordination and rider safety app for motorcycle communities.</p>
+</div>
 
 ---
 
