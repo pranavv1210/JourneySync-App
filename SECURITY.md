@@ -10,7 +10,7 @@ Please report vulnerabilities privately and responsibly.
 
 Contact:
 
-- `pranavv736@gmail.com`
+- `journeysync.app@gmail.com`
 
 Include:
 

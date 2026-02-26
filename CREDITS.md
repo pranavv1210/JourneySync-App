@@ -3,7 +3,7 @@
 ## Creator
 
 - **Pranav V** (`pranavv1210`)
-- Contact: `pranavv736@gmail.com`
+- Contact: `journeysync.app@gmail.com`
 - Role: Founder, primary developer, and maintainer of JourneySync
 
 ## Project Acknowledgements

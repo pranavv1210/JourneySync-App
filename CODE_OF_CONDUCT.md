@@ -31,6 +31,6 @@ and contributions that violate this Code of Conduct.
 
 To report violations, contact:
 
-- `pranavv736@gmail.com`
+- `journeysync.app@gmail.com`
 
 All reports will be reviewed and handled in good faith.

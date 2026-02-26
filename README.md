@@ -89,12 +89,33 @@ JourneySync is designed around three product pillars:
 ## System Architecture
 
 ```text
-Flutter UI (Screens)
-  -> Domain Services (AuthService, RideService, WeatherService)
-      -> SupabaseService (DB + Storage)
-          -> Supabase tables: users, rides, participants
-  -> SharedPreferences (local session + user preferences)
-  -> External APIs: Phone.Email, Open-Meteo, OpenStreetMap tiles
+Presentation Layer (Flutter Screens)
+  - splash_screen, login_screen, home_screen
+  - create_ride, nearby_rides, map, live_ride, sos, settings, summary
+
+Application Layer (App Services)
+  - AuthService
+  - RideService
+  - WeatherService
+
+Data Access Layer
+  - SupabaseService -> Supabase DB (users, rides, participants)
+  - SupabaseService -> Supabase Storage (avatars)
+
+Device / Local Layer
+  - SharedPreferences (session + preferences cache)
+  - Geolocator (GPS + live position stream)
+  - ImagePicker (profile photo selection)
+
+External Integrations
+  - Phone.Email API (phone identity verification)
+  - Open-Meteo API (weather snapshot)
+  - OpenStreetMap Tiles (map rendering via flutter_map)
+
+Flow
+  UI -> App Services -> SupabaseService -> Supabase
+  UI -> Device/Local APIs
+  UI/Services -> External APIs
 ```
 
 ## Technology Stack
@@ -148,45 +169,15 @@ lib/
   weather_service.dart      # Open-Meteo integration
 ```
 
-## Data Contract (Supabase)
+## Backend Model (Public Overview)
 
-### `users`
+JourneySync uses Supabase with three main logical entities:
 
-Expected fields:
+- `users`: rider profile and account metadata
+- `rides`: ride planning, live ride state, and safety context
+- `participants`: rider membership in rides
 
-- `id`
-- `phone`
-- `name`
-- `bike`
-- `avatar_url` (optional fallback handled)
-- `created_at`
-
-### `rides`
-
-Expected fields used by app screens/services include:
-
-- `id`, `creator_id`, `title`, `start_location`, `end_location`, `created_at`
-- `status`, `started_at`, `ended_at`
-- `current_lat`, `current_lng`, `current_speed_mps`, `current_heading`, `location_updated_at`
-- `alert_status`, `alert_by`, `alert_by_name`, `alert_by_bike`, `alert_at`
-
-### `participants`
-
-- `id`, `ride_id`, `user_id`
-
-Recommended constraint:
-
-- Unique composite: (`ride_id`, `user_id`)
-
-## Local Persistence Keys
-
-`SharedPreferences` keys currently used:
-
-- `isLoggedIn`
-- `userId`, `userPhone`, `userName`, `userBike`, `userAvatarUrl`
-- `phoneEmailAccessToken`, `phoneEmailJwtToken`
-- `notificationsEnabled`, `liveLocationEnabled`, `nearbyRideAlertsEnabled`, `sosAutoShareEnabled`
-- `distanceUnit`
+For security and flexibility, implementation-level schema details and local key maps are intentionally kept out of public documentation.
 
 ## Quick Start
 
