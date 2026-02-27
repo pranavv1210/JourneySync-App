@@ -92,34 +92,52 @@ JourneySync is designed around three product pillars:
 
 ## System Architecture
 
-```text
-Presentation Layer (Flutter Screens)
-  - splash_screen, login_screen, home_screen
-  - create_ride, nearby_rides, map, live_ride, sos, settings, summary
+```mermaid
+flowchart TD
+  UI[Presentation Layer<br/>Flutter Screens]
 
-Application Layer (App Services)
-  - AuthService
-  - RideService
-  - WeatherService
+  subgraph APP[Application Layer]
+    AUTH[AuthService]
+    RIDE[RideService]
+    WEATHER[WeatherService]
+  end
 
-Data Access Layer
-  - SupabaseService -> Supabase DB (users, rides, participants)
-  - SupabaseService -> Supabase Storage (avatars)
+  subgraph DATA[Data Access Layer]
+    SUPA[SupabaseService]
+    DB[(Supabase DB<br/>users / rides / participants)]
+    STORAGE[(Supabase Storage<br/>avatars)]
+  end
 
-Device / Local Layer
-  - SharedPreferences (session + preferences cache)
-  - Geolocator (GPS + live position stream)
-  - ImagePicker (profile photo selection)
+  subgraph LOCAL[Device / Local Layer]
+    PREFS[SharedPreferences]
+    GEO[Geolocator]
+    PICKER[ImagePicker]
+  end
 
-External Integrations
-  - Phone.Email API (phone identity verification)
-  - Open-Meteo API (weather snapshot)
-  - OpenStreetMap Tiles (map rendering via flutter_map)
+  subgraph EXT[External Integrations]
+    PHONE[Phone.Email API]
+    METEO[Open-Meteo API]
+    OSM[OpenStreetMap Tiles]
+  end
 
-Flow
-  UI -> App Services -> SupabaseService -> Supabase
-  UI -> Device/Local APIs
-  UI/Services -> External APIs
+  UI --> AUTH
+  UI --> RIDE
+  UI --> WEATHER
+
+  AUTH --> SUPA
+  RIDE --> SUPA
+  WEATHER --> SUPA
+
+  SUPA --> DB
+  SUPA --> STORAGE
+
+  UI --> PREFS
+  UI --> GEO
+  UI --> PICKER
+
+  AUTH --> PHONE
+  WEATHER --> METEO
+  UI --> OSM
 ```
 
 ## Technology Stack
