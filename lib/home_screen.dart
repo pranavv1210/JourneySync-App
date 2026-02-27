@@ -441,12 +441,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       "https://images.unsplash.com/photo-1558980664-10ea9b4b3bd3?auto=format&fit=crop&w=1200&q=80",
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) {
-                        return Opacity(
-                          opacity: 0.25,
-                          child: Image.asset(
-                            "assets/pattern.png",
-                            fit: BoxFit.cover,
-                          ),
+                        return Image.network(
+                          "https://images.unsplash.com/photo-1558980394-4c7c9299fe96?auto=format&fit=crop&w=1200&q=80",
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) {
+                            return Container(
+                              color: primaryDark.withOpacity(0.45),
+                              alignment: Alignment.center,
+                              child: Icon(
+                                Icons.two_wheeler,
+                                size: 68,
+                                color: Colors.white.withOpacity(0.35),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
@@ -520,6 +528,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
           child: Container(
             height: 190,
+            width: double.infinity,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -536,15 +545,26 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Stack(
               children: [
                 Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: Opacity(
-                    opacity: 0.06,
-                    child: Image.asset(
-                      "assets/pattern.png",
-                      width: 120,
-                      fit: BoxFit.cover,
+                  right: -26,
+                  bottom: -30,
+                  child: Container(
+                    width: 130,
+                    height: 130,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primary.withOpacity(0.06),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 38,
+                  bottom: 22,
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primary.withOpacity(0.08),
                     ),
                   ),
                 ),
@@ -582,35 +602,36 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                Positioned(
-                  top: 4,
-                  right: 2,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD9F5E5),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.circle, size: 8, color: Color(0xFF2FA865)),
-                        SizedBox(width: 6),
-                        Text(
-                          "LIVE",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF2FA865),
+                if (nearby.isNotEmpty)
+                  Positioned(
+                    top: 4,
+                    right: 2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD9F5E5),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.circle, size: 8, color: Color(0xFF2FA865)),
+                          SizedBox(width: 6),
+                          Text(
+                            "LIVE",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF2FA865),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
