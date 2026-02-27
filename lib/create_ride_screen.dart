@@ -35,6 +35,14 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   Timer? _searchDebounce;
   int _searchRequestId = 0;
   static const LatLng _indiaFallback = LatLng(20.5937, 78.9629);
+  DateTime selectedStartTime = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day + 1,
+    8,
+    0,
+  );
+  double maxRiders = 15;
 
   @override
   void initState() {
@@ -136,7 +144,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
         'q': trimmed,
         'format': 'jsonv2',
-        'limit': '1',
+        'limit': '5',
       });
       final response = await http.get(
         uri,
@@ -299,7 +307,9 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Failed to create ride: $error")));
+      ).showSnackBar(
+        SnackBar(content: Text("Failed to create ride: ${_createRideErrorMessage(error)}")),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -358,6 +368,12 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                           primary: primary,
                           neutralWarm: neutralWarm,
                           background: background,
+                        ),
+                        const SizedBox(height: 20),
+                        _logisticsSection(
+                          forest: forest,
+                          primary: primary,
+                          neutralWarm: neutralWarm,
                         ),
                         const SizedBox(height: 24),
                       ],
@@ -844,6 +860,235 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     );
   }
 
+  Widget _logisticsSection({
+    required Color forest,
+    required Color primary,
+    required Color neutralWarm,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "LOGISTICS",
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+            color: forest.withOpacity(0.8),
+          ),
+        ),
+        const SizedBox(height: 10),
+        InkWell(
+          onTap: _pickStartTime,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.calendar_today, size: 18, color: primary),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Start Time",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: neutralWarm,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        _startTimeLabel(selectedStartTime),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: forest,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: neutralWarm),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.groups_rounded, color: primary, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        "Max Riders",
+                        style: TextStyle(
+                          color: forest,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Text(
+                    maxRiders.round().toString(),
+                    style: TextStyle(
+                      color: primary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: primary,
+                  inactiveTrackColor: primary.withOpacity(0.18),
+                  thumbColor: Colors.white,
+                  overlayColor: primary.withOpacity(0.15),
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+                ),
+                child: Slider(
+                  min: 1,
+                  max: 25,
+                  divisions: 24,
+                  value: maxRiders,
+                  onChanged: (value) {
+                    setState(() {
+                      maxRiders = value;
+                    });
+                  },
+                ),
+              ),
+              Row(
+                children: [
+                  Text(
+                    "Solo",
+                    style: TextStyle(
+                      color: neutralWarm,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    "Unlimited",
+                    style: TextStyle(
+                      color: neutralWarm,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickStartTime() async {
+    final now = DateTime.now();
+    final initialDate =
+        selectedStartTime.isBefore(now) ? now : selectedStartTime;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (date == null || !mounted) return;
+
+    final initialTime = TimeOfDay.fromDateTime(selectedStartTime);
+    final time = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+    if (time == null || !mounted) return;
+
+    setState(() {
+      selectedStartTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
+  String _startTimeLabel(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final selected = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    String dayText;
+    if (selected == today) {
+      dayText = "Today";
+    } else if (selected == today.add(const Duration(days: 1))) {
+      dayText = "Tomorrow";
+    } else {
+      const months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      dayText = "${months[dateTime.month - 1]} ${dateTime.day}";
+    }
+
+    final hour12 = dateTime.hour % 12 == 0 ? 12 : dateTime.hour % 12;
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final suffix = dateTime.hour >= 12 ? "PM" : "AM";
+    return "$dayText, $hour12:$minute $suffix";
+  }
+
   Future<String> _resolveStartLocation() async {
     final cached = currentLatLng;
     if (cached != null) {
@@ -894,6 +1139,18 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
     );
     return uuidPattern.hasMatch(value.trim());
+  }
+
+  String _createRideErrorMessage(Object error) {
+    final text = error.toString();
+    final lower = text.toLowerCase();
+    if (lower.contains('creator_id') && lower.contains('pgrst204')) {
+      return 'Server DB mismatch: rides.creator_id is missing from Supabase schema cache. Add the column or use user_id and reload schema cache.';
+    }
+    if (lower.contains('rls')) {
+      return 'Supabase RLS blocked ride creation. Add INSERT/SELECT policy for rides.';
+    }
+    return text;
   }
 }
 

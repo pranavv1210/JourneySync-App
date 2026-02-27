@@ -798,7 +798,19 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.home,
             label: "Home",
             active: true,
-            onTap: _showComingSoonToast,
+            onTap: () {},
+            primary: primary,
+          ),
+          _navItem(
+            icon: Icons.route_outlined,
+            label: "Rides",
+            active: false,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NearbyRidesScreen()),
+              );
+            },
             primary: primary,
           ),
           _navItem(
@@ -815,15 +827,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 46),
           _navItem(
-            icon: Icons.garage,
-            label: "Garage",
-            active: false,
-            onTap: _showComingSoonToast,
-            primary: primary,
-          ),
-          _navItem(
-            icon: Icons.settings,
-            label: "Settings",
+            icon: Icons.person_outline,
+            label: "Profile",
             active: false,
             onTap: () {
               Navigator.push(
@@ -836,13 +841,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-  }
-
-  void _showComingSoonToast() {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Coming soon!")));
   }
 
   Widget _navItem({

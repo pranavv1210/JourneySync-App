@@ -216,6 +216,25 @@ class AuthService {
     await prefs.remove('phoneEmailJwtToken');
   }
 
+  Future<SessionUser?> tryResolveCachedUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedUserId = (prefs.getString('userId') ?? '').trim();
+    final cachedPhone = (prefs.getString('userPhone') ?? '').trim();
+
+    Map<String, dynamic>? row;
+    if (cachedUserId.isNotEmpty) {
+      row = await _supabaseService.fetchUserById(cachedUserId);
+    }
+    if (row == null && cachedPhone.isNotEmpty) {
+      row = await _supabaseService.fetchUserByPhone(cachedPhone);
+    }
+    if (row == null) return null;
+
+    final fallbackPhone =
+        cachedPhone.isNotEmpty ? cachedPhone : (row['phone'] ?? '').toString();
+    return _toSessionUser(row, fallbackPhone: fallbackPhone);
+  }
+
   SessionUser _toSessionUser(
     Map<String, dynamic> row, {
     required String fallbackPhone,

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -705,18 +706,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final file = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 80,
+        imageQuality: 92,
       );
       if (file == null) return;
+
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: file.path,
+        compressQuality: 88,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Crop Profile Photo',
+            toolbarColor: forest,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            hideBottomControls: true,
+            cropFrameStrokeWidth: 2,
+          ),
+          IOSUiSettings(
+            title: 'Crop Profile Photo',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            rotateButtonsHidden: false,
+            aspectRatioPickerButtonHidden: true,
+          ),
+        ],
+      );
+      if (croppedFile == null) return;
 
       setState(() {
         isUploadingAvatar = true;
       });
 
-      final bytes = await file.readAsBytes();
-      final contentType = _contentTypeForFile(file.name);
+      final bytes = await croppedFile.readAsBytes();
+      final contentType = _contentTypeForFile(croppedFile.path);
       final url = await _supabaseService.uploadAvatar(
         userId: userId,
         bytes: Uint8List.fromList(bytes),
@@ -753,6 +777,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final lower = text.toLowerCase();
     if (lower.contains('bucket not found')) {
       return 'Photo upload is not configured on the server yet. Please contact support/admin to create the storage bucket.';
+    }
+    if (lower.contains('missing users.avatar_url column') ||
+        (lower.contains('avatar_url') && lower.contains('pgrst204'))) {
+      return 'Server DB issue: users.avatar_url column is missing in Supabase schema cache. Add the column and refresh schema cache, then retry.';
     }
     return 'Could not upload photo: $text';
   }

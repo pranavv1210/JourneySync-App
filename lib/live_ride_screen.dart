@@ -1,7 +1,9 @@
-import 'dart:async';
+﻿import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sos_alert_screen.dart';
@@ -24,6 +26,10 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   Map<String, dynamic>? ride;
   String userName = "Rider";
   String userBike = "No bike added";
+  String currentUserId = "";
+  List<_LiveMember> members = <_LiveMember>[];
+  _GeoPoint? destinationPoint;
+  int chatCount = 0;
 
   late final AnimationController pulseController;
   StreamSubscription<Position>? _positionSubscription;
@@ -48,23 +54,37 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     final prefs = await SharedPreferences.getInstance();
     userName = prefs.getString("userName") ?? "Rider";
     userBike = prefs.getString("userBike") ?? "No bike added";
+    currentUserId = (prefs.getString("userId") ?? "").trim();
     final data =
         await supabase.from('rides').select().eq('id', widget.rideId).single();
+    final loadedMembers = await _loadMembers(data);
+    final resolvedDestination = await _resolveDestinationPoint(data);
+    final unreadCount = await _loadChatCount();
+    if (!mounted) return;
     setState(() {
       ride = data;
+      members = loadedMembers;
+      destinationPoint = resolvedDestination;
+      chatCount = unreadCount;
       loading = false;
     });
     await _startLocationTracking();
   }
 
   String _rideTitle() {
-    final name = ride?['name']?.toString().trim();
+    final name = (ride?['title'] ?? ride?['name'])?.toString().trim();
     return (name == null || name.isEmpty) ? "Live Ride" : name;
   }
 
+  String _destinationFromRow(Map<String, dynamic> row) {
+    return (row['end_location'] ?? row['destination'] ?? '').toString().trim();
+  }
+
   String _destination() {
-    final dest = ride?['destination']?.toString().trim();
-    return (dest == null || dest.isEmpty) ? "Destination not set" : dest;
+    final row = ride;
+    if (row == null) return "Destination not set";
+    final dest = _destinationFromRow(row);
+    return dest.isEmpty ? "Destination not set" : dest;
   }
 
   String _rideTime() {
@@ -77,6 +97,197 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     final hours = diff.inHours;
     final minutes = diff.inMinutes.remainder(60);
     return "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}";
+  }
+
+  Future<List<_LiveMember>> _loadMembers(Map<String, dynamic> rideRow) async {
+    final hostId = _hostIdFromRide(rideRow);
+    final ids = <String>{};
+    if (hostId.isNotEmpty) ids.add(hostId);
+
+    try {
+      final participantRows = await supabase
+          .from('participants')
+          .select('user_id')
+          .eq('ride_id', widget.rideId);
+      for (final row in participantRows) {
+        final id = (row['user_id'] ?? '').toString().trim();
+        if (id.isNotEmpty) ids.add(id);
+      }
+    } catch (_) {}
+
+    if (ids.isEmpty && currentUserId.isNotEmpty) {
+      ids.add(currentUserId);
+    }
+
+    final profiles = await _loadUserProfiles(ids.toList());
+    final result =
+        ids.map((id) {
+          final profile = profiles[id];
+          final name =
+              (profile?['name'] ?? (id == currentUserId ? userName : 'Rider'))
+                  .toString();
+          final bike =
+              (profile?['bike'] ??
+                      (id == currentUserId ? userBike : 'No bike added'))
+                  .toString();
+          return _LiveMember(
+            id: id,
+            name: name.trim().isEmpty ? 'Rider' : name.trim(),
+            bike: bike.trim().isEmpty ? 'No bike added' : bike.trim(),
+            avatarUrl: (profile?['avatar_url'] ?? '').toString().trim(),
+            isLeader: id == hostId,
+          );
+        }).toList();
+
+    result.sort((a, b) {
+      if (a.isLeader && !b.isLeader) return -1;
+      if (!a.isLeader && b.isLeader) return 1;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return result;
+  }
+
+  Future<Map<String, Map<String, dynamic>>> _loadUserProfiles(
+    List<String> userIds,
+  ) async {
+    final ids = userIds.map((id) => id.trim()).where((id) => id.isNotEmpty);
+    final unique = ids.toSet().toList();
+    if (unique.isEmpty) return <String, Map<String, dynamic>>{};
+    try {
+      final rows = await supabase
+          .from('users')
+          .select('id,name,bike,avatar_url')
+          .inFilter('id', unique);
+      return {
+        for (final row in rows)
+          (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
+      };
+    } on PostgrestException catch (error) {
+      final code = (error.code ?? '').trim();
+      if (code == '42703' ||
+          code == 'PGRST204' ||
+          error.message.toLowerCase().contains('avatar_url')) {
+        final rows = await supabase
+            .from('users')
+            .select('id,name,bike')
+            .inFilter('id', unique);
+        return {
+          for (final row in rows)
+            (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
+        };
+      }
+      rethrow;
+    }
+  }
+
+  Future<int> _loadChatCount() async {
+    const candidates = ['ride_messages', 'chat_messages', 'messages'];
+    for (final table in candidates) {
+      try {
+        final rows = await supabase
+            .from(table)
+            .select('id')
+            .eq('ride_id', widget.rideId);
+        return rows.length;
+      } on PostgrestException catch (error) {
+        final code = (error.code ?? '').trim();
+        if (code == '42P01' || code == '42703' || code == 'PGRST204') {
+          continue;
+        }
+      } catch (_) {}
+    }
+    return 0;
+  }
+
+  Future<_GeoPoint?> _resolveDestinationPoint(Map<String, dynamic> row) async {
+    final lat = _toDouble(row['end_lat'] ?? row['destination_lat']);
+    final lng = _toDouble(row['end_lng'] ?? row['destination_lng']);
+    if (lat != null && lng != null) return _GeoPoint(lat: lat, lng: lng);
+
+    final destination = _destinationFromRow(row);
+    final parsed = _tryParseLatLng(destination);
+    if (parsed != null) return parsed;
+    if (destination.length < 3) return null;
+
+    try {
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+        'q': destination,
+        'format': 'jsonv2',
+        'limit': '1',
+      });
+      final response = await http.get(
+        uri,
+        headers: const {
+          'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)',
+        },
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) return null;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! List || decoded.isEmpty) return null;
+      final first = decoded.first;
+      if (first is! Map<String, dynamic>) return null;
+      final resolvedLat = double.tryParse((first['lat'] ?? '').toString());
+      final resolvedLng = double.tryParse((first['lon'] ?? '').toString());
+      if (resolvedLat == null || resolvedLng == null) return null;
+      return _GeoPoint(lat: resolvedLat, lng: resolvedLng);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _hostIdFromRide(Map<String, dynamic> row) {
+    return (row['creator_id'] ?? row['leader_id'] ?? row['user_id'] ?? '')
+        .toString()
+        .trim();
+  }
+
+  String _distanceLabel() {
+    final current = _latestPosition;
+    final destination = destinationPoint;
+    if (current == null || destination == null) return "—";
+    final meters = Geolocator.distanceBetween(
+      current.latitude,
+      current.longitude,
+      destination.lat,
+      destination.lng,
+    );
+    final miles = meters / 1609.344;
+    return "${miles.toStringAsFixed(1)} mi";
+  }
+
+  String _etaArrivalLabel() {
+    final current = _latestPosition;
+    final destination = destinationPoint;
+    if (current == null || destination == null) return "ETA unavailable";
+    final meters = Geolocator.distanceBetween(
+      current.latitude,
+      current.longitude,
+      destination.lat,
+      destination.lng,
+    );
+    final speed = current.speed > 1 ? current.speed : 11.11;
+    final etaSeconds = meters / speed;
+    final arrival = DateTime.now().add(Duration(seconds: etaSeconds.round()));
+    final hour12 = arrival.hour % 12 == 0 ? 12 : arrival.hour % 12;
+    final minute = arrival.minute.toString().padLeft(2, '0');
+    final suffix = arrival.hour >= 12 ? 'PM' : 'AM';
+    return "Est. arrival $hour12:$minute $suffix";
+  }
+
+  _GeoPoint? _tryParseLatLng(String text) {
+    final parts = text.split(',');
+    if (parts.length != 2) return null;
+    final lat = double.tryParse(parts[0].trim());
+    final lng = double.tryParse(parts[1].trim());
+    if (lat == null || lng == null) return null;
+    return _GeoPoint(lat: lat, lng: lng);
+  }
+
+  double? _toDouble(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is double) return raw;
+    if (raw is int) return raw.toDouble();
+    return double.tryParse(raw.toString().trim());
   }
 
   @override
@@ -204,16 +415,32 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   }
 
   Widget _riderMarkers(Color primary, Color forest) {
+    final visible = members.take(4).toList();
     return Positioned.fill(
       child: Stack(
         children: [
-          _marker(top: 0.3, left: 0.2, label: "Alex", color: primary),
-          _leaderMarker(
-            top: 0.25,
-            left: 0.65,
-            label: "$userName (Leader)",
-            color: forest,
-          ),
+          ...visible.asMap().entries.map((entry) {
+            final index = entry.key;
+            final member = entry.value;
+            final top = _markerTop(index, member.isLeader);
+            final left = _markerLeft(index, member.isLeader);
+            if (member.isLeader) {
+              return _leaderMarker(
+                top: top,
+                left: left,
+                label: "${member.name} (Leader)",
+                color: forest,
+                avatarUrl: member.avatarUrl,
+              );
+            }
+            return _marker(
+              top: top,
+              left: left,
+              label: member.name,
+              color: primary,
+              avatarUrl: member.avatarUrl,
+            );
+          }),
           Positioned(
             top: 0.15 * MediaQuery.of(context).size.height,
             left: 0.8 * MediaQuery.of(context).size.width,
@@ -230,7 +457,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    "Lookout Point",
+                    _destination(),
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -242,11 +469,24 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     );
   }
 
+  double _markerTop(int index, bool isLeader) {
+    if (isLeader) return 0.25;
+    const values = [0.30, 0.40, 0.33, 0.46];
+    return values[index % values.length];
+  }
+
+  double _markerLeft(int index, bool isLeader) {
+    if (isLeader) return 0.65;
+    const values = [0.20, 0.34, 0.46, 0.28];
+    return values[index % values.length];
+  }
+
   Widget _marker({
     required double top,
     required double left,
     required String label,
     required Color color,
+    required String avatarUrl,
   }) {
     return Positioned(
       top: top * MediaQuery.of(context).size.height,
@@ -255,10 +495,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         children: [
           Stack(
             children: [
-              const CircleAvatar(
-                radius: 24,
-                backgroundImage: AssetImage("assets/profile.png"),
-              ),
+              _avatar(url: avatarUrl, radius: 24),
               Positioned(
                 bottom: 0,
                 right: 0,
@@ -295,6 +532,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     required double left,
     required String label,
     required Color color,
+    required String avatarUrl,
   }) {
     return Positioned(
       top: top * MediaQuery.of(context).size.height,
@@ -303,16 +541,12 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         children: [
           Stack(
             children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundImage: const AssetImage("assets/profile.png"),
-                backgroundColor: Colors.white,
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: color, width: 4),
-                  ),
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: color, width: 4),
                 ),
+                child: _avatar(url: avatarUrl, radius: 28),
               ),
               Positioned(
                 top: -4,
@@ -371,7 +605,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
           children: [
             _statBlock("Time", _rideTime()),
             _divider(),
-            _statBlock("Dist", "—"),
+            _statBlock("Dist", _distanceLabel()),
             _divider(),
             _statBlock(
               "MPH",
@@ -553,7 +787,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
           const Icon(Icons.turn_right, color: Colors.white, size: 16),
           const SizedBox(width: 8),
           Text(
-            "Turn right onto Ridge Rd in 0.5 mi",
+            "Proceed toward ${_destination()} (${_distanceLabel()})",
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -722,7 +956,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "— miles away",
+                      "${_distanceLabel()} away • ${_etaArrivalLabel()}",
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade600,
@@ -751,20 +985,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
             children: [
               Row(
                 children: [
-                  const CircleAvatar(
-                    radius: 18,
-                    backgroundImage: AssetImage("assets/profile.png"),
-                  ),
-                  const SizedBox(width: 6),
-                  const CircleAvatar(
-                    radius: 18,
-                    backgroundImage: AssetImage("assets/profile.png"),
-                  ),
-                  const SizedBox(width: 6),
-                  const CircleAvatar(
-                    radius: 18,
-                    backgroundImage: AssetImage("assets/profile.png"),
-                  ),
+                  ..._bottomStackAvatars(),
                   const SizedBox(width: 6),
                   Container(
                     width: 36,
@@ -775,7 +996,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                     ),
                     child: Center(
                       child: Text(
-                        "+0",
+                        "+${_extraMemberCount()}",
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -819,7 +1040,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        "0",
+                        chatCount.toString(),
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
@@ -834,6 +1055,47 @@ class _LiveRideScreenState extends State<LiveRideScreen>
           ),
         ],
       ),
+    );
+  }
+
+  List<Widget> _bottomStackAvatars() {
+    final top = members.take(3).toList();
+    if (top.isEmpty) {
+      return [
+        const CircleAvatar(
+          radius: 18,
+          backgroundImage: AssetImage("assets/profile.png"),
+        ),
+      ];
+    }
+
+    final widgets = <Widget>[];
+    for (int i = 0; i < top.length; i++) {
+      widgets.add(_avatar(url: top[i].avatarUrl, radius: 18));
+      if (i < top.length - 1) {
+        widgets.add(const SizedBox(width: 6));
+      }
+    }
+    return widgets;
+  }
+
+  int _extraMemberCount() {
+    final extra = members.length - 3;
+    return extra > 0 ? extra : 0;
+  }
+
+  Widget _avatar({required String url, required double radius}) {
+    final clean = url.trim();
+    if (clean.isNotEmpty) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: NetworkImage(clean),
+        onBackgroundImageError: (_, __) {},
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundImage: const AssetImage("assets/profile.png"),
     );
   }
 
@@ -962,7 +1224,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
 
   String _currentSpeedMph() {
     final speedMps = _latestPosition?.speed;
-    if (speedMps == null || speedMps <= 0) return "â€”";
+    if (speedMps == null || speedMps <= 0) return "—";
     return (speedMps * 2.23694).toStringAsFixed(0);
   }
 }
@@ -1034,3 +1296,27 @@ class _RoutePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+class _LiveMember {
+  const _LiveMember({
+    required this.id,
+    required this.name,
+    required this.bike,
+    required this.avatarUrl,
+    required this.isLeader,
+  });
+
+  final String id;
+  final String name;
+  final String bike;
+  final String avatarUrl;
+  final bool isLeader;
+}
+
+class _GeoPoint {
+  const _GeoPoint({required this.lat, required this.lng});
+
+  final double lat;
+  final double lng;
+}
+

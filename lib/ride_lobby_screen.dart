@@ -21,6 +21,11 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   String userName = "Rider";
   String userBike = "No bike added";
   String userPhone = "";
+  String currentUserId = "";
+  int maxRiders = 20;
+  bool joinRequestFeatureAvailable = true;
+  List<_LobbyMember> crew = <_LobbyMember>[];
+  List<_LobbyRequest> pendingRequests = <_LobbyRequest>[];
 
   @override
   void initState() {
@@ -33,13 +38,148 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     userName = prefs.getString("userName") ?? "Rider";
     userBike = prefs.getString("userBike") ?? "No bike added";
     userPhone = prefs.getString("userPhone") ?? "";
+    currentUserId = (prefs.getString("userId") ?? "").trim();
 
     final data =
         await supabase.from('rides').select().eq('id', widget.rideId).single();
+    final resolvedMax =
+        int.tryParse((data['max_riders'] ?? '').toString()) ?? 20;
+    final safeMax = resolvedMax < 1 ? 20 : resolvedMax;
+
+    final loadedCrew = await _fetchCrew(data);
+    final loadedRequests = await _fetchPendingJoinRequests();
+
     setState(() {
       ride = data;
+      maxRiders = safeMax;
+      crew = loadedCrew;
+      pendingRequests = loadedRequests;
       loading = false;
     });
+  }
+
+  Future<List<_LobbyMember>> _fetchCrew(Map<String, dynamic> rideRow) async {
+    final ids = <String>{};
+    final hostId = _hostIdFromRow(rideRow);
+    if (hostId.isNotEmpty) ids.add(hostId);
+
+    try {
+      final participantRows = await supabase
+          .from('participants')
+          .select('user_id')
+          .eq('ride_id', widget.rideId);
+      for (final row in participantRows) {
+        final userId = (row['user_id'] ?? '').toString().trim();
+        if (userId.isNotEmpty) ids.add(userId);
+      }
+    } catch (_) {
+      // Keep lobby usable even if participants table is unavailable.
+    }
+
+    if (ids.isEmpty && currentUserId.isNotEmpty) {
+      ids.add(currentUserId);
+    }
+
+    final profiles = await _fetchUserProfiles(ids.toList());
+    final members =
+        ids.map((id) {
+          final profile = profiles[id];
+          return _LobbyMember(
+            id: id,
+            name:
+                (profile?['name'] ?? (id == currentUserId ? userName : 'Rider'))
+                    .toString(),
+            bike:
+                (profile?['bike'] ??
+                        (id == currentUserId ? userBike : 'No bike added'))
+                    .toString(),
+            avatarUrl: (profile?['avatar_url'] ?? '').toString(),
+            isHost: id == hostId,
+          );
+        }).toList();
+
+    members.sort((a, b) {
+      if (a.isHost && !b.isHost) return -1;
+      if (!a.isHost && b.isHost) return 1;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return members;
+  }
+
+  Future<List<_LobbyRequest>> _fetchPendingJoinRequests() async {
+    try {
+      final rows = await supabase
+          .from('join_requests')
+          .select('id,user_id,status,created_at')
+          .eq('ride_id', widget.rideId)
+          .eq('status', 'pending')
+          .order('created_at');
+
+      final userIds =
+          rows
+              .map((row) => (row['user_id'] ?? '').toString().trim())
+              .where((id) => id.isNotEmpty)
+              .toSet()
+              .toList();
+      final profiles = await _fetchUserProfiles(userIds);
+
+      joinRequestFeatureAvailable = true;
+      return rows.map((row) {
+        final id = (row['id'] ?? '').toString();
+        final userId = (row['user_id'] ?? '').toString().trim();
+        final profile = profiles[userId];
+        return _LobbyRequest(
+          id: id,
+          userId: userId,
+          name: (profile?['name'] ?? 'Rider').toString(),
+          bike: (profile?['bike'] ?? 'No bike added').toString(),
+          avatarUrl: (profile?['avatar_url'] ?? '').toString(),
+        );
+      }).toList();
+    } on PostgrestException catch (error) {
+      if (_isMissingJoinRequestSchema(error)) {
+        joinRequestFeatureAvailable = false;
+        return <_LobbyRequest>[];
+      }
+      rethrow;
+    }
+  }
+
+  Future<Map<String, Map<String, dynamic>>> _fetchUserProfiles(
+    List<String> userIds,
+  ) async {
+    final ids = userIds.map((id) => id.trim()).where((id) => id.isNotEmpty);
+    final unique = ids.toSet().toList();
+    if (unique.isEmpty) return <String, Map<String, dynamic>>{};
+
+    try {
+      final rows = await supabase
+          .from('users')
+          .select('id,name,bike,avatar_url')
+          .inFilter('id', unique);
+      return {
+        for (final row in rows)
+          (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
+      };
+    } on PostgrestException catch (error) {
+      if (_isMissingAvatarColumn(error)) {
+        final rows = await supabase
+            .from('users')
+            .select('id,name,bike')
+            .inFilter('id', unique);
+        return {
+          for (final row in rows)
+            (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
+        };
+      }
+      rethrow;
+    }
+  }
+
+  String _hostIdFromRow(Map<String, dynamic> row) {
+    return (row['creator_id'] ?? row['leader_id'] ?? row['user_id'] ?? '')
+        .toString()
+        .trim();
   }
 
   String _rideCode(String id) {
@@ -51,18 +191,43 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   }
 
   String _rideTitle() {
-    final name = ride?['name']?.toString().trim();
+    final name = (ride?['title'] ?? ride?['name'])?.toString().trim();
     return (name == null || name.isEmpty) ? "New Ride" : name;
   }
 
   String _destinationLabel() {
-    final dest = ride?['destination']?.toString().trim();
+    final dest = (ride?['end_location'] ?? ride?['destination'])
+        ?.toString()
+        .trim();
     return (dest == null || dest.isEmpty) ? "Destination not set" : dest;
   }
 
+  String _startLocationLabel() {
+    final start = (ride?['start_location'] ?? ride?['start'])?.toString().trim();
+    return (start == null || start.isEmpty) ? "Start not set" : start;
+  }
+
   String _description() {
-    final desc = ride?['description']?.toString().trim();
+    final desc = (ride?['description'] ?? ride?['briefing'])?.toString().trim();
     return (desc == null || desc.isEmpty) ? "No briefing added yet." : desc;
+  }
+
+  String _timeLabel() {
+    final raw =
+        ride?['start_time']?.toString() ??
+        ride?['started_at']?.toString() ??
+        ride?['created_at']?.toString();
+    if (raw == null || raw.isEmpty) return "--:--";
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) return "--:--";
+    final hour12 = parsed.hour % 12 == 0 ? 12 : parsed.hour % 12;
+    final minute = parsed.minute.toString().padLeft(2, '0');
+    final suffix = parsed.hour >= 12 ? "PM" : "AM";
+    return "$hour12:$minute $suffix";
+  }
+
+  String _routeStripLabel() {
+    return "${_startLocationLabel()} -> ${_destinationLabel()}";
   }
 
   String _dateLabel() {
@@ -114,6 +279,73 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       context,
       MaterialPageRoute(builder: (_) => LiveRideScreen(rideId: widget.rideId)),
     );
+  }
+
+  Future<void> _approveJoinRequest(_LobbyRequest request) async {
+    if (!joinRequestFeatureAvailable) {
+      _showInfo("Join requests are not configured in database.");
+      return;
+    }
+    try {
+      await supabase
+          .from('join_requests')
+          .update({'status': 'approved'})
+          .eq('id', request.id);
+      try {
+        await supabase.from('participants').insert({
+          'ride_id': widget.rideId,
+          'user_id': request.userId,
+        });
+      } on PostgrestException catch (error) {
+        if ((error.code ?? '').trim() != '23505') rethrow;
+      }
+      await _reloadLobbyData();
+    } catch (error) {
+      _showInfo("Could not approve request: $error");
+    }
+  }
+
+  Future<void> _rejectJoinRequest(_LobbyRequest request) async {
+    if (!joinRequestFeatureAvailable) {
+      _showInfo("Join requests are not configured in database.");
+      return;
+    }
+    try {
+      await supabase
+          .from('join_requests')
+          .update({'status': 'rejected'})
+          .eq('id', request.id);
+      await _reloadLobbyData();
+    } catch (error) {
+      _showInfo("Could not reject request: $error");
+    }
+  }
+
+  Future<void> _reloadLobbyData() async {
+    if (!mounted) return;
+    setState(() => loading = true);
+    await _loadData();
+  }
+
+  void _showInfo(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool _isMissingAvatarColumn(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    return code == '42703' ||
+        code == 'PGRST204' ||
+        error.message.toLowerCase().contains('avatar_url');
+  }
+
+  bool _isMissingJoinRequestSchema(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    return code == '42P01' ||
+        code == '42703' ||
+        code == 'PGRST204' ||
+        error.message.toLowerCase().contains('join_requests');
   }
 
   @override
@@ -269,6 +501,20 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                     Row(
                       children: [
                         Icon(
+                          Icons.schedule,
+                          size: 16,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _timeLabel(),
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Icon(
                           Icons.place,
                           size: 16,
                           color: Colors.white.withOpacity(0.9),
@@ -300,11 +546,14 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                 const SizedBox(width: 16),
                 Icon(Icons.route, color: primary),
                 const SizedBox(width: 8),
-                Text(
-                  "Route Preview",
-                  style: TextStyle(fontWeight: FontWeight.w600, color: forest),
+                Expanded(
+                  child: Text(
+                    _routeStripLabel(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontWeight: FontWeight.w600, color: forest),
+                  ),
                 ),
-                const Spacer(),
                 Icon(Icons.chevron_right, color: Colors.grey.shade400),
                 const SizedBox(width: 12),
               ],
@@ -428,7 +677,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    "0 Pending",
+                    "${pendingRequests.length} Pending",
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
@@ -439,14 +688,72 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               ],
             ),
           ),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
-            child: Text(
-              "No join requests yet.",
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
-            ),
-          ),
+          if (!joinRequestFeatureAvailable)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
+              child: Text(
+                "Join requests are not configured in database yet.",
+                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+              ),
+            )
+          else if (pendingRequests.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
+              child: Text(
+                "No join requests yet.",
+                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+              ),
+            )
+          else
+            ...pendingRequests.map((request) {
+              return Container(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: Colors.grey.shade100)),
+                ),
+                child: Row(
+                  children: [
+                    _avatar(url: request.avatarUrl, radius: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            request.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            request.bike,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _rejectJoinRequest(request),
+                      icon: const Icon(Icons.close, size: 18),
+                      color: Colors.red.shade500,
+                    ),
+                    IconButton(
+                      onPressed: () => _approveJoinRequest(request),
+                      icon: const Icon(Icons.check, size: 18),
+                      color: primary,
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -464,7 +771,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
             Text(
-              "1/20",
+              "${crew.length}/$maxRiders",
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
@@ -474,148 +781,158 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            _participantCard(
-              name: "You",
-              subtitle: userBike,
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: crew.length + 1,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 0.72,
+          ),
+          itemBuilder: (context, index) {
+            if (index == crew.length) return _inviteCard(primary);
+            return _participantCard(
+              member: crew[index],
               primary: primary,
               forest: forest,
-              isHost: true,
-            ),
-            const SizedBox(width: 10),
-            _inviteCard(primary),
-          ],
+            );
+          },
         ),
       ],
     );
   }
 
   Widget _participantCard({
-    required String name,
-    required String subtitle,
+    required _LobbyMember member,
     required Color primary,
     required Color forest,
-    required bool isHost,
   }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isHost ? primary : Colors.transparent,
-            width: 2,
+    final isCurrent = member.id.isNotEmpty && member.id == currentUserId;
+    final displayName = isCurrent ? "You" : member.name;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: member.isHost ? primary : Colors.transparent,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Stack(
-              children: [
-                const CircleAvatar(
-                  radius: 28,
-                  backgroundImage: AssetImage("assets/profile.png"),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: forest,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(name, style: TextStyle(fontWeight: FontWeight.w800)),
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (isHost)
-              Container(
-                margin: const EdgeInsets.only(top: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: primary,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  "HOST",
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
+        ],
+      ),
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              _avatar(url: member.avatarUrl, radius: 28),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: forest,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: Colors.white, width: 2),
                   ),
                 ),
               ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(displayName, style: TextStyle(fontWeight: FontWeight.w800)),
+          Text(
+            member.bike,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (member.isHost)
+            Container(
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: primary,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                "HOST",
+                style: TextStyle(
+                  fontSize: 9,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 
+  Widget _avatar({required String url, required double radius}) {
+    final clean = url.trim();
+    if (clean.isNotEmpty) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: NetworkImage(clean),
+        onBackgroundImageError: (_, __) {},
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundImage: const AssetImage("assets/profile.png"),
+    );
+  }
+
   Widget _inviteCard(Color primary) {
-    return Expanded(
-      child: Container(
-        height: 140,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.grey.shade300,
-            style: BorderStyle.solid,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Icon(Icons.add, color: primary),
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(999),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: Icon(Icons.add, color: primary),
+          const SizedBox(height: 8),
+          Text(
+            "Invite",
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey,
             ),
-            const SizedBox(height: 8),
-            Text(
-              "Invite",
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -722,4 +1039,36 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       ),
     );
   }
+}
+
+class _LobbyMember {
+  const _LobbyMember({
+    required this.id,
+    required this.name,
+    required this.bike,
+    required this.avatarUrl,
+    required this.isHost,
+  });
+
+  final String id;
+  final String name;
+  final String bike;
+  final String avatarUrl;
+  final bool isHost;
+}
+
+class _LobbyRequest {
+  const _LobbyRequest({
+    required this.id,
+    required this.userId,
+    required this.name,
+    required this.bike,
+    required this.avatarUrl,
+  });
+
+  final String id;
+  final String userId;
+  final String name;
+  final String bike;
+  final String avatarUrl;
 }

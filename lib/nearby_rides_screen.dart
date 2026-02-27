@@ -64,7 +64,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        errorText = 'Could not search nearby rides: $error';
+        errorText = _nearbyRidesFallbackMessage(error);
       });
     } finally {
       if (mounted) {
@@ -73,6 +73,20 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         });
       }
     }
+  }
+
+  String _nearbyRidesFallbackMessage(Object error) {
+    final text = error.toString();
+    final lower = text.toLowerCase();
+    if (lower.contains('pgrst204') ||
+        lower.contains('42703') ||
+        (lower.contains('column rides.') && lower.contains('does not exist'))) {
+      return 'Nearby rides are not available right now. Please try again in a moment.';
+    }
+    if (lower.contains('timeout') || lower.contains('socket')) {
+      return 'Network issue while loading nearby rides. Please try again.';
+    }
+    return 'Could not search nearby rides right now. Please try again.';
   }
 
   Future<void> _joinRide(NearbyRide ride) async {
@@ -328,7 +342,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Host: ${ride.hostName} • ${ride.hostBike}',
+                'Host: ${ride.hostName} | ${ride.hostBike}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(

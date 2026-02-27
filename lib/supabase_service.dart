@@ -16,6 +16,10 @@ class SupabaseService {
       'id,phone,name,bike,avatar_url,created_at';
   static const String _userColumnsWithoutAvatar =
       'id,phone,name,bike,created_at';
+  static const String _rideColumnsWithCreator =
+      'id,creator_id,title,start_location,end_location,created_at';
+  static const String _rideColumnsWithUser =
+      'id,user_id,title,start_location,end_location,created_at';
 
   Future<Map<String, dynamic>?> fetchUserByPhone(String phone) async {
     final normalized = phone.trim();
@@ -102,14 +106,23 @@ class SupabaseService {
     required String userId,
     required String avatarUrl,
   }) async {
-    final row =
-        await _client
-            .from('users')
-            .update({'avatar_url': avatarUrl.trim()})
-            .eq('id', userId.trim())
-            .select(_userColumnsWithAvatar)
-            .single();
-    return row;
+    try {
+      final row =
+          await _client
+              .from('users')
+              .update({'avatar_url': avatarUrl.trim()})
+              .eq('id', userId.trim())
+              .select(_userColumnsWithAvatar)
+              .single();
+      return row;
+    } on PostgrestException catch (error) {
+      if (_isMissingAvatarColumn(error)) {
+        throw Exception(
+          'Missing users.avatar_url column. Add this column in Supabase, then refresh the API schema cache.',
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<String> uploadAvatar({
@@ -147,39 +160,66 @@ class SupabaseService {
       return <Map<String, dynamic>>[];
     }
 
-    final rows = await _client
-        .from('rides')
-        .select('id,creator_id,title,start_location,end_location,created_at')
-        .eq('creator_id', creatorId.trim())
-        .order('created_at', ascending: false)
-        .limit(limit);
-
-    return List<Map<String, dynamic>>.from(rows);
+    try {
+      final rows = await _client
+          .from('rides')
+          .select(_rideColumnsWithCreator)
+          .eq('creator_id', creatorId.trim())
+          .order('created_at', ascending: false)
+          .limit(limit);
+      return List<Map<String, dynamic>>.from(rows);
+    } on PostgrestException catch (error) {
+      if (_isMissingRideCreatorColumn(error)) {
+        final rows = await _client
+            .from('rides')
+            .select(_rideColumnsWithUser)
+            .eq('user_id', creatorId.trim())
+            .order('created_at', ascending: false)
+            .limit(limit);
+        return List<Map<String, dynamic>>.from(rows);
+      }
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> fetchNearbyRides({
     required String excludeCreatorId,
     int limit = 5,
   }) async {
-    final rows =
-        excludeCreatorId.trim().isEmpty
-            ? await _client
-                .from('rides')
-                .select(
-                  'id,creator_id,title,start_location,end_location,created_at',
-                )
-                .order('created_at', ascending: false)
-                .limit(limit)
-            : await _client
-                .from('rides')
-                .select(
-                  'id,creator_id,title,start_location,end_location,created_at',
-                )
-                .not('creator_id', 'eq', excludeCreatorId.trim())
-                .order('created_at', ascending: false)
-                .limit(limit);
-
-    return List<Map<String, dynamic>>.from(rows);
+    try {
+      final rows =
+          excludeCreatorId.trim().isEmpty
+              ? await _client
+                  .from('rides')
+                  .select(_rideColumnsWithCreator)
+                  .order('created_at', ascending: false)
+                  .limit(limit)
+              : await _client
+                  .from('rides')
+                  .select(_rideColumnsWithCreator)
+                  .not('creator_id', 'eq', excludeCreatorId.trim())
+                  .order('created_at', ascending: false)
+                  .limit(limit);
+      return List<Map<String, dynamic>>.from(rows);
+    } on PostgrestException catch (error) {
+      if (_isMissingRideCreatorColumn(error)) {
+        final rows =
+            excludeCreatorId.trim().isEmpty
+                ? await _client
+                    .from('rides')
+                    .select(_rideColumnsWithUser)
+                    .order('created_at', ascending: false)
+                    .limit(limit)
+                : await _client
+                    .from('rides')
+                    .select(_rideColumnsWithUser)
+                    .not('user_id', 'eq', excludeCreatorId.trim())
+                    .order('created_at', ascending: false)
+                    .limit(limit);
+        return List<Map<String, dynamic>>.from(rows);
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> createRide({
@@ -188,23 +228,38 @@ class SupabaseService {
     required String startLocation,
     required String endLocation,
   }) async {
-    final payload = <String, dynamic>{
-      'creator_id': creatorId.trim(),
+    final basePayload = <String, dynamic>{
       'title': title.trim(),
       'start_location': startLocation.trim(),
       'end_location': endLocation.trim(),
       'created_at': DateTime.now().toIso8601String(),
     };
-
-    final row =
-        await _client
-            .from('rides')
-            .insert(payload)
-            .select(
-              'id,creator_id,title,start_location,end_location,created_at',
-            )
-            .single();
-    return row;
+    try {
+      final row =
+          await _client
+              .from('rides')
+              .insert({
+                ...basePayload,
+                'creator_id': creatorId.trim(),
+              })
+              .select(_rideColumnsWithCreator)
+              .single();
+      return row;
+    } on PostgrestException catch (error) {
+      if (_isMissingRideCreatorColumn(error)) {
+        final row =
+            await _client
+                .from('rides')
+                .insert({
+                  ...basePayload,
+                  'user_id': creatorId.trim(),
+                })
+                .select(_rideColumnsWithUser)
+                .single();
+        return row;
+      }
+      rethrow;
+    }
   }
 
   Future<void> addParticipant({
@@ -283,6 +338,16 @@ class SupabaseService {
 
   bool _isMissingAvatarColumn(PostgrestException error) {
     return (error.code ?? '').trim() == '42703' ||
+        (error.code ?? '').trim() == 'PGRST204' ||
         error.message.toLowerCase().contains('avatar_url');
+  }
+
+  bool _isMissingRideCreatorColumn(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    final message = error.message.toLowerCase();
+    return code == '42703' ||
+        code == 'PGRST204' &&
+            (message.contains('creator_id') || message.contains('user_id')) ||
+        message.contains('creator_id');
   }
 }

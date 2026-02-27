@@ -30,11 +30,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
   AuthMode authMode = AuthMode.existingAccount;
   bool showPhoneVerification = false;
+  bool quickLoginLoading = false;
+  SessionUser? cachedUser;
 
   final primary = const Color(0xFFDB7706);
   final forest = const Color(0xFF1E2D24);
   final sandText = const Color(0xFF4A3F35);
   final backgroundLight = const Color(0xFFF8F7F5);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuickLoginCandidate();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -367,6 +375,45 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         SizedBox(height: fieldGap),
+        if (authMode == AuthMode.existingAccount &&
+            cachedUser != null &&
+            verifiedPhone.isEmpty) ...[
+          OutlinedButton.icon(
+            onPressed: quickLoginLoading ? null : _continueWithCachedAccount,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: forest,
+              side: BorderSide(color: forest.withOpacity(0.2)),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon:
+                quickLoginLoading
+                    ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                    : const Icon(Icons.person_outline),
+            label: Text(
+              quickLoginLoading
+                  ? "Loading account..."
+                  : "Continue as ${cachedUser!.name}",
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            "Or verify with OTP for extra security.",
+            style: TextStyle(
+              fontSize: 12,
+              color: sandText.withOpacity(0.65),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: fieldGap),
+        ],
         if (verifiedPhone.isNotEmpty)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -733,6 +780,50 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         setState(() {
           isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadQuickLoginCandidate() async {
+    try {
+      final user = await authService.tryResolveCachedUser();
+      if (!mounted) return;
+      setState(() {
+        cachedUser = user;
+      });
+    } catch (_) {
+      // If quick lookup fails, OTP flow remains available.
+    } finally {
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _continueWithCachedAccount() async {
+    if (quickLoginLoading || cachedUser == null) return;
+    setState(() {
+      quickLoginLoading = true;
+    });
+    try {
+      await authService.saveSession(
+        user: cachedUser!,
+        accessToken: "",
+        jwtToken: "",
+      );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Could not continue with cached account: $error")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          quickLoginLoading = false;
         });
       }
     }
