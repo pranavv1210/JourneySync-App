@@ -29,6 +29,10 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   String destinationPreviewLabel = "Start typing to preview route on map";
   LatLng? currentLatLng;
   LatLng? destinationLatLng;
+  final List<_DestinationSuggestion> _suggestions =
+      <_DestinationSuggestion>[];
+  bool _showSuggestions = false;
+  bool _suppressSearchOnTextChange = false;
   Timer? _searchDebounce;
   int _searchRequestId = 0;
   static const LatLng _indiaFallback = LatLng(20.5937, 78.9629);
@@ -41,6 +45,11 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   }
 
   void _onDestinationChanged() {
+    if (_suppressSearchOnTextChange) {
+      _suppressSearchOnTextChange = false;
+      return;
+    }
+
     _searchDebounce?.cancel();
     final query = destinationController.text.trim();
     if (query.isEmpty) {
@@ -49,6 +58,8 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
         destinationLatLng = null;
         destinationPreviewLabel = "Start typing to preview route on map";
         isResolvingDestination = false;
+        _suggestions.clear();
+        _showSuggestions = false;
       });
       return;
     }
@@ -143,33 +154,62 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
         throw Exception('No matching destination found');
       }
 
-      final first = decoded.first;
-      if (first is! Map<String, dynamic>) {
-        throw Exception('Invalid destination response');
+      final parsedSuggestions = <_DestinationSuggestion>[];
+      for (final item in decoded.take(5)) {
+        if (item is! Map<String, dynamic>) continue;
+        final lat = double.tryParse((item['lat'] ?? '').toString());
+        final lon = double.tryParse((item['lon'] ?? '').toString());
+        final displayName = (item['display_name'] ?? '').toString().trim();
+        if (lat == null || lon == null || displayName.isEmpty) continue;
+        parsedSuggestions.add(
+          _DestinationSuggestion(
+            title: displayName,
+            point: LatLng(lat, lon),
+          ),
+        );
       }
-      final lat = double.tryParse((first['lat'] ?? '').toString());
-      final lon = double.tryParse((first['lon'] ?? '').toString());
-      final displayName = (first['display_name'] ?? '').toString().trim();
-      if (lat == null || lon == null) {
-        throw Exception('Location coordinates missing');
+      if (parsedSuggestions.isEmpty) {
+        throw Exception('No matching destination found');
       }
 
       if (!mounted || requestId != _searchRequestId) return;
-      final resolved = LatLng(lat, lon);
+      final top = parsedSuggestions.first;
       setState(() {
-        destinationLatLng = resolved;
-        destinationPreviewLabel =
-            displayName.isNotEmpty ? displayName : trimmed;
+        _suggestions
+          ..clear()
+          ..addAll(parsedSuggestions);
+        _showSuggestions = true;
+        destinationLatLng = top.point;
+        destinationPreviewLabel = top.title;
         isResolvingDestination = false;
       });
-      _moveMapTo(resolved, zoom: 14.5);
+      _moveMapTo(top.point, zoom: 14.5);
     } catch (_) {
       if (!mounted || requestId != _searchRequestId) return;
       setState(() {
         isResolvingDestination = false;
         destinationPreviewLabel = "Destination not found. Try another search";
+        _suggestions.clear();
+        _showSuggestions = false;
       });
     }
+  }
+
+  void _selectSuggestion(_DestinationSuggestion suggestion) {
+    _searchDebounce?.cancel();
+    _suppressSearchOnTextChange = true;
+    destinationController.text = suggestion.title;
+    destinationController.selection = TextSelection.fromPosition(
+      TextPosition(offset: suggestion.title.length),
+    );
+    setState(() {
+      destinationLatLng = suggestion.point;
+      destinationPreviewLabel = suggestion.title;
+      _showSuggestions = false;
+      _suggestions.clear();
+    });
+    _moveMapTo(suggestion.point, zoom: 14.5);
+    FocusScope.of(context).unfocus();
   }
 
   Future<String> _reverseGeocode(LatLng point) async {
@@ -507,25 +547,83 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                   color: background,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    Icon(Icons.search, color: primary, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: destinationController,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: forest,
+                    Row(
+                      children: [
+                        Icon(Icons.search, color: primary, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: destinationController,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: forest,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: "Search location",
+                              hintStyle: TextStyle(color: neutralWarm),
+                              border: InputBorder.none,
+                            ),
+                          ),
                         ),
-                        decoration: InputDecoration(
-                          hintText: "Search location",
-                          hintStyle: TextStyle(color: neutralWarm),
-                          border: InputBorder.none,
+                      ],
+                    ),
+                    if (_showSuggestions && _suggestions.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 170),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: primary.withOpacity(0.14)),
+                        ),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: _suggestions.length,
+                          separatorBuilder:
+                              (_, __) => Divider(
+                                height: 1,
+                                color: Colors.grey.withOpacity(0.2),
+                              ),
+                          itemBuilder: (context, index) {
+                            final suggestion = _suggestions[index];
+                            return InkWell(
+                              onTap: () => _selectSuggestion(suggestion),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 9,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on_outlined,
+                                      size: 16,
+                                      color: primary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        suggestion.title,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: forest,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -800,4 +898,11 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     );
     return uuidPattern.hasMatch(value.trim());
   }
+}
+
+class _DestinationSuggestion {
+  const _DestinationSuggestion({required this.title, required this.point});
+
+  final String title;
+  final LatLng point;
 }
