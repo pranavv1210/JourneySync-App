@@ -175,13 +175,15 @@ class RideService {
 
   RideRecord _toRideRecord(Map<String, dynamic> row) {
     final creator =
-        (row['creator_id'] ?? row['user_id'] ?? '').toString().trim();
+        (row['creator_id'] ?? row['user_id'] ?? row['leader_id'] ?? '')
+            .toString()
+            .trim();
     return RideRecord(
       id: (row['id'] ?? '').toString(),
       creatorId: creator,
-      title: (row['title'] ?? 'Ride').toString(),
-      startLocation: (row['start_location'] ?? '').toString(),
-      endLocation: (row['end_location'] ?? '').toString(),
+      title: (row['title'] ?? row['name'] ?? 'Ride').toString(),
+      startLocation: (row['start_location'] ?? row['start'] ?? '').toString(),
+      endLocation: (row['end_location'] ?? row['destination'] ?? '').toString(),
       createdAt: DateTime.tryParse((row['created_at'] ?? '').toString()),
     );
   }

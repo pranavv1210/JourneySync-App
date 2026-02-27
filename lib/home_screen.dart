@@ -813,6 +813,7 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             primary: primary,
           ),
+          const SizedBox(width: 46),
           _navItem(
             icon: Icons.map,
             label: "Map",
@@ -825,7 +826,6 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             primary: primary,
           ),
-          const SizedBox(width: 46),
           _navItem(
             icon: Icons.person_outline,
             label: "Profile",
@@ -882,7 +882,7 @@ class _HomeScreenState extends State<HomeScreen> {
         await _loadHomeData();
       },
       shape: const CircleBorder(),
-      child: const Icon(Icons.navigation, color: Colors.white, size: 28),
+      child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
     );
   }
 }

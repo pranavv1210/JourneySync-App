@@ -20,6 +20,8 @@ class SupabaseService {
       'id,creator_id,title,start_location,end_location,created_at';
   static const String _rideColumnsWithUser =
       'id,user_id,title,start_location,end_location,created_at';
+  static const String _rideColumnsLegacy =
+      'id,leader_id,name,destination,status,created_at';
 
   Future<Map<String, dynamic>?> fetchUserByPhone(String phone) async {
     final normalized = phone.trim();
@@ -170,13 +172,26 @@ class SupabaseService {
       return List<Map<String, dynamic>>.from(rows);
     } on PostgrestException catch (error) {
       if (_isMissingRideCreatorColumn(error)) {
-        final rows = await _client
-            .from('rides')
-            .select(_rideColumnsWithUser)
-            .eq('user_id', creatorId.trim())
-            .order('created_at', ascending: false)
-            .limit(limit);
-        return List<Map<String, dynamic>>.from(rows);
+        try {
+          final rows = await _client
+              .from('rides')
+              .select(_rideColumnsWithUser)
+              .eq('user_id', creatorId.trim())
+              .order('created_at', ascending: false)
+              .limit(limit);
+          return List<Map<String, dynamic>>.from(rows);
+        } on PostgrestException catch (nestedError) {
+          if (_isMissingRideUserColumn(nestedError)) {
+            final rows = await _client
+                .from('rides')
+                .select(_rideColumnsLegacy)
+                .eq('leader_id', creatorId.trim())
+                .order('created_at', ascending: false)
+                .limit(limit);
+            return List<Map<String, dynamic>>.from(rows);
+          }
+          rethrow;
+        }
       }
       rethrow;
     }
@@ -203,20 +218,40 @@ class SupabaseService {
       return List<Map<String, dynamic>>.from(rows);
     } on PostgrestException catch (error) {
       if (_isMissingRideCreatorColumn(error)) {
-        final rows =
-            excludeCreatorId.trim().isEmpty
-                ? await _client
-                    .from('rides')
-                    .select(_rideColumnsWithUser)
-                    .order('created_at', ascending: false)
-                    .limit(limit)
-                : await _client
-                    .from('rides')
-                    .select(_rideColumnsWithUser)
-                    .not('user_id', 'eq', excludeCreatorId.trim())
-                    .order('created_at', ascending: false)
-                    .limit(limit);
-        return List<Map<String, dynamic>>.from(rows);
+        try {
+          final rows =
+              excludeCreatorId.trim().isEmpty
+                  ? await _client
+                      .from('rides')
+                      .select(_rideColumnsWithUser)
+                      .order('created_at', ascending: false)
+                      .limit(limit)
+                  : await _client
+                      .from('rides')
+                      .select(_rideColumnsWithUser)
+                      .not('user_id', 'eq', excludeCreatorId.trim())
+                      .order('created_at', ascending: false)
+                      .limit(limit);
+          return List<Map<String, dynamic>>.from(rows);
+        } on PostgrestException catch (nestedError) {
+          if (_isMissingRideUserColumn(nestedError)) {
+            final rows =
+                excludeCreatorId.trim().isEmpty
+                    ? await _client
+                        .from('rides')
+                        .select(_rideColumnsLegacy)
+                        .order('created_at', ascending: false)
+                        .limit(limit)
+                    : await _client
+                        .from('rides')
+                        .select(_rideColumnsLegacy)
+                        .not('leader_id', 'eq', excludeCreatorId.trim())
+                        .order('created_at', ascending: false)
+                        .limit(limit);
+            return List<Map<String, dynamic>>.from(rows);
+          }
+          rethrow;
+        }
       }
       rethrow;
     }
@@ -244,11 +279,44 @@ class SupabaseService {
       return row;
     } on PostgrestException catch (error) {
       if (_isMissingRideCreatorColumn(error)) {
+        try {
+          final row =
+              await _client
+                  .from('rides')
+                  .insert({...basePayload, 'user_id': creatorId.trim()})
+                  .select(_rideColumnsWithUser)
+                  .single();
+          return row;
+        } on PostgrestException catch (nestedError) {
+          if (_isMissingRideUserColumn(nestedError) ||
+              _isMissingRideLocationColumns(nestedError)) {
+            final row =
+                await _client
+                    .from('rides')
+                    .insert({
+                      'leader_id': creatorId.trim(),
+                      'name': title.trim(),
+                      'destination': endLocation.trim(),
+                      'created_at': DateTime.now().toIso8601String(),
+                    })
+                    .select(_rideColumnsLegacy)
+                    .single();
+            return row;
+          }
+          rethrow;
+        }
+      }
+      if (_isMissingRideLocationColumns(error)) {
         final row =
             await _client
                 .from('rides')
-                .insert({...basePayload, 'user_id': creatorId.trim()})
-                .select(_rideColumnsWithUser)
+                .insert({
+                  'leader_id': creatorId.trim(),
+                  'name': title.trim(),
+                  'destination': endLocation.trim(),
+                  'created_at': DateTime.now().toIso8601String(),
+                })
+                .select(_rideColumnsLegacy)
                 .single();
         return row;
       }
@@ -343,5 +411,26 @@ class SupabaseService {
         code == 'PGRST204' &&
             (message.contains('creator_id') || message.contains('user_id')) ||
         message.contains('creator_id');
+  }
+
+  bool _isMissingRideUserColumn(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    final message = error.message.toLowerCase();
+    return code == '42703' ||
+        code == 'PGRST204' && message.contains('user_id') ||
+        message.contains('user_id');
+  }
+
+  bool _isMissingRideLocationColumns(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    final message = error.message.toLowerCase();
+    return code == '42703' ||
+        code == 'PGRST204' &&
+            (message.contains('end_location') ||
+                message.contains('start_location') ||
+                message.contains('title')) ||
+        message.contains('end_location') ||
+        message.contains('start_location') ||
+        message.contains('title');
   }
 }

@@ -18,7 +18,6 @@ class CreateRideScreen extends StatefulWidget {
 
 class _CreateRideScreenState extends State<CreateRideScreen> {
   final TextEditingController rideNameController = TextEditingController();
-  final TextEditingController rideDescController = TextEditingController();
   final TextEditingController destinationController = TextEditingController();
   final RideService _rideService = RideService();
   final MapController _mapController = MapController();
@@ -352,17 +351,6 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                           neutralWarm: neutralWarm,
                           background: background,
                           maxLines: 1,
-                        ),
-                        const SizedBox(height: 18),
-                        _textField(
-                          label: "Description (Optional)",
-                          controller: rideDescController,
-                          hint: "Description",
-                          forest: forest,
-                          primary: primary,
-                          neutralWarm: neutralWarm,
-                          background: background,
-                          maxLines: 3,
                         ),
                         const SizedBox(height: 24),
                         _destinationBlock(
@@ -1133,7 +1121,6 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     _searchDebounce?.cancel();
     destinationController.removeListener(_onDestinationChanged);
     rideNameController.dispose();
-    rideDescController.dispose();
     destinationController.dispose();
     super.dispose();
   }
@@ -1148,6 +1135,9 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   String _createRideErrorMessage(Object error) {
     final text = error.toString();
     final lower = text.toLowerCase();
+    if (lower.contains('end_location') && lower.contains('pgrst204')) {
+      return 'Server schema mismatch detected, but app fallback should handle it. Please retry once.';
+    }
     if (lower.contains('creator_id') && lower.contains('pgrst204')) {
       return 'Server DB mismatch: rides.creator_id is missing from Supabase schema cache. Add the column or use user_id and reload schema cache.';
     }
