@@ -818,7 +818,9 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Could not continue with cached account: $error")),
+        SnackBar(
+          content: Text("Could not continue with cached account: $error"),
+        ),
       );
     } finally {
       if (mounted) {

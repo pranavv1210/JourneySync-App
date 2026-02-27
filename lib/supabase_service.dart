@@ -238,10 +238,7 @@ class SupabaseService {
       final row =
           await _client
               .from('rides')
-              .insert({
-                ...basePayload,
-                'creator_id': creatorId.trim(),
-              })
+              .insert({...basePayload, 'creator_id': creatorId.trim()})
               .select(_rideColumnsWithCreator)
               .single();
       return row;
@@ -250,10 +247,7 @@ class SupabaseService {
         final row =
             await _client
                 .from('rides')
-                .insert({
-                  ...basePayload,
-                  'user_id': creatorId.trim(),
-                })
+                .insert({...basePayload, 'user_id': creatorId.trim()})
                 .select(_rideColumnsWithUser)
                 .single();
         return row;

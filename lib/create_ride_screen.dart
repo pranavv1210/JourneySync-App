@@ -305,10 +305,12 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-        SnackBar(content: Text("Failed to create ride: ${_createRideErrorMessage(error)}")),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Failed to create ride: ${_createRideErrorMessage(error)}",
+          ),
+        ),
       );
     } finally {
       if (mounted) {
@@ -983,7 +985,9 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                   inactiveTrackColor: primary.withOpacity(0.18),
                   thumbColor: Colors.white,
                   overlayColor: primary.withOpacity(0.15),
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 10,
+                  ),
                 ),
                 child: Slider(
                   min: 1,

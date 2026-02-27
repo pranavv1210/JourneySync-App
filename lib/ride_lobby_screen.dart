@@ -196,14 +196,14 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   }
 
   String _destinationLabel() {
-    final dest = (ride?['end_location'] ?? ride?['destination'])
-        ?.toString()
-        .trim();
+    final dest =
+        (ride?['end_location'] ?? ride?['destination'])?.toString().trim();
     return (dest == null || dest.isEmpty) ? "Destination not set" : dest;
   }
 
   String _startLocationLabel() {
-    final start = (ride?['start_location'] ?? ride?['start'])?.toString().trim();
+    final start =
+        (ride?['start_location'] ?? ride?['start'])?.toString().trim();
     return (start == null || start.isEmpty) ? "Start not set" : start;
   }
 
@@ -330,7 +330,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   void _showInfo(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   bool _isMissingAvatarColumn(PostgrestException error) {
@@ -551,7 +553,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                     _routeStripLabel(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontWeight: FontWeight.w600, color: forest),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: forest,
+                    ),
                   ),
                 ),
                 Icon(Icons.chevron_right, color: Colors.grey.shade400),
@@ -694,7 +699,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
               child: Text(
                 "Join requests are not configured in database yet.",
-                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             )
           else if (pendingRequests.isEmpty)
@@ -703,7 +711,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
               child: Text(
                 "No join requests yet.",
-                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             )
           else
@@ -903,7 +914,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+        border: Border.all(
+          color: Colors.grey.shade300,
+          style: BorderStyle.solid,
+        ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -915,10 +929,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(999),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 8,
-                ),
+                BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8),
               ],
             ),
             child: Icon(Icons.add, color: primary),
