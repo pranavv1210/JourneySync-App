@@ -29,8 +29,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   String destinationPreviewLabel = "Start typing to preview route on map";
   LatLng? currentLatLng;
   LatLng? destinationLatLng;
-  final List<_DestinationSuggestion> _suggestions =
-      <_DestinationSuggestion>[];
+  final List<_DestinationSuggestion> _suggestions = <_DestinationSuggestion>[];
   bool _showSuggestions = false;
   bool _suppressSearchOnTextChange = false;
   Timer? _searchDebounce;
@@ -162,10 +161,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
         final displayName = (item['display_name'] ?? '').toString().trim();
         if (lat == null || lon == null || displayName.isEmpty) continue;
         parsedSuggestions.add(
-          _DestinationSuggestion(
-            title: displayName,
-            point: LatLng(lat, lon),
-          ),
+          _DestinationSuggestion(title: displayName, point: LatLng(lat, lon)),
         );
       }
       if (parsedSuggestions.isEmpty) {
@@ -699,7 +695,8 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                                 ),
                               ],
                             ),
-                          if (currentLatLng != null && destinationLatLng != null)
+                          if (currentLatLng != null &&
+                              destinationLatLng != null)
                             PolylineLayer(
                               polylines: [
                                 Polyline(
