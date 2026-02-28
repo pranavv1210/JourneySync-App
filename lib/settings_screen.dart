@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -710,37 +709,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       if (file == null) return;
 
-      final croppedFile = await ImageCropper().cropImage(
-        sourcePath: file.path,
-        compressQuality: 88,
-        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Crop Profile Photo',
-            toolbarColor: forest,
-            toolbarWidgetColor: Colors.white,
-            initAspectRatio: CropAspectRatioPreset.square,
-            lockAspectRatio: true,
-            hideBottomControls: true,
-            cropFrameStrokeWidth: 2,
-          ),
-          IOSUiSettings(
-            title: 'Crop Profile Photo',
-            aspectRatioLockEnabled: true,
-            resetAspectRatioEnabled: false,
-            rotateButtonsHidden: false,
-            aspectRatioPickerButtonHidden: true,
-          ),
-        ],
-      );
-      if (croppedFile == null) return;
+      CroppedFile? croppedFile;
+      try {
+        croppedFile = await ImageCropper().cropImage(
+          sourcePath: file.path,
+          compressQuality: 88,
+          aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Crop Profile Photo',
+              toolbarColor: forest,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.square,
+              lockAspectRatio: true,
+              hideBottomControls: true,
+              cropFrameStrokeWidth: 2,
+            ),
+            IOSUiSettings(
+              title: 'Crop Profile Photo',
+              aspectRatioLockEnabled: true,
+              resetAspectRatioEnabled: false,
+              rotateButtonsHidden: false,
+              aspectRatioPickerButtonHidden: true,
+            ),
+          ],
+        );
+      } on PlatformException catch (error) {
+        _showInfo(
+          'Profile',
+          'Cropper issue on this device (${error.code}). Uploading selected image instead.',
+        );
+      } catch (_) {
+        _showInfo(
+          'Profile',
+          'Could not open cropper. Uploading selected image instead.',
+        );
+      }
 
       setState(() {
         isUploadingAvatar = true;
       });
 
-      final bytes = await croppedFile.readAsBytes();
-      final contentType = _contentTypeForFile(croppedFile.path);
+      final selectedPath = croppedFile?.path ?? file.path;
+      final bytes =
+          croppedFile != null
+              ? await croppedFile.readAsBytes()
+              : await file.readAsBytes();
+      if (bytes.isEmpty) {
+        throw Exception('Selected image file is empty.');
+      }
+      final contentType = _contentTypeForFile(selectedPath);
       final url = await _supabaseService.uploadAvatar(
         userId: userId,
         bytes: Uint8List.fromList(bytes),
