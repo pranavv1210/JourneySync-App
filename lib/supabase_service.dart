@@ -165,7 +165,7 @@ class SupabaseService {
     try {
       final rows = await _client
           .from('rides')
-          .select(_rideColumnsWithCreator)
+          .select()
           .eq('creator_id', creatorId.trim())
           .order('created_at', ascending: false)
           .limit(limit);
@@ -175,7 +175,7 @@ class SupabaseService {
         try {
           final rows = await _client
               .from('rides')
-              .select(_rideColumnsWithUser)
+              .select()
               .eq('user_id', creatorId.trim())
               .order('created_at', ascending: false)
               .limit(limit);
@@ -184,7 +184,7 @@ class SupabaseService {
           if (_isMissingRideUserColumn(nestedError)) {
             final rows = await _client
                 .from('rides')
-                .select(_rideColumnsLegacy)
+                .select()
                 .eq('leader_id', creatorId.trim())
                 .order('created_at', ascending: false)
                 .limit(limit);
@@ -332,6 +332,136 @@ class SupabaseService {
       'ride_id': rideId.trim(),
       'user_id': userId.trim(),
     });
+  }
+
+  Future<void> deleteRideAsCreator({
+    required String rideId,
+    required String creatorId,
+  }) async {
+    final normalizedRideId = rideId.trim();
+    final normalizedCreatorId = creatorId.trim();
+    if (normalizedRideId.isEmpty || normalizedCreatorId.isEmpty) {
+      throw Exception('Ride delete failed: invalid ride/user id.');
+    }
+
+    // Best-effort cleanup of dependent rows.
+    try {
+      await _client
+          .from('participants')
+          .delete()
+          .eq('ride_id', normalizedRideId);
+    } catch (_) {}
+    try {
+      await _client
+          .from('join_requests')
+          .delete()
+          .eq('ride_id', normalizedRideId);
+    } catch (_) {}
+
+    try {
+      await _client
+          .from('rides')
+          .delete()
+          .eq('id', normalizedRideId)
+          .eq('creator_id', normalizedCreatorId);
+      return;
+    } on PostgrestException catch (error) {
+      if (!_isMissingRideCreatorColumn(error)) rethrow;
+    }
+
+    try {
+      await _client
+          .from('rides')
+          .delete()
+          .eq('id', normalizedRideId)
+          .eq('user_id', normalizedCreatorId);
+      return;
+    } on PostgrestException catch (error) {
+      if (!_isMissingRideUserColumn(error)) rethrow;
+    }
+
+    await _client
+        .from('rides')
+        .delete()
+        .eq('id', normalizedRideId)
+        .eq('leader_id', normalizedCreatorId);
+  }
+
+  Future<void> archiveCompletedRideAsCreator({
+    required String rideId,
+    required String creatorId,
+  }) async {
+    final normalizedRideId = rideId.trim();
+    final normalizedCreatorId = creatorId.trim();
+    if (normalizedRideId.isEmpty || normalizedCreatorId.isEmpty) {
+      throw Exception('Ride archive failed: invalid ride/user id.');
+    }
+
+    Future<void> updateWithCreatorFilter(
+      String ownerColumn,
+      Map<String, dynamic> payload,
+    ) async {
+      await _client
+          .from('rides')
+          .update(payload)
+          .eq('id', normalizedRideId)
+          .eq(ownerColumn, normalizedCreatorId);
+    }
+
+    Future<void> updatePayloadWithFallbackOwner(
+      Map<String, dynamic> payload,
+    ) async {
+      try {
+        await updateWithCreatorFilter('creator_id', payload);
+        return;
+      } on PostgrestException catch (error) {
+        if (!_isMissingRideCreatorColumn(error)) rethrow;
+      }
+
+      try {
+        await updateWithCreatorFilter('user_id', payload);
+        return;
+      } on PostgrestException catch (error) {
+        if (!_isMissingRideUserColumn(error)) rethrow;
+      }
+
+      await updateWithCreatorFilter('leader_id', payload);
+    }
+
+    final payloads = <Map<String, dynamic>>[
+      {'archived_at': DateTime.now().toIso8601String()},
+      {'is_archived': true},
+      {'archived': true},
+      {'status': 'archived'},
+    ];
+
+    PostgrestException? lastSchemaError;
+    for (final payload in payloads) {
+      try {
+        await updatePayloadWithFallbackOwner(payload);
+        return;
+      } on PostgrestException catch (error) {
+        final code = (error.code ?? '').trim();
+        final message = error.message.toLowerCase();
+        final likelyMissingColumn =
+            code == '42703' ||
+            code == 'PGRST204' ||
+            message.contains('archived_at') ||
+            message.contains('is_archived') ||
+            message.contains('archived');
+        if (likelyMissingColumn) {
+          lastSchemaError = error;
+          continue;
+        }
+        rethrow;
+      }
+    }
+
+    if (lastSchemaError != null) {
+      throw Exception(
+        'Ride archive is not configured in DB. Add one of: archived_at, is_archived, archived, or status column.',
+      );
+    }
   }
 
   Future<List<Map<String, dynamic>>> fetchParticipantsByRideIds(

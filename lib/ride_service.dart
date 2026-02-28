@@ -9,6 +9,9 @@ class RideRecord {
     required this.startLocation,
     required this.endLocation,
     required this.createdAt,
+    this.status = '',
+    this.endedAt,
+    this.archived = false,
     this.participantCount = 0,
   });
 
@@ -18,7 +21,20 @@ class RideRecord {
   final String startLocation;
   final String endLocation;
   final DateTime? createdAt;
+  final String status;
+  final DateTime? endedAt;
+  final bool archived;
   final int participantCount;
+
+  bool get isCompleted =>
+      endedAt != null ||
+      status.toLowerCase() == 'ended' ||
+      status.toLowerCase() == 'completed';
+
+  bool get isScheduled =>
+      !isCompleted &&
+      status.toLowerCase() != 'active' &&
+      status.toLowerCase() != 'live';
 }
 
 class NearbyRide {
@@ -60,7 +76,8 @@ class RideService {
       creatorId: creatorId,
       limit: 5,
     );
-    final rides = rows.map(_toRideRecord).toList();
+    final rides =
+        rows.map(_toRideRecord).where((ride) => !ride.archived).toList();
     return _attachParticipantCounts(rides);
   }
 
@@ -167,6 +184,26 @@ class RideService {
     }
   }
 
+  Future<void> deleteRideAsCreator({
+    required String rideId,
+    required String creatorId,
+  }) async {
+    await _supabaseService.deleteRideAsCreator(
+      rideId: rideId,
+      creatorId: creatorId,
+    );
+  }
+
+  Future<void> archiveCompletedRideAsCreator({
+    required String rideId,
+    required String creatorId,
+  }) async {
+    await _supabaseService.archiveCompletedRideAsCreator(
+      rideId: rideId,
+      creatorId: creatorId,
+    );
+  }
+
   Stream<List<RideRecord>> watchRides() {
     return _supabaseService.watchRides().map((rows) {
       return rows.map(_toRideRecord).toList();
@@ -178,6 +215,13 @@ class RideService {
         (row['creator_id'] ?? row['user_id'] ?? row['leader_id'] ?? '')
             .toString()
             .trim();
+    final status = (row['status'] ?? '').toString().trim();
+    final endedAt = DateTime.tryParse((row['ended_at'] ?? '').toString());
+    final archived =
+        row['archived_at'] != null ||
+        row['is_archived'] == true ||
+        row['archived'] == true ||
+        status.toLowerCase() == 'archived';
     return RideRecord(
       id: (row['id'] ?? '').toString(),
       creatorId: creator,
@@ -185,6 +229,9 @@ class RideService {
       startLocation: (row['start_location'] ?? row['start'] ?? '').toString(),
       endLocation: (row['end_location'] ?? row['destination'] ?? '').toString(),
       createdAt: DateTime.tryParse((row['created_at'] ?? '').toString()),
+      status: status,
+      endedAt: endedAt,
+      archived: archived,
     );
   }
 
@@ -207,6 +254,9 @@ class RideService {
             startLocation: ride.startLocation,
             endLocation: ride.endLocation,
             createdAt: ride.createdAt,
+            status: ride.status,
+            endedAt: ride.endedAt,
+            archived: ride.archived,
             participantCount: counts[ride.id] ?? 0,
           ),
         )

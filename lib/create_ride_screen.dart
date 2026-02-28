@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ride_service.dart';
+import 'ride_lobby_screen.dart';
 
 class CreateRideScreen extends StatefulWidget {
   const CreateRideScreen({super.key});
@@ -290,7 +291,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       }
 
       final startLocation = await _resolveStartLocation();
-      await _rideService.createRide(
+      final createdRide = await _rideService.createRide(
         creatorId: creatorId,
         title: rideName,
         startLocation: startLocation,
@@ -301,7 +302,12 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Ride created successfully")),
       );
-      Navigator.pop(context, true);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RideLobbyScreen(rideId: createdRide.id),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

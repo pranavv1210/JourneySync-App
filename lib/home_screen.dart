@@ -29,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String weatherText = "Weather unavailable";
 
   bool loading = true;
+  String rideActionLoadingId = '';
   List<RideRecord> recentRides = [];
   List<RideRecord> nearbyRides = [];
 
@@ -697,6 +698,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           ? ride.endLocation
                           : "Destination";
                   final dateLabel = _formatDate(ride.createdAt);
+                  final isBusy = rideActionLoadingId == ride.id;
+                  final canDelete = ride.isScheduled;
+                  final canArchive = ride.isCompleted;
+                  final statusLabel = _rideStatusLabel(ride);
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(14),
@@ -738,16 +743,92 @@ class _HomeScreenState extends State<HomeScreen> {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      ride.isCompleted
+                                          ? const Color(
+                                            0xFF00C2CB,
+                                          ).withOpacity(0.12)
+                                          : primary.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  statusLabel,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color:
+                                        ride.isCompleted
+                                            ? const Color(0xFF00C2CB)
+                                            : primary,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                        Text(
-                          dateLabel,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              dateLabel,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            if (isBusy)
+                              SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: primary,
+                                ),
+                              )
+                            else if (canDelete || canArchive)
+                              PopupMenuButton<String>(
+                                icon: Icon(
+                                  Icons.more_vert_rounded,
+                                  color: Colors.grey.shade600,
+                                  size: 18,
+                                ),
+                                onSelected: (value) async {
+                                  if (value == 'delete') {
+                                    await _confirmDeleteScheduledRide(
+                                      ride,
+                                      primary,
+                                    );
+                                  } else if (value == 'archive') {
+                                    await _confirmArchiveCompletedRide(
+                                      ride,
+                                      primary,
+                                    );
+                                  }
+                                },
+                                itemBuilder:
+                                    (context) => [
+                                      if (canDelete)
+                                        const PopupMenuItem(
+                                          value: 'delete',
+                                          child: Text('Delete Ride'),
+                                        ),
+                                      if (canArchive)
+                                        const PopupMenuItem(
+                                          value: 'archive',
+                                          child: Text('Archive Ride'),
+                                        ),
+                                    ],
+                              ),
+                          ],
                         ),
                       ],
                     ),
@@ -756,6 +837,155 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
       ],
     );
+  }
+
+  String _rideStatusLabel(RideRecord ride) {
+    final raw = ride.status.trim().toLowerCase();
+    if (ride.isCompleted) return 'Completed';
+    if (raw == 'active' || raw == 'live') return 'Live';
+    if (raw == 'scheduled' || raw == 'pending') return 'Scheduled';
+    if (raw.isEmpty) return 'Scheduled';
+    return '${raw[0].toUpperCase()}${raw.substring(1)}';
+  }
+
+  Future<void> _confirmDeleteScheduledRide(
+    RideRecord ride,
+    Color primary,
+  ) async {
+    if (!ride.isScheduled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Only scheduled rides can be deleted.')),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Ride?'),
+            content: const Text(
+              'This will permanently delete this scheduled ride for everyone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true) return;
+
+    await _runRideAction(
+      rideId: ride.id,
+      action: () async {
+        await _rideService.deleteRideAsCreator(
+          rideId: ride.id,
+          creatorId: userId,
+        );
+      },
+      successMessage: 'Ride deleted.',
+      failureMessage: 'Could not delete ride.',
+      primary: primary,
+    );
+  }
+
+  Future<void> _confirmArchiveCompletedRide(
+    RideRecord ride,
+    Color primary,
+  ) async {
+    if (!ride.isCompleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Only completed rides can be archived.')),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Archive Ride?'),
+            content: const Text(
+              'This hides the completed ride from recent journeys.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(backgroundColor: primary),
+                child: const Text('Archive'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true) return;
+
+    await _runRideAction(
+      rideId: ride.id,
+      action: () async {
+        await _rideService.archiveCompletedRideAsCreator(
+          rideId: ride.id,
+          creatorId: userId,
+        );
+      },
+      successMessage: 'Ride archived.',
+      failureMessage: 'Could not archive ride.',
+      primary: primary,
+    );
+  }
+
+  Future<void> _runRideAction({
+    required String rideId,
+    required Future<void> Function() action,
+    required String successMessage,
+    required String failureMessage,
+    required Color primary,
+  }) async {
+    if (rideActionLoadingId.isNotEmpty) return;
+    setState(() {
+      rideActionLoadingId = rideId;
+    });
+    try {
+      await action();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(successMessage)));
+      await _loadHomeData();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$failureMessage ${_rideActionError(error)}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          rideActionLoadingId = '';
+        });
+      }
+    }
+  }
+
+  String _rideActionError(Object error) {
+    if (error is PostgrestException) {
+      final code = (error.code ?? '').trim();
+      if (code == '42501') {
+        return 'RLS policy is blocking this action.';
+      }
+      if (code == 'PGRST204' || code == '42703') {
+        return 'Missing required table column in Supabase schema.';
+      }
+    }
+    final text = error.toString();
+    return text.length > 120 ? text.substring(0, 120) : text;
   }
 
   String _formatDate(DateTime? date) {
