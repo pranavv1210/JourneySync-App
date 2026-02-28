@@ -16,7 +16,11 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
 
   bool loading = true;
   Map<String, dynamic>? ride;
+  String loadError = "";
   String userPhone = "";
+  String userId = "";
+  String userName = "Rider";
+  String userBike = "No bike added";
 
   @override
   void initState() {
@@ -25,14 +29,43 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
   }
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    userPhone = prefs.getString("userPhone") ?? "";
-    final data =
-        await supabase.from('rides').select().eq('id', widget.rideId).single();
-    setState(() {
-      ride = data;
-      loading = false;
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      userPhone = prefs.getString("userPhone") ?? "";
+      userId = prefs.getString("userId") ?? "";
+      userName = prefs.getString("userName") ?? "Rider";
+      userBike = prefs.getString("userBike") ?? "No bike added";
+
+      final data =
+          await supabase
+              .from('rides')
+              .select()
+              .eq('id', widget.rideId)
+              .maybeSingle();
+
+      if (data == null) {
+        if (!mounted) return;
+        setState(() {
+          loadError = "SOS data unavailable for this ride.";
+          loading = false;
+        });
+        return;
+      }
+
+      await _hydrateAlertFallbackFromUser(data);
+      if (!mounted) return;
+      setState(() {
+        ride = data;
+        loadError = "";
+        loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        loadError = "Could not load SOS details.";
+        loading = false;
+      });
+    }
   }
 
   bool get isSelfAlert {
@@ -42,12 +75,14 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
 
   String _alertName() {
     final name = ride?['alert_by_name']?.toString().trim();
-    return (name == null || name.isEmpty) ? "Rider" : name;
+    if (name != null && name.isNotEmpty) return name;
+    return userName.trim().isEmpty ? "Rider" : userName.trim();
   }
 
   String _alertBike() {
     final bike = ride?['alert_by_bike']?.toString().trim();
-    return (bike == null || bike.isEmpty) ? "" : bike;
+    if (bike != null && bike.isNotEmpty) return bike;
+    return userBike.trim().isEmpty ? "" : userBike.trim();
   }
 
   String _alertSince() {
@@ -62,8 +97,8 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
   }
 
   String _coords() {
-    final lat = ride?['alert_lat'];
-    final lng = ride?['alert_lng'];
+    final lat = ride?['alert_lat'] ?? ride?['lat'] ?? ride?['start_lat'];
+    final lng = ride?['alert_lng'] ?? ride?['lng'] ?? ride?['start_lng'];
     if (lat == null || lng == null) return "Coordinates unavailable";
     return _toDms(lat, lng);
   }
@@ -88,7 +123,49 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
     final minFloat = (value - deg) * 60;
     final min = minFloat.floor();
     final sec = ((minFloat - min) * 60);
-    return "$deg° ${min.toString().padLeft(2, '0')}.${(sec).toStringAsFixed(0).padLeft(2, '0')}'";
+    return "$deg deg ${min.toString().padLeft(2, '0')}.${sec.toStringAsFixed(0).padLeft(2, '0')}'";
+  }
+
+  String _alertValue(List<String> keys, {String fallback = "--"}) {
+    for (final key in keys) {
+      final value = ride?[key];
+      if (value != null && value.toString().trim().isNotEmpty) {
+        return value.toString();
+      }
+    }
+    return fallback;
+  }
+
+  Future<void> _hydrateAlertFallbackFromUser(Map<String, dynamic> row) async {
+    final hasAlertIdentity =
+        (row['alert_by_name'] ?? '').toString().trim().isNotEmpty &&
+        (row['alert_by_bike'] ?? '').toString().trim().isNotEmpty;
+    if (hasAlertIdentity) return;
+
+    final fallbackUserId =
+        (row['alert_user_id'] ??
+                row['creator_id'] ??
+                row['user_id'] ??
+                row['leader_id'])
+            .toString()
+            .trim();
+    final targetUserId =
+        fallbackUserId.isEmpty ? userId.trim() : fallbackUserId;
+    if (targetUserId.isEmpty) return;
+
+    try {
+      final raw = await supabase
+          .from('users')
+          .select('id,name,bike,phone')
+          .eq('id', targetUserId)
+          .limit(1);
+      final userRows = List<Map<String, dynamic>>.from(raw);
+      if (userRows.isEmpty) return;
+      final user = userRows.first;
+      row['alert_by_name'] ??= user['name'];
+      row['alert_by_bike'] ??= user['bike'];
+      row['alert_by'] ??= user['phone'];
+    } catch (_) {}
   }
 
   @override
@@ -98,11 +175,25 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
     const secondary = Color(0xFFD97706);
     const tertiary = Color(0xFF166534);
     const sand = Color(0xFFF8F6F6);
-    const sandDark = Color(0xFF201212);
     const sandWarm = Color(0xFFEFECE9);
 
     if (loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (loadError.isNotEmpty) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              loadError,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -333,7 +424,10 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  ride?['alert_elevation']?.toString() ?? "—",
+                  _alertValue(const [
+                    'alert_elevation',
+                    'elevation',
+                  ], fallback: '--'),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
@@ -481,7 +575,10 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    ride?['alert_distance']?.toString() ?? "—",
+                    _alertValue(const [
+                      'alert_distance',
+                      'distance_km',
+                    ], fallback: '--'),
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
                   ),
                   Text(
@@ -499,13 +596,23 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
           const SizedBox(height: 16),
           Row(
             children: [
-              _statTile("Phone Bat", ride?['alert_battery']?.toString() ?? "—"),
+              _statTile(
+                "Phone Bat",
+                _alertValue(const ['alert_battery', 'battery'], fallback: '--'),
+              ),
               const SizedBox(width: 10),
-              _statTile("Speed (mph)", ride?['alert_speed']?.toString() ?? "—"),
+              _statTile(
+                "Speed (mph)",
+                _alertValue(const [
+                  'alert_speed',
+                  'speed_mph',
+                  'speed',
+                ], fallback: '--'),
+              ),
               const SizedBox(width: 10),
               _statTile(
                 "Signal",
-                ride?['alert_signal']?.toString() ?? "—",
+                _alertValue(const ['alert_signal', 'signal'], fallback: '--'),
                 highlight: tertiary,
               ),
             ],
@@ -551,10 +658,14 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                   icon: Icons.cancel,
                   color: primaryDark,
                   onTap: () async {
-                    await supabase
-                        .from('rides')
-                        .update({'alert_status': 'cleared'})
-                        .eq('id', widget.rideId);
+                    try {
+                      await supabase
+                          .from('rides')
+                          .update({'alert_status': 'cleared'})
+                          .eq('id', widget.rideId);
+                    } catch (_) {
+                      // If this column is not present in DB, keep UI usable.
+                    }
                     if (!mounted) return;
                     Navigator.pop(context);
                   },

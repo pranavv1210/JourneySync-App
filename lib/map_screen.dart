@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 import 'ride_service.dart';
@@ -23,6 +25,8 @@ class _MapScreenState extends State<MapScreen> {
   _RidePin? selectedPin;
   LatLng? currentLocation;
   StreamSubscription<List<RideRecord>>? _ridesSubscription;
+  final Map<String, LatLng?> _geocodeCache = <String, LatLng?>{};
+  int _pinBuildRequestId = 0;
 
   static const LatLng fallbackCenter = LatLng(20.5937, 78.9629);
 
@@ -85,9 +89,10 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     _ridesSubscription = _rideService.watchRides().listen(
-      (rides) {
-        final pins = _buildRidePins(rides);
-        if (!mounted) return;
+      (rides) async {
+        final requestId = ++_pinBuildRequestId;
+        final pins = await _buildRidePins(rides);
+        if (!mounted || requestId != _pinBuildRequestId) return;
         setState(() {
           ridePins = pins;
           selectedPin = _resolveSelectedPin(pins);
@@ -105,12 +110,10 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  List<_RidePin> _buildRidePins(List<RideRecord> rides) {
+  Future<List<_RidePin>> _buildRidePins(List<RideRecord> rides) async {
     final pins = <_RidePin>[];
     for (final ride in rides) {
-      final point =
-          _parseCoordinatePair(ride.startLocation) ??
-          _parseCoordinatePair(ride.endLocation);
+      final point = await _resolveRidePoint(ride);
       if (point == null) {
         continue;
       }
@@ -125,6 +128,80 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
     return pins;
+  }
+
+  Future<LatLng?> _resolveRidePoint(RideRecord ride) async {
+    final fromStart = _parseCoordinatePair(ride.startLocation);
+    if (fromStart != null) return fromStart;
+
+    final fromEnd = _parseCoordinatePair(ride.endLocation);
+    if (fromEnd != null) return fromEnd;
+
+    final startAddress = ride.startLocation.trim();
+    if (startAddress.isNotEmpty) {
+      final geocodedStart = await _geocodeAddress(startAddress);
+      if (geocodedStart != null) return geocodedStart;
+    }
+
+    final endAddress = ride.endLocation.trim();
+    if (endAddress.isNotEmpty) {
+      final geocodedEnd = await _geocodeAddress(endAddress);
+      if (geocodedEnd != null) return geocodedEnd;
+    }
+
+    return null;
+  }
+
+  Future<LatLng?> _geocodeAddress(String rawAddress) async {
+    final address = rawAddress.trim();
+    if (address.isEmpty) return null;
+    if (_geocodeCache.containsKey(address)) {
+      return _geocodeCache[address];
+    }
+
+    try {
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+        'q': address,
+        'format': 'jsonv2',
+        'limit': '1',
+      });
+      final response = await http.get(
+        uri,
+        headers: const {
+          'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)',
+        },
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _geocodeCache[address] = null;
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! List || decoded.isEmpty) {
+        _geocodeCache[address] = null;
+        return null;
+      }
+
+      final first = decoded.first;
+      if (first is! Map<String, dynamic>) {
+        _geocodeCache[address] = null;
+        return null;
+      }
+
+      final lat = double.tryParse((first['lat'] ?? '').toString());
+      final lng = double.tryParse((first['lon'] ?? '').toString());
+      if (lat == null || lng == null) {
+        _geocodeCache[address] = null;
+        return null;
+      }
+
+      final point = LatLng(lat, lng);
+      _geocodeCache[address] = point;
+      return point;
+    } catch (_) {
+      _geocodeCache[address] = null;
+      return null;
+    }
   }
 
   _RidePin? _resolveSelectedPin(List<_RidePin> pins) {
