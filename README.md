@@ -222,6 +222,47 @@ flutter pub get
 flutter run
 ```
 
+## iOS Setup
+
+### Prerequisites
+
+- macOS with Xcode installed
+- CocoaPods installed (`sudo gem install cocoapods`)
+- Flutter iOS toolchain configured (`flutter doctor`)
+
+### First-Time iOS Commands
+
+```bash
+flutter pub get
+cd ios
+pod install
+cd ..
+flutter run -d ios
+```
+
+### iOS Permission Keys (Already Added)
+
+The following keys are configured in [ios/Runner/Info.plist](ios/Runner/Info.plist):
+
+- `NSLocationWhenInUseUsageDescription`
+- `NSPhotoLibraryUsageDescription`
+- `NSPhotoLibraryAddUsageDescription`
+- `NSCameraUsageDescription`
+
+### App Store / TestFlight Note
+
+For release distribution, open the `Runner` project in Xcode and configure:
+
+- Signing Team
+- Bundle Identifier
+- Provisioning Profile / Certificates
+
+Then build:
+
+```bash
+flutter build ipa
+```
+
 ### Quality Checks
 
 ```bash
