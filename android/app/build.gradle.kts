@@ -12,6 +12,14 @@ val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
+val hasReleaseSigningConfig =
+    !keystoreProperties.getProperty("storeFile").isNullOrBlank() &&
+    !keystoreProperties.getProperty("storePassword").isNullOrBlank() &&
+    !keystoreProperties.getProperty("keyAlias").isNullOrBlank() &&
+    !keystoreProperties.getProperty("keyPassword").isNullOrBlank()
+val isReleaseTaskRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
 
 android {
     namespace = "com.example.journeysync"
@@ -40,33 +48,30 @@ android {
 
     signingConfigs {
         create("release") {
-            val storeFilePath = keystoreProperties.getProperty("storeFile")
-            val storePasswordValue = keystoreProperties.getProperty("storePassword")
-            val keyAliasValue = keystoreProperties.getProperty("keyAlias")
-            val keyPasswordValue = keystoreProperties.getProperty("keyPassword")
-
-            if (
-                storeFilePath.isNullOrBlank() ||
-                storePasswordValue.isNullOrBlank() ||
-                keyAliasValue.isNullOrBlank() ||
-                keyPasswordValue.isNullOrBlank()
-            ) {
-                throw GradleException(
-                    "Missing Android release signing config. " +
-                        "Create android/key.properties (see android/key.properties.example)."
-                )
+            if (hasReleaseSigningConfig) {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
             }
-
-            storeFile = file(storeFilePath)
-            storePassword = storePasswordValue
-            keyAlias = keyAliasValue
-            keyPassword = keyPasswordValue
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (!hasReleaseSigningConfig && isReleaseTaskRequested) {
+                throw GradleException(
+                    "Missing Android release signing config. " +
+                        "Create android/key.properties (see android/key.properties.example)."
+                )
+            }
+            signingConfig =
+                if (hasReleaseSigningConfig) {
+                    signingConfigs.getByName("release")
+                } else {
+                    // Keep debug/local builds usable when release task is not requested.
+                    signingConfigs.getByName("debug")
+                }
         }
     }
 }
