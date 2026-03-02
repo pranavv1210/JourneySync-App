@@ -288,6 +288,24 @@ flutter run \
 flutter run --dart-define=SUPABASE_AVATAR_BUCKET=avatars
 ```
 
+### Local Defines File (Recommended)
+
+Instead of typing all `--dart-define` values every run/build:
+
+1. Copy `dart_defines.local.json.example` to `dart_defines.local.json`.
+2. Fill your real values.
+3. Run using:
+
+```bash
+flutter run --dart-define-from-file=dart_defines.local.json
+```
+
+Build APK using:
+
+```bash
+flutter build apk --dart-define-from-file=dart_defines.local.json
+```
+
 ### Android Release Signing
 
 1. Copy `android/key.properties.example` to `android/key.properties`.

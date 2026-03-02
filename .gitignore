@@ -45,3 +45,4 @@ app.*.map.json
 /android/app/release
 /android/key.properties
 /keystore/
+/dart_defines.local.json
