@@ -54,7 +54,6 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         throw Exception('Missing user session. Please login again.');
       }
 
-      await Future.delayed(const Duration(seconds: 2));
       final rides = await _rideService.searchNearbyRides(userId);
       if (!mounted) return;
       setState(() {

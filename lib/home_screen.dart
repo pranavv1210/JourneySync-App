@@ -29,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String weatherText = "Weather unavailable";
 
   bool loading = true;
+  bool refreshingHome = false;
   String rideActionLoadingId = '';
   List<RideRecord> recentRides = [];
   List<RideRecord> nearbyRides = [];
@@ -36,17 +37,24 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadHomeData();
+    _loadHomeData(showBlockingLoader: true);
   }
 
-  Future<void> _loadHomeData() async {
+  Future<void> _loadHomeData({bool showBlockingLoader = false}) async {
     if (!mounted) {
       return;
     }
-    setState(() {
-      loading = true;
-      loadError = "";
-    });
+    if (showBlockingLoader) {
+      setState(() {
+        loading = true;
+        loadError = "";
+      });
+    } else {
+      setState(() {
+        refreshingHome = true;
+        loadError = "";
+      });
+    }
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -150,6 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() {
           loading = false;
+          refreshingHome = false;
         });
       }
     }
@@ -164,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const background = Color(0xFFF8F7F6);
     const sandDarker = Color(0xFFE8E4DE);
 
-    if (loading) {
+    if (loading && recentRides.isEmpty && nearbyRides.isEmpty) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
@@ -187,6 +196,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (refreshingHome)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: LinearProgressIndicator(minHeight: 2),
+                          ),
                         if (loadError.isNotEmpty)
                           Container(
                             margin: const EdgeInsets.only(bottom: 12),

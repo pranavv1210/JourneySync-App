@@ -272,12 +272,35 @@ flutter test
 
 ## Configuration Notes
 
-- Supabase and Phone.Email are initialized in `lib/main.dart`.
-- For production, move hardcoded credentials to secure config (for example `--dart-define`).
+- Supabase and Phone.Email are initialized in `lib/main.dart` using required `--dart-define` values.
+- Required runtime defines:
+
+```bash
+flutter run \
+  --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY \
+  --dart-define=PHONE_EMAIL_CLIENT_ID=YOUR_PHONE_EMAIL_CLIENT_ID
+```
+
 - Optional avatar bucket override:
 
 ```bash
 flutter run --dart-define=SUPABASE_AVATAR_BUCKET=avatars
+```
+
+### Android Release Signing
+
+1. Copy `android/key.properties.example` to `android/key.properties`.
+2. Fill keystore values (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`).
+3. Place your keystore file at the configured `storeFile` path.
+
+Then build release:
+
+```bash
+flutter build apk \
+  --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY \
+  --dart-define=PHONE_EMAIL_CLIENT_ID=YOUR_PHONE_EMAIL_CLIENT_ID
 ```
 
 ## Security and Production Hardening
