@@ -15,6 +15,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final AuthService authService = AuthService();
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   String accessToken = "";
 
@@ -27,10 +28,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final nameController = TextEditingController();
 
   final bikeController = TextEditingController();
+  final otpPhoneController = TextEditingController();
+  final otpCodeController = TextEditingController();
 
   AuthMode authMode = AuthMode.existingAccount;
   bool showPhoneVerification = false;
   bool quickLoginLoading = false;
+  bool otpSending = false;
+  bool otpVerifying = false;
+  bool otpSent = false;
+  String otpTargetPhone = "";
   SessionUser? cachedUser;
 
   final primary = const Color(0xFFDB7706);
@@ -438,6 +445,118 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
+        SizedBox(height: fieldGap),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: forest.withOpacity(0.12)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.sms_outlined, size: 18, color: primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    "Fallback: SMS OTP",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: forest,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "If Phone.Email shows 'not authorized', use this direct OTP login.",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: sandText.withOpacity(0.75),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: otpPhoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  hintText: "Phone number (e.g. +919876543210)",
+                  isDense: true,
+                  filled: true,
+                  fillColor: backgroundLight,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: otpSending ? null : _sendSupabaseOtp,
+                      child:
+                          otpSending
+                              ? const SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Text("Send OTP"),
+                    ),
+                  ),
+                ],
+              ),
+              if (otpSent) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: otpCodeController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: "Enter 6-digit OTP",
+                    isDense: true,
+                    filled: true,
+                    fillColor: backgroundLight,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: otpVerifying ? null : _verifySupabaseOtp,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: forest,
+                          foregroundColor: Colors.white,
+                        ),
+                        child:
+                            otpVerifying
+                                ? const SizedBox(
+                                  height: 16,
+                                  width: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : const Text("Verify OTP"),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -661,6 +780,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     nameController.dispose();
     bikeController.dispose();
+    otpPhoneController.dispose();
+    otpCodeController.dispose();
     super.dispose();
   }
 
@@ -826,6 +947,121 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         setState(() {
           quickLoginLoading = false;
+        });
+      }
+    }
+  }
+
+  String? _normalizePhoneForOtp(String raw) {
+    var value = raw.trim();
+    if (value.isEmpty) return null;
+    value = value.replaceAll(RegExp(r'[\s()-]'), '');
+    if (value.startsWith('00')) {
+      value = '+${value.substring(2)}';
+    }
+    if (!value.startsWith('+')) {
+      final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+      if (digits.length == 10) {
+        value = '+91$digits';
+      } else {
+        value = '+$digits';
+      }
+    } else {
+      value = '+${value.replaceAll(RegExp(r'[^0-9]'), '')}';
+    }
+    final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.length < 8) return null;
+    return value;
+  }
+
+  Future<void> _sendSupabaseOtp() async {
+    final normalized = _normalizePhoneForOtp(otpPhoneController.text);
+    if (normalized == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Enter a valid phone number (include country code)."),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      otpSending = true;
+    });
+    try {
+      await _supabase.auth.signInWithOtp(phone: normalized);
+      if (!mounted) return;
+      setState(() {
+        otpTargetPhone = normalized;
+        otpSent = true;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("OTP sent to $normalized")));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Could not send OTP: $error")));
+    } finally {
+      if (mounted) {
+        setState(() {
+          otpSending = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _verifySupabaseOtp() async {
+    final token = otpCodeController.text.trim();
+    if (otpTargetPhone.isEmpty || token.length < 4) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Enter the OTP sent to your phone.")),
+      );
+      return;
+    }
+
+    setState(() {
+      otpVerifying = true;
+    });
+    try {
+      final response = await _supabase.auth.verifyOTP(
+        phone: otpTargetPhone,
+        token: token,
+        type: OtpType.sms,
+      );
+      if (response.session == null) {
+        throw Exception("OTP verification failed. Please retry.");
+      }
+
+      final digits = otpTargetPhone.replaceAll(RegExp(r'[^0-9]'), '');
+      final countryCode =
+          digits.length > 10 ? digits.substring(0, digits.length - 10) : '91';
+
+      if (!mounted) return;
+      setState(() {
+        verifiedIdentity = PhoneIdentity(
+          phone: otpTargetPhone,
+          countryCode: countryCode,
+          firstName: '',
+          lastName: '',
+        );
+        verifiedPhone = otpTargetPhone;
+        accessToken = "supabase_otp";
+        jwtToken = response.session!.accessToken;
+      });
+      await _completeSignIn();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("OTP verification failed: $error")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          otpVerifying = false;
         });
       }
     }
