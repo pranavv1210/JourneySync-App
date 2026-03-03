@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:phone_email_auth/phone_email_auth.dart';
 import 'splash_screen.dart';
 
 const String _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const String _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-const String _phoneEmailClientId = String.fromEnvironment(
-  'PHONE_EMAIL_CLIENT_ID',
-);
+const String _auth0Domain = String.fromEnvironment('AUTH0_DOMAIN');
+const String _auth0ClientId = String.fromEnvironment('AUTH0_CLIENT_ID');
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,18 +19,12 @@ Future<void> _initializeServices() async {
     'SUPABASE_ANON_KEY',
     _supabaseAnonKey,
   );
-  final phoneEmailClientId = _requiredDefine(
-    'PHONE_EMAIL_CLIENT_ID',
-    _phoneEmailClientId,
-  );
+  _requiredDefine('AUTH0_DOMAIN', _auth0Domain);
+  _requiredDefine('AUTH0_CLIENT_ID', _auth0ClientId);
 
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
-  ).timeout(const Duration(seconds: 20));
-
-  await PhoneEmail.initializeApp(
-    clientId: phoneEmailClientId,
   ).timeout(const Duration(seconds: 20));
 }
 

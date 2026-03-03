@@ -10,7 +10,7 @@
     <img alt="Flutter" src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" />
     <img alt="Dart" src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" />
     <img alt="Supabase" src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" />
-    <img alt="Phone Auth" src="https://img.shields.io/badge/Phone.Email%20Auth-111827?style=for-the-badge&logo=auth0&logoColor=white" />
+    <img alt="Auth0" src="https://img.shields.io/badge/Auth0-111827?style=for-the-badge&logo=auth0&logoColor=white" />
     <img alt="SharedPreferences" src="https://img.shields.io/badge/SharedPreferences-5B21B6?style=for-the-badge&logo=googlechrome&logoColor=white" />
     <img alt="Geolocator" src="https://img.shields.io/badge/Geolocator-0EA5E9?style=for-the-badge&logo=googlemaps&logoColor=white" />
     <img alt="Flutter Map" src="https://img.shields.io/badge/Flutter%20Map-1D4ED8?style=for-the-badge&logo=mapbox&logoColor=white" />
@@ -51,7 +51,7 @@ JourneySync is designed around three product pillars:
 
 | Capability | What it does | Key implementation |
 |---|---|---|
-| Authentication | New/existing account phone-based sign in | `phone_email_auth`, `auth_service.dart` |
+| Authentication | New/existing account sign in | `auth0_flutter`, `auth_service.dart` |
 | Session persistence | Keeps user logged in with local session cache | `shared_preferences` |
 | Profile management | Name, bike, avatar upload, account preferences | `settings_screen.dart`, Supabase storage |
 | Ride creation | Publishes ride with start/end context | `create_ride_screen.dart`, `ride_service.dart` |
@@ -154,7 +154,7 @@ flowchart TD
 
 ### Authentication
 
-- Phone.Email (`phone_email_auth`) for phone identity verification
+- Auth0 (`auth0_flutter`) for Universal Login
 
 ### Device and Platform Integrations
 
@@ -208,7 +208,7 @@ For security and flexibility, implementation-level schema details and local key 
 - Flutter SDK (stable)
 - Android Studio or VS Code with Flutter tooling
 - A Supabase project (DB + optional Storage)
-- Phone.Email client credentials
+- Auth0 domain and client credentials
 
 ### Install Dependencies
 
@@ -272,14 +272,16 @@ flutter test
 
 ## Configuration Notes
 
-- Supabase and Phone.Email are initialized in `lib/main.dart` using required `--dart-define` values.
+- Supabase and Auth0 are initialized in `lib/main.dart` using required `--dart-define` values.
 - Required runtime defines:
 
 ```bash
 flutter run \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY \
-  --dart-define=PHONE_EMAIL_CLIENT_ID=YOUR_PHONE_EMAIL_CLIENT_ID
+  --dart-define=AUTH0_DOMAIN=YOUR_TENANT.REGION.auth0.com \
+  --dart-define=AUTH0_CLIENT_ID=YOUR_AUTH0_CLIENT_ID \
+  --dart-define=AUTH0_SCHEME=https
 ```
 
 - Optional avatar bucket override:
@@ -318,7 +320,9 @@ Then build release:
 flutter build apk \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY \
-  --dart-define=PHONE_EMAIL_CLIENT_ID=YOUR_PHONE_EMAIL_CLIENT_ID
+  --dart-define=AUTH0_DOMAIN=YOUR_TENANT.REGION.auth0.com \
+  --dart-define=AUTH0_CLIENT_ID=YOUR_AUTH0_CLIENT_ID \
+  --dart-define=AUTH0_SCHEME=https
 ```
 
 ## Security and Production Hardening

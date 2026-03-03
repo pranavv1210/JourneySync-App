@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.util.Base64
 
 plugins {
     id("com.android.application")
@@ -20,6 +21,30 @@ val hasReleaseSigningConfig =
 val isReleaseTaskRequested = gradle.startParameter.taskNames.any {
     it.contains("release", ignoreCase = true)
 }
+val dartDefineMap = buildMap {
+    val raw = project.findProperty("dart-defines")?.toString()?.trim().orEmpty()
+    if (raw.isNotEmpty()) {
+        raw.split(",").forEach { encoded ->
+            runCatching {
+                val decoded =
+                    String(Base64.getUrlDecoder().decode(encoded), Charsets.UTF_8)
+                val separator = decoded.indexOf('=')
+                if (separator > 0) {
+                    put(
+                        decoded.substring(0, separator),
+                        decoded.substring(separator + 1),
+                    )
+                }
+            }
+        }
+    }
+}
+val auth0DomainValue =
+    (dartDefineMap["AUTH0_DOMAIN"] ?: project.findProperty("AUTH0_DOMAIN")?.toString() ?: "")
+        .trim()
+val auth0SchemeValue =
+    (dartDefineMap["AUTH0_SCHEME"] ?: project.findProperty("AUTH0_SCHEME")?.toString() ?: "https")
+        .trim()
 
 android {
     namespace = "com.example.journeysync"
@@ -44,6 +69,10 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders += mapOf(
+            "auth0Domain" to auth0DomainValue,
+            "auth0Scheme" to if (auth0SchemeValue.isNotEmpty()) auth0SchemeValue else "https",
+        )
     }
 
     signingConfigs {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:phone_email_auth/phone_email_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth_service.dart';
 import 'home_screen.dart';
@@ -15,7 +14,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final AuthService authService = AuthService();
-  final SupabaseClient _supabase = Supabase.instance.client;
 
   String accessToken = "";
 
@@ -28,16 +26,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final nameController = TextEditingController();
 
   final bikeController = TextEditingController();
-  final otpPhoneController = TextEditingController();
-  final otpCodeController = TextEditingController();
 
   AuthMode authMode = AuthMode.existingAccount;
   bool showPhoneVerification = false;
   bool quickLoginLoading = false;
-  bool otpSending = false;
-  bool otpVerifying = false;
-  bool otpSent = false;
-  String otpTargetPhone = "";
   SessionUser? cachedUser;
 
   final primary = const Color(0xFFDB7706);
@@ -111,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ? _phoneVerificationStep(
                                     fieldGap: fieldGap,
                                     keyValue:
-                                        "phone_email_${authMode.name}_${verifiedPhone.isNotEmpty}",
+                                        "auth0_${authMode.name}_${verifiedPhone.isNotEmpty}",
                                   )
                                   : _registrationForm(
                                     fieldGap: fieldGap,
@@ -190,8 +182,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     final subtitle =
         authMode == AuthMode.newAccount
-            ? "Create your profile once, then verify your phone to get started."
-            : "Already have an account? Verify your phone and continue instantly.";
+            ? "Create your profile once, then authenticate to get started."
+            : "Already have an account? Sign in and continue instantly.";
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  "Register once, then returning logins only need phone verification (+91).",
+                  "Register once, then returning logins only need one-tap sign in.",
                   style: TextStyle(
                     fontSize: 12,
                     color: sandText.withOpacity(0.85),
@@ -355,15 +347,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     final helpText =
         authMode == AuthMode.existingAccount
-            ? "Verify your mobile number to fetch your profile from JourneySync."
-            : "Tap the button below, complete Phone.Email verification, and use an Indian mobile number (+91).";
+            ? "Authenticate to fetch your profile from JourneySync."
+            : "Tap the button below to authenticate and continue.";
 
     return Column(
       key: ValueKey(keyValue),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "VERIFY PHONE",
+          "SIGN IN",
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w800,
@@ -412,7 +404,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            "Or verify with OTP for extra security.",
+            "Or sign in again with Auth0.",
             style: TextStyle(
               fontSize: 12,
               color: sandText.withOpacity(0.65),
@@ -435,7 +427,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    "Verified: $verifiedPhone",
+                    "Authenticated: $verifiedPhone",
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       color: Colors.green,
@@ -445,118 +437,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
-        SizedBox(height: fieldGap),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: forest.withOpacity(0.12)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.sms_outlined, size: 18, color: primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    "Fallback: SMS OTP",
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: forest,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "If Phone.Email shows 'not authorized', use this direct OTP login.",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: sandText.withOpacity(0.75),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: otpPhoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  hintText: "Phone number (e.g. +919876543210)",
-                  isDense: true,
-                  filled: true,
-                  fillColor: backgroundLight,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: otpSending ? null : _sendSupabaseOtp,
-                      child:
-                          otpSending
-                              ? const SizedBox(
-                                height: 16,
-                                width: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : const Text("Send OTP"),
-                    ),
-                  ),
-                ],
-              ),
-              if (otpSent) ...[
-                const SizedBox(height: 8),
-                TextField(
-                  controller: otpCodeController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: "Enter 6-digit OTP",
-                    isDense: true,
-                    filled: true,
-                    fillColor: backgroundLight,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: otpVerifying ? null : _verifySupabaseOtp,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: forest,
-                          foregroundColor: Colors.white,
-                        ),
-                        child:
-                            otpVerifying
-                                ? const SizedBox(
-                                  height: 16,
-                                  width: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                                : const Text("Verify OTP"),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -701,24 +581,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
           )
         else
-          PhoneLoginButton(
-            borderRadius: 16,
-            buttonColor: primary,
-            label:
-                authMode == AuthMode.existingAccount
-                    ? "Login with Number (+91)"
-                    : "Verify Phone (+91)",
-            onSuccess: (access, jwt) async {
-              accessToken = access;
-              jwtToken = jwt;
-              await getPhoneNumber();
-            },
-            onFailure: (message) {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Phone.Email login failed: $message")),
-              );
-            },
+          ElevatedButton.icon(
+            onPressed: isSubmitting ? null : _authenticateWithAuth0,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primary,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 8,
+              shadowColor: primary.withOpacity(0.2),
+            ),
+            icon: const Icon(Icons.lock_open_rounded, color: Colors.white),
+            label: const Text(
+              "Continue with Auth0",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
           ),
       ],
     );
@@ -780,36 +662,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     nameController.dispose();
     bikeController.dispose();
-    otpPhoneController.dispose();
-    otpCodeController.dispose();
     super.dispose();
-  }
-
-  /// GET VERIFIED PHONE
-
-  Future<void> getPhoneNumber() async {
-    if (accessToken.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Missing access token. Try again.")),
-      );
-      return;
-    }
-
-    try {
-      final identity = await authService.getPhoneIdentity(accessToken);
-      if (!mounted) return;
-      setState(() {
-        verifiedIdentity = identity;
-        verifiedPhone = identity.phone;
-      });
-      await _completeSignIn();
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Phone verification failed: $error")),
-      );
-    }
   }
 
   Future<void> _completeSignIn() async {
@@ -817,9 +670,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final identity = verifiedIdentity;
     if (identity == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Verify your phone number first.")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Sign in first.")));
       return;
     }
 
@@ -858,7 +711,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       final errorText = error.toString();
       final noAccountFound = errorText.contains(
-        "No account found for this number",
+        "No account found for this account",
       );
 
       if (noAccountFound && authMode == AuthMode.existingAccount) {
@@ -914,7 +767,7 @@ class _LoginScreenState extends State<LoginScreen> {
         cachedUser = user;
       });
     } catch (_) {
-      // If quick lookup fails, OTP flow remains available.
+      // If quick lookup fails, explicit sign-in remains available.
     } finally {
       if (mounted) setState(() {});
     }
@@ -952,116 +805,30 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  String? _normalizePhoneForOtp(String raw) {
-    var value = raw.trim();
-    if (value.isEmpty) return null;
-    value = value.replaceAll(RegExp(r'[\s()-]'), '');
-    if (value.startsWith('00')) {
-      value = '+${value.substring(2)}';
-    }
-    if (!value.startsWith('+')) {
-      final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-      if (digits.length == 10) {
-        value = '+91$digits';
-      } else {
-        value = '+$digits';
-      }
-    } else {
-      value = '+${value.replaceAll(RegExp(r'[^0-9]'), '')}';
-    }
-    final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digitsOnly.length < 8) return null;
-    return value;
-  }
-
-  Future<void> _sendSupabaseOtp() async {
-    final normalized = _normalizePhoneForOtp(otpPhoneController.text);
-    if (normalized == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Enter a valid phone number (include country code)."),
-        ),
-      );
-      return;
-    }
-
+  Future<void> _authenticateWithAuth0() async {
+    if (isSubmitting) return;
     setState(() {
-      otpSending = true;
+      isSubmitting = true;
     });
     try {
-      await _supabase.auth.signInWithOtp(phone: normalized);
+      final result = await authService.authenticateWithAuth0();
       if (!mounted) return;
       setState(() {
-        otpTargetPhone = normalized;
-        otpSent = true;
-      });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("OTP sent to $normalized")));
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Could not send OTP: $error")));
-    } finally {
-      if (mounted) {
-        setState(() {
-          otpSending = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _verifySupabaseOtp() async {
-    final token = otpCodeController.text.trim();
-    if (otpTargetPhone.isEmpty || token.length < 4) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Enter the OTP sent to your phone.")),
-      );
-      return;
-    }
-
-    setState(() {
-      otpVerifying = true;
-    });
-    try {
-      final response = await _supabase.auth.verifyOTP(
-        phone: otpTargetPhone,
-        token: token,
-        type: OtpType.sms,
-      );
-      if (response.session == null) {
-        throw Exception("OTP verification failed. Please retry.");
-      }
-
-      final digits = otpTargetPhone.replaceAll(RegExp(r'[^0-9]'), '');
-      final countryCode =
-          digits.length > 10 ? digits.substring(0, digits.length - 10) : '91';
-
-      if (!mounted) return;
-      setState(() {
-        verifiedIdentity = PhoneIdentity(
-          phone: otpTargetPhone,
-          countryCode: countryCode,
-          firstName: '',
-          lastName: '',
-        );
-        verifiedPhone = otpTargetPhone;
-        accessToken = "supabase_otp";
-        jwtToken = response.session!.accessToken;
+        verifiedIdentity = result.identity;
+        verifiedPhone = result.identity.phone;
+        accessToken = result.accessToken;
+        jwtToken = result.idToken;
       });
       await _completeSignIn();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("OTP verification failed: $error")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Auth0 login failed: $error")));
     } finally {
       if (mounted) {
         setState(() {
-          otpVerifying = false;
+          isSubmitting = false;
         });
       }
     }

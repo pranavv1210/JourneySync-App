@@ -4,6 +4,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'auth_service.dart';
 import 'login_screen.dart';
 import 'supabase_service.dart';
 
@@ -20,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final background = const Color(0xFFF8F7F6);
   final sandBorder = const Color(0xFFE8E4DE);
   final SupabaseService _supabaseService = SupabaseService();
+  final AuthService _authService = AuthService();
   final ImagePicker _imagePicker = ImagePicker();
 
   bool loading = true;
@@ -980,6 +982,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       isLoggingOut = true;
     });
+
+    try {
+      await _authService.logoutAuth0();
+    } catch (_) {
+      // If browser-based logout fails, continue local logout to avoid blocking user.
+    }
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool("isLoggedIn", false);

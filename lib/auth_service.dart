@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
-import 'package:phone_email_auth/phone_email_auth.dart';
+import 'package:auth0_flutter/auth0_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -43,55 +44,86 @@ class SessionUser {
 
 class AuthService {
   AuthService({SupabaseService? supabaseService})
-    : _supabaseService = supabaseService ?? SupabaseService();
+    : _supabaseService = supabaseService ?? SupabaseService(),
+      _auth0 = Auth0(
+        _requiredDefine('AUTH0_DOMAIN', _auth0Domain),
+        _requiredDefine('AUTH0_CLIENT_ID', _auth0ClientId),
+      );
 
   final SupabaseService _supabaseService;
+  final Auth0 _auth0;
+  static const String _auth0Domain = String.fromEnvironment('AUTH0_DOMAIN');
+  static const String _auth0ClientId = String.fromEnvironment(
+    'AUTH0_CLIENT_ID',
+  );
+  static const String _auth0Scheme = String.fromEnvironment(
+    'AUTH0_SCHEME',
+    defaultValue: 'https',
+  );
 
-  Future<PhoneIdentity> getPhoneIdentity(String accessToken) async {
-    final trimmedToken = accessToken.trim();
-    if (trimmedToken.isEmpty) {
-      throw Exception('Missing phone verification token.');
-    }
-
-    final completer = Completer<PhoneIdentity>();
-
-    PhoneEmail.getUserInfo(
-      accessToken: trimmedToken,
-      clientId: PhoneEmail().clientId,
-      onSuccess: (userData) {
-        final countryCode = (userData.countryCode ?? '').trim();
-        final phoneNumber = (userData.phoneNumber ?? '').trim();
-        final normalizedPhone = _normalizePhone(
-          countryCode: countryCode,
-          phoneNumber: phoneNumber,
-        );
-
-        if (normalizedPhone == null) {
-          if (!completer.isCompleted) {
-            completer.completeError(
-              Exception('Could not verify phone number. Please try again.'),
-            );
-          }
-          return;
-        }
-
-        final identity = PhoneIdentity(
-          phone: normalizedPhone,
-          countryCode: countryCode,
-          firstName: (userData.firstName ?? '').trim(),
-          lastName: (userData.lastName ?? '').trim(),
-        );
-
-        if (!completer.isCompleted) {
-          completer.complete(identity);
-        }
-      },
+  Future<({PhoneIdentity identity, String accessToken, String idToken})>
+  authenticateWithAuth0() async {
+    final webAuth =
+        _auth0Scheme.trim().toLowerCase() == 'https'
+            ? _auth0.webAuthentication()
+            : _auth0.webAuthentication(scheme: _auth0Scheme.trim());
+    final credentials = await webAuth.login(
+      useHTTPS: _auth0Scheme.trim().toLowerCase() == 'https',
+      scopes: {'openid', 'profile', 'email'},
     );
 
-    return completer.future.timeout(
-      const Duration(seconds: 20),
-      onTimeout:
-          () => throw Exception('Phone verification timed out. Try again.'),
+    final payload = _decodeJwtPayload(credentials.idToken);
+    final subject = (payload['sub'] ?? '').toString().trim();
+    final email = (payload['email'] ?? '').toString().trim();
+    final phoneNumber = (payload['phone_number'] ?? '').toString().trim();
+    final givenName = (payload['given_name'] ?? '').toString().trim();
+    final familyName = (payload['family_name'] ?? '').toString().trim();
+    final fullName = (payload['name'] ?? '').toString().trim();
+
+    if (subject.isEmpty) {
+      throw Exception('Auth0 did not return a valid user subject (sub).');
+    }
+
+    final stableKey =
+        phoneNumber.isNotEmpty
+            ? phoneNumber
+            : email.isNotEmpty
+            ? email.toLowerCase()
+            : 'auth0:$subject';
+    final firstName =
+        givenName.isNotEmpty
+            ? givenName
+            : fullName
+                .split(' ')
+                .firstWhere((part) => part.trim().isNotEmpty, orElse: () => '');
+    final lastName =
+        familyName.isNotEmpty
+            ? familyName
+            : fullName
+                .split(' ')
+                .skip(1)
+                .where((part) => part.trim().isNotEmpty)
+                .join(' ');
+
+    return (
+      identity: PhoneIdentity(
+        phone: stableKey,
+        countryCode: '',
+        firstName: firstName,
+        lastName: lastName,
+      ),
+      accessToken: credentials.accessToken,
+      idToken: credentials.idToken,
+    );
+  }
+
+  Future<void> logoutAuth0() async {
+    final webAuth =
+        _auth0Scheme.trim().toLowerCase() == 'https'
+            ? _auth0.webAuthentication()
+            : _auth0.webAuthentication(scheme: _auth0Scheme.trim());
+    await webAuth.logout(
+      useHTTPS: _auth0Scheme.trim().toLowerCase() == 'https',
     );
   }
 
@@ -125,7 +157,7 @@ class AuthService {
 
     if (!isNewAccount) {
       throw Exception(
-        'No account found for this number. Switch to New Account to register.',
+        'No account found for this account. Switch to New Account to register.',
       );
     }
 
@@ -258,30 +290,29 @@ class AuthService {
     );
   }
 
-  String? _normalizePhone({
-    required String countryCode,
-    required String phoneNumber,
-  }) {
-    final cc = countryCode.replaceAll(RegExp(r'[^0-9]'), '');
-    var phoneDigits = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-    if (cc.isEmpty || phoneDigits.isEmpty) {
-      return null;
-    }
+  static String _requiredDefine(String key, String value) {
+    final trimmed = value.trim();
+    if (trimmed.isNotEmpty) return trimmed;
+    throw StateError(
+      'Missing --dart-define=$key. Add it to flutter run/build command.',
+    );
+  }
 
-    if (phoneDigits.startsWith('00')) {
-      phoneDigits = phoneDigits.substring(2);
+  Map<String, dynamic> _decodeJwtPayload(String jwt) {
+    final parts = jwt.split('.');
+    if (parts.length < 2) {
+      throw Exception('Invalid ID token format.');
     }
-
-    var local = phoneDigits;
-    if (local.startsWith(cc)) {
-      local = local.substring(cc.length);
+    final payload = parts[1];
+    final normalized = base64Url.normalize(payload);
+    final decoded = utf8.decode(base64Url.decode(normalized));
+    final dynamic jsonValue = jsonDecode(decoded);
+    if (jsonValue is Map<String, dynamic>) {
+      return jsonValue;
     }
-
-    local = local.replaceFirst(RegExp(r'^0+'), '');
-    if (local.isEmpty) {
-      return null;
+    if (jsonValue is Map) {
+      return Map<String, dynamic>.from(jsonValue);
     }
-
-    return '+$cc$local';
+    throw Exception('Invalid ID token payload.');
   }
 }
