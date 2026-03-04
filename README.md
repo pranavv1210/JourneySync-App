@@ -281,7 +281,7 @@ flutter run \
   --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY \
   --dart-define=AUTH0_DOMAIN=YOUR_TENANT.REGION.auth0.com \
   --dart-define=AUTH0_CLIENT_ID=YOUR_AUTH0_CLIENT_ID \
-  --dart-define=AUTH0_SCHEME=https
+  --dart-define=AUTH0_SCHEME=journeysync
 ```
 
 - Optional avatar bucket override:
@@ -322,7 +322,7 @@ flutter build apk \
   --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY \
   --dart-define=AUTH0_DOMAIN=YOUR_TENANT.REGION.auth0.com \
   --dart-define=AUTH0_CLIENT_ID=YOUR_AUTH0_CLIENT_ID \
-  --dart-define=AUTH0_SCHEME=https
+  --dart-define=AUTH0_SCHEME=journeysync
 ```
 
 ## Security and Production Hardening

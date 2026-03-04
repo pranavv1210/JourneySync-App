@@ -822,6 +822,18 @@ class _LoginScreenState extends State<LoginScreen> {
       await _completeSignIn();
     } catch (error) {
       if (!mounted) return;
+      final message = error.toString();
+      if (message.toLowerCase().contains('callback') &&
+          message.toLowerCase().contains('mismatch')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Auth0 callback mismatch. Add journeysync://dev-0vu7hpbbw1pjelnk.us.auth0.com/android/com.example.journeysync/callback to Allowed Callback/Logout URLs.",
+            ),
+          ),
+        );
+        return;
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Auth0 login failed: $error")));

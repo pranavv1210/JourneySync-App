@@ -43,7 +43,7 @@ val auth0DomainValue =
     (dartDefineMap["AUTH0_DOMAIN"] ?: project.findProperty("AUTH0_DOMAIN")?.toString() ?: "")
         .trim()
 val auth0SchemeValue =
-    (dartDefineMap["AUTH0_SCHEME"] ?: project.findProperty("AUTH0_SCHEME")?.toString() ?: "https")
+    (dartDefineMap["AUTH0_SCHEME"] ?: project.findProperty("AUTH0_SCHEME")?.toString() ?: "journeysync")
         .trim()
 
 android {
@@ -71,7 +71,7 @@ android {
         versionName = flutter.versionName
         manifestPlaceholders += mapOf(
             "auth0Domain" to auth0DomainValue,
-            "auth0Scheme" to if (auth0SchemeValue.isNotEmpty()) auth0SchemeValue else "https",
+            "auth0Scheme" to if (auth0SchemeValue.isNotEmpty()) auth0SchemeValue else "journeysync",
         )
     }
 

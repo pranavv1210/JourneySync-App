@@ -58,7 +58,7 @@ class AuthService {
   );
   static const String _auth0Scheme = String.fromEnvironment(
     'AUTH0_SCHEME',
-    defaultValue: 'https',
+    defaultValue: 'journeysync',
   );
 
   Future<({PhoneIdentity identity, String accessToken, String idToken})>
