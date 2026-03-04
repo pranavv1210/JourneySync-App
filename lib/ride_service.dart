@@ -1,4 +1,5 @@
 import 'supabase_service.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RideRecord {
@@ -106,7 +107,23 @@ class RideService {
     return ride;
   }
 
-  Future<List<NearbyRide>> searchNearbyRides(String currentUserId) async {
+  Future<List<NearbyRide>> searchNearbyRides(
+    String currentUserId, {
+    double? currentLat,
+    double? currentLng,
+    double maxDistanceKm = 5.0,
+    bool requestPermissionIfNeeded = false,
+  }) async {
+    final origin =
+        (currentLat != null && currentLng != null)
+            ? (lat: currentLat, lng: currentLng)
+            : await _resolveCurrentPosition(
+              requestPermissionIfNeeded: requestPermissionIfNeeded,
+            );
+    if (origin == null) {
+      return <NearbyRide>[];
+    }
+
     final rides = await fetchNearbyRides(currentUserId);
     if (rides.isEmpty) {
       return <NearbyRide>[];
@@ -117,7 +134,19 @@ class RideService {
         rides.where((ride) {
           final createdAt = ride.createdAt;
           if (createdAt == null) return true;
-          return createdAt.isAfter(recentCutoff);
+          if (!createdAt.isAfter(recentCutoff)) return false;
+          if (ride.archived || ride.isCompleted) return false;
+          if (ride.status.trim().toLowerCase() == 'cancelled') return false;
+
+          final startPoint = _parseLatLng(ride.startLocation);
+          if (startPoint == null) return false;
+          final meters = Geolocator.distanceBetween(
+            origin.lat,
+            origin.lng,
+            startPoint.lat,
+            startPoint.lng,
+          );
+          return meters <= maxDistanceKm * 1000;
         }).toList();
 
     if (filtered.isEmpty) {
@@ -271,6 +300,42 @@ class RideService {
       counts[rideId] = (counts[rideId] ?? 0) + 1;
     }
     return counts;
+  }
+
+  Future<({double lat, double lng})?> _resolveCurrentPosition({
+    required bool requestPermissionIfNeeded,
+  }) async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return null;
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied && requestPermissionIfNeeded) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return null;
+    }
+
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 8),
+      ),
+    );
+    return (lat: position.latitude, lng: position.longitude);
+  }
+
+  ({double lat, double lng})? _parseLatLng(String value) {
+    final text = value.trim();
+    if (text.isEmpty) return null;
+    final parts = text.split(',');
+    if (parts.length != 2) return null;
+    final lat = double.tryParse(parts[0].trim());
+    final lng = double.tryParse(parts[1].trim());
+    if (lat == null || lng == null) return null;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+    return (lat: lat, lng: lng);
   }
 
   Future<Map<String, Map<String, String>>> _fetchCreatorProfiles(

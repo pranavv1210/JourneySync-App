@@ -54,7 +54,10 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         throw Exception('Missing user session. Please login again.');
       }
 
-      final rides = await _rideService.searchNearbyRides(userId);
+      final rides = await _rideService.searchNearbyRides(
+        userId,
+        requestPermissionIfNeeded: true,
+      );
       if (!mounted) return;
       setState(() {
         currentUserId = userId;
@@ -84,6 +87,9 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     }
     if (lower.contains('timeout') || lower.contains('socket')) {
       return 'Network issue while loading nearby rides. Please try again.';
+    }
+    if (lower.contains('permission') || lower.contains('location')) {
+      return 'Location is required to find nearby rides. Enable location and try again.';
     }
     return 'Could not search nearby rides right now. Please try again.';
   }

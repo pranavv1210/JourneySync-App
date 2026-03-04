@@ -116,7 +116,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (resolvedId.isNotEmpty) {
         try {
           fetchedRecent = await _rideService.fetchRecentRides(resolvedId);
-          fetchedNearby = await _rideService.fetchNearbyRides(resolvedId);
+          final nearby = await _rideService.searchNearbyRides(resolvedId);
+          fetchedNearby = nearby.map((item) => item.ride).toList();
         } catch (error) {
           // Keep home usable even if ride list fetch fails.
           debugPrint("Home ride fetch failed: $error");
@@ -416,7 +417,7 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     final nearbySubtitle =
         nearby.isEmpty
-            ? "No nearby rides"
+            ? "No nearby rides right now"
             : "${nearby.length} ride(s) found nearby";
 
     return Column(
@@ -713,8 +714,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           : "Destination";
                   final dateLabel = _formatDate(ride.createdAt);
                   final isBusy = rideActionLoadingId == ride.id;
-                  final canDelete = ride.isScheduled;
-                  final canArchive = ride.isCompleted;
+                  final canDelete = ride.isScheduled || ride.isCompleted;
                   final statusLabel = _rideStatusLabel(ride);
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -808,7 +808,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: primary,
                                 ),
                               )
-                            else if (canDelete || canArchive)
+                            else if (canDelete)
                               PopupMenuButton<String>(
                                 icon: Icon(
                                   Icons.more_vert_rounded,
@@ -817,12 +817,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 onSelected: (value) async {
                                   if (value == 'delete') {
-                                    await _confirmDeleteScheduledRide(
-                                      ride,
-                                      primary,
-                                    );
-                                  } else if (value == 'archive') {
-                                    await _confirmArchiveCompletedRide(
+                                    await _confirmPermanentDeleteRide(
                                       ride,
                                       primary,
                                     );
@@ -833,12 +828,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       if (canDelete)
                                         const PopupMenuItem(
                                           value: 'delete',
-                                          child: Text('Delete Ride'),
-                                        ),
-                                      if (canArchive)
-                                        const PopupMenuItem(
-                                          value: 'archive',
-                                          child: Text('Archive Ride'),
+                                          child: Text('Delete Permanently'),
                                         ),
                                     ],
                               ),
@@ -862,13 +852,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${raw[0].toUpperCase()}${raw.substring(1)}';
   }
 
-  Future<void> _confirmDeleteScheduledRide(
+  Future<void> _confirmPermanentDeleteRide(
     RideRecord ride,
     Color primary,
   ) async {
-    if (!ride.isScheduled) {
+    if (!ride.isScheduled && !ride.isCompleted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Only scheduled rides can be deleted.')),
+        const SnackBar(
+          content: Text('Only scheduled/completed rides can be deleted.'),
+        ),
       );
       return;
     }
@@ -878,7 +870,7 @@ class _HomeScreenState extends State<HomeScreen> {
           (context) => AlertDialog(
             title: const Text('Delete Ride?'),
             content: const Text(
-              'This will permanently delete this scheduled ride for everyone.',
+              'This will permanently delete this ride for everyone and remove it from Supabase.',
             ),
             actions: [
               TextButton(
@@ -905,53 +897,6 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       successMessage: 'Ride deleted.',
       failureMessage: 'Could not delete ride.',
-      primary: primary,
-    );
-  }
-
-  Future<void> _confirmArchiveCompletedRide(
-    RideRecord ride,
-    Color primary,
-  ) async {
-    if (!ride.isCompleted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Only completed rides can be archived.')),
-      );
-      return;
-    }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Archive Ride?'),
-            content: const Text(
-              'This hides the completed ride from recent journeys.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: FilledButton.styleFrom(backgroundColor: primary),
-                child: const Text('Archive'),
-              ),
-            ],
-          ),
-    );
-    if (confirmed != true) return;
-
-    await _runRideAction(
-      rideId: ride.id,
-      action: () async {
-        await _rideService.archiveCompletedRideAsCreator(
-          rideId: ride.id,
-          creatorId: userId,
-        );
-      },
-      successMessage: 'Ride archived.',
-      failureMessage: 'Could not archive ride.',
       primary: primary,
     );
   }
