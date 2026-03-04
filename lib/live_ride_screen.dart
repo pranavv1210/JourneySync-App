@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sos_alert_screen.dart';
@@ -347,69 +348,102 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   }
 
   Widget _mapBackground(Color primary) {
+    final destination = destinationPoint;
+    final current = _latestPosition;
+    final center =
+        current != null
+            ? LatLng(current.latitude, current.longitude)
+            : (destination != null
+                ? LatLng(destination.lat, destination.lng)
+                : const LatLng(20.5937, 78.9629));
     return Positioned.fill(
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFE6E3DD),
-          image: DecorationImage(
-            image: const AssetImage("assets/pattern.png"),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.white.withOpacity(0.2),
-              BlendMode.overlay,
-            ),
+      child: FlutterMap(
+        options: MapOptions(
+          initialCenter: center,
+          initialZoom: (current != null || destination != null) ? 13 : 5,
+          minZoom: 3,
+          maxZoom: 18,
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.example.journeysync',
           ),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _RoutePainter(color: primary.withOpacity(0.9)),
-              ),
+          if (destination != null)
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: LatLng(destination.lat, destination.lng),
+                  width: 40,
+                  height: 40,
+                  child: const Icon(
+                    Icons.location_on_rounded,
+                    color: Colors.deepOrange,
+                    size: 32,
+                  ),
+                ),
+              ],
             ),
-            Center(
-              child: AnimatedBuilder(
-                animation: pulseController,
-                builder: (_, __) {
-                  final scale = 0.8 + (pulseController.value * 1.7);
-                  final opacity = 0.5 * (1 - pulseController.value);
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Transform.scale(
-                        scale: scale,
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: primary.withOpacity(opacity * 0.4),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: primary, width: 4),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
+          if (current != null)
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: LatLng(current.latitude, current.longitude),
+                  width: 44,
+                  height: 44,
+                  child: AnimatedBuilder(
+                    animation: pulseController,
+                    builder: (_, __) {
+                      final scale = 0.85 + (pulseController.value * 0.75);
+                      final opacity = 0.4 * (1 - pulseController.value);
+                      return Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Transform.scale(
+                            scale: scale,
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: primary.withOpacity(opacity),
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                          ],
-                        ),
-                        child: Icon(Icons.navigation, color: primary, size: 32),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: primary, width: 3),
+                            ),
+                            child: Icon(
+                              Icons.navigation,
+                              color: primary,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          if (current != null && destination != null)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: [
+                    LatLng(current.latitude, current.longitude),
+                    LatLng(destination.lat, destination.lng),
+                  ],
+                  color: primary.withOpacity(0.8),
+                  strokeWidth: 4,
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }
@@ -1062,9 +1096,10 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     final top = members.take(3).toList();
     if (top.isEmpty) {
       return [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 18,
-          backgroundImage: AssetImage("assets/profile.png"),
+          backgroundColor: const Color(0xFFF2F4F7),
+          child: Icon(Icons.person_rounded, color: Colors.grey.shade500),
         ),
       ];
     }
@@ -1095,7 +1130,12 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     }
     return CircleAvatar(
       radius: radius,
-      backgroundImage: const AssetImage("assets/profile.png"),
+      backgroundColor: const Color(0xFFF2F4F7),
+      child: Icon(
+        Icons.person_rounded,
+        size: radius,
+        color: Colors.grey.shade500,
+      ),
     );
   }
 
@@ -1227,74 +1267,6 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     if (speedMps == null || speedMps <= 0) return "—";
     return (speedMps * 2.23694).toStringAsFixed(0);
   }
-}
-
-class _RoutePainter extends CustomPainter {
-  _RoutePainter({required this.color});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 6
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round;
-
-    final path = Path();
-    path.moveTo(-50, size.height * 0.7);
-    path.quadraticBezierTo(
-      size.width * 0.2,
-      size.height * 0.65,
-      size.width * 0.35,
-      size.height * 0.5,
-    );
-    path.quadraticBezierTo(
-      size.width * 0.5,
-      size.height * 0.3,
-      size.width * 0.75,
-      size.height * 0.2,
-    );
-    canvas.drawPath(path, paint);
-
-    final dashPaint =
-        Paint()
-          ..color = color.withOpacity(0.3)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2;
-    final dashPath = Path();
-    dashPath.moveTo(-50, size.height * 0.7);
-    dashPath.quadraticBezierTo(
-      size.width * 0.2,
-      size.height * 0.65,
-      size.width * 0.35,
-      size.height * 0.5,
-    );
-    dashPath.quadraticBezierTo(
-      size.width * 0.5,
-      size.height * 0.3,
-      size.width * 0.75,
-      size.height * 0.2,
-    );
-
-    const dashLength = 10.0;
-    const gapLength = 8.0;
-    for (final metric in dashPath.computeMetrics()) {
-      double distance = 0;
-      while (distance < metric.length) {
-        final next = math.min(distance + dashLength, metric.length);
-        final segment = metric.extractPath(distance, next);
-        canvas.drawPath(segment, dashPaint);
-        distance += dashLength + gapLength;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _LiveMember {

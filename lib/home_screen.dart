@@ -182,12 +182,6 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: background,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.06,
-              child: Image.asset("assets/pattern.png", fit: BoxFit.cover),
-            ),
-          ),
           SafeArea(
             child: Column(
               children: [

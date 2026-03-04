@@ -200,17 +200,6 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
       backgroundColor: sand,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: Container(
-              color: sand,
-              child: Image.asset(
-                "assets/pattern.png",
-                fit: BoxFit.cover,
-                color: Colors.black.withOpacity(0.08),
-                colorBlendMode: BlendMode.multiply,
-              ),
-            ),
-          ),
           Column(
             children: [
               _banner(primary),
@@ -287,12 +276,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
   Widget _mapLayer(Color tertiary, Color primary) {
     return Stack(
       children: [
-        Positioned.fill(
-          child: Opacity(
-            opacity: 0.85,
-            child: Image.asset("assets/pattern.png", fit: BoxFit.cover),
-          ),
-        ),
+        Positioned.fill(child: Container(color: const Color(0xFFE6E3DD))),
         Positioned(
           bottom: MediaQuery.of(context).size.height * 0.35,
           left: MediaQuery.of(context).size.width * 0.4,

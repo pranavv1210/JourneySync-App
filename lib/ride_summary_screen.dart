@@ -349,9 +349,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
       ),
       child: Stack(
         children: [
-          Positioned.fill(
-            child: Image.asset('assets/pattern.png', fit: BoxFit.cover),
-          ),
+          Positioned.fill(child: Container(color: Colors.grey.shade300)),
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(

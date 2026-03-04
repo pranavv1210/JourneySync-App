@@ -28,7 +28,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final bikeController = TextEditingController();
 
   AuthMode authMode = AuthMode.existingAccount;
-  bool showPhoneVerification = false;
   bool quickLoginLoading = false;
   SessionUser? cachedUser;
 
@@ -98,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             );
                           },
                           child:
-                              _showPhoneVerificationStep
+                              authMode == AuthMode.existingAccount
                                   ? _phoneVerificationStep(
                                     fieldGap: fieldGap,
                                     keyValue:
@@ -280,16 +279,12 @@ class _LoginScreenState extends State<LoginScreen> {
     if (authMode == mode) return;
     setState(() {
       authMode = mode;
-      showPhoneVerification = mode == AuthMode.existingAccount;
       verifiedPhone = "";
       verifiedIdentity = null;
       accessToken = "";
       jwtToken = "";
     });
   }
-
-  bool get _showPhoneVerificationStep =>
-      authMode == AuthMode.existingAccount || showPhoneVerification;
 
   Widget _registrationForm({
     required double fieldGap,
@@ -502,108 +497,52 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _primaryAction() {
+    final requiresDetails = authMode == AuthMode.newAccount;
+    final buttonLabel = isSubmitting ? "Please wait..." : "Continue";
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!_showPhoneVerificationStep)
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.trim().isEmpty ||
-                  bikeController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Please fill name and bike.")),
-                );
-                return;
-              }
-              setState(() => showPhoneVerification = true);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primary,
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 8,
-              shadowColor: primary.withOpacity(0.2),
+        ElevatedButton(
+          onPressed:
+              isSubmitting
+                  ? null
+                  : () =>
+                      _handlePrimaryContinue(requiresDetails: requiresDetails),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primary,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "Continue",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward, color: Colors.white),
-              ],
-            ),
-          )
-        else if (verifiedPhone.isNotEmpty)
-          ElevatedButton(
-            onPressed: isSubmitting ? null : _completeSignIn,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primary,
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 8,
-              shadowColor: primary.withOpacity(0.2),
-            ),
-            child:
-                isSubmitting
-                    ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: Colors.white,
-                      ),
-                    )
-                    : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          authMode == AuthMode.existingAccount
-                              ? "Fetch Account"
-                              : "Continue to Home",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward, color: Colors.white),
-                      ],
-                    ),
-          )
-        else
-          ElevatedButton.icon(
-            onPressed: isSubmitting ? null : _authenticateWithAuth0,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primary,
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 8,
-              shadowColor: primary.withOpacity(0.2),
-            ),
-            icon: const Icon(Icons.lock_open_rounded, color: Colors.white),
-            label: const Text(
-              "Continue with Auth0",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
+            elevation: 8,
+            shadowColor: primary.withOpacity(0.2),
           ),
+          child:
+              isSubmitting
+                  ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: Colors.white,
+                    ),
+                  )
+                  : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        buttonLabel,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward, color: Colors.white),
+                    ],
+                  ),
+        ),
       ],
     );
   }
@@ -650,7 +589,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _completeSignIn() async {
-    if (isSubmitting) return;
     final identity = verifiedIdentity;
     if (identity == null) {
       if (!mounted) return;
@@ -701,7 +639,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (noAccountFound && authMode == AuthMode.existingAccount) {
         setState(() {
           authMode = AuthMode.newAccount;
-          showPhoneVerification = false;
           if (nameController.text.trim().isEmpty) {
             nameController.text = identity.fullName;
           }
@@ -790,10 +727,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _authenticateWithAuth0() async {
-    if (isSubmitting) return;
-    setState(() {
-      isSubmitting = true;
-    });
     try {
       final result = await authService.authenticateWithAuth0();
       if (!mounted) return;
@@ -803,7 +736,6 @@ class _LoginScreenState extends State<LoginScreen> {
         accessToken = result.accessToken;
         jwtToken = result.idToken;
       });
-      await _completeSignIn();
     } catch (error) {
       if (!mounted) return;
       final message = error.toString();
@@ -821,6 +753,32 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Auth0 login failed: $error")));
+    }
+  }
+
+  Future<void> _handlePrimaryContinue({required bool requiresDetails}) async {
+    if (isSubmitting) return;
+    if (requiresDetails &&
+        (nameController.text.trim().isEmpty ||
+            bikeController.text.trim().isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill name and bike.")),
+      );
+      return;
+    }
+
+    setState(() {
+      isSubmitting = true;
+    });
+
+    try {
+      if (verifiedIdentity == null || verifiedPhone.isEmpty) {
+        await _authenticateWithAuth0();
+      }
+      if (verifiedIdentity == null || verifiedPhone.isEmpty) {
+        throw Exception("Authentication was not completed.");
+      }
+      await _completeSignIn();
     } finally {
       if (mounted) {
         setState(() {

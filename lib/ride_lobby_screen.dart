@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'live_ride_screen.dart';
@@ -21,6 +23,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   String userName = "Rider";
   String userBike = "No bike added";
   String userPhone = "";
+  String userAvatarUrl = "";
   String currentUserId = "";
   int maxRiders = 20;
   bool joinRequestFeatureAvailable = true;
@@ -38,6 +41,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     userName = prefs.getString("userName") ?? "Rider";
     userBike = prefs.getString("userBike") ?? "No bike added";
     userPhone = prefs.getString("userPhone") ?? "";
+    userAvatarUrl = prefs.getString("userAvatarUrl") ?? "";
     currentUserId = (prefs.getString("userId") ?? "").trim();
 
     final data =
@@ -93,7 +97,11 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                 (profile?['bike'] ??
                         (id == currentUserId ? userBike : 'No bike added'))
                     .toString(),
-            avatarUrl: (profile?['avatar_url'] ?? '').toString(),
+            avatarUrl:
+                ((profile?['avatar_url'] ?? '').toString().trim().isNotEmpty
+                        ? (profile?['avatar_url'] ?? '').toString()
+                        : (id == currentUserId ? userAvatarUrl : ''))
+                    .toString(),
             isHost: id == hostId,
           );
         }).toList();
@@ -228,6 +236,26 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
 
   String _routeStripLabel() {
     return "${_startLocationLabel()} -> ${_destinationLabel()}";
+  }
+
+  LatLng? _parseLatLng(String value) {
+    final text = value.trim();
+    if (text.isEmpty) return null;
+    final parts = text.split(',');
+    if (parts.length != 2) return null;
+    final lat = double.tryParse(parts[0].trim());
+    final lng = double.tryParse(parts[1].trim());
+    if (lat == null || lng == null) return null;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+    return LatLng(lat, lng);
+  }
+
+  LatLng _lobbyMapCenter() {
+    final start = _parseLatLng(_startLocationLabel());
+    if (start != null) return start;
+    final end = _parseLatLng(_destinationLabel());
+    if (end != null) return end;
+    return const LatLng(20.5937, 78.9629);
   }
 
   String _dateLabel() {
@@ -366,12 +394,6 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       backgroundColor: background,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.06,
-              child: Image.asset("assets/pattern.png", fit: BoxFit.cover),
-            ),
-          ),
           SafeArea(
             child: Column(
               children: [
@@ -456,7 +478,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                 child: SizedBox(
                   height: 180,
                   width: double.infinity,
-                  child: Image.asset("assets/pattern.png", fit: BoxFit.cover),
+                  child: _lobbyMapPreview(),
                 ),
               ),
               Positioned.fill(
@@ -566,6 +588,64 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _lobbyMapPreview() {
+    final start = _parseLatLng(_startLocationLabel());
+    final end = _parseLatLng(_destinationLabel());
+    final center = start ?? end ?? _lobbyMapCenter();
+
+    return FlutterMap(
+      options: MapOptions(
+        initialCenter: center,
+        initialZoom: (start != null || end != null) ? 12.5 : 5,
+        minZoom: 3,
+        maxZoom: 18,
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.example.journeysync',
+        ),
+        if (start != null || end != null)
+          MarkerLayer(
+            markers: [
+              if (start != null)
+                Marker(
+                  point: start,
+                  width: 34,
+                  height: 34,
+                  child: const Icon(
+                    Icons.play_circle_fill_rounded,
+                    color: Colors.green,
+                    size: 28,
+                  ),
+                ),
+              if (end != null)
+                Marker(
+                  point: end,
+                  width: 34,
+                  height: 34,
+                  child: const Icon(
+                    Icons.location_on_rounded,
+                    color: Colors.deepOrange,
+                    size: 28,
+                  ),
+                ),
+            ],
+          ),
+        if (start != null && end != null)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: [start, end],
+                strokeWidth: 4,
+                color: Colors.deepOrange.withOpacity(0.75),
+              ),
+            ],
+          ),
+      ],
     );
   }
 
@@ -905,7 +985,12 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     }
     return CircleAvatar(
       radius: radius,
-      backgroundImage: const AssetImage("assets/profile.png"),
+      backgroundColor: const Color(0xFFF2F4F7),
+      child: Icon(
+        Icons.person_rounded,
+        size: radius,
+        color: Colors.grey.shade500,
+      ),
     );
   }
 
