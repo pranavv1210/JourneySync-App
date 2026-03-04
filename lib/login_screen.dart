@@ -53,7 +53,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final fieldGap = isCompactHeight ? 14.0 : 18.0;
     final titleSize = isCompactHeight ? 30.0 : 34.0;
     final subtitleSize = isCompactHeight ? 15.0 : 16.0;
-    final bottomHeight = isCompactHeight ? 110.0 : 140.0;
 
     return Scaffold(
       backgroundColor: backgroundLight,
@@ -114,12 +113,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         _primaryAction(),
                         const SizedBox(height: 20),
                         _legalText(),
-                        SizedBox(height: sectionGap),
+                        SizedBox(height: sectionGap + 12),
                       ],
                     ),
                   ),
                 ),
-                _bottomTexture(height: bottomHeight),
               ],
             ),
           ),
@@ -170,7 +168,11 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
-          Icon(Icons.help_outline, color: forest.withOpacity(0.6)),
+          IconButton(
+            onPressed: _showAuthHelp,
+            icon: Icon(Icons.help_outline, color: forest.withOpacity(0.6)),
+            tooltip: "Help",
+          ),
         ],
       ),
     );
@@ -618,43 +620,25 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _bottomTexture({required double height}) {
-    return SizedBox(
-      height: height,
-      width: double.infinity,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.12,
-              child: Image.asset("assets/pattern.png", fit: BoxFit.cover),
+  Future<void> _showAuthHelp() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: const Text("Login Help"),
+            content: const Text(
+              "1. Existing Account: sign in with Auth0 and continue.\n\n"
+              "2. New Account: fill Name and Bike, then Continue.\n\n"
+              "If login fails, verify Auth0 callback/logout URLs are configured.",
             ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [backgroundLight.withOpacity(0), backgroundLight],
-                ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("OK"),
               ),
-            ),
+            ],
           ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              height: 4,
-              width: 120,
-              decoration: BoxDecoration(
-                color: forest.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
