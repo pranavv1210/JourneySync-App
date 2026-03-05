@@ -1,7 +1,7 @@
 ﻿<div align="center">
 
-<h1>
-  <img src="assets/logo.png" alt="JourneySync Logo" width="40" style="vertical-align: middle; margin-right: 8px;" />
+<h1 style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+  <img src="assets/logo.png" alt="JourneySync Logo" width="40" />
   JourneySync - Group Ride & Safety App
 </h1>
 
