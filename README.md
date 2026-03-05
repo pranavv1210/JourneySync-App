@@ -1,6 +1,9 @@
 ﻿<div align="center">
 
-# JourneySync - Group Ride & Safety App
+<h1>
+  <img src="assets/logo.png" alt="JourneySync Logo" width="40" style="vertical-align: middle; margin-right: 8px;" />
+  JourneySync - Group Ride & Safety App
+</h1>
 
 <p>
   <a href="./CONTRIBUTING.md">Contributing</a> •
@@ -8,7 +11,7 @@
   <a href="./SECURITY.md">Security</a>
 </p>
 
-<img src="assets/banner.png" alt="JourneySync Banner" width="100%" />
+<img src="assets/banner.png" alt="JourneySync Banner" width="85%" />
 
 <br/>
 
