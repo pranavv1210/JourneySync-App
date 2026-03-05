@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
+import 'setup_error_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key, this.initializationFuture});
@@ -27,14 +28,26 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _decideNavigation() async {
+    Object? initError;
     try {
       await Future.wait([
         Future.delayed(const Duration(seconds: 3)),
         widget.initializationFuture ?? Future.value(),
       ]);
-    } catch (_) {}
+    } catch (error) {
+      initError = error;
+    }
 
     if (!mounted) return;
+    if (initError != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SetupErrorScreen(errorMessage: initError.toString()),
+        ),
+      );
+      return;
+    }
 
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;

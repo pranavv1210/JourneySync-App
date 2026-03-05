@@ -1,10 +1,10 @@
-<div align="center">
+ï»¿<div align="center">
 
 # JourneySync - Group Ride & Safety App
 
 <p>
-  <a href="./CONTRIBUTING.md">Contributing</a> •
-  <a href="./LICENSE">MIT License</a> •
+  <a href="./CONTRIBUTING.md">Contributing</a> â€¢
+  <a href="./LICENSE">MIT License</a> â€¢
   <a href="./SECURITY.md">Security</a>
 </p>
 
@@ -81,26 +81,31 @@ flutter pub get
 
 2. Run in debug:
 ```bash
-flutter run
+flutter run --dart-define-from-file=dart_defines.local.json
 ```
 
 3. Build Android APK:
 ```bash
-flutter build apk --release
+flutter build apk --release --dart-define-from-file=dart_defines.local.json
 ```
 
 ## Environment Values
 This project expects runtime `--dart-define` values:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
-- `PHONE_EMAIL_CLIENT_ID` (kept for compatibility in current config)
+- `AUTH0_DOMAIN`
+- `AUTH0_CLIENT_ID`
+- `AUTH0_SCHEME` (optional, defaults to `journeysync`)
+- `SUPABASE_AVATAR_BUCKET` (optional, defaults to `avatars`)
 
 Example:
 ```bash
 flutter run \
   --dart-define=SUPABASE_URL=YOUR_URL \
   --dart-define=SUPABASE_ANON_KEY=YOUR_ANON_KEY \
-  --dart-define=PHONE_EMAIL_CLIENT_ID=YOUR_CLIENT_ID
+  --dart-define=AUTH0_DOMAIN=YOUR_TENANT.REGION.auth0.com \
+  --dart-define=AUTH0_CLIENT_ID=YOUR_AUTH0_CLIENT_ID \
+  --dart-define=AUTH0_SCHEME=journeysync
 ```
 
 ## Android Signing
@@ -121,3 +126,4 @@ For distribution, complete signing/provisioning in Xcode.
 
 ## License
 MIT. See [LICENSE](./LICENSE).
+
