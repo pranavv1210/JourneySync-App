@@ -26,15 +26,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   bool loading = true;
   bool isLoggingOut = false;
-  bool notificationsEnabled = true;
-  bool liveLocationEnabled = true;
-  bool nearbyRideAlertsEnabled = true;
-  bool sosAutoShareEnabled = true;
-  String distanceUnit = 'km';
 
   String userId = '';
   String userName = 'Rider';
-  String userPhone = '';
+  String userEmail = '';
   String userBike = 'No bike added';
   String userAvatarUrl = '';
   bool isUploadingAvatar = false;
@@ -51,15 +46,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       userId = prefs.getString('userId') ?? '';
       userName = prefs.getString('userName') ?? 'Rider';
-      userPhone = prefs.getString('userPhone') ?? '';
+      userEmail = prefs.getString('userPhone') ?? '';
       userBike = prefs.getString('userBike') ?? 'No bike added';
       userAvatarUrl = prefs.getString('userAvatarUrl') ?? '';
-      notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
-      liveLocationEnabled = prefs.getBool('liveLocationEnabled') ?? true;
-      nearbyRideAlertsEnabled =
-          prefs.getBool('nearbyRideAlertsEnabled') ?? true;
-      sosAutoShareEnabled = prefs.getBool('sosAutoShareEnabled') ?? true;
-      distanceUnit = prefs.getString('distanceUnit') ?? 'km';
       loading = false;
     });
 
@@ -78,11 +67,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         // Keep cached avatar if remote fetch fails.
       }
     }
-  }
-
-  Future<void> _saveBool(String key, bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(key, value);
   }
 
   Future<void> _saveString(String key, String value) async {
@@ -114,10 +98,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _profileCard(),
-                        const SizedBox(height: 14),
-                        _ridePreferencesCard(),
-                        const SizedBox(height: 14),
-                        _notificationsCard(),
                         const SizedBox(height: 14),
                         _supportCard(),
                         const SizedBox(height: 14),
@@ -200,8 +180,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _infoRow('Name', userName),
           const SizedBox(height: 8),
           _infoRow(
-            'Phone',
-            userPhone.trim().isNotEmpty ? userPhone : 'Not available',
+            'Email',
+            userEmail.trim().isNotEmpty ? userEmail : 'Not available',
           ),
           const SizedBox(height: 8),
           _infoRow('Bike', userBike),
@@ -269,69 +249,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _ridePreferencesCard() {
-    return _settingsCard(
-      title: 'Ride Preferences',
-      icon: Icons.route_rounded,
-      child: Column(
-        children: [
-          _switchRow(
-            title: 'Live Location Sharing',
-            subtitle: 'Show your position during active rides.',
-            value: liveLocationEnabled,
-            onChanged: (value) async {
-              setState(() => liveLocationEnabled = value);
-              await _saveBool('liveLocationEnabled', value);
-            },
-          ),
-          const Divider(height: 18),
-          _switchRow(
-            title: 'Nearby Ride Alerts',
-            subtitle: 'Get notified when rides are posted near you.',
-            value: nearbyRideAlertsEnabled,
-            onChanged: (value) async {
-              setState(() => nearbyRideAlertsEnabled = value);
-              await _saveBool('nearbyRideAlertsEnabled', value);
-            },
-          ),
-          const Divider(height: 18),
-          _switchRow(
-            title: 'SOS Auto Share',
-            subtitle: 'Auto share SOS details with current ride members.',
-            value: sosAutoShareEnabled,
-            onChanged: (value) async {
-              setState(() => sosAutoShareEnabled = value);
-              await _saveBool('sosAutoShareEnabled', value);
-            },
-          ),
-          const Divider(height: 18),
-          _tapRow(
-            title: 'Distance Unit',
-            subtitle: distanceUnit == 'km' ? 'Kilometers (km)' : 'Miles (mi)',
-            trailing: Icon(Icons.chevron_right, color: forest.withOpacity(0.5)),
-            onTap: _selectDistanceUnit,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _notificationsCard() {
-    return _settingsCard(
-      title: 'Notifications',
-      icon: Icons.notifications_none_rounded,
-      child: _switchRow(
-        title: 'Push Notifications',
-        subtitle: 'Ride updates, join requests, and safety alerts.',
-        value: notificationsEnabled,
-        onChanged: (value) async {
-          setState(() => notificationsEnabled = value);
-          await _saveBool('notificationsEnabled', value);
-        },
-      ),
-    );
-  }
-
   Widget _supportCard() {
     return _settingsCard(
       title: 'Support & Legal',
@@ -373,12 +290,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       icon: Icons.manage_accounts_outlined,
       child: Column(
         children: [
-          _tapRow(
-            title: 'Clear Local Cache',
-            subtitle: 'Keep account, refresh local app data.',
-            onTap: _clearLocalCache,
-          ),
-          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -496,46 +407,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _switchRow({
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: forest,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: forest.withOpacity(0.65),
-                  fontSize: 12,
-                  height: 1.3,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Switch(value: value, activeColor: primary, onChanged: onChanged),
-      ],
-    );
-  }
-
   Widget _tapRow({
     required String title,
     required String subtitle,
@@ -580,45 +451,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _selectDistanceUnit() async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: const Text('Kilometers (km)'),
-                trailing:
-                    distanceUnit == 'km'
-                        ? Icon(Icons.check, color: primary)
-                        : null,
-                onTap: () => Navigator.pop(context, 'km'),
-              ),
-              ListTile(
-                title: const Text('Miles (mi)'),
-                trailing:
-                    distanceUnit == 'mi'
-                        ? Icon(Icons.check, color: primary)
-                        : null,
-                onTap: () => Navigator.pop(context, 'mi'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (selected == null || selected == distanceUnit) return;
-    setState(() => distanceUnit = selected);
-    await _saveString('distanceUnit', selected);
   }
 
   Future<void> _editProfile() async {
@@ -797,17 +629,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return 'Server DB issue: users.avatar_url column is missing in Supabase schema cache. Add the column and refresh schema cache, then retry.';
     }
     return 'Could not upload photo: $text';
-  }
-
-  Future<void> _clearLocalCache() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('distanceUnit');
-    await prefs.remove('liveLocationEnabled');
-    await prefs.remove('nearbyRideAlertsEnabled');
-    await prefs.remove('sosAutoShareEnabled');
-    await prefs.remove('notificationsEnabled');
-    if (!mounted) return;
-    _showInfo('Cache', 'Local cache cleared.');
   }
 
   void _showInfo(String title, String message) {
