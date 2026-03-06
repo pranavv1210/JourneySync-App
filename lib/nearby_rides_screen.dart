@@ -18,6 +18,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   late final AnimationController _radarController;
 
   bool searching = true;
+  bool joiningByCode = false;
   String errorText = '';
   String currentUserId = '';
   String joiningRideId = '';
@@ -140,6 +141,136 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     }
   }
 
+  Future<String> _resolveCurrentUserId() async {
+    if (currentUserId.trim().isNotEmpty) {
+      return currentUserId.trim();
+    }
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getString('userId') ?? '').trim();
+  }
+
+  Future<void> _showJoinByCodeDialog() async {
+    final codeController = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Join With Access Code'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter the code shared by your ride host (example: JS-0370).',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: codeController,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  hintText: 'JS-0370',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) {
+                  final normalized = value.toUpperCase();
+                  if (normalized != value) {
+                    codeController.value = TextEditingValue(
+                      text: normalized,
+                      selection: TextSelection.collapsed(
+                        offset: normalized.length,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed:
+                  joiningByCode ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed:
+                  joiningByCode
+                      ? null
+                      : () async {
+                        await _joinRideByCode(codeController.text);
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                        }
+                      },
+              child:
+                  joiningByCode
+                      ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Text('Join'),
+            ),
+          ],
+        );
+      },
+    );
+    codeController.dispose();
+  }
+
+  Future<void> _joinRideByCode(String rawCode) async {
+    if (joiningByCode) return;
+    final userId = await _resolveCurrentUserId();
+    if (userId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Missing user session. Please login again.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      joiningByCode = true;
+      currentUserId = userId;
+    });
+
+    try {
+      final result = await _rideService.joinRideByAccessCode(
+        accessCode: rawCode,
+        userId: userId,
+      );
+      if (!mounted) return;
+      final message = switch (result.status) {
+        JoinByCodeStatus.requested =>
+          'Join request sent for "${result.rideTitle}".',
+        JoinByCodeStatus.joinedDirectly =>
+          'Joined "${result.rideTitle}" successfully.',
+        JoinByCodeStatus.alreadyRequested =>
+          'You already requested to join "${result.rideTitle}".',
+        JoinByCodeStatus.alreadyJoined =>
+          'You are already part of "${result.rideTitle}".',
+      };
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+      if (!searching && errorText.isEmpty) {
+        await _loadNearbyRides();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not join via code: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          joiningByCode = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const background = Color(0xFFF8F7F6);
@@ -155,7 +286,13 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         elevation: 0,
         actions: [
           IconButton(
+            onPressed: joiningByCode ? null : _showJoinByCodeDialog,
+            tooltip: 'Join with access code',
+            icon: const Icon(Icons.key_rounded),
+          ),
+          IconButton(
             onPressed: searching ? null : _loadNearbyRides,
+            tooltip: 'Refresh nearby rides',
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],

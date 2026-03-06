@@ -296,6 +296,8 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
         title: rideName,
         startLocation: startLocation,
         endLocation: destination,
+        scheduledStartTime: selectedStartTime,
+        maxRiders: maxRiders.round(),
       );
 
       if (!mounted) return;

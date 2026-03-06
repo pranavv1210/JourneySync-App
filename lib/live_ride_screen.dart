@@ -22,6 +22,7 @@ class LiveRideScreen extends StatefulWidget {
 class _LiveRideScreenState extends State<LiveRideScreen>
     with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
+  final MapController _mapController = MapController();
 
   bool loading = true;
   Map<String, dynamic>? ride;
@@ -34,12 +35,15 @@ class _LiveRideScreenState extends State<LiveRideScreen>
 
   late final AnimationController pulseController;
   StreamSubscription<Position>? _positionSubscription;
+  Timer? _liveRefreshTimer;
   Position? _latestPosition;
   Position? _lastSyncedPosition;
   DateTime? _lastSyncedAt;
   bool _locationSyncInFlight = false;
   bool _isTrackingLocation = false;
   String _trackingStatus = "Starting GPS...";
+  bool _useTerrainTiles = false;
+  String? _chatTableName;
 
   @override
   void initState() {
@@ -69,7 +73,35 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       chatCount = unreadCount;
       loading = false;
     });
+    _startLiveRefreshTimer();
     await _startLocationTracking();
+  }
+
+  void _startLiveRefreshTimer() {
+    _liveRefreshTimer?.cancel();
+    _liveRefreshTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      _refreshLiveData();
+    });
+  }
+
+  Future<void> _refreshLiveData() async {
+    if (!mounted) return;
+    try {
+      final latestRide =
+          await supabase
+              .from('rides')
+              .select()
+              .eq('id', widget.rideId)
+              .single();
+      final refreshedMembers = await _loadMembers(latestRide);
+      final unreadCount = await _loadChatCount();
+      if (!mounted) return;
+      setState(() {
+        ride = latestRide;
+        members = refreshedMembers;
+        chatCount = unreadCount;
+      });
+    } catch (_) {}
   }
 
   String _rideTitle() {
@@ -92,7 +124,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     final raw =
         ride?['started_at']?.toString() ?? ride?['created_at']?.toString();
     final parsed = raw == null ? null : DateTime.tryParse(raw);
-    if (parsed == null) return "—";
+    if (parsed == null) return "--";
     final now = DateTime.now();
     final diff = now.difference(parsed);
     final hours = diff.inHours;
@@ -131,12 +163,23 @@ class _LiveRideScreenState extends State<LiveRideScreen>
               (profile?['bike'] ??
                       (id == currentUserId ? userBike : 'No bike added'))
                   .toString();
+          final activeRideId =
+              (profile?['active_ride_id'] ?? '').toString().trim();
+          final lat = _toDouble(profile?['current_lat']);
+          final lng = _toDouble(profile?['current_lng']);
+          final location =
+              lat != null &&
+                      lng != null &&
+                      (activeRideId.isEmpty || activeRideId == widget.rideId)
+                  ? _GeoPoint(lat: lat, lng: lng)
+                  : null;
           return _LiveMember(
             id: id,
             name: name.trim().isEmpty ? 'Rider' : name.trim(),
             bike: bike.trim().isEmpty ? 'No bike added' : bike.trim(),
             avatarUrl: (profile?['avatar_url'] ?? '').toString().trim(),
             isLeader: id == hostId,
+            location: location,
           );
         }).toList();
 
@@ -157,7 +200,9 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     try {
       final rows = await supabase
           .from('users')
-          .select('id,name,bike,avatar_url')
+          .select(
+            'id,name,bike,avatar_url,current_lat,current_lng,active_ride_id',
+          )
           .inFilter('id', unique);
       return {
         for (final row in rows)
@@ -170,7 +215,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
           error.message.toLowerCase().contains('avatar_url')) {
         final rows = await supabase
             .from('users')
-            .select('id,name,bike')
+            .select('id,name,bike,current_lat,current_lng,active_ride_id')
             .inFilter('id', unique);
         return {
           for (final row in rows)
@@ -189,6 +234,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
             .from(table)
             .select('id')
             .eq('ride_id', widget.rideId);
+        _chatTableName = table;
         return rows.length;
       } on PostgrestException catch (error) {
         final code = (error.code ?? '').trim();
@@ -197,6 +243,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         }
       } catch (_) {}
     }
+    _chatTableName = null;
     return 0;
   }
 
@@ -245,7 +292,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   String _distanceLabel() {
     final current = _latestPosition;
     final destination = destinationPoint;
-    if (current == null || destination == null) return "—";
+    if (current == null || destination == null) return "--";
     final meters = Geolocator.distanceBetween(
       current.latitude,
       current.longitude,
@@ -294,6 +341,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   @override
   void dispose() {
     _positionSubscription?.cancel();
+    _liveRefreshTimer?.cancel();
     pulseController.dispose();
     super.dispose();
   }
@@ -315,7 +363,6 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       body: Stack(
         children: [
           _mapBackground(primary),
-          _riderMarkers(primary, forest),
           SafeArea(
             child: Column(
               children: [
@@ -350,14 +397,26 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   Widget _mapBackground(Color primary) {
     final destination = destinationPoint;
     final current = _latestPosition;
+    _LiveMember? currentMember;
+    for (final member in members) {
+      if (member.id == currentUserId) {
+        currentMember = member;
+        break;
+      }
+    }
+    final currentMemberLocation = currentMember?.location;
+    final riderMarkers = _memberMarkers(primary, const Color(0xFF1B5E20));
     final center =
         current != null
             ? LatLng(current.latitude, current.longitude)
-            : (destination != null
-                ? LatLng(destination.lat, destination.lng)
-                : const LatLng(20.5937, 78.9629));
+            : (currentMemberLocation != null
+                ? LatLng(currentMemberLocation.lat, currentMemberLocation.lng)
+                : (destination != null
+                    ? LatLng(destination.lat, destination.lng)
+                    : const LatLng(20.5937, 78.9629)));
     return Positioned.fill(
       child: FlutterMap(
+        mapController: _mapController,
         options: MapOptions(
           initialCenter: center,
           initialZoom: (current != null || destination != null) ? 13 : 5,
@@ -366,7 +425,11 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         ),
         children: [
           TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            urlTemplate:
+                _useTerrainTiles
+                    ? 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
+                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            subdomains: const ['a', 'b', 'c'],
             userAgentPackageName: 'com.example.journeysync',
           ),
           if (destination != null)
@@ -384,52 +447,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                 ),
               ],
             ),
-          if (current != null)
-            MarkerLayer(
-              markers: [
-                Marker(
-                  point: LatLng(current.latitude, current.longitude),
-                  width: 44,
-                  height: 44,
-                  child: AnimatedBuilder(
-                    animation: pulseController,
-                    builder: (_, __) {
-                      final scale = 0.85 + (pulseController.value * 0.75);
-                      final opacity = 0.4 * (1 - pulseController.value);
-                      return Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Transform.scale(
-                            scale: scale,
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: primary.withOpacity(opacity),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: primary, width: 3),
-                            ),
-                            child: Icon(
-                              Icons.navigation,
-                              color: primary,
-                              size: 18,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+          if (riderMarkers.isNotEmpty) MarkerLayer(markers: riderMarkers),
           if (current != null && destination != null)
             PolylineLayer(
               polylines: [
@@ -448,174 +466,74 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     );
   }
 
-  Widget _riderMarkers(Color primary, Color forest) {
-    final visible = members.take(4).toList();
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          ...visible.asMap().entries.map((entry) {
-            final index = entry.key;
-            final member = entry.value;
-            final top = _markerTop(index, member.isLeader);
-            final left = _markerLeft(index, member.isLeader);
-            if (member.isLeader) {
-              return _leaderMarker(
-                top: top,
-                left: left,
-                label: "${member.name} (Leader)",
-                color: forest,
-                avatarUrl: member.avatarUrl,
-              );
-            }
-            return _marker(
-              top: top,
-              left: left,
-              label: member.name,
-              color: primary,
-              avatarUrl: member.avatarUrl,
-            );
-          }),
-          Positioned(
-            top: 0.15 * MediaQuery.of(context).size.height,
-            left: 0.8 * MediaQuery.of(context).size.width,
-            child: Column(
-              children: [
-                Icon(Icons.place, size: 40, color: Colors.grey.shade700),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.85),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _destination(),
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  double _markerTop(int index, bool isLeader) {
-    if (isLeader) return 0.25;
-    const values = [0.30, 0.40, 0.33, 0.46];
-    return values[index % values.length];
-  }
-
-  double _markerLeft(int index, bool isLeader) {
-    if (isLeader) return 0.65;
-    const values = [0.20, 0.34, 0.46, 0.28];
-    return values[index % values.length];
-  }
-
-  Widget _marker({
-    required double top,
-    required double left,
-    required String label,
-    required Color color,
-    required String avatarUrl,
-  }) {
-    return Positioned(
-      top: top * MediaQuery.of(context).size.height,
-      left: left * MediaQuery.of(context).size.width,
-      child: Column(
-        children: [
-          Stack(
+  List<Marker> _memberMarkers(Color primary, Color forest) {
+    final markers = <Marker>[];
+    for (final member in members) {
+      final location = member.location;
+      if (location == null) continue;
+      markers.add(
+        Marker(
+          point: LatLng(location.lat, location.lng),
+          width: 110,
+          height: 82,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _avatar(url: avatarUrl, radius: 24),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(999),
+              Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: member.isLeader ? forest : primary,
+                        width: member.isLeader ? 3 : 2,
+                      ),
+                    ),
+                    child: _avatar(url: member.avatarUrl, radius: 20),
                   ),
-                  child: Icon(Icons.two_wheeler, size: 12, color: color),
-                ),
+                  if (member.isLeader)
+                    Positioned(
+                      top: -3,
+                      right: -3,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: forest,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        child: const Icon(
+                          Icons.star,
+                          color: Colors.white,
+                          size: 9,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _leaderMarker({
-    required double top,
-    required double left,
-    required String label,
-    required Color color,
-    required String avatarUrl,
-  }) {
-    return Positioned(
-      top: top * MediaQuery.of(context).size.height,
-      left: left * MediaQuery.of(context).size.width,
-      child: Column(
-        children: [
-          Stack(
-            children: [
+              const SizedBox(height: 3),
               Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: color, width: 4),
+                  color: Colors.white.withOpacity(0.92),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-                child: _avatar(url: avatarUrl, radius: 28),
-              ),
-              Positioned(
-                top: -4,
-                right: -4,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.white, width: 2),
+                child: Text(
+                  member.id == currentUserId ? 'You' : member.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
                   ),
-                  child: const Icon(Icons.star, size: 12, color: Colors.white),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+        ),
+      );
+    }
+    return markers;
   }
 
   Widget _rideStatsHeader(Color primary, Color warmSand) {
@@ -840,31 +758,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: () async {
-              final prefs = await SharedPreferences.getInstance();
-              final phone = prefs.getString("userPhone") ?? "";
-              final name = prefs.getString("userName") ?? "Rider";
-              final bike = prefs.getString("userBike") ?? "No bike added";
-
-              await supabase
-                  .from('rides')
-                  .update({
-                    'alert_status': 'active',
-                    'alert_by': phone,
-                    'alert_by_name': name,
-                    'alert_by_bike': bike,
-                    'alert_at': DateTime.now().toIso8601String(),
-                  })
-                  .eq('id', widget.rideId);
-
-              if (!mounted) return;
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SosAlertScreen(rideId: widget.rideId),
-                ),
-              );
-            },
+            onTap: _triggerSos,
             child: Container(
               width: 64,
               height: 64,
@@ -893,9 +787,19 @@ class _LiveRideScreenState extends State<LiveRideScreen>
           ),
           Column(
             children: [
-              _toolButton(Icons.layers, primary),
+              _toolButton(
+                Icons.layers,
+                primary,
+                tooltip: 'Toggle map style',
+                onTap: _toggleMapStyle,
+              ),
               const SizedBox(height: 10),
-              _toolButton(Icons.my_location, primary),
+              _toolButton(
+                Icons.my_location,
+                primary,
+                tooltip: 'Focus my location',
+                onTap: _focusOnCurrentLocation,
+              ),
             ],
           ),
         ],
@@ -903,19 +807,285 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     );
   }
 
-  Widget _toolButton(IconData icon, Color primary) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
+  Widget _toolButton(
+    IconData icon,
+    Color primary, {
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(999),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10),
-        ],
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10),
+              ],
+            ),
+            child: Icon(icon, color: primary),
+          ),
+        ),
       ),
-      child: Icon(icon, color: primary),
     );
+  }
+
+  Future<void> _triggerSos() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString("userPhone") ?? "";
+      final name = prefs.getString("userName") ?? "Rider";
+      final bike = prefs.getString("userBike") ?? "No bike added";
+
+      try {
+        await supabase
+            .from('rides')
+            .update({
+              'alert_status': 'active',
+              'alert_by': phone,
+              'alert_by_name': name,
+              'alert_by_bike': bike,
+              'alert_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', widget.rideId);
+      } catch (_) {}
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SosAlertScreen(rideId: widget.rideId),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not trigger SOS: $error')));
+    }
+  }
+
+  void _toggleMapStyle() {
+    setState(() {
+      _useTerrainTiles = !_useTerrainTiles;
+    });
+  }
+
+  void _focusOnCurrentLocation() {
+    final current = _latestPosition;
+    if (current == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Current location unavailable')),
+      );
+      return;
+    }
+    _mapController.move(LatLng(current.latitude, current.longitude), 15.5);
+  }
+
+  void _focusOnDestination() {
+    final destination = destinationPoint;
+    if (destination == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Destination location unavailable')),
+      );
+      return;
+    }
+    _mapController.move(LatLng(destination.lat, destination.lng), 14.5);
+  }
+
+  Future<void> _openGroupChat() async {
+    final table = _chatTableName;
+    if (table == null) return;
+    final controller = TextEditingController();
+    var messages = await _loadGroupMessages(table);
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 14,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 14,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Group Chat',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 280,
+                    child:
+                        messages.isEmpty
+                            ? const Center(
+                              child: Text(
+                                'No messages yet',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            )
+                            : ListView.builder(
+                              itemCount: messages.length,
+                              itemBuilder: (context, index) {
+                                final msg = messages[index];
+                                final mine = msg.userId == currentUserId;
+                                return Align(
+                                  alignment:
+                                      mine
+                                          ? Alignment.centerRight
+                                          : Alignment.centerLeft,
+                                  child: Container(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 7,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          mine
+                                              ? const Color(
+                                                0xFFFF6A00,
+                                              ).withOpacity(0.12)
+                                              : Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          mine
+                                              ? CrossAxisAlignment.end
+                                              : CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          mine
+                                              ? 'You'
+                                              : _memberName(msg.userId),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(msg.message),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: controller,
+                          decoration: const InputDecoration(
+                            hintText: 'Type message',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () async {
+                          final text = controller.text.trim();
+                          if (text.isEmpty) return;
+                          final sent = await _sendGroupMessage(table, text);
+                          if (!sent) {
+                            if (!ctx.mounted) return;
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(
+                                content: Text('Could not send message'),
+                              ),
+                            );
+                            return;
+                          }
+                          controller.clear();
+                          messages = await _loadGroupMessages(table);
+                          if (!ctx.mounted) return;
+                          setLocalState(() {});
+                          if (mounted) {
+                            setState(() {
+                              chatCount = messages.length;
+                            });
+                          }
+                        },
+                        child: const Text('Send'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    controller.dispose();
+  }
+
+  Future<List<_ChatMessage>> _loadGroupMessages(String table) async {
+    try {
+      final rows = await supabase
+          .from(table)
+          .select('id,user_id,message,created_at')
+          .eq('ride_id', widget.rideId)
+          .order('created_at');
+      return rows
+          .map(
+            (row) => _ChatMessage(
+              id: (row['id'] ?? '').toString(),
+              userId: (row['user_id'] ?? '').toString().trim(),
+              message: (row['message'] ?? '').toString(),
+              createdAt: DateTime.tryParse(
+                (row['created_at'] ?? '').toString(),
+              ),
+            ),
+          )
+          .where((m) => m.message.trim().isNotEmpty)
+          .toList();
+    } on PostgrestException catch (_) {
+      _chatTableName = null;
+      return <_ChatMessage>[];
+    }
+  }
+
+  Future<bool> _sendGroupMessage(String table, String message) async {
+    try {
+      await supabase.from(table).insert({
+        'ride_id': widget.rideId,
+        'user_id': currentUserId,
+        'message': message,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String _memberName(String userId) {
+    for (final member in members) {
+      if (member.id == userId) return member.name;
+    }
+    return 'Rider';
   }
 
   Widget _bottomSheet(Color primary, Color warmSand, Color forest) {
@@ -948,68 +1118,66 @@ class _LiveRideScreenState extends State<LiveRideScreen>
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+          InkWell(
+            onTap: _focusOnDestination,
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: primary.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(Icons.flag, color: primary, size: 14),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: primary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(Icons.flag, color: primary, size: 14),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Next Stop',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: primary,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(height: 6),
                         Text(
-                          "Next Stop",
-                          style: TextStyle(
-                            fontSize: 11,
+                          _destination(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 20,
                             fontWeight: FontWeight.w800,
-                            color: primary,
-                            letterSpacing: 0.6,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_distanceLabel()} away • ${_etaArrivalLabel()}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _destination(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "${_distanceLabel()} away • ${_etaArrivalLabel()}",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  Icon(Icons.chevron_right, color: Colors.grey.shade600),
+                ],
               ),
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Icon(Icons.mic, color: Colors.grey.shade700),
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 14),
           Divider(color: Colors.grey.shade300),
@@ -1030,7 +1198,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                     ),
                     child: Center(
                       child: Text(
-                        "+${_extraMemberCount()}",
+                        '+${_extraMemberCount()}',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -1041,50 +1209,60 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                   ),
                 ],
               ),
-              TextButton(
-                onPressed: () {},
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.black87,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      "Group Chat",
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
+              if (_chatTableName != null)
+                TextButton(
+                  onPressed: _openGroupChat,
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.black87,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: primary,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        chatCount.toString(),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Group Chat',
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 12,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: primary,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          chatCount.toString(),
+                          style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Text(
+                  'Chat unavailable',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
-              ),
             ],
           ),
         ],
@@ -1183,6 +1361,13 @@ class _LiveRideScreenState extends State<LiveRideScreen>
           timeLimit: Duration(seconds: 10),
         ),
       );
+      if (mounted) {
+        setState(() {
+          _latestPosition = current;
+        });
+      } else {
+        _latestPosition = current;
+      }
       await _syncLocationToRide(current);
     } catch (_) {}
 
@@ -1194,7 +1379,13 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       ),
     ).listen(
       (position) {
-        _latestPosition = position;
+        if (mounted) {
+          setState(() {
+            _latestPosition = position;
+          });
+        } else {
+          _latestPosition = position;
+        }
         _syncLocationToRide(position);
       },
       onError: (_) {
@@ -1235,36 +1426,115 @@ class _LiveRideScreenState extends State<LiveRideScreen>
 
     _locationSyncInFlight = true;
     try {
-      await supabase
-          .from('rides')
-          .update({
-            'current_lat': position.latitude,
-            'current_lng': position.longitude,
-            'current_speed_mps': position.speed >= 0 ? position.speed : null,
-            'current_heading': position.heading >= 0 ? position.heading : null,
-            'location_updated_at': now.toIso8601String(),
-          })
-          .eq('id', widget.rideId);
+      var synced = false;
+      if (currentUserId.isNotEmpty) {
+        try {
+          await supabase
+              .from('users')
+              .update({
+                'current_lat': position.latitude,
+                'current_lng': position.longitude,
+                'current_speed_mps':
+                    position.speed >= 0 ? position.speed : null,
+                'current_heading':
+                    position.heading >= 0 ? position.heading : null,
+                'location_updated_at': now.toIso8601String(),
+                'active_ride_id': widget.rideId,
+              })
+              .eq('id', currentUserId);
+          synced = true;
+        } on PostgrestException catch (error) {
+          if (!_isMissingUserLocationColumns(error)) rethrow;
+        }
+      }
+
+      if (!synced) {
+        try {
+          await supabase
+              .from('rides')
+              .update({
+                'current_lat': position.latitude,
+                'current_lng': position.longitude,
+                'current_speed_mps':
+                    position.speed >= 0 ? position.speed : null,
+                'current_heading':
+                    position.heading >= 0 ? position.heading : null,
+                'location_updated_at': now.toIso8601String(),
+              })
+              .eq('id', widget.rideId);
+          synced = true;
+        } on PostgrestException catch (error) {
+          if (!_isMissingRideLocationColumns(error)) rethrow;
+        }
+      }
+
       _lastSyncedPosition = position;
       _lastSyncedAt = now;
       if (!mounted) return;
       setState(() {
         _isTrackingLocation = true;
-        _trackingStatus = "Live location synced";
+        _trackingStatus =
+            synced ? 'Live location synced' : 'GPS active (cloud sync limited)';
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
-        _trackingStatus = "Location sync failed";
+        _isTrackingLocation = false;
+        _trackingStatus = _syncFailureLabel(error);
       });
     } finally {
       _locationSyncInFlight = false;
     }
   }
 
+  String _syncFailureLabel(Object error) {
+    if (error is PostgrestException) {
+      final code = (error.code ?? '').trim();
+      final message = error.message.toLowerCase();
+      if (code == '42501' || message.contains('row-level security')) {
+        return 'Sync blocked by DB policy';
+      }
+      if (code == '42703' || code == 'PGRST204') {
+        return 'DB missing location columns';
+      }
+      if (code == '42P01') {
+        return 'DB table missing';
+      }
+      return 'Location sync failed ($code)';
+    }
+    final text = error.toString().toLowerCase();
+    if (text.contains('socket') || text.contains('timeout')) {
+      return 'Network issue while syncing';
+    }
+    return 'Location sync failed';
+  }
+
+  bool _isMissingUserLocationColumns(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    final message = error.message.toLowerCase();
+    return code == '42703' ||
+        code == 'PGRST204' ||
+        message.contains('current_lat') ||
+        message.contains('current_lng') ||
+        message.contains('active_ride_id') ||
+        message.contains('location_updated_at');
+  }
+
+  bool _isMissingRideLocationColumns(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    final message = error.message.toLowerCase();
+    return code == '42703' ||
+        code == 'PGRST204' ||
+        message.contains('current_lat') ||
+        message.contains('current_lng') ||
+        message.contains('current_speed_mps') ||
+        message.contains('current_heading') ||
+        message.contains('location_updated_at');
+  }
+
   String _currentSpeedMph() {
     final speedMps = _latestPosition?.speed;
-    if (speedMps == null || speedMps <= 0) return "—";
+    if (speedMps == null || speedMps <= 0) return "--";
     return (speedMps * 2.23694).toStringAsFixed(0);
   }
 }
@@ -1276,6 +1546,7 @@ class _LiveMember {
     required this.bike,
     required this.avatarUrl,
     required this.isLeader,
+    this.location,
   });
 
   final String id;
@@ -1283,6 +1554,21 @@ class _LiveMember {
   final String bike;
   final String avatarUrl;
   final bool isLeader;
+  final _GeoPoint? location;
+}
+
+class _ChatMessage {
+  const _ChatMessage({
+    required this.id,
+    required this.userId,
+    required this.message,
+    this.createdAt,
+  });
+
+  final String id;
+  final String userId;
+  final String message;
+  final DateTime? createdAt;
 }
 
 class _GeoPoint {

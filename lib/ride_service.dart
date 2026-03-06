@@ -2,6 +2,25 @@ import 'supabase_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+enum JoinByCodeStatus {
+  requested,
+  joinedDirectly,
+  alreadyRequested,
+  alreadyJoined,
+}
+
+class JoinByCodeResult {
+  const JoinByCodeResult({
+    required this.status,
+    required this.rideId,
+    required this.rideTitle,
+  });
+
+  final JoinByCodeStatus status;
+  final String rideId;
+  final String rideTitle;
+}
+
 class RideRecord {
   const RideRecord({
     required this.id,
@@ -95,12 +114,16 @@ class RideService {
     required String title,
     required String startLocation,
     required String endLocation,
+    DateTime? scheduledStartTime,
+    int? maxRiders,
   }) async {
     final row = await _supabaseService.createRide(
       creatorId: creatorId,
       title: title,
       startLocation: startLocation,
       endLocation: endLocation,
+      scheduledStartTime: scheduledStartTime,
+      maxRiders: maxRiders,
     );
     final ride = _toRideRecord(row);
     await joinRide(rideId: ride.id, userId: creatorId, suppressDuplicate: true);
@@ -211,6 +234,103 @@ class RideService {
       }
       rethrow;
     }
+  }
+
+  Future<JoinByCodeResult> joinRideByAccessCode({
+    required String accessCode,
+    required String userId,
+  }) async {
+    final normalizedUserId = userId.trim();
+    if (normalizedUserId.isEmpty) {
+      throw Exception('Missing user session. Please login again.');
+    }
+
+    final normalizedCode = _normalizeAccessCode(accessCode);
+    if (!_looksLikeAccessCode(normalizedCode)) {
+      throw Exception('Enter a valid code like JS-0370.');
+    }
+
+    final rides = await _supabaseService.fetchRecentRidesForCodeLookup(
+      limit: 250,
+    );
+    Map<String, dynamic>? matchedRide;
+    for (final row in rides) {
+      final rideId = (row['id'] ?? '').toString().trim();
+      if (rideId.isEmpty) continue;
+      if (_rideCodeFromId(rideId) != normalizedCode) continue;
+      final status = (row['status'] ?? '').toString().trim().toLowerCase();
+      if (status == 'cancelled' || status == 'completed' || status == 'ended') {
+        continue;
+      }
+      if (row['archived_at'] != null ||
+          row['is_archived'] == true ||
+          row['archived'] == true) {
+        continue;
+      }
+      matchedRide = row;
+      break;
+    }
+
+    if (matchedRide == null) {
+      throw Exception('No active ride found for this access code.');
+    }
+
+    final rideId = (matchedRide['id'] ?? '').toString().trim();
+    final title =
+        (matchedRide['title'] ?? matchedRide['name'] ?? 'Ride')
+            .toString()
+            .trim();
+    final hostId = _rideHostId(matchedRide);
+
+    if (hostId.isNotEmpty && hostId == normalizedUserId) {
+      throw Exception('This is your own ride.');
+    }
+
+    final participantRows = await _supabaseService.fetchParticipantsByUser(
+      normalizedUserId,
+    );
+    final alreadyJoined = participantRows.any(
+      (row) => (row['ride_id'] ?? '').toString().trim() == rideId,
+    );
+    if (alreadyJoined) {
+      return JoinByCodeResult(
+        status: JoinByCodeStatus.alreadyJoined,
+        rideId: rideId,
+        rideTitle: title.isNotEmpty ? title : 'Ride',
+      );
+    }
+
+    try {
+      await _supabaseService.createJoinRequest(
+        rideId: rideId,
+        userId: normalizedUserId,
+      );
+      return JoinByCodeResult(
+        status: JoinByCodeStatus.requested,
+        rideId: rideId,
+        rideTitle: title.isNotEmpty ? title : 'Ride',
+      );
+    } on PostgrestException catch (error) {
+      if (_isDuplicateRow(error)) {
+        return JoinByCodeResult(
+          status: JoinByCodeStatus.alreadyRequested,
+          rideId: rideId,
+          rideTitle: title.isNotEmpty ? title : 'Ride',
+        );
+      }
+      if (!_isMissingJoinRequestSchema(error)) rethrow;
+    }
+
+    await joinRide(
+      rideId: rideId,
+      userId: normalizedUserId,
+      suppressDuplicate: true,
+    );
+    return JoinByCodeResult(
+      status: JoinByCodeStatus.joinedDirectly,
+      rideId: rideId,
+      rideTitle: title.isNotEmpty ? title : 'Ride',
+    );
   }
 
   Future<void> deleteRideAsCreator({
@@ -357,5 +477,44 @@ class RideService {
     );
 
     return Map<String, Map<String, String>>.fromEntries(entries);
+  }
+
+  String _normalizeAccessCode(String value) {
+    final text = value.trim().toUpperCase().replaceAll(' ', '');
+    if (text.contains('-')) return text;
+    if (text.startsWith('JS') && text.length >= 6) {
+      return 'JS-${text.substring(2)}';
+    }
+    return text;
+  }
+
+  bool _looksLikeAccessCode(String code) {
+    return RegExp(r'^JS-[A-Z0-9]{4}$').hasMatch(code);
+  }
+
+  String _rideCodeFromId(String id) {
+    final cleaned = id.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
+    if (cleaned.isEmpty) return "JS-0000";
+    final tail =
+        cleaned.length >= 4 ? cleaned.substring(cleaned.length - 4) : cleaned;
+    return "JS-$tail";
+  }
+
+  String _rideHostId(Map<String, dynamic> row) {
+    return (row['creator_id'] ?? row['leader_id'] ?? row['user_id'] ?? '')
+        .toString()
+        .trim();
+  }
+
+  bool _isMissingJoinRequestSchema(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    return code == '42P01' ||
+        code == '42703' ||
+        code == 'PGRST204' ||
+        error.message.toLowerCase().contains('join_requests');
+  }
+
+  bool _isDuplicateRow(PostgrestException error) {
+    return (error.code ?? '').trim() == '23505';
   }
 }

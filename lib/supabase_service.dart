@@ -158,43 +158,77 @@ class SupabaseService {
     required String creatorId,
     int limit = 5,
   }) async {
-    if (creatorId.trim().isEmpty) {
+    final normalized = creatorId.trim();
+    if (normalized.isEmpty) {
       return <Map<String, dynamic>>[];
     }
 
+    final byId = <String, Map<String, dynamic>>{};
+
+    Future<void> collectByOwner(String column) async {
+      try {
+        final rows = await _client
+            .from('rides')
+            .select()
+            .eq(column, normalized)
+            .order('created_at', ascending: false)
+            .limit(limit * 3);
+        for (final row in List<Map<String, dynamic>>.from(rows)) {
+          final id = (row['id'] ?? '').toString().trim();
+          if (id.isEmpty) continue;
+          byId[id] = row;
+        }
+      } on PostgrestException catch (error) {
+        final missingOwnerColumn =
+            _isMissingRideCreatorColumn(error) ||
+            _isMissingRideUserColumn(error) ||
+            (error.code ?? '').trim() == '42703' ||
+            (error.code ?? '').trim() == 'PGRST204';
+        if (!missingOwnerColumn) rethrow;
+      }
+    }
+
+    await collectByOwner('creator_id');
+    await collectByOwner('user_id');
+    await collectByOwner('leader_id');
+
+    // Include rides user joined even if they did not create.
     try {
-      final rows = await _client
-          .from('rides')
-          .select()
-          .eq('creator_id', creatorId.trim())
-          .order('created_at', ascending: false)
-          .limit(limit);
-      return List<Map<String, dynamic>>.from(rows);
-    } on PostgrestException catch (error) {
-      if (_isMissingRideCreatorColumn(error)) {
-        try {
-          final rows = await _client
-              .from('rides')
-              .select()
-              .eq('user_id', creatorId.trim())
-              .order('created_at', ascending: false)
-              .limit(limit);
-          return List<Map<String, dynamic>>.from(rows);
-        } on PostgrestException catch (nestedError) {
-          if (_isMissingRideUserColumn(nestedError)) {
-            final rows = await _client
-                .from('rides')
-                .select()
-                .eq('leader_id', creatorId.trim())
-                .order('created_at', ascending: false)
-                .limit(limit);
-            return List<Map<String, dynamic>>.from(rows);
-          }
-          rethrow;
+      final participantRows = await _client
+          .from('participants')
+          .select('ride_id')
+          .eq('user_id', normalized);
+      final rideIds =
+          participantRows
+              .map((row) => (row['ride_id'] ?? '').toString().trim())
+              .where((id) => id.isNotEmpty)
+              .toSet()
+              .toList();
+      if (rideIds.isNotEmpty) {
+        final rows = await _client
+            .from('rides')
+            .select()
+            .inFilter('id', rideIds);
+        for (final row in List<Map<String, dynamic>>.from(rows)) {
+          final id = (row['id'] ?? '').toString().trim();
+          if (id.isEmpty) continue;
+          byId[id] = row;
         }
       }
-      rethrow;
+    } on PostgrestException catch (_) {
+      // Keep recent rides usable even if participants schema is unavailable.
     }
+
+    final merged = byId.values.toList();
+    merged.sort((a, b) {
+      final at = DateTime.tryParse((a['created_at'] ?? '').toString());
+      final bt = DateTime.tryParse((b['created_at'] ?? '').toString());
+      if (at == null && bt == null) return 0;
+      if (at == null) return 1;
+      if (bt == null) return -1;
+      return bt.compareTo(at);
+    });
+    return merged.take(limit).toList();
   }
 
   Future<List<Map<String, dynamic>>> fetchNearbyRides({
@@ -262,32 +296,59 @@ class SupabaseService {
     required String title,
     required String startLocation,
     required String endLocation,
+    DateTime? scheduledStartTime,
+    int? maxRiders,
   }) async {
+    final optionalPayload = <String, dynamic>{
+      if (scheduledStartTime != null)
+        'start_time': scheduledStartTime.toIso8601String(),
+      if (maxRiders != null) 'max_riders': maxRiders,
+    };
     final basePayload = <String, dynamic>{
       'title': title.trim(),
       'start_location': startLocation.trim(),
       'end_location': endLocation.trim(),
       'created_at': DateTime.now().toIso8601String(),
     };
+    final payload = <String, dynamic>{...basePayload, ...optionalPayload};
     try {
       final row =
           await _client
               .from('rides')
-              .insert({...basePayload, 'creator_id': creatorId.trim()})
+              .insert({...payload, 'creator_id': creatorId.trim()})
               .select(_rideColumnsWithCreator)
               .single();
       return row;
     } on PostgrestException catch (error) {
+      if (_isMissingRideOptionalColumns(error) && optionalPayload.isNotEmpty) {
+        final row =
+            await _client
+                .from('rides')
+                .insert({...basePayload, 'creator_id': creatorId.trim()})
+                .select(_rideColumnsWithCreator)
+                .single();
+        return row;
+      }
       if (_isMissingRideCreatorColumn(error)) {
         try {
           final row =
               await _client
                   .from('rides')
-                  .insert({...basePayload, 'user_id': creatorId.trim()})
+                  .insert({...payload, 'user_id': creatorId.trim()})
                   .select(_rideColumnsWithUser)
                   .single();
           return row;
         } on PostgrestException catch (nestedError) {
+          if (_isMissingRideOptionalColumns(nestedError) &&
+              optionalPayload.isNotEmpty) {
+            final row =
+                await _client
+                    .from('rides')
+                    .insert({...basePayload, 'user_id': creatorId.trim()})
+                    .select(_rideColumnsWithUser)
+                    .single();
+            return row;
+          }
           if (_isMissingRideUserColumn(nestedError) ||
               _isMissingRideLocationColumns(nestedError)) {
             final row =
@@ -332,6 +393,29 @@ class SupabaseService {
       'ride_id': rideId.trim(),
       'user_id': userId.trim(),
     });
+  }
+
+  Future<void> createJoinRequest({
+    required String rideId,
+    required String userId,
+  }) async {
+    await _client.from('join_requests').insert({
+      'ride_id': rideId.trim(),
+      'user_id': userId.trim(),
+      'status': 'pending',
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> fetchRecentRidesForCodeLookup({
+    int limit = 250,
+  }) async {
+    final rows = await _client
+        .from('rides')
+        .select()
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return List<Map<String, dynamic>>.from(rows);
   }
 
   Future<void> deleteRideAsCreator({
@@ -562,5 +646,14 @@ class SupabaseService {
         message.contains('end_location') ||
         message.contains('start_location') ||
         message.contains('title');
+  }
+
+  bool _isMissingRideOptionalColumns(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    final message = error.message.toLowerCase();
+    if (code != '42703' && code != 'PGRST204') {
+      return false;
+    }
+    return message.contains('start_time') || message.contains('max_riders');
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'app_navigation.dart';
 import 'create_ride_screen.dart';
 import 'map_screen.dart';
 import 'nearby_rides_screen.dart';
@@ -16,7 +17,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with RouteAware {
   final SupabaseService _supabaseService = SupabaseService();
   final RideService _rideService = RideService();
   final WeatherService _weatherService = WeatherService();
@@ -38,6 +39,26 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadHomeData(showBlockingLoader: true);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    appRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    _loadHomeData();
   }
 
   Future<void> _loadHomeData({bool showBlockingLoader = false}) async {
@@ -70,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
       var profileErrorText = '';
       var fetchedRecent = <RideRecord>[];
       var fetchedNearby = <RideRecord>[];
-      var weatherValue = weatherText;
+      var weatherValue = 'Weather unavailable';
       var fetchedProfileFromServer = false;
 
       Map<String, dynamic>? userRow;

@@ -1,11 +1,8 @@
-import 'dart:async';
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'ride_service.dart';
 
@@ -18,239 +15,167 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final RideService _rideService = RideService();
+  final MapController _mapController = MapController();
 
   bool loading = true;
-  String errorText = "";
-  List<_RidePin> ridePins = <_RidePin>[];
-  _RidePin? selectedPin;
+  String errorText = '';
+  String currentUserId = '';
+  String joiningRideId = '';
   LatLng? currentLocation;
-  StreamSubscription<List<RideRecord>>? _ridesSubscription;
-  final Map<String, LatLng?> _geocodeCache = <String, LatLng?>{};
-  int _pinBuildRequestId = 0;
+  List<NearbyRide> nearbyRides = <NearbyRide>[];
+  NearbyRide? selectedRide;
 
   static const LatLng fallbackCenter = LatLng(20.5937, 78.9629);
 
   @override
   void initState() {
     super.initState();
-    _initialize();
+    _loadRadarData();
   }
 
-  @override
-  void dispose() {
-    _ridesSubscription?.cancel();
-    super.dispose();
-  }
+  Future<void> _loadRadarData() async {
+    if (!mounted) return;
+    setState(() {
+      loading = true;
+      errorText = '';
+      joiningRideId = '';
+    });
 
-  Future<void> _initialize() async {
-    await _loadCurrentLocation();
-    await _startRideStream();
-  }
-
-  Future<void> _loadCurrentLocation() async {
     try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        return;
+      final prefs = await SharedPreferences.getInstance();
+      final userId = (prefs.getString('userId') ?? '').trim();
+      if (userId.isEmpty) {
+        throw Exception('Missing user session. Please login again.');
       }
 
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
+      LatLng? resolvedLocation;
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+        resolvedLocation = LatLng(position.latitude, position.longitude);
+      } catch (_) {}
 
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        return;
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
-        ),
+      final rides = await _rideService.searchNearbyRides(
+        userId,
+        requestPermissionIfNeeded: true,
+        maxDistanceKm: 15,
       );
 
       if (!mounted) return;
       setState(() {
-        currentLocation = LatLng(position.latitude, position.longitude);
+        currentUserId = userId;
+        currentLocation = resolvedLocation;
+        nearbyRides = rides;
+        selectedRide = _resolveSelectedRide(rides);
+        loading = false;
       });
-    } catch (_) {
-      // Keep map usable even when location fails.
+
+      final center = _initialCenter;
+      _mapController.move(center, _initialZoom);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        errorText = _mapFallbackMessage(error);
+        loading = false;
+      });
     }
   }
 
-  Future<void> _startRideStream() async {
-    await _ridesSubscription?.cancel();
-    if (!mounted) return;
-    setState(() {
-      loading = true;
-      errorText = "";
-    });
-
-    _ridesSubscription = _rideService.watchRides().listen(
-      (rides) async {
-        final requestId = ++_pinBuildRequestId;
-        final pins = await _buildRidePins(rides);
-        if (!mounted || requestId != _pinBuildRequestId) return;
-        setState(() {
-          ridePins = pins;
-          selectedPin = _resolveSelectedPin(pins);
-          errorText = "";
-          loading = false;
-        });
-      },
-      onError: (_) {
-        if (!mounted) return;
-        setState(() {
-          errorText = "Could not load rides for map.";
-          loading = false;
-        });
-      },
-    );
-  }
-
-  Future<List<_RidePin>> _buildRidePins(List<RideRecord> rides) async {
-    final pins = <_RidePin>[];
+  NearbyRide? _resolveSelectedRide(List<NearbyRide> rides) {
+    final current = selectedRide;
+    if (current == null) return rides.isNotEmpty ? rides.first : null;
     for (final ride in rides) {
-      final point = await _resolveRidePoint(ride);
-      if (point == null) {
-        continue;
-      }
-
-      pins.add(
-        _RidePin(
-          id: ride.id,
-          title: ride.title,
-          destination: ride.endLocation,
-          point: point,
-        ),
-      );
+      if (ride.ride.id == current.ride.id) return ride;
     }
-    return pins;
+    return rides.isNotEmpty ? rides.first : null;
   }
 
-  Future<LatLng?> _resolveRidePoint(RideRecord ride) async {
-    final fromStart = _parseCoordinatePair(ride.startLocation);
-    if (fromStart != null) return fromStart;
-
-    final fromEnd = _parseCoordinatePair(ride.endLocation);
-    if (fromEnd != null) return fromEnd;
-
-    final startAddress = ride.startLocation.trim();
-    if (startAddress.isNotEmpty) {
-      final geocodedStart = await _geocodeAddress(startAddress);
-      if (geocodedStart != null) return geocodedStart;
+  String _mapFallbackMessage(Object error) {
+    final text = error.toString().toLowerCase();
+    if (text.contains('permission') || text.contains('location')) {
+      return 'Location access is needed to show nearby live rides.';
     }
-
-    final endAddress = ride.endLocation.trim();
-    if (endAddress.isNotEmpty) {
-      final geocodedEnd = await _geocodeAddress(endAddress);
-      if (geocodedEnd != null) return geocodedEnd;
+    if (text.contains('timeout') || text.contains('socket')) {
+      return 'Network issue while loading nearby rides.';
     }
-
-    return null;
-  }
-
-  Future<LatLng?> _geocodeAddress(String rawAddress) async {
-    final address = rawAddress.trim();
-    if (address.isEmpty) return null;
-    if (_geocodeCache.containsKey(address)) {
-      return _geocodeCache[address];
-    }
-
-    try {
-      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
-        'q': address,
-        'format': 'jsonv2',
-        'limit': '1',
-      });
-      final response = await http.get(
-        uri,
-        headers: const {
-          'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)',
-        },
-      );
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        _geocodeCache[address] = null;
-        return null;
-      }
-
-      final decoded = jsonDecode(response.body);
-      if (decoded is! List || decoded.isEmpty) {
-        _geocodeCache[address] = null;
-        return null;
-      }
-
-      final first = decoded.first;
-      if (first is! Map<String, dynamic>) {
-        _geocodeCache[address] = null;
-        return null;
-      }
-
-      final lat = double.tryParse((first['lat'] ?? '').toString());
-      final lng = double.tryParse((first['lon'] ?? '').toString());
-      if (lat == null || lng == null) {
-        _geocodeCache[address] = null;
-        return null;
-      }
-
-      final point = LatLng(lat, lng);
-      _geocodeCache[address] = point;
-      return point;
-    } catch (_) {
-      _geocodeCache[address] = null;
-      return null;
-    }
-  }
-
-  _RidePin? _resolveSelectedPin(List<_RidePin> pins) {
-    final currentSelected = selectedPin;
-    if (currentSelected == null) {
-      return null;
-    }
-    for (final pin in pins) {
-      if (pin.id == currentSelected.id) {
-        return pin;
-      }
-    }
-    return null;
-  }
-
-  LatLng? _parseCoordinatePair(String raw) {
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty) {
-      return null;
-    }
-
-    final match = RegExp(
-      r'^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$',
-    ).firstMatch(trimmed);
-    if (match == null) {
-      return null;
-    }
-
-    final lat = double.tryParse(match.group(1) ?? "");
-    final lng = double.tryParse(match.group(2) ?? "");
-    if (lat == null || lng == null) {
-      return null;
-    }
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      return null;
-    }
-    return LatLng(lat, lng);
+    return 'Could not load nearby live rides right now.';
   }
 
   LatLng get _initialCenter {
-    final location = currentLocation;
-    if (location != null) return location;
-    if (ridePins.isNotEmpty) return ridePins.first.point;
-    return fallbackCenter;
+    if (currentLocation != null) return currentLocation!;
+    final first =
+        nearbyRides.isNotEmpty ? _rideStartPoint(nearbyRides.first) : null;
+    return first ?? fallbackCenter;
   }
 
   double get _initialZoom {
-    if (currentLocation != null || ridePins.isNotEmpty) return 12;
+    if (currentLocation != null) return 13;
+    if (nearbyRides.isNotEmpty) return 11;
     return 5;
+  }
+
+  LatLng? _rideStartPoint(NearbyRide ride) {
+    final text = ride.ride.startLocation.trim();
+    final parts = text.split(',');
+    if (parts.length != 2) return null;
+    final lat = double.tryParse(parts[0].trim());
+    final lng = double.tryParse(parts[1].trim());
+    if (lat == null || lng == null) return null;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+    return LatLng(lat, lng);
+  }
+
+  String _distanceFromMe(NearbyRide ride) {
+    final me = currentLocation;
+    final start = _rideStartPoint(ride);
+    if (me == null || start == null) return 'Distance unavailable';
+    final meters = Geolocator.distanceBetween(
+      me.latitude,
+      me.longitude,
+      start.latitude,
+      start.longitude,
+    );
+    if (meters < 1000) return '${meters.round()} m away';
+    return '${(meters / 1000).toStringAsFixed(1)} km away';
+  }
+
+  Future<void> _joinRide(NearbyRide ride) async {
+    if (joiningRideId.isNotEmpty || ride.joined) return;
+    setState(() {
+      joiningRideId = ride.ride.id;
+    });
+    try {
+      await _rideService.joinRide(rideId: ride.ride.id, userId: currentUserId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ride joined successfully')));
+      await _loadRadarData();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not join ride: $error')));
+      setState(() {
+        joiningRideId = '';
+      });
+    }
+  }
+
+  void _focusMyLocation() {
+    final location = currentLocation;
+    if (location == null) return;
+    _mapController.move(location, 15);
+  }
+
+  void _focusRide(NearbyRide ride) {
+    final point = _rideStartPoint(ride);
+    if (point == null) return;
+    _mapController.move(point, 14.5);
   }
 
   @override
@@ -258,19 +183,20 @@ class _MapScreenState extends State<MapScreen> {
     const background = Color(0xFFF8F7F6);
     const forest = Color(0xFF1E3A2F);
     const primary = Color(0xFFD46211);
-    final selected = selectedPin;
+    final selected = selectedRide;
 
     return Scaffold(
       backgroundColor: background,
       appBar: AppBar(
-        title: const Text("Ride Map"),
+        title: const Text('Nearby Live Radar'),
         centerTitle: false,
         backgroundColor: background,
         foregroundColor: forest,
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: loading ? null : _initialize,
+            onPressed: loading ? null : _loadRadarData,
+            tooltip: 'Refresh',
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
@@ -279,15 +205,15 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           Positioned.fill(
             child: FlutterMap(
+              mapController: _mapController,
               options: MapOptions(
                 initialCenter: _initialCenter,
                 initialZoom: _initialZoom,
                 minZoom: 3,
                 maxZoom: 18,
                 onTap: (_, __) {
-                  if (selectedPin == null) return;
                   setState(() {
-                    selectedPin = null;
+                    selectedRide = null;
                   });
                 },
               ),
@@ -297,7 +223,7 @@ class _MapScreenState extends State<MapScreen> {
                   userAgentPackageName: 'com.example.journeysync',
                 ),
                 MarkerLayer(markers: _buildRideMarkers(primary)),
-                MarkerLayer(markers: _buildUserLocationMarker(forest)),
+                MarkerLayer(markers: _buildMyLocationMarker(forest)),
               ],
             ),
           ),
@@ -307,12 +233,30 @@ class _MapScreenState extends State<MapScreen> {
             right: 12,
             child: _statusBanner(primary, forest),
           ),
+          Positioned(
+            right: 12,
+            bottom: 260,
+            child: FloatingActionButton.small(
+              onPressed: _focusMyLocation,
+              heroTag: 'focus-my-location',
+              backgroundColor: Colors.white,
+              foregroundColor: forest,
+              child: const Icon(Icons.my_location),
+            ),
+          ),
           if (selected != null)
             Positioned(
               left: 14,
               right: 14,
               bottom: 14,
               child: _rideInfoCard(selected, forest, primary),
+            )
+          else
+            Positioned(
+              left: 14,
+              right: 14,
+              bottom: 14,
+              child: _ridesTray(primary, forest),
             ),
           if (loading) const Center(child: CircularProgressIndicator()),
         ],
@@ -321,52 +265,56 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   List<Marker> _buildRideMarkers(Color primary) {
-    return ridePins.map((pin) {
-      return Marker(
-        point: pin.point,
-        width: 44,
-        height: 44,
-        child: GestureDetector(
-          onTap: () {
-            setState(() {
-              selectedPin = pin;
-            });
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: primary,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.22),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.directions_bike,
-              color: Colors.white,
-              size: 20,
+    final markers = <Marker>[];
+    for (final ride in nearbyRides) {
+      final point = _rideStartPoint(ride);
+      if (point == null) continue;
+      markers.add(
+        Marker(
+          point: point,
+          width: 46,
+          height: 46,
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                selectedRide = ride;
+              });
+              _focusRide(ride);
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: ride.joined ? const Color(0xFF2FA865) : primary,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.22),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(
+                ride.joined ? Icons.check : Icons.directions_bike,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
         ),
       );
-    }).toList();
+    }
+    return markers;
   }
 
-  List<Marker> _buildUserLocationMarker(Color forest) {
+  List<Marker> _buildMyLocationMarker(Color forest) {
     final location = currentLocation;
-    if (location == null) {
-      return <Marker>[];
-    }
-
+    if (location == null) return <Marker>[];
     return <Marker>[
       Marker(
         point: location,
-        width: 40,
-        height: 40,
+        width: 42,
+        height: 42,
         child: Container(
           decoration: BoxDecoration(
             color: forest,
@@ -380,7 +328,11 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ],
           ),
-          child: const Icon(Icons.my_location, color: Colors.white, size: 18),
+          child: const Icon(
+            Icons.person_pin_circle,
+            color: Colors.white,
+            size: 20,
+          ),
         ),
       ),
     ];
@@ -390,9 +342,9 @@ class _MapScreenState extends State<MapScreen> {
     final message =
         errorText.isNotEmpty
             ? errorText
-            : ridePins.isEmpty
-            ? "No ride markers yet."
-            : "${ridePins.length} ride(s) on map";
+            : nearbyRides.isEmpty
+            ? 'No live rides near you right now.'
+            : '${nearbyRides.length} live ride(s) within radar range';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -403,7 +355,7 @@ class _MapScreenState extends State<MapScreen> {
       child: Row(
         children: [
           Icon(
-            errorText.isNotEmpty ? Icons.error_outline : Icons.map_outlined,
+            errorText.isNotEmpty ? Icons.error_outline : Icons.radar_rounded,
             color: errorText.isNotEmpty ? Colors.red : primary,
             size: 18,
           ),
@@ -423,7 +375,8 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Widget _rideInfoCard(_RidePin pin, Color forest, Color primary) {
+  Widget _rideInfoCard(NearbyRide ride, Color forest, Color primary) {
+    final joining = joiningRideId == ride.ride.id;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -443,7 +396,7 @@ class _MapScreenState extends State<MapScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            pin.title,
+            ride.ride.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -454,64 +407,87 @@ class _MapScreenState extends State<MapScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            pin.destination,
+            '${_distanceFromMe(ride)} • Host: ${ride.hostName}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: forest.withValues(alpha: 0.68),
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  "RIDE",
-                  style: TextStyle(
-                    color: primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                  ),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed:
+                  (ride.joined || joining) ? null : () => _joinRide(ride),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ride.joined ? Colors.grey.shade300 : primary,
+                foregroundColor: ride.joined ? Colors.black54 : Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  "${pin.point.latitude.toStringAsFixed(5)}, ${pin.point.longitude.toStringAsFixed(5)}",
-                  textAlign: TextAlign.end,
-                  style: TextStyle(
-                    color: forest.withValues(alpha: 0.66),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
+              child:
+                  joining
+                      ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : Text(
+                        ride.joined ? 'Joined Ride' : 'Join Ride',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+            ),
           ),
         ],
       ),
     );
   }
-}
 
-class _RidePin {
-  const _RidePin({
-    required this.id,
-    required this.title,
-    required this.destination,
-    required this.point,
-  });
+  Widget _ridesTray(Color primary, Color forest) {
+    if (nearbyRides.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: forest.withValues(alpha: 0.1)),
+        ),
+        child: Text(
+          'No nearby live rides. Ask your group to start a ride and come online.',
+          style: TextStyle(
+            color: forest.withValues(alpha: 0.8),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
 
-  final String id;
-  final String title;
-  final String destination;
-  final LatLng point;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: forest.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Tap any ride marker to view details and join',
+            style: TextStyle(
+              color: forest.withValues(alpha: 0.74),
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

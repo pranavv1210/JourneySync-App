@@ -228,9 +228,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     if (raw == null || raw.isEmpty) return "--:--";
     final parsed = DateTime.tryParse(raw);
     if (parsed == null) return "--:--";
-    final hour12 = parsed.hour % 12 == 0 ? 12 : parsed.hour % 12;
-    final minute = parsed.minute.toString().padLeft(2, '0');
-    final suffix = parsed.hour >= 12 ? "PM" : "AM";
+    final local = parsed.toLocal();
+    final hour12 = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final suffix = local.hour >= 12 ? "PM" : "AM";
     return "$hour12:$minute $suffix";
   }
 
@@ -259,11 +260,15 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   }
 
   String _dateLabel() {
-    final raw = ride?['created_at']?.toString();
+    final raw =
+        ride?['start_time']?.toString() ??
+        ride?['started_at']?.toString() ??
+        ride?['created_at']?.toString();
     if (raw == null || raw.isEmpty) return "Date not set";
     final parsed = DateTime.tryParse(raw);
     if (parsed == null) return "Date not set";
-    return "${_month(parsed.month)} ${parsed.day}";
+    final local = parsed.toLocal();
+    return "${_month(local.month)} ${local.day}";
   }
 
   String _month(int m) {
@@ -355,6 +360,144 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     await _loadData();
   }
 
+  bool _isCurrentUserHost() {
+    final hostId = _hostIdFromRow(ride ?? const <String, dynamic>{});
+    return hostId.isNotEmpty && hostId == currentUserId;
+  }
+
+  Future<void> _copyAccessCode() async {
+    final code = _rideCode(widget.rideId);
+    await Clipboard.setData(ClipboardData(text: code));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Code copied")));
+  }
+
+  Future<void> _showInviteActions() async {
+    final code = _rideCode(widget.rideId);
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Invite Riders',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Share this access code. Riders can join from Nearby Active Rides -> key icon.',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F7F5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    code,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      await _copyAccessCode();
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.content_copy),
+                    label: const Text('Copy access code'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _editBriefing() async {
+    if (!_isCurrentUserHost()) {
+      _showInfo('Only host can edit ride briefing.');
+      return;
+    }
+    final initial =
+        (ride?['description'] ?? ride?['briefing'] ?? '').toString().trim();
+    final controller = TextEditingController(text: initial);
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Ride Briefing'),
+          content: TextField(
+            controller: controller,
+            maxLines: 5,
+            maxLength: 400,
+            decoration: const InputDecoration(
+              hintText: 'Add instructions for your group',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (saved != true) {
+      controller.dispose();
+      return;
+    }
+
+    final text = controller.text.trim();
+    controller.dispose();
+    try {
+      try {
+        await supabase
+            .from('rides')
+            .update({'description': text})
+            .eq('id', widget.rideId);
+      } on PostgrestException catch (error) {
+        if (!_isMissingDescriptionColumn(error)) rethrow;
+        await supabase
+            .from('rides')
+            .update({'briefing': text})
+            .eq('id', widget.rideId);
+      }
+      await _reloadLobbyData();
+      _showInfo('Ride briefing updated.');
+    } catch (error) {
+      _showInfo('Could not update briefing: $error');
+    }
+  }
+
   void _showInfo(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -376,6 +519,13 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
         code == '42703' ||
         code == 'PGRST204' ||
         error.message.toLowerCase().contains('join_requests');
+  }
+
+  bool _isMissingDescriptionColumn(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    return code == '42703' ||
+        code == 'PGRST204' ||
+        error.message.toLowerCase().contains('description');
   }
 
   @override
@@ -445,9 +595,35 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               color: primary,
             ),
           ),
-          IconButton(
-            onPressed: () {},
+          PopupMenuButton<String>(
+            tooltip: 'More options',
             icon: const Icon(Icons.more_vert, size: 24),
+            onSelected: (value) async {
+              switch (value) {
+                case 'copy_code':
+                  await _copyAccessCode();
+                  break;
+                case 'edit_briefing':
+                  await _editBriefing();
+                  break;
+                case 'refresh':
+                  await _reloadLobbyData();
+                  break;
+              }
+            },
+            itemBuilder:
+                (context) => [
+                  const PopupMenuItem(
+                    value: 'copy_code',
+                    child: Text('Copy Access Code'),
+                  ),
+                  if (_isCurrentUserHost())
+                    const PopupMenuItem(
+                      value: 'edit_briefing',
+                      child: Text('Edit Ride Briefing'),
+                    ),
+                  const PopupMenuItem(value: 'refresh', child: Text('Refresh')),
+                ],
           ),
         ],
       ),
@@ -501,8 +677,6 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                 child: Row(
                   children: [
                     _badge(Icons.calendar_today, _dateLabel(), primary),
-                    const SizedBox(width: 8),
-                    _badge(Icons.wb_sunny, "—", forest),
                   ],
                 ),
               ),
@@ -703,13 +877,8 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               ),
               const SizedBox(width: 10),
               IconButton(
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: code));
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text("Code copied")));
-                },
+                onPressed: _copyAccessCode,
+                tooltip: 'Copy access code',
                 icon: const Icon(Icons.content_copy, size: 20),
                 color: primary,
               ),
@@ -995,79 +1164,116 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   }
 
   Widget _inviteCard(Color primary) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: _showInviteActions,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey.shade300,
-          style: BorderStyle.solid,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.grey.shade300,
+              style: BorderStyle.solid,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: Icon(Icons.add, color: primary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Invite",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(999),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8),
-              ],
-            ),
-            child: Icon(Icons.add, color: primary),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Invite",
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey,
-            ),
-          ),
-        ],
       ),
     );
   }
 
   Widget _briefing(Color forest) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: forest.withOpacity(0.06),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _isCurrentUserHost() ? _editBriefing : null,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: forest.withOpacity(0.1)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info, color: forest),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Ride Briefing",
-                  style: TextStyle(fontWeight: FontWeight.w800),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: forest.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: forest.withOpacity(0.1)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info, color: forest),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Ride Briefing",
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    if (_isCurrentUserHost()) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        "Tap to add or edit briefing",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Text(
+                      _description(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                        height: 1.4,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _description(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                    height: 1.4,
-                    fontWeight: FontWeight.w600,
+              ),
+              if (_isCurrentUserHost())
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Icon(
+                    Icons.edit_outlined,
+                    size: 18,
+                    color: Colors.grey.shade600,
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
