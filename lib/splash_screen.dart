@@ -30,10 +30,7 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _decideNavigation() async {
     Object? initError;
     try {
-      await Future.wait([
-        Future.delayed(const Duration(seconds: 3)),
-        widget.initializationFuture ?? Future.value(),
-      ]);
+      await (widget.initializationFuture ?? Future.value());
     } catch (error) {
       initError = error;
     }
