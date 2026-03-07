@@ -29,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   String loadError = "";
   String weatherText = "Weather unavailable";
 
-  bool loading = true;
+  bool loading = false;
   bool refreshingHome = false;
   String rideActionLoadingId = '';
   List<RideRecord> recentRides = [];
@@ -38,7 +38,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   void initState() {
     super.initState();
-    _loadHomeData(showBlockingLoader: true);
+    _hydrateFromCache();
+    _loadHomeData();
   }
 
   @override
@@ -134,10 +135,18 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         resolvedBike.isNotEmpty ? resolvedBike : 'No bike added',
       );
 
+      Future<List<RideRecord>>? recentFuture;
+      Future<List<NearbyRide>>? nearbyFuture;
       if (resolvedId.isNotEmpty) {
+        recentFuture = _rideService.fetchRecentRides(resolvedId);
+        nearbyFuture = _rideService.searchNearbyRides(resolvedId);
+      }
+      final weatherFuture = _weatherService.fetchCurrentWeather();
+
+      if (recentFuture != null && nearbyFuture != null) {
         try {
-          fetchedRecent = await _rideService.fetchRecentRides(resolvedId);
-          final nearby = await _rideService.searchNearbyRides(resolvedId);
+          fetchedRecent = await recentFuture;
+          final nearby = await nearbyFuture;
           fetchedNearby = nearby.map((item) => item.ride).toList();
         } catch (error) {
           // Keep home usable even if ride list fetch fails.
@@ -145,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         }
       }
       try {
-        final weather = await _weatherService.fetchCurrentWeather();
+        final weather = await weatherFuture;
         if (weather != null && weather.displayText.trim().isNotEmpty) {
           weatherValue = weather.displayText.trim();
         }
@@ -184,6 +193,17 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         });
       }
     }
+  }
+
+  Future<void> _hydrateFromCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      userId = (prefs.getString('userId') ?? '').trim();
+      userPhone = (prefs.getString('userPhone') ?? '').trim();
+      name = (prefs.getString('userName') ?? 'Rider').trim();
+      bike = (prefs.getString('userBike') ?? 'No bike added').trim();
+    });
   }
 
   @override
