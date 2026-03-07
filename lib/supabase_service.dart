@@ -559,7 +559,7 @@ class SupabaseService {
 
     final rows = await _client
         .from('participants')
-        .select('id,ride_id,user_id')
+        .select('ride_id,user_id')
         .inFilter('ride_id', ids);
     return List<Map<String, dynamic>>.from(rows);
   }
@@ -574,7 +574,7 @@ class SupabaseService {
 
     final rows = await _client
         .from('participants')
-        .select('id,ride_id,user_id')
+        .select('ride_id,user_id')
         .eq('user_id', normalized);
     return List<Map<String, dynamic>>.from(rows);
   }
