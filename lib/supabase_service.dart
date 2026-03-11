@@ -443,13 +443,12 @@ class SupabaseService {
     } catch (_) {}
 
     Future<bool> deleteByOwnerColumn(String ownerColumn) async {
-      final deletedRows =
-          await _client
-              .from('rides')
-              .delete()
-              .eq('id', normalizedRideId)
-              .eq(ownerColumn, normalizedCreatorId)
-              .select('id');
+      final deletedRows = await _client
+          .from('rides')
+          .delete()
+          .eq('id', normalizedRideId)
+          .eq(ownerColumn, normalizedCreatorId)
+          .select('id');
       return (deletedRows as List).isNotEmpty;
     }
 
