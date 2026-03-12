@@ -439,7 +439,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           fontWeight: FontWeight.w700,
         ),
         enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.black.withOpacity(0.05)),
+          borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
           borderRadius: BorderRadius.circular(14),
         ),
         focusedBorder: OutlineInputBorder(
@@ -473,7 +473,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.4,
-                color: forest.withOpacity(0.8),
+                color: forest.withValues(alpha: 0.8),
               ),
             ),
             Row(
@@ -509,7 +509,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: primary.withOpacity(0.18)),
+            border: Border.all(color: primary.withValues(alpha: 0.18)),
           ),
           child: Row(
             children: [
@@ -540,7 +540,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: primary.withOpacity(0.08),
+                color: primary.withValues(alpha: 0.08),
                 blurRadius: 18,
                 offset: const Offset(0, 8),
               ),
@@ -587,7 +587,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: primary.withOpacity(0.14)),
+                          border: Border.all(color: primary.withValues(alpha: 0.14)),
                         ),
                         child: ListView.separated(
                           shrinkWrap: true,
@@ -595,7 +595,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                           separatorBuilder:
                               (_, __) => Divider(
                                 height: 1,
-                                color: Colors.grey.withOpacity(0.2),
+                                color: Colors.grey.withValues(alpha: 0.2),
                               ),
                           itemBuilder: (context, index) {
                             final suggestion = _suggestions[index];
@@ -715,7 +715,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                               polylines: [
                                 Polyline(
                                   points: [currentLatLng!, destinationLatLng!],
-                                  color: primary.withOpacity(0.7),
+                                  color: primary.withValues(alpha: 0.7),
                                   strokeWidth: 4,
                                 ),
                               ],
@@ -733,7 +733,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withOpacity(0.12),
+                            Colors.black.withValues(alpha: 0.12),
                           ],
                         ),
                       ),
@@ -748,7 +748,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Text(
@@ -772,7 +772,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.45),
+                        color: Colors.black.withValues(alpha: 0.45),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -809,7 +809,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [background.withOpacity(0), background],
+            colors: [background.withValues(alpha: 0), background],
           ),
         ),
         child: ElevatedButton(
@@ -821,7 +821,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             elevation: 6,
-            shadowColor: primary.withOpacity(0.3),
+            shadowColor: primary.withValues(alpha: 0.3),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -847,7 +847,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                 const SizedBox(width: 8),
                 Icon(
                   Icons.arrow_forward,
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   size: 18,
                 ),
               ],
@@ -872,7 +872,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
             fontSize: 12,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
-            color: forest.withOpacity(0.8),
+            color: forest.withValues(alpha: 0.8),
           ),
         ),
         const SizedBox(height: 10),
@@ -886,7 +886,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 14,
                   offset: const Offset(0, 6),
                 ),
@@ -898,7 +898,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: primary.withOpacity(0.1),
+                    color: primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(Icons.calendar_today, size: 18, color: primary),
@@ -940,7 +940,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 14,
                 offset: const Offset(0, 6),
               ),
@@ -978,9 +978,9 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   activeTrackColor: primary,
-                  inactiveTrackColor: primary.withOpacity(0.18),
+                  inactiveTrackColor: primary.withValues(alpha: 0.18),
                   thumbColor: Colors.white,
-                  overlayColor: primary.withOpacity(0.15),
+                  overlayColor: primary.withValues(alpha: 0.15),
                   thumbShape: const RoundSliderThumbShape(
                     enabledThumbRadius: 10,
                   ),

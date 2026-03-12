@@ -245,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: primary.withOpacity(0.2),
+                                color: primary.withValues(alpha: 0.2),
                               ),
                             ),
                             child: Row(
@@ -326,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           "WELCOME BACK",
           style: TextStyle(
             fontSize: 12,
-            color: primary.withOpacity(0.8),
+            color: primary.withValues(alpha: 0.8),
             fontWeight: FontWeight.w700,
             letterSpacing: 1.6,
           ),
@@ -368,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         Expanded(
           child: _statusCard(
             icon: Icons.two_wheeler,
-            iconBg: primary.withOpacity(0.1),
+            iconBg: primary.withValues(alpha: 0.1),
             iconColor: primary,
             title: "My Bike",
             value: bike,
@@ -394,10 +394,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor.withOpacity(0.6)),
+        border: Border.all(color: borderColor.withValues(alpha: 0.6)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -477,7 +477,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: primary.withOpacity(0.25),
+                  color: primary.withValues(alpha: 0.25),
                   blurRadius: 24,
                   offset: const Offset(0, 12),
                 ),
@@ -497,12 +497,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) {
                             return Container(
-                              color: primaryDark.withOpacity(0.45),
+                              color: primaryDark.withValues(alpha: 0.45),
                               alignment: Alignment.center,
                               child: Icon(
                                 Icons.two_wheeler,
                                 size: 68,
-                                color: Colors.white.withOpacity(0.35),
+                                color: Colors.white.withValues(alpha: 0.35),
                               ),
                             );
                           },
@@ -517,8 +517,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       borderRadius: BorderRadius.circular(24),
                       gradient: LinearGradient(
                         colors: [
-                          primary.withOpacity(0.82),
-                          primaryDark.withOpacity(0.88),
+                          primary.withValues(alpha: 0.82),
+                          primaryDark.withValues(alpha: 0.88),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -536,7 +536,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                         width: 46,
                         height: 46,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: const Icon(
@@ -587,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               border: Border.all(color: primary, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: forest.withOpacity(0.06),
+                  color: forest.withValues(alpha: 0.06),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -603,7 +603,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                     height: 130,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: primary.withOpacity(0.06),
+                      color: primary.withValues(alpha: 0.06),
                     ),
                   ),
                 ),
@@ -615,7 +615,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                     height: 56,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: primary.withOpacity(0.08),
+                      color: primary.withValues(alpha: 0.08),
                     ),
                   ),
                 ),
@@ -627,7 +627,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: primary.withOpacity(0.1),
+                        color: primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Icon(Icons.near_me, color: primary, size: 24),
@@ -725,7 +725,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: sandDarker.withOpacity(0.6)),
+              border: Border.all(color: sandDarker.withValues(alpha: 0.6)),
             ),
             child: Center(
               child: Text(
@@ -757,7 +757,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: sandDarker.withOpacity(0.6)),
+                      border: Border.all(color: sandDarker.withValues(alpha: 0.6)),
                     ),
                     child: Row(
                       children: [
@@ -765,7 +765,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           width: 60,
                           height: 60,
                           decoration: BoxDecoration(
-                            color: primary.withOpacity(0.1),
+                            color: primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(Icons.route, color: Colors.black54),
@@ -803,8 +803,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                       ride.isCompleted
                                           ? const Color(
                                             0xFF00C2CB,
-                                          ).withOpacity(0.12)
-                                          : primary.withOpacity(0.12),
+                                          ).withValues(alpha: 0.12)
+                                          : primary.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Text(
@@ -1009,7 +1009,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         border: Border(top: BorderSide(color: Colors.grey.shade100)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, -6),
           ),

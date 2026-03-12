@@ -456,7 +456,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                     LatLng(current.latitude, current.longitude),
                     LatLng(destination.lat, destination.lng),
                   ],
-                  color: primary.withOpacity(0.8),
+                  color: primary.withValues(alpha: 0.8),
                   strokeWidth: 4,
                 ),
               ],
@@ -515,7 +515,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.92),
+                  color: Colors.white.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -541,12 +541,12 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: warmSand.withOpacity(0.9),
+          color: warmSand.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(40),
-          border: Border.all(color: Colors.white.withOpacity(0.4)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 16,
               offset: const Offset(0, 8),
             ),
@@ -588,7 +588,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
             fontSize: 10,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
-            color: highlight ? color.withOpacity(0.8) : Colors.grey,
+            color: highlight ? color.withValues(alpha: 0.8) : Colors.grey,
           ),
         ),
         Text(
@@ -616,11 +616,11 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(999),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -651,9 +651,9 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: accent.withOpacity(0.22)),
+        border: Border.all(color: accent.withValues(alpha: 0.22)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -704,7 +704,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         );
       },
       style: TextButton.styleFrom(
-        backgroundColor: danger.withOpacity(0.1),
+        backgroundColor: danger.withValues(alpha: 0.1),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
       icon: Icon(Icons.pan_tool, color: danger, size: 16),
@@ -723,11 +723,11 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: forest.withOpacity(0.9),
+        color: forest.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -767,7 +767,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 18,
                     offset: const Offset(0, 8),
                   ),
@@ -827,7 +827,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10),
               ],
             ),
             child: Icon(icon, color: primary),
@@ -961,7 +961,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                                           mine
                                               ? const Color(
                                                 0xFFFF6A00,
-                                              ).withOpacity(0.12)
+                                              ).withValues(alpha: 0.12)
                                               : Colors.grey.shade100,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
@@ -1098,7 +1098,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 22,
             offset: const Offset(0, -6),
           ),
@@ -1134,7 +1134,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: primary.withOpacity(0.15),
+                                color: primary.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(Icons.flag, color: primary, size: 14),

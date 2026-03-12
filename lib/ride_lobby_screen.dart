@@ -637,7 +637,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -664,8 +664,8 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withOpacity(0.1),
-                        Colors.black.withOpacity(0.7),
+                        Colors.black.withValues(alpha: 0.1),
+                        Colors.black.withValues(alpha: 0.7),
                       ],
                     ),
                   ),
@@ -701,13 +701,13 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                         Icon(
                           Icons.schedule,
                           size: 16,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                         ),
                         const SizedBox(width: 6),
                         Text(
                           _timeLabel(),
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -715,14 +715,14 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                         Icon(
                           Icons.place,
                           size: 16,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                         ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             _destinationLabel(),
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -737,7 +737,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           Container(
             height: 52,
             decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: sand.withOpacity(0.6))),
+              border: Border(top: BorderSide(color: sand.withValues(alpha: 0.6))),
             ),
             child: Row(
               children: [
@@ -815,7 +815,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               Polyline(
                 points: [start, end],
                 strokeWidth: 4,
-                color: Colors.deepOrange.withOpacity(0.75),
+                color: Colors.deepOrange.withValues(alpha: 0.75),
               ),
             ],
           ),
@@ -827,7 +827,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -852,9 +852,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: primary.withOpacity(0.08),
+        color: primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primary.withOpacity(0.2)),
+        border: Border.all(color: primary.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
@@ -864,7 +864,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.6,
-              color: primary.withOpacity(0.8),
+              color: primary.withValues(alpha: 0.8),
             ),
           ),
           const SizedBox(height: 8),
@@ -927,7 +927,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: primary.withOpacity(0.1),
+                    color: primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -1082,7 +1082,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 6),
           ),
@@ -1189,7 +1189,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                   borderRadius: BorderRadius.circular(999),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 8,
                     ),
                   ],
@@ -1221,9 +1221,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: forest.withOpacity(0.06),
+            color: forest.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: forest.withOpacity(0.1)),
+            border: Border.all(color: forest.withValues(alpha: 0.1)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1286,7 +1286,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha: 0.9),
           border: Border(top: BorderSide(color: Colors.grey.shade200)),
         ),
         child: Column(
@@ -1303,7 +1303,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   elevation: 6,
-                  shadowColor: primary.withOpacity(0.25),
+                  shadowColor: primary.withValues(alpha: 0.25),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,

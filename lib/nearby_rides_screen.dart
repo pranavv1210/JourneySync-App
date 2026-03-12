@@ -338,7 +338,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
           Text(
             'Please wait',
             style: TextStyle(
-              color: forest.withOpacity(0.65),
+              color: forest.withValues(alpha: 0.65),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -383,7 +383,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: primary.withOpacity(0.22)),
+            border: Border.all(color: primary.withValues(alpha: 0.22)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -403,7 +403,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                 'Ask a friend to create a ride and try again.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: forest.withOpacity(0.65),
+                  color: forest.withValues(alpha: 0.65),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -425,10 +425,10 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: primary.withOpacity(0.18)),
+            border: Border.all(color: primary.withValues(alpha: 0.18)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 14,
                 offset: const Offset(0, 6),
               ),
@@ -457,7 +457,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: primary.withOpacity(0.12),
+                      color: primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -477,7 +477,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: forest.withOpacity(0.7),
+                  color: forest.withValues(alpha: 0.7),
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -488,7 +488,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: forest.withOpacity(0.75),
+                  color: forest.withValues(alpha: 0.75),
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -543,13 +543,13 @@ class _RadarPainter extends CustomPainter {
 
     final bgPaint =
         Paint()
-          ..color = primary.withOpacity(0.08)
+          ..color = primary.withValues(alpha: 0.08)
           ..style = PaintingStyle.fill;
     canvas.drawCircle(center, radius, bgPaint);
 
     final ringPaint =
         Paint()
-          ..color = primary.withOpacity(0.25)
+          ..color = primary.withValues(alpha: 0.25)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5;
     for (int i = 1; i <= 4; i++) {
@@ -562,7 +562,7 @@ class _RadarPainter extends CustomPainter {
           ..shader = SweepGradient(
             startAngle: sweepAngle - 0.35,
             endAngle: sweepAngle,
-            colors: [Colors.transparent, primary.withOpacity(0.45)],
+            colors: [Colors.transparent, primary.withValues(alpha: 0.45)],
           ).createShader(sweepRect);
     canvas.drawArc(sweepRect, sweepAngle - 0.35, 0.35, true, sweepPaint);
 

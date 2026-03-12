@@ -154,7 +154,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onPressed: isUploadingAvatar ? null : _pickAndUploadAvatar,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: primary,
-                      side: BorderSide(color: primary.withOpacity(0.5)),
+                      side: BorderSide(color: primary.withValues(alpha: 0.5)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -192,7 +192,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: _editProfile,
               style: OutlinedButton.styleFrom(
                 foregroundColor: primary,
-                side: BorderSide(color: primary.withOpacity(0.5)),
+                side: BorderSide(color: primary.withValues(alpha: 0.5)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -236,7 +236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final trimmed = userName.trim();
     final first = trimmed.isNotEmpty ? trimmed.substring(0, 1) : 'R';
     return Container(
-      color: primary.withOpacity(0.1),
+      color: primary.withValues(alpha: 0.1),
       alignment: Alignment.center,
       child: Text(
         first.toUpperCase(),
@@ -337,10 +337,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: sandBorder.withOpacity(0.8)),
+        border: Border.all(color: sandBorder.withValues(alpha: 0.8)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -354,7 +354,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: primary.withOpacity(0.1),
+                  color: primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: primary),
@@ -385,7 +385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Text(
             label,
             style: TextStyle(
-              color: forest.withOpacity(0.7),
+              color: forest.withValues(alpha: 0.7),
               fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
@@ -436,7 +436,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: forest.withOpacity(0.65),
+                      color: forest.withValues(alpha: 0.65),
                       fontSize: 12,
                       height: 1.3,
                       fontWeight: FontWeight.w600,
@@ -446,7 +446,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             trailing ??
-                Icon(Icons.chevron_right, color: forest.withOpacity(0.5)),
+                Icon(Icons.chevron_right, color: forest.withValues(alpha: 0.5)),
           ],
         ),
       ),
@@ -743,7 +743,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text(
                 content,
                 style: TextStyle(
-                  color: forest.withOpacity(0.85),
+                  color: forest.withValues(alpha: 0.85),
                   height: 1.5,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,

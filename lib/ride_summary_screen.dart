@@ -182,7 +182,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            color: vibrantTeal.withOpacity(0.1),
+            color: vibrantTeal.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Center(
@@ -194,7 +194,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: vibrantTeal.withOpacity(0.3),
+                    color: vibrantTeal.withValues(alpha: 0.3),
                     blurRadius: 16,
                   ),
                 ],
@@ -357,7 +357,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.35)],
+                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.35)],
                 ),
               ),
             ),
@@ -410,7 +410,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFF00C2CB).withOpacity(0.1),
+                color: const Color(0xFF00C2CB).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
@@ -478,7 +478,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF00C2CB).withOpacity(0.1),
+                      color: const Color(0xFF00C2CB).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Text(
@@ -514,7 +514,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
             : participant.name.trim().substring(0, 1).toUpperCase();
     return CircleAvatar(
       radius: 20,
-      backgroundColor: const Color(0xFF00C2CB).withOpacity(0.16),
+      backgroundColor: const Color(0xFF00C2CB).withValues(alpha: 0.16),
       child: Text(
         initial,
         style: const TextStyle(
@@ -636,7 +636,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
               elevation: 6,
-              shadowColor: primary.withOpacity(0.25),
+              shadowColor: primary.withValues(alpha: 0.25),
             ),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,

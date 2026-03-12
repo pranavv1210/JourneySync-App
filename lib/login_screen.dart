@@ -169,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           IconButton(
             onPressed: _showAuthHelp,
-            icon: Icon(Icons.help_outline, color: forest.withOpacity(0.6)),
+            icon: Icon(Icons.help_outline, color: forest.withValues(alpha: 0.6)),
             tooltip: "Help",
           ),
         ],
@@ -209,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextStyle(
             fontSize: subtitleSize,
             height: 1.5,
-            color: sandText.withOpacity(0.7),
+            color: sandText.withValues(alpha: 0.7),
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -223,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: forest.withOpacity(0.12)),
+        border: Border.all(color: forest.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
@@ -268,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
             fontSize: 12,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.2,
-            color: selected ? Colors.white : sandText.withOpacity(0.85),
+            color: selected ? Colors.white : sandText.withValues(alpha: 0.85),
           ),
         ),
       ),
@@ -315,7 +315,7 @@ class _LoginScreenState extends State<LoginScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: forest.withOpacity(0.12)),
+            border: Border.all(color: forest.withValues(alpha: 0.12)),
           ),
           child: Row(
             children: [
@@ -326,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   "Register once, then returning logins only need one-tap sign in.",
                   style: TextStyle(
                     fontSize: 12,
-                    color: sandText.withOpacity(0.85),
+                    color: sandText.withValues(alpha: 0.85),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -365,7 +365,7 @@ class _LoginScreenState extends State<LoginScreen> {
           helpText,
           style: TextStyle(
             fontSize: 13,
-            color: sandText.withOpacity(0.75),
+            color: sandText.withValues(alpha: 0.75),
             fontWeight: FontWeight.w600,
             height: 1.4,
           ),
@@ -378,7 +378,7 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: quickLoginLoading ? null : _continueWithCachedAccount,
             style: OutlinedButton.styleFrom(
               foregroundColor: forest,
-              side: BorderSide(color: forest.withOpacity(0.2)),
+              side: BorderSide(color: forest.withValues(alpha: 0.2)),
               padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -404,7 +404,7 @@ class _LoginScreenState extends State<LoginScreen> {
             "Or sign in again with Auth0.",
             style: TextStyle(
               fontSize: 12,
-              color: sandText.withOpacity(0.65),
+              color: sandText.withValues(alpha: 0.65),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -414,9 +414,9 @@ class _LoginScreenState extends State<LoginScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.08),
+              color: Colors.green.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.green.withOpacity(0.25)),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.25)),
             ),
             child: Row(
               children: [
@@ -472,19 +472,19 @@ class _LoginScreenState extends State<LoginScreen> {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
-              color: sandText.withOpacity(0.3),
+              color: sandText.withValues(alpha: 0.3),
               fontWeight: FontWeight.w600,
             ),
             filled: true,
             fillColor: Colors.white,
-            prefixIcon: Icon(icon, color: sandText.withOpacity(0.4)),
+            prefixIcon: Icon(icon, color: sandText.withValues(alpha: 0.4)),
             contentPadding: const EdgeInsets.symmetric(
               vertical: 18,
               horizontal: 12,
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: forest.withOpacity(0.1), width: 2),
+              borderSide: BorderSide(color: forest.withValues(alpha: 0.1), width: 2),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
@@ -515,7 +515,7 @@ class _LoginScreenState extends State<LoginScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             elevation: 8,
-            shadowColor: primary.withOpacity(0.2),
+            shadowColor: primary.withValues(alpha: 0.2),
           ),
           child:
               isSubmitting
@@ -554,7 +554,7 @@ class _LoginScreenState extends State<LoginScreen> {
       style: TextStyle(
         fontSize: 11,
         height: 1.5,
-        color: sandText.withOpacity(0.5),
+        color: sandText.withValues(alpha: 0.5),
       ),
     );
   }
