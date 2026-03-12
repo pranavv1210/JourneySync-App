@@ -169,7 +169,10 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           IconButton(
             onPressed: _showAuthHelp,
-            icon: Icon(Icons.help_outline, color: forest.withValues(alpha: 0.6)),
+            icon: Icon(
+              Icons.help_outline,
+              color: forest.withValues(alpha: 0.6),
+            ),
             tooltip: "Help",
           ),
         ],
@@ -484,7 +487,10 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: forest.withValues(alpha: 0.1), width: 2),
+              borderSide: BorderSide(
+                color: forest.withValues(alpha: 0.1),
+                width: 2,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),

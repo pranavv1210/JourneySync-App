@@ -757,7 +757,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: sandDarker.withValues(alpha: 0.6)),
+                      border: Border.all(
+                        color: sandDarker.withValues(alpha: 0.6),
+                      ),
                     ),
                     child: Row(
                       children: [

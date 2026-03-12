@@ -362,7 +362,10 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
           borderRadius: BorderRadius.circular(10),
           border: Border(left: BorderSide(color: primary, width: 4)),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 12,
+            ),
           ],
         ),
         child: Row(
@@ -448,7 +451,10 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 12),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 12,
+          ),
         ],
       ),
       child: Icon(icon, color: Colors.grey.shade700),
@@ -517,7 +523,9 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                           decoration: BoxDecoration(
                             color: primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: primary.withValues(alpha: 0.2)),
+                            border: Border.all(
+                              color: primary.withValues(alpha: 0.2),
+                            ),
                           ),
                           child: Text(
                             isSelf ? "ALERT ACTIVE" : "NO MOVEMENT",

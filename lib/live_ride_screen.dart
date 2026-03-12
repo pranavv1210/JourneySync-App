@@ -827,7 +827,10 @@ class _LiveRideScreenState extends State<LiveRideScreen>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                ),
               ],
             ),
             child: Icon(icon, color: primary),

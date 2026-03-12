@@ -737,7 +737,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           Container(
             height: 52,
             decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: sand.withValues(alpha: 0.6))),
+              border: Border(
+                top: BorderSide(color: sand.withValues(alpha: 0.6)),
+              ),
             ),
             child: Row(
               children: [

@@ -587,7 +587,9 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: primary.withValues(alpha: 0.14)),
+                          border: Border.all(
+                            color: primary.withValues(alpha: 0.14),
+                          ),
                         ),
                         child: ListView.separated(
                           shrinkWrap: true,
