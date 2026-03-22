@@ -445,12 +445,13 @@ class SupabaseService {
     Future<Map<String, dynamic>?> findRideByOwnerColumn(
       String ownerColumn,
     ) async {
-      final row = await _client
-          .from('rides')
-          .select('id,$ownerColumn')
-          .eq('id', normalizedRideId)
-          .eq(ownerColumn, normalizedCreatorId)
-          .maybeSingle();
+      final row =
+          await _client
+              .from('rides')
+              .select('id,$ownerColumn')
+              .eq('id', normalizedRideId)
+              .eq(ownerColumn, normalizedCreatorId)
+              .maybeSingle();
       return row == null ? null : Map<String, dynamic>.from(row);
     }
 
