@@ -1,11 +1,43 @@
 import java.util.Properties
 import java.util.Base64
+import groovy.json.JsonSlurper
 
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+fun encodeDartDefinesFromJson(file: File): String {
+    val parsed = JsonSlurper().parse(file) as? Map<*, *> ?: return ""
+    return parsed.entries
+        .mapNotNull { entry ->
+            val key = entry.key?.toString()?.trim().orEmpty()
+            val value = entry.value?.toString()?.trim().orEmpty()
+            if (key.isEmpty() || value.isEmpty()) {
+                null
+            } else {
+                val raw = "$key=$value"
+                Base64.getUrlEncoder()
+                    .withoutPadding()
+                    .encodeToString(raw.toByteArray(Charsets.UTF_8))
+            }
+        }
+        .joinToString(",")
+}
+
+if (!project.hasProperty("dart-defines")) {
+    val localDartDefineFile = rootProject.file("../dart_defines.local.json")
+    if (localDartDefineFile.exists()) {
+        val encodedDartDefines = encodeDartDefinesFromJson(localDartDefineFile)
+        if (encodedDartDefines.isNotEmpty()) {
+            extensions.extraProperties["dart-defines"] = encodedDartDefines
+            project.logger.lifecycle(
+                "Using dart-defines from ${localDartDefineFile.name} for Android build."
+            )
+        }
+    }
 }
 
 val keystorePropertiesFile = rootProject.file("key.properties")
