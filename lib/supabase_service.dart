@@ -442,31 +442,47 @@ class SupabaseService {
           .eq('ride_id', normalizedRideId);
     } catch (_) {}
 
-    Future<bool> deleteByOwnerColumn(String ownerColumn) async {
-      final deletedRows = await _client
+    Future<Map<String, dynamic>?> findRideByOwnerColumn(String ownerColumn) async {
+      final row = await _client
+          .from('rides')
+          .select('id,$ownerColumn')
+          .eq('id', normalizedRideId)
+          .eq(ownerColumn, normalizedCreatorId)
+          .maybeSingle();
+      return row == null ? null : Map<String, dynamic>.from(row);
+    }
+
+    Future<bool> deleteWithOwnerColumn(String ownerColumn) async {
+      final matchingRide = await findRideByOwnerColumn(ownerColumn);
+      if (matchingRide == null) {
+        return false;
+      }
+
+      await _client
           .from('rides')
           .delete()
           .eq('id', normalizedRideId)
-          .eq(ownerColumn, normalizedCreatorId)
-          .select('id');
-      return (deletedRows as List).isNotEmpty;
+          .eq(ownerColumn, normalizedCreatorId);
+
+      final remainingRide = await findRideByOwnerColumn(ownerColumn);
+      return remainingRide == null;
     }
 
     try {
-      final deleted = await deleteByOwnerColumn('creator_id');
+      final deleted = await deleteWithOwnerColumn('creator_id');
       if (deleted) return;
     } on PostgrestException catch (error) {
       if (!_isMissingRideCreatorColumn(error)) rethrow;
     }
 
     try {
-      final deleted = await deleteByOwnerColumn('user_id');
+      final deleted = await deleteWithOwnerColumn('user_id');
       if (deleted) return;
     } on PostgrestException catch (error) {
       if (!_isMissingRideUserColumn(error)) rethrow;
     }
 
-    final deleted = await deleteByOwnerColumn('leader_id');
+    final deleted = await deleteWithOwnerColumn('leader_id');
     if (!deleted) {
       throw Exception(
         'Ride was not deleted. It may not exist anymore or delete permission is missing.',
