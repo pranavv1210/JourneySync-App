@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'app_toast.dart';
 import 'auth_service.dart';
 import 'home_screen.dart';
 
@@ -598,9 +599,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final identity = verifiedIdentity;
     if (identity == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Sign in first.")));
+      showAppToast(context, "Sign in first.", type: AppToastType.error);
       return;
     }
 
@@ -649,12 +648,10 @@ class _LoginScreenState extends State<LoginScreen> {
             nameController.text = identity.fullName;
           }
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "No account found. Please add your name and bike to create one.",
-            ),
-          ),
+        showAppToast(
+          context,
+          "No account found. Please add your name and bike to create one.",
+          type: AppToastType.info,
         );
         return;
       }
@@ -663,20 +660,19 @@ class _LoginScreenState extends State<LoginScreen> {
           (error is PostgrestException && (error.code ?? '') == '42501') ||
           errorText.toLowerCase().contains('row-level security');
       if (rlsBlocked) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Supabase RLS blocked this request. Enable users SELECT/INSERT policy for anon.",
-              /*  */
-            ),
-          ),
+        showAppToast(
+          context,
+          "Supabase RLS blocked this request. Enable users SELECT/INSERT policy for anon.",
+          type: AppToastType.error,
         );
         return;
       }
 
-      ScaffoldMessenger.of(
+      showAppToast(
         context,
-      ).showSnackBar(SnackBar(content: Text("Could not continue: $error")));
+        "Could not continue: $error",
+        type: AppToastType.error,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -718,10 +714,10 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Could not continue with cached account: $error"),
-        ),
+      showAppToast(
+        context,
+        "Could not continue with cached account: $error",
+        type: AppToastType.error,
       );
     } finally {
       if (mounted) {
@@ -747,18 +743,18 @@ class _LoginScreenState extends State<LoginScreen> {
       final message = error.toString();
       if (message.toLowerCase().contains('callback') &&
           message.toLowerCase().contains('mismatch')) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Auth0 callback mismatch. Add journeysync://dev-0vu7hpbbw1pjelnk.us.auth0.com/android/com.example.journeysync/callback to Allowed Callback/Logout URLs.",
-            ),
-          ),
+        showAppToast(
+          context,
+          "Auth0 callback mismatch. Add journeysync://dev-0vu7hpbbw1pjelnk.us.auth0.com/android/com.example.journeysync/callback to Allowed Callback/Logout URLs.",
+          type: AppToastType.error,
         );
         return;
       }
-      ScaffoldMessenger.of(
+      showAppToast(
         context,
-      ).showSnackBar(SnackBar(content: Text("Auth0 login failed: $error")));
+        "Auth0 login failed: $error",
+        type: AppToastType.error,
+      );
     }
   }
 
@@ -767,8 +763,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (requiresDetails &&
         (nameController.text.trim().isEmpty ||
             bikeController.text.trim().isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill name and bike.")),
+      showAppToast(
+        context,
+        "Please fill name and bike.",
+        type: AppToastType.error,
       );
       return;
     }

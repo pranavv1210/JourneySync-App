@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'app_toast.dart';
 import 'sos_alert_screen.dart';
 import 'ride_summary_screen.dart';
 
@@ -869,9 +870,11 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      showAppToast(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not trigger SOS: $error')));
+        'Could not trigger SOS: $error',
+        type: AppToastType.error,
+      );
     }
   }
 
@@ -885,8 +888,10 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     final current = _latestPosition;
     if (current == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Current location unavailable')),
+      showAppToast(
+        context,
+        'Current location unavailable',
+        type: AppToastType.error,
       );
       return;
     }
@@ -897,8 +902,10 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     final destination = destinationPoint;
     if (destination == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Destination location unavailable')),
+      showAppToast(
+        context,
+        'Destination location unavailable',
+        type: AppToastType.error,
       );
       return;
     }
@@ -1013,10 +1020,10 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                           final sent = await _sendGroupMessage(table, text);
                           if (!sent) {
                             if (!ctx.mounted) return;
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              const SnackBar(
-                                content: Text('Could not send message'),
-                              ),
+                            showAppToast(
+                              ctx,
+                              'Could not send message',
+                              type: AppToastType.error,
                             );
                             return;
                           }

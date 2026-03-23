@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'app_toast.dart';
 import 'app_navigation.dart';
 import 'create_ride_screen.dart';
 import 'map_screen.dart';
@@ -894,10 +895,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     Color primary,
   ) async {
     if (!ride.isScheduled && !ride.isCompleted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Only scheduled/completed rides can be deleted.'),
-        ),
+      showAppToast(
+        context,
+        'Only scheduled/completed rides can be deleted.',
+        type: AppToastType.error,
       );
       return;
     }
@@ -952,14 +953,14 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     try {
       await action();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(successMessage)));
+      showAppToast(context, successMessage, type: AppToastType.success);
       await _loadHomeData();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$failureMessage ${_rideActionError(error)}')),
+      showAppToast(
+        context,
+        '$failureMessage ${_rideActionError(error)}',
+        type: AppToastType.error,
       );
     } finally {
       if (mounted) {

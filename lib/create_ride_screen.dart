@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_toast.dart';
 import 'ride_service.dart';
 import 'ride_lobby_screen.dart';
 
@@ -266,16 +267,12 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     final destination = destinationController.text.trim();
 
     if (rideName.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Enter ride name")));
+      showAppToast(context, "Enter ride name", type: AppToastType.error);
       return;
     }
 
     if (destination.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Enter destination")));
+      showAppToast(context, "Enter destination", type: AppToastType.error);
       return;
     }
 
@@ -301,8 +298,10 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Ride created successfully")),
+      showAppToast(
+        context,
+        "Ride created successfully",
+        type: AppToastType.success,
       );
       Navigator.pushReplacement(
         context,
@@ -312,12 +311,10 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Failed to create ride: ${_createRideErrorMessage(error)}",
-          ),
-        ),
+      showAppToast(
+        context,
+        "Failed to create ride: ${_createRideErrorMessage(error)}",
+        type: AppToastType.error,
       );
     } finally {
       if (mounted) {

@@ -489,8 +489,19 @@ class SupabaseService {
 
     final deleted = await deleteWithOwnerColumn('leader_id');
     if (!deleted) {
+      final stillExists =
+          await _client
+              .from('rides')
+              .select('id')
+              .eq('id', normalizedRideId)
+              .maybeSingle() !=
+          null;
+      if (!stillExists) {
+        // Treat "already removed" as a successful delete.
+        return;
+      }
       throw Exception(
-        'Ride was not deleted. It may not exist anymore or delete permission is missing.',
+        'Ride was not deleted. Delete permission is missing for this user.',
       );
     }
   }

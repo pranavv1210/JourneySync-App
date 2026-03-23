@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_toast.dart';
 import 'ride_service.dart';
 
 class NearbyRidesScreen extends StatefulWidget {
@@ -124,14 +125,18 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
               );
             }).toList();
       });
-      ScaffoldMessenger.of(
+      showAppToast(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Ride joined successfully')));
+        'Ride joined successfully',
+        type: AppToastType.success,
+      );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      showAppToast(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not join ride: $error')));
+        'Could not join ride: $error',
+        type: AppToastType.error,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -222,10 +227,10 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     final userId = await _resolveCurrentUserId();
     if (userId.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Missing user session. Please login again.'),
-        ),
+      showAppToast(
+        context,
+        'Missing user session. Please login again.',
+        type: AppToastType.error,
       );
       return;
     }
@@ -251,16 +256,16 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         JoinByCodeStatus.alreadyJoined =>
           'You are already part of "${result.rideTitle}".',
       };
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      showAppToast(context, message, type: AppToastType.success);
       if (!searching && errorText.isEmpty) {
         await _loadNearbyRides();
       }
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not join via code: $error')),
+      showAppToast(
+        context,
+        'Could not join via code: $error',
+        type: AppToastType.error,
       );
     } finally {
       if (mounted) {

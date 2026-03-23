@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_toast.dart';
 import 'ride_service.dart';
 
 class MapScreen extends StatefulWidget {
@@ -151,15 +152,19 @@ class _MapScreenState extends State<MapScreen> {
     try {
       await _rideService.joinRide(rideId: ride.ride.id, userId: currentUserId);
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      showAppToast(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Ride joined successfully')));
+        'Ride joined successfully',
+        type: AppToastType.success,
+      );
       await _loadRadarData();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      showAppToast(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not join ride: $error')));
+        'Could not join ride: $error',
+        type: AppToastType.error,
+      );
       setState(() {
         joiningRideId = '';
       });

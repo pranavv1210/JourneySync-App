@@ -4,6 +4,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_toast.dart';
 import 'auth_service.dart';
 import 'login_screen.dart';
 import 'supabase_service.dart';
@@ -632,10 +633,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showInfo(String title, String message) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$title: $message')));
+    showAppToast(context, '$title: $message', type: AppToastType.info);
   }
 
   Future<void> _showHelpCenterModal() {

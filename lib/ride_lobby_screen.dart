@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'app_toast.dart';
 import 'live_ride_screen.dart';
 
 class RideLobbyScreen extends StatefulWidget {
@@ -305,9 +306,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           .eq('id', widget.rideId);
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Ride started")));
+    showAppToast(context, "Ride started", type: AppToastType.success);
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => LiveRideScreen(rideId: widget.rideId)),
@@ -369,9 +368,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     final code = _rideCode(widget.rideId);
     await Clipboard.setData(ClipboardData(text: code));
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Code copied")));
+    showAppToast(context, "Code copied", type: AppToastType.success);
   }
 
   Future<void> _showInviteActions() async {
@@ -500,10 +497,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
 
   void _showInfo(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showAppToast(context, message, type: AppToastType.info);
   }
 
   bool _isMissingAvatarColumn(PostgrestException error) {
