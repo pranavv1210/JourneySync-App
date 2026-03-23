@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'app_config.dart';
+
 class SupabaseService {
   SupabaseService({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
@@ -9,7 +11,7 @@ class SupabaseService {
   final SupabaseClient _client;
   static const String _avatarBucket = String.fromEnvironment(
     'SUPABASE_AVATAR_BUCKET',
-    defaultValue: 'avatars',
+    defaultValue: AppConfig.supabaseAvatarBucket,
   );
 
   static const String _userColumnsWithAvatar =

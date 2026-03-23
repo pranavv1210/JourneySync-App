@@ -36,7 +36,7 @@ class SetupErrorScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'This APK was built without required environment values. Rebuild with --dart-define-from-file.',
+                      'Required app configuration is missing or invalid. Update the in-app config (or provide build-time overrides) and rebuild.',
                       style: TextStyle(
                         fontSize: 14,
                         color: Color(0xFF4A3F35),
@@ -62,7 +62,7 @@ class SetupErrorScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     const Text(
-                      'Example:\nflutter build apk --release --dart-define-from-file=dart_defines.local.json',
+                      'Optional override example:\nflutter build apk --release --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co',
                       style: TextStyle(
                         fontSize: 12,
                         color: Color(0xFF4A3F35),

@@ -1,12 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app_navigation.dart';
+import 'app_config.dart';
 import 'splash_screen.dart';
 
-const String _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-const String _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-const String _auth0Domain = String.fromEnvironment('AUTH0_DOMAIN');
-const String _auth0ClientId = String.fromEnvironment('AUTH0_CLIENT_ID');
+const String _supabaseUrl = String.fromEnvironment(
+  'SUPABASE_URL',
+  defaultValue: AppConfig.supabaseUrl,
+);
+const String _supabaseAnonKey = String.fromEnvironment(
+  'SUPABASE_ANON_KEY',
+  defaultValue: AppConfig.supabaseAnonKey,
+);
+const String _auth0Domain = String.fromEnvironment(
+  'AUTH0_DOMAIN',
+  defaultValue: AppConfig.auth0Domain,
+);
+const String _auth0ClientId = String.fromEnvironment(
+  'AUTH0_CLIENT_ID',
+  defaultValue: AppConfig.auth0ClientId,
+);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,9 +45,7 @@ Future<void> _initializeServices() async {
 String _requiredDefine(String key, String value) {
   final trimmed = value.trim();
   if (trimmed.isNotEmpty) return trimmed;
-  throw StateError(
-    'Missing --dart-define=$key. Add it to flutter run/build command.',
-  );
+  throw StateError('Missing app configuration value: $key.');
 }
 
 class JourneySyncApp extends StatelessWidget {

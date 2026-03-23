@@ -5,6 +5,7 @@ import 'package:auth0_flutter/auth0_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'app_config.dart';
 import 'supabase_service.dart';
 
 class PhoneIdentity {
@@ -52,13 +53,17 @@ class AuthService {
 
   final SupabaseService _supabaseService;
   final Auth0 _auth0;
-  static const String _auth0Domain = String.fromEnvironment('AUTH0_DOMAIN');
+  static const String _auth0Domain = String.fromEnvironment(
+    'AUTH0_DOMAIN',
+    defaultValue: AppConfig.auth0Domain,
+  );
   static const String _auth0ClientId = String.fromEnvironment(
     'AUTH0_CLIENT_ID',
+    defaultValue: AppConfig.auth0ClientId,
   );
   static const String _auth0Scheme = String.fromEnvironment(
     'AUTH0_SCHEME',
-    defaultValue: 'journeysync',
+    defaultValue: AppConfig.auth0Scheme,
   );
 
   Future<({PhoneIdentity identity, String accessToken, String idToken})>
@@ -293,9 +298,7 @@ class AuthService {
   static String _requiredDefine(String key, String value) {
     final trimmed = value.trim();
     if (trimmed.isNotEmpty) return trimmed;
-    throw StateError(
-      'Missing --dart-define=$key. Add it to flutter run/build command.',
-    );
+    throw StateError('Missing app configuration value: $key.');
   }
 
   Map<String, dynamic> _decodeJwtPayload(String jwt) {
