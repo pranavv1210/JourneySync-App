@@ -25,14 +25,19 @@ const String _auth0ClientId = String.fromEnvironment(
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final initializationFuture = _initializeServices();
-  
+
   await SentryFlutter.init(
     (options) {
-      options.dsn = const String.fromEnvironment('SENTRY_DSN', defaultValue: '');
+      options.dsn = const String.fromEnvironment(
+        'SENTRY_DSN',
+        defaultValue: '',
+      );
       options.tracesSampleRate = 1.0;
       options.environment = 'production';
     },
-    appRunner: () => runApp(JourneySyncApp(initializationFuture: initializationFuture)),
+    appRunner:
+        () =>
+            runApp(JourneySyncApp(initializationFuture: initializationFuture)),
   );
 }
 
