@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app_navigation.dart';
 import 'app_config.dart';
@@ -21,10 +22,18 @@ const String _auth0ClientId = String.fromEnvironment(
   defaultValue: AppConfig.auth0ClientId,
 );
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final initializationFuture = _initializeServices();
-  runApp(JourneySyncApp(initializationFuture: initializationFuture));
+  
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = const String.fromEnvironment('SENTRY_DSN', defaultValue: '');
+      options.tracesSampleRate = 1.0;
+      options.environment = 'production';
+    },
+    appRunner: () => runApp(JourneySyncApp(initializationFuture: initializationFuture)),
+  );
 }
 
 Future<void> _initializeServices() async {
