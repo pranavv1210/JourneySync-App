@@ -222,6 +222,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   }
 
   String _timeLabel() {
+    final status = (ride?['status'] ?? '').toString().trim().toLowerCase();
+    if (status != 'active' && status != 'live' && status != 'ended' && status != 'completed') {
+      return "Pending Start";
+    }
     final raw =
         ride?['start_time']?.toString() ??
         ride?['started_at']?.toString() ??
@@ -262,9 +266,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
 
   String _dateLabel() {
     final raw =
-        ride?['start_time']?.toString() ??
+        ride?['created_at']?.toString() ??
         ride?['started_at']?.toString() ??
-        ride?['created_at']?.toString();
+        ride?['start_time']?.toString();
     if (raw == null || raw.isEmpty) return "Date not set";
     final parsed = DateTime.tryParse(raw);
     if (parsed == null) return "Date not set";
@@ -492,6 +496,84 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       _showInfo('Ride briefing updated.');
     } catch (error) {
       _showInfo('Could not update briefing: $error');
+    }
+  }
+
+  Future<void> _editRideDetailsDialog() async {
+    if (!_isCurrentUserHost()) {
+      _showInfo('Only host can edit ride details.');
+      return;
+    }
+    final titleCtrl = TextEditingController(text: _rideTitle());
+    final destCtrl = TextEditingController(text: _destinationLabel());
+    final maxRidersCtrl = TextEditingController(text: (ride?['max_riders'] ?? '').toString());
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Ride Details'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(labelText: 'Ride Title'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: destCtrl,
+                  decoration: const InputDecoration(labelText: 'Destination'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: maxRidersCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Max Riders (leave blank for unlimited)'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (saved != true) return;
+
+    final title = titleCtrl.text.trim();
+    final dest = destCtrl.text.trim();
+    final maxR = int.tryParse(maxRidersCtrl.text.trim());
+
+    try {
+      await supabase.from('rides').update({
+        'title': title,
+        'end_location': dest,
+        'max_riders': maxR,
+      }).eq('id', widget.rideId);
+      await _reloadLobbyData();
+      _showInfo('Ride details updated.');
+    } catch (error) {
+      try {
+        await supabase.from('rides').update({
+          'name': title,
+          'destination': dest,
+        }).eq('id', widget.rideId);
+        await _reloadLobbyData();
+        _showInfo('Ride details updated.');
+      } catch (nested) {
+        _showInfo('Could not update details: $error');
+      }
     }
   }
 
@@ -1319,9 +1401,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               ),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: _editRideDetailsDialog,
               child: Text(
                 "EDIT RIDE DETAILS",
                 style: TextStyle(

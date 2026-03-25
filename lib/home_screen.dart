@@ -10,6 +10,10 @@ import 'ride_service.dart';
 import 'settings_screen.dart';
 import 'supabase_service.dart';
 import 'weather_service.dart';
+import 'ride_history_screen.dart';
+import 'ride_lobby_screen.dart';
+import 'ride_summary_screen.dart';
+import 'live_ride_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -708,7 +712,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               ),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RideHistoryScreen()),
+                );
+              },
               child: Text(
                 "View All",
                 style: TextStyle(
@@ -752,18 +761,30 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                   final isBusy = rideActionLoadingId == ride.id;
                   final canDelete = ride.isScheduled || ride.isCompleted;
                   final statusLabel = _rideStatusLabel(ride);
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: sandDarker.withValues(alpha: 0.6),
+                  return InkWell(
+                    onTap: () async {
+                      if (statusLabel == 'Live') {
+                        await Navigator.push(context, MaterialPageRoute(builder: (_) => LiveRideScreen(rideId: ride.id)));
+                      } else if (ride.isCompleted) {
+                        await Navigator.push(context, MaterialPageRoute(builder: (_) => RideSummaryScreen(rideId: ride.id)));
+                      } else {
+                        await Navigator.push(context, MaterialPageRoute(builder: (_) => RideLobbyScreen(rideId: ride.id)));
+                      }
+                      await _loadHomeData();
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: sandDarker.withValues(alpha: 0.6),
+                        ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
+                      child: Row(
+                        children: [
                         Container(
                           width: 60,
                           height: 60,
@@ -872,7 +893,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                               ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
                   );
                 }).toList(),

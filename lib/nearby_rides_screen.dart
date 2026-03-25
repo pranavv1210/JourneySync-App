@@ -105,29 +105,43 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     });
 
     try {
-      await _rideService.joinRide(rideId: ride.ride.id, userId: currentUserId);
+      final status = await _rideService.requestJoinRide(
+        rideId: ride.ride.id,
+        userId: currentUserId,
+      );
+
       if (!mounted) return;
-      setState(() {
-        nearbyRides =
-            nearbyRides.map((existing) {
-              if (existing.ride.id != ride.ride.id) return existing;
-              return existing.copyWith(
-                joined: true,
-                ride: RideRecord(
-                  id: existing.ride.id,
-                  creatorId: existing.ride.creatorId,
-                  title: existing.ride.title,
-                  startLocation: existing.ride.startLocation,
-                  endLocation: existing.ride.endLocation,
-                  createdAt: existing.ride.createdAt,
-                  participantCount: existing.ride.participantCount + 1,
-                ),
-              );
-            }).toList();
-      });
+
+      final message = switch (status) {
+        JoinByCodeStatus.requested => 'Join request sent.',
+        JoinByCodeStatus.joinedDirectly => 'Joined successfully.',
+        JoinByCodeStatus.alreadyRequested => 'You already requested to join.',
+        JoinByCodeStatus.alreadyJoined => 'You are already part of this ride.',
+      };
+
+      if (status == JoinByCodeStatus.joinedDirectly) {
+        setState(() {
+          nearbyRides = nearbyRides.map((existing) {
+            if (existing.ride.id != ride.ride.id) return existing;
+            return existing.copyWith(
+              joined: true,
+              ride: RideRecord(
+                id: existing.ride.id,
+                creatorId: existing.ride.creatorId,
+                title: existing.ride.title,
+                startLocation: existing.ride.startLocation,
+                endLocation: existing.ride.endLocation,
+                createdAt: existing.ride.createdAt,
+                participantCount: existing.ride.participantCount + 1,
+              ),
+            );
+          }).toList();
+        });
+      }
+
       showAppToast(
         context,
-        'Ride joined successfully',
+        message,
         type: AppToastType.success,
       );
     } catch (error) {

@@ -293,7 +293,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
         title: rideName,
         startLocation: startLocation,
         endLocation: destination,
-        scheduledStartTime: selectedStartTime,
+        scheduledStartTime: null,
         maxRiders: maxRiders.round(),
       );
 
@@ -866,7 +866,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "LOGISTICS",
+          "MAXIMUM RIDERS",
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w800,
@@ -875,63 +875,6 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        InkWell(
-          onTap: _pickStartTime,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.calendar_today, size: 18, color: primary),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Start Time",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: neutralWarm,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        _startTimeLabel(selectedStartTime),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: forest,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right, color: neutralWarm),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -1022,70 +965,6 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
         ),
       ],
     );
-  }
-
-  Future<void> _pickStartTime() async {
-    final now = DateTime.now();
-    final initialDate =
-        selectedStartTime.isBefore(now) ? now : selectedStartTime;
-    final date = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
-    );
-    if (date == null || !mounted) return;
-
-    final initialTime = TimeOfDay.fromDateTime(selectedStartTime);
-    final time = await showTimePicker(
-      context: context,
-      initialTime: initialTime,
-    );
-    if (time == null || !mounted) return;
-
-    setState(() {
-      selectedStartTime = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
-      );
-    });
-  }
-
-  String _startTimeLabel(DateTime dateTime) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final selected = DateTime(dateTime.year, dateTime.month, dateTime.day);
-
-    String dayText;
-    if (selected == today) {
-      dayText = "Today";
-    } else if (selected == today.add(const Duration(days: 1))) {
-      dayText = "Tomorrow";
-    } else {
-      const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-      dayText = "${months[dateTime.month - 1]} ${dateTime.day}";
-    }
-
-    final hour12 = dateTime.hour % 12 == 0 ? 12 : dateTime.hour % 12;
-    final minute = dateTime.minute.toString().padLeft(2, '0');
-    final suffix = dateTime.hour >= 12 ? "PM" : "AM";
-    return "$dayText, $hour12:$minute $suffix";
   }
 
   Future<String> _resolveStartLocation() async {
