@@ -238,28 +238,52 @@ class SupabaseService {
     int limit = 5,
   }) async {
     try {
-      final rows = await _client
-          .from('rides')
-          .select(_rideColumnsWithCreator)
-          .order('created_at', ascending: false)
-          .limit(limit);
+      final rows =
+          excludeCreatorId.trim().isEmpty
+              ? await _client
+                  .from('rides')
+                  .select(_rideColumnsWithCreator)
+                  .order('created_at', ascending: false)
+                  .limit(limit)
+              : await _client
+                  .from('rides')
+                  .select(_rideColumnsWithCreator)
+                  .not('creator_id', 'eq', excludeCreatorId.trim())
+                  .order('created_at', ascending: false)
+                  .limit(limit);
       return List<Map<String, dynamic>>.from(rows);
     } on PostgrestException catch (error) {
       if (_isMissingRideCreatorColumn(error)) {
         try {
-          final rows = await _client
-              .from('rides')
-              .select(_rideColumnsWithUser)
-              .order('created_at', ascending: false)
-              .limit(limit);
+          final rows =
+              excludeCreatorId.trim().isEmpty
+                  ? await _client
+                      .from('rides')
+                      .select(_rideColumnsWithUser)
+                      .order('created_at', ascending: false)
+                      .limit(limit)
+                  : await _client
+                      .from('rides')
+                      .select(_rideColumnsWithUser)
+                      .not('user_id', 'eq', excludeCreatorId.trim())
+                      .order('created_at', ascending: false)
+                      .limit(limit);
           return List<Map<String, dynamic>>.from(rows);
         } on PostgrestException catch (nestedError) {
           if (_isMissingRideUserColumn(nestedError)) {
-            final rows = await _client
-                .from('rides')
-                .select(_rideColumnsLegacy)
-                .order('created_at', ascending: false)
-                .limit(limit);
+            final rows =
+                excludeCreatorId.trim().isEmpty
+                    ? await _client
+                        .from('rides')
+                        .select(_rideColumnsLegacy)
+                        .order('created_at', ascending: false)
+                        .limit(limit)
+                    : await _client
+                        .from('rides')
+                        .select(_rideColumnsLegacy)
+                        .not('leader_id', 'eq', excludeCreatorId.trim())
+                        .order('created_at', ascending: false)
+                        .limit(limit);
             return List<Map<String, dynamic>>.from(rows);
           }
           rethrow;
