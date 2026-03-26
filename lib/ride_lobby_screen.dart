@@ -8,9 +8,14 @@ import 'app_toast.dart';
 import 'live_ride_screen.dart';
 
 class RideLobbyScreen extends StatefulWidget {
-  const RideLobbyScreen({super.key, required this.rideId});
+  const RideLobbyScreen({
+    super.key,
+    required this.rideId,
+    this.initialMaxRiders,
+  });
 
   final String rideId;
+  final int? initialMaxRiders;
 
   @override
   State<RideLobbyScreen> createState() => _RideLobbyScreenState();
@@ -48,7 +53,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     final data =
         await supabase.from('rides').select().eq('id', widget.rideId).single();
     final resolvedMax =
-        int.tryParse((data['max_riders'] ?? '').toString()) ?? 20;
+      int.tryParse((data['max_riders'] ?? '').toString()) ??
+      widget.initialMaxRiders ??
+      20;
     final safeMax = resolvedMax < 1 ? 20 : resolvedMax;
 
     final loadedCrew = await _fetchCrew(data);

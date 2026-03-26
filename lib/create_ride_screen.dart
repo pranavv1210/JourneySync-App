@@ -299,7 +299,11 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => RideLobbyScreen(rideId: createdRide.id),
+          builder:
+              (_) => RideLobbyScreen(
+                rideId: createdRide.id,
+                initialMaxRiders: maxRiders.round(),
+              ),
         ),
       );
     } catch (error) {

@@ -761,6 +761,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                   final isBusy = rideActionLoadingId == ride.id;
                   final canDelete = ride.isScheduled || ride.isCompleted;
                   final statusLabel = _rideStatusLabel(ride);
+                  final statusColors = _rideStatusColors(statusLabel);
                   return InkWell(
                     onTap: () async {
                       if (statusLabel == 'Live') {
@@ -841,12 +842,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                     vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
-                                    color:
-                                        ride.isCompleted
-                                            ? const Color(
-                                              0xFF00C2CB,
-                                            ).withValues(alpha: 0.12)
-                                            : primary.withValues(alpha: 0.12),
+                                    color: statusColors.bg,
                                     borderRadius: BorderRadius.circular(999),
                                   ),
                                   child: Text(
@@ -854,10 +850,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w800,
-                                      color:
-                                          ride.isCompleted
-                                              ? const Color(0xFF00C2CB)
-                                              : primary,
+                                      color: statusColors.fg,
                                     ),
                                   ),
                                 ),
@@ -928,6 +921,20 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     if (raw == 'scheduled' || raw == 'pending') return 'Scheduled';
     if (raw.isEmpty) return 'Scheduled';
     return '${raw[0].toUpperCase()}${raw.substring(1)}';
+  }
+
+  ({Color bg, Color fg}) _rideStatusColors(String statusLabel) {
+    final normalized = statusLabel.trim().toLowerCase();
+    if (normalized == 'live') {
+      return (bg: const Color(0xFF2FA865).withValues(alpha: 0.14), fg: const Color(0xFF2FA865));
+    }
+    if (normalized == 'scheduled') {
+      return (bg: const Color(0xFFF5A524).withValues(alpha: 0.16), fg: const Color(0xFFD88300));
+    }
+    if (normalized == 'completed') {
+      return (bg: const Color(0xFF00C2CB).withValues(alpha: 0.12), fg: const Color(0xFF00A8B0));
+    }
+    return (bg: const Color(0xFFF26C0D).withValues(alpha: 0.12), fg: const Color(0xFFF26C0D));
   }
 
   Future<void> _confirmPermanentDeleteRide(

@@ -149,23 +149,17 @@ class RideService {
             : await _resolveCurrentPosition(
               requestPermissionIfNeeded: requestPermissionIfNeeded,
             );
-    if (origin == null) {
-      return <NearbyRide>[];
-    }
 
     final rides = await fetchNearbyRides(currentUserId, limit: 50);
     if (rides.isEmpty) {
       return <NearbyRide>[];
     }
 
-    final recentCutoff = DateTime.now().subtract(const Duration(hours: 24));
     final filtered =
         rides.where((ride) {
-          final createdAt = ride.createdAt;
-          if (createdAt == null) return true;
-          if (!createdAt.isAfter(recentCutoff)) return false;
           if (ride.archived || ride.isCompleted) return false;
           if (ride.status.trim().toLowerCase() == 'cancelled') return false;
+          if (origin == null) return true;
 
           final startPoint = _parseLatLng(ride.startLocation);
           if (startPoint == null) {
@@ -217,6 +211,7 @@ class RideService {
           startLocation: ride.startLocation,
           endLocation: ride.endLocation,
           createdAt: ride.createdAt,
+          status: ride.status,
           participantCount: participantCount,
         ),
         hostName: hostName.isNotEmpty ? hostName : 'Rider',

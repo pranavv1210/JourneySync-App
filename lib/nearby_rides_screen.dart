@@ -296,7 +296,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     return Scaffold(
       backgroundColor: background,
       appBar: AppBar(
-        title: const Text('Nearby Active Rides'),
+        title: const Text('Nearby Rides'),
         backgroundColor: background,
         foregroundColor: forest,
         elevation: 0,
@@ -416,7 +416,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
               ),
               const SizedBox(height: 6),
               Text(
-                'Ask a friend to create a ride and try again.',
+                'Ask a host to create a ride and keep it scheduled/live, then refresh radar.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: forest.withValues(alpha: 0.65),
