@@ -53,9 +53,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     final data =
         await supabase.from('rides').select().eq('id', widget.rideId).single();
     final resolvedMax =
-      int.tryParse((data['max_riders'] ?? '').toString()) ??
-      widget.initialMaxRiders ??
-      20;
+        int.tryParse((data['max_riders'] ?? '').toString()) ??
+        widget.initialMaxRiders ??
+        20;
     final safeMax = resolvedMax < 1 ? 20 : resolvedMax;
 
     final loadedCrew = await _fetchCrew(data);

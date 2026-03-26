@@ -65,15 +65,27 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
   ({Color bg, Color fg}) _rideStatusColors(String statusLabel) {
     final normalized = statusLabel.trim().toLowerCase();
     if (normalized == 'live') {
-      return (bg: const Color(0xFF2FA865).withValues(alpha: 0.14), fg: const Color(0xFF2FA865));
+      return (
+        bg: const Color(0xFF2FA865).withValues(alpha: 0.14),
+        fg: const Color(0xFF2FA865),
+      );
     }
     if (normalized == 'scheduled') {
-      return (bg: const Color(0xFFF5A524).withValues(alpha: 0.16), fg: const Color(0xFFD88300));
+      return (
+        bg: const Color(0xFFF5A524).withValues(alpha: 0.16),
+        fg: const Color(0xFFD88300),
+      );
     }
     if (normalized == 'completed') {
-      return (bg: const Color(0xFF00C2CB).withValues(alpha: 0.12), fg: const Color(0xFF00A8B0));
+      return (
+        bg: const Color(0xFF00C2CB).withValues(alpha: 0.12),
+        fg: const Color(0xFF00A8B0),
+      );
     }
-    return (bg: const Color(0xFFF26C0D).withValues(alpha: 0.12), fg: const Color(0xFFF26C0D));
+    return (
+      bg: const Color(0xFFF26C0D).withValues(alpha: 0.12),
+      fg: const Color(0xFFF26C0D),
+    );
   }
 
   @override
@@ -117,7 +129,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                           : "Destination";
                   final dateLabel = _formatDate(ride.createdAt);
                   final statusLabel = _rideStatusLabel(ride);
-                    final statusColors = _rideStatusColors(statusLabel);
+                  final statusColors = _rideStatusColors(statusLabel);
 
                   return InkWell(
                     onTap: () async {

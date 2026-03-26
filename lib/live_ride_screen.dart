@@ -65,13 +65,12 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       userBike = prefs.getString("userBike") ?? "No bike added";
       currentUserId = (prefs.getString("userId") ?? "").trim();
 
-      final data =
-          await supabase
-              .from('rides')
-              .select()
-              .eq('id', widget.rideId)
-              .single()
-              .timeout(const Duration(seconds: 8));
+      final data = await supabase
+          .from('rides')
+          .select()
+          .eq('id', widget.rideId)
+          .single()
+          .timeout(const Duration(seconds: 8));
 
       if (!mounted) return;
       setState(() {
@@ -122,13 +121,12 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     if (!mounted || _isRefreshingLiveData) return;
     _isRefreshingLiveData = true;
     try {
-      final latestRide =
-          await supabase
-              .from('rides')
-              .select()
-              .eq('id', widget.rideId)
-              .single()
-              .timeout(const Duration(seconds: 6));
+      final latestRide = await supabase
+          .from('rides')
+          .select()
+          .eq('id', widget.rideId)
+          .single()
+          .timeout(const Duration(seconds: 6));
 
       final refreshedMembers =
           (_refreshTick % 2 == 0) ? await _loadMembers(latestRide) : members;
@@ -142,8 +140,8 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         chatCount = unreadCount;
       });
       _refreshTick++;
-    } catch (_) {}
-    finally {
+    } catch (_) {
+    } finally {
       _isRefreshingLiveData = false;
     }
   }
@@ -307,12 +305,14 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         'format': 'jsonv2',
         'limit': '1',
       });
-      final response = await http.get(
-        uri,
-        headers: const {
-          'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)',
-        },
-      ).timeout(const Duration(seconds: 4));
+      final response = await http
+          .get(
+            uri,
+            headers: const {
+              'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)',
+            },
+          )
+          .timeout(const Duration(seconds: 4));
       if (response.statusCode < 200 || response.statusCode >= 300) return null;
       final decoded = jsonDecode(response.body);
       if (decoded is! List || decoded.isEmpty) return null;

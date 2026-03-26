@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+set -e
+
+echo "[pre-push] Running Dart format check..."
+dart format --output=none --set-exit-if-changed .
+
+echo "[pre-push] Running Flutter analyze..."
+flutter analyze
+
+echo "[pre-push] All checks passed."
