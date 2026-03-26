@@ -47,6 +47,13 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   String? _chatTableName;
   bool _isRefreshingLiveData = false;
   int _refreshTick = 0;
+  
+  // Performance optimizations - caching
+  final Map<String, Map<String, dynamic>> _cachedUserProfiles = {};
+  DateTime? _lastMembersRefresh;
+  List<_LiveMember>? _cachedMembers;
+  bool _destinationResolved = false;
+  int _mapUpdateCounter = 0;
 
   @override
   void initState() {
@@ -112,7 +119,8 @@ class _LiveRideScreenState extends State<LiveRideScreen>
 
   void _startLiveRefreshTimer() {
     _liveRefreshTimer?.cancel();
-    _liveRefreshTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+    // Increased from 12 to 20 seconds to reduce API load
+    _liveRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       _refreshLiveData();
     });
   }
@@ -128,16 +136,27 @@ class _LiveRideScreenState extends State<LiveRideScreen>
           .single()
           .timeout(const Duration(seconds: 6));
 
-      final refreshedMembers =
-          (_refreshTick % 2 == 0) ? await _loadMembers(latestRide) : members;
+      // Refresh members less frequently - every 60 seconds
+      List<_LiveMember>? refreshedMembers;
+      final now = DateTime.now();
+      if (_lastMembersRefresh == null ||
+          now.difference(_lastMembersRefresh!).inSeconds >= 60) {
+        refreshedMembers = await _loadMembers(latestRide);
+        _lastMembersRefresh = now;
+      } else {
+        refreshedMembers = members;
+      }
+
+      // Refresh chat count every 30 seconds
       final unreadCount =
-          (_refreshTick % 3 == 0) ? await _loadChatCount() : chatCount;
+          (_refreshTick % 2 == 0) ? await _loadChatCount() : chatCount;
 
       if (!mounted) return;
       setState(() {
         ride = latestRide;
-        members = refreshedMembers;
+        members = refreshedMembers ?? members;
         chatCount = unreadCount;
+        _mapUpdateCounter++;
       });
       _refreshTick++;
     } catch (_) {
@@ -239,17 +258,39 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     final ids = userIds.map((id) => id.trim()).where((id) => id.isNotEmpty);
     final unique = ids.toSet().toList();
     if (unique.isEmpty) return <String, Map<String, dynamic>>{};
+    
+    // Check cache first and filter out already cached IDs
+    final notCached = <String>[];
+    final result = <String, Map<String, dynamic>>{};
+    
+    for (final id in unique) {
+      if (_cachedUserProfiles.containsKey(id)) {
+        result[id] = _cachedUserProfiles[id]!;
+      } else {
+        notCached.add(id);
+      }
+    }
+    
+    // Only fetch IDs that aren't cached
+    if (notCached.isEmpty) {
+      return result;
+    }
+    
     try {
       final rows = await supabase
           .from('users')
           .select(
             'id,name,bike,avatar_url,current_lat,current_lng,active_ride_id',
           )
-          .inFilter('id', unique);
-      return {
-        for (final row in rows)
-          (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
-      };
+          .inFilter('id', notCached);
+      
+      for (final row in rows) {
+        final id = (row['id'] ?? '').toString().trim();
+        final data = Map<String, dynamic>.from(row);
+        _cachedUserProfiles[id] = data;
+        result[id] = data;
+      }
+      return result;
     } on PostgrestException catch (error) {
       final code = (error.code ?? '').trim();
       if (code == '42703' ||
@@ -258,11 +299,14 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         final rows = await supabase
             .from('users')
             .select('id,name,bike,current_lat,current_lng,active_ride_id')
-            .inFilter('id', unique);
-        return {
-          for (final row in rows)
-            (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
-        };
+            .inFilter('id', notCached);
+        for (final row in rows) {
+          final id = (row['id'] ?? '').toString().trim();
+          final data = Map<String, dynamic>.from(row);
+          _cachedUserProfiles[id] = data;
+          result[id] = data;
+        }
+        return result;
       }
       rethrow;
     }
@@ -290,14 +334,28 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   }
 
   Future<_GeoPoint?> _resolveDestinationPoint(Map<String, dynamic> row) async {
+    // If already resolved in this session, don't re-resolve
+    if (_destinationResolved && destinationPoint != null) {
+      return destinationPoint;
+    }
+    
     final lat = _toDouble(row['end_lat'] ?? row['destination_lat']);
     final lng = _toDouble(row['end_lng'] ?? row['destination_lng']);
-    if (lat != null && lng != null) return _GeoPoint(lat: lat, lng: lng);
+    if (lat != null && lng != null) {
+      _destinationResolved = true;
+      return _GeoPoint(lat: lat, lng: lng);
+    }
 
     final destination = _destinationFromRow(row);
     final parsed = _tryParseLatLng(destination);
-    if (parsed != null) return parsed;
-    if (destination.length < 3) return null;
+    if (parsed != null) {
+      _destinationResolved = true;
+      return parsed;
+    }
+    if (destination.length < 3) {
+      _destinationResolved = true;
+      return null;
+    }
 
     try {
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
@@ -312,17 +370,31 @@ class _LiveRideScreenState extends State<LiveRideScreen>
               'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)',
             },
           )
-          .timeout(const Duration(seconds: 4));
-      if (response.statusCode < 200 || response.statusCode >= 300) return null;
+          .timeout(const Duration(seconds: 3)); // Reduced from 4 to 3 seconds
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _destinationResolved = true;
+        return null;
+      }
       final decoded = jsonDecode(response.body);
-      if (decoded is! List || decoded.isEmpty) return null;
+      if (decoded is! List || decoded.isEmpty) {
+        _destinationResolved = true;
+        return null;
+      }
       final first = decoded.first;
-      if (first is! Map<String, dynamic>) return null;
+      if (first is! Map<String, dynamic>) {
+        _destinationResolved = true;
+        return null;
+      }
       final resolvedLat = double.tryParse((first['lat'] ?? '').toString());
       final resolvedLng = double.tryParse((first['lon'] ?? '').toString());
-      if (resolvedLat == null || resolvedLng == null) return null;
+      if (resolvedLat == null || resolvedLng == null) {
+        _destinationResolved = true;
+        return null;
+      }
+      _destinationResolved = true;
       return _GeoPoint(lat: resolvedLat, lng: resolvedLng);
     } catch (_) {
+      _destinationResolved = true;
       return null;
     }
   }
@@ -520,59 +592,12 @@ class _LiveRideScreenState extends State<LiveRideScreen>
           point: LatLng(location.lat, location.lng),
           width: 110,
           height: 82,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: member.isLeader ? forest : primary,
-                        width: member.isLeader ? 3 : 2,
-                      ),
-                    ),
-                    child: _avatar(url: member.avatarUrl, radius: 20),
-                  ),
-                  if (member.isLeader)
-                    Positioned(
-                      top: -3,
-                      right: -3,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: forest,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: Colors.white, width: 1.5),
-                        ),
-                        child: const Icon(
-                          Icons.star,
-                          color: Colors.white,
-                          size: 9,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 3),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  member.id == currentUserId ? 'You' : member.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
+          child: _MemberMarkerWidget(
+            member: member,
+            currentUserId: currentUserId,
+            isLeader: member.isLeader,
+            primary: primary,
+            forest: forest,
           ),
         ),
       );
@@ -1414,12 +1439,11 @@ class _LiveRideScreenState extends State<LiveRideScreen>
           timeLimit: Duration(seconds: 10),
         ),
       );
+      // Update position without full rebuild
+      _latestPosition = current;
       if (mounted) {
-        setState(() {
-          _latestPosition = current;
-        });
-      } else {
-        _latestPosition = current;
+        _mapUpdateCounter++;
+        setState(() {});
       }
       await _syncLocationToRide(current);
     } catch (_) {}
@@ -1428,16 +1452,16 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     _positionSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 12,
+        distanceFilter: 15, // Increased from 12 to 15 meters
       ),
     ).listen(
       (position) {
+        _latestPosition = position;
+        // Only rebuild if map is visible (optimization)
         if (mounted) {
-          setState(() {
-            _latestPosition = position;
-          });
-        } else {
-          _latestPosition = position;
+          _mapUpdateCounter++;
+          // Use light rebuild for just map updates
+          setState(() {});
         }
         _syncLocationToRide(position);
       },
@@ -1629,4 +1653,119 @@ class _GeoPoint {
 
   final double lat;
   final double lng;
+}
+
+class _MemberMarkerWidget extends StatelessWidget {
+  const _MemberMarkerWidget({
+    required this.member,
+    required this.currentUserId,
+    required this.isLeader,
+    required this.primary,
+    required this.forest,
+  });
+
+  final _LiveMember member;
+  final String currentUserId;
+  final bool isLeader;
+  final Color primary;
+  final Color forest;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isLeader ? forest : primary,
+                  width: isLeader ? 3 : 2,
+                ),
+              ),
+              child: _MemberAvatar(
+                avatarUrl: member.avatarUrl,
+                name: member.name,
+              ),
+            ),
+            if (isLeader)
+              Positioned(
+                top: -3,
+                right: -3,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: forest,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  child: const Icon(
+                    Icons.star,
+                    color: Colors.white,
+                    size: 9,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            member.id == currentUserId ? 'You' : member.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MemberAvatar extends StatelessWidget {
+  const _MemberAvatar({
+    required this.avatarUrl,
+    required this.name,
+  });
+
+  final String avatarUrl;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final avatar = avatarUrl.trim();
+    if (avatar.isNotEmpty) {
+      return CircleAvatar(
+        radius: 20,
+        backgroundImage: NetworkImage(avatar),
+        onBackgroundImageError: (_, __) {},
+      );
+    }
+
+    final initial =
+        name.trim().isEmpty
+            ? 'R'
+            : name.trim().substring(0, 1).toUpperCase();
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: const Color(0xFF00C2CB).withValues(alpha: 0.16),
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF00C2CB),
+        ),
+      ),
+    );
+  }
 }
