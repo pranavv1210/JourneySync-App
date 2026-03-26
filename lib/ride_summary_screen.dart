@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'app_toast.dart';
 
 class RideSummaryScreen extends StatefulWidget {
   const RideSummaryScreen({super.key, required this.rideId});
@@ -628,6 +631,26 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
       children: [
         SizedBox(
           width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _shareRideProgress,
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: primary.withValues(alpha: 0.4)),
+              foregroundColor: primary,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            icon: const Icon(Icons.ios_share_rounded),
+            label: const Text(
+              'Share Ride Progress',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
           child: ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
@@ -660,6 +683,48 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _shareRideProgress() async {
+    try {
+      final text = _shareSummaryText();
+      await SharePlus.instance.share(ShareParams(text: text));
+    } catch (error) {
+      if (!mounted) return;
+      showAppToast(
+        context,
+        'Could not open share sheet: $error',
+        type: AppToastType.error,
+      );
+    }
+  }
+
+  String _shareSummaryText() {
+    final rideName = _rideName();
+    final destination = _destinationLabel();
+    final date = _dateLabel();
+    final duration = _durationText();
+    final distance = _metric(const ['distance_km', 'distance'], 'km');
+    final avgSpeed = _metric(const ['avg_speed_kmh', 'avg_speed'], 'km/h');
+    final topSpeed = _metric(const ['top_speed_kmh', 'top_speed'], 'km/h');
+    final elevation = _metric(const ['elevation_m', 'elevation'], 'm');
+    final riders = participants.isEmpty ? 1 : participants.length;
+
+    return '''
+Ride Completed: $rideName
+Date: $date
+Destination: $destination
+
+Duration: $duration
+Distance: $distance
+Avg Speed: $avgSpeed
+Top Speed: $topSpeed
+Elevation: $elevation
+Rode With: $riders rider(s)
+
+Tracked on JourneySync.
+#JourneySync #RideSummary #RideLife
+''';
   }
 }
 

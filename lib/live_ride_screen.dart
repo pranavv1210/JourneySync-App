@@ -45,6 +45,8 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   String _trackingStatus = "Starting GPS...";
   bool _useTerrainTiles = false;
   String? _chatTableName;
+  bool _isRefreshingLiveData = false;
+  int _refreshTick = 0;
 
   @override
   void initState() {
@@ -57,52 +59,93 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   }
 
   Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    userName = prefs.getString("userName") ?? "Rider";
-    userBike = prefs.getString("userBike") ?? "No bike added";
-    currentUserId = (prefs.getString("userId") ?? "").trim();
-    final data =
-        await supabase.from('rides').select().eq('id', widget.rideId).single();
-    final loadedMembers = await _loadMembers(data);
-    final resolvedDestination = await _resolveDestinationPoint(data);
-    final unreadCount = await _loadChatCount();
-    if (!mounted) return;
-    setState(() {
-      ride = data;
-      members = loadedMembers;
-      destinationPoint = resolvedDestination;
-      chatCount = unreadCount;
-      loading = false;
-    });
-    _startLiveRefreshTimer();
-    await _startLocationTracking();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      userName = prefs.getString("userName") ?? "Rider";
+      userBike = prefs.getString("userBike") ?? "No bike added";
+      currentUserId = (prefs.getString("userId") ?? "").trim();
+
+      final data =
+          await supabase
+              .from('rides')
+              .select()
+              .eq('id', widget.rideId)
+              .single()
+              .timeout(const Duration(seconds: 8));
+
+      if (!mounted) return;
+      setState(() {
+        ride = data;
+        loading = false;
+      });
+
+      _startLiveRefreshTimer();
+      _startLocationTracking();
+      _loadSupplementalData(data);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        loading = false;
+      });
+      _startLiveRefreshTimer();
+      _startLocationTracking();
+    }
+  }
+
+  Future<void> _loadSupplementalData(Map<String, dynamic> rideRow) async {
+    try {
+      final loadedMembersFuture = _loadMembers(rideRow);
+      final destinationFuture = _resolveDestinationPoint(rideRow);
+      final chatCountFuture = _loadChatCount();
+      final results = await Future.wait<dynamic>([
+        loadedMembersFuture,
+        destinationFuture,
+        chatCountFuture,
+      ]);
+      if (!mounted) return;
+      setState(() {
+        members = results[0] as List<_LiveMember>;
+        destinationPoint = results[1] as _GeoPoint?;
+        chatCount = results[2] as int;
+      });
+    } catch (_) {}
   }
 
   void _startLiveRefreshTimer() {
     _liveRefreshTimer?.cancel();
-    _liveRefreshTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+    _liveRefreshTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       _refreshLiveData();
     });
   }
 
   Future<void> _refreshLiveData() async {
-    if (!mounted) return;
+    if (!mounted || _isRefreshingLiveData) return;
+    _isRefreshingLiveData = true;
     try {
       final latestRide =
           await supabase
               .from('rides')
               .select()
               .eq('id', widget.rideId)
-              .single();
-      final refreshedMembers = await _loadMembers(latestRide);
-      final unreadCount = await _loadChatCount();
+              .single()
+              .timeout(const Duration(seconds: 6));
+
+      final refreshedMembers =
+          (_refreshTick % 2 == 0) ? await _loadMembers(latestRide) : members;
+      final unreadCount =
+          (_refreshTick % 3 == 0) ? await _loadChatCount() : chatCount;
+
       if (!mounted) return;
       setState(() {
         ride = latestRide;
         members = refreshedMembers;
         chatCount = unreadCount;
       });
+      _refreshTick++;
     } catch (_) {}
+    finally {
+      _isRefreshingLiveData = false;
+    }
   }
 
   String _rideTitle() {
@@ -269,7 +312,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         headers: const {
           'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)',
         },
-      );
+      ).timeout(const Duration(seconds: 4));
       if (response.statusCode < 200 || response.statusCode >= 300) return null;
       final decoded = jsonDecode(response.body);
       if (decoded is! List || decoded.isEmpty) return null;
