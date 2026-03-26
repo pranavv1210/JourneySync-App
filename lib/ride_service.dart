@@ -168,8 +168,9 @@ class RideService {
           if (ride.status.trim().toLowerCase() == 'cancelled') return false;
 
           final startPoint = _parseLatLng(ride.startLocation);
-          if (startPoint == null)
+          if (startPoint == null) {
             return true; // Show rides missing coords instead of hiding completely
+          }
           final meters = Geolocator.distanceBetween(
             origin.lat,
             origin.lng,
