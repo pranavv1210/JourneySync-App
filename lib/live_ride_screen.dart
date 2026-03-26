@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -24,6 +25,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
   final MapController _mapController = MapController();
+  final Battery _battery = Battery();
 
   bool loading = true;
   Map<String, dynamic>? ride;
@@ -53,6 +55,20 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   final Map<String, Map<String, dynamic>> _cachedUserProfiles = {};
   DateTime? _lastMembersRefresh;
   bool _destinationResolved = false;
+
+  Future<String?> _batteryPercentLabel() async {
+    try {
+      final level = await _battery.batteryLevel;
+      return '$level%';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _signalStatusLabel() {
+    if (!_isTrackingLocation) return 'GPS unavailable';
+    return 'GPS active';
+  }
 
   @override
   void initState() {
@@ -959,6 +975,9 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       final phone = prefs.getString("userPhone") ?? "";
       final name = prefs.getString("userName") ?? "Rider";
       final bike = prefs.getString("userBike") ?? "No bike added";
+      final avatarUrl = prefs.getString("userAvatarUrl") ?? "";
+      final current = _latestPosition;
+      final battery = await _batteryPercentLabel();
 
       try {
         await supabase
@@ -968,7 +987,16 @@ class _LiveRideScreenState extends State<LiveRideScreen>
               'alert_by': phone,
               'alert_by_name': name,
               'alert_by_bike': bike,
+              'alert_by_avatar_url': avatarUrl,
               'alert_at': DateTime.now().toIso8601String(),
+              'alert_lat': current?.latitude,
+              'alert_lng': current?.longitude,
+              'alert_speed':
+                  current != null && current.speed >= 0
+                      ? current.speed * 3.6
+                      : null,
+              'alert_signal': _signalStatusLabel(),
+              'alert_battery': battery,
             })
             .eq('id', widget.rideId);
       } catch (_) {}
@@ -1542,6 +1570,8 @@ class _LiveRideScreenState extends State<LiveRideScreen>
 
     _locationSyncInFlight = true;
     try {
+      final battery = await _batteryPercentLabel();
+      final speedKmh = position.speed >= 0 ? position.speed * 3.6 : null;
       var synced = false;
       if (currentUserId.isNotEmpty) {
         try {
@@ -1554,6 +1584,8 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                     position.speed >= 0 ? position.speed : null,
                 'current_heading':
                     position.heading >= 0 ? position.heading : null,
+                'battery': battery,
+                'signal': _signalStatusLabel(),
                 'location_updated_at': now.toIso8601String(),
                 'active_ride_id': widget.rideId,
               })
@@ -1575,7 +1607,21 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                     position.speed >= 0 ? position.speed : null,
                 'current_heading':
                     position.heading >= 0 ? position.heading : null,
+                'battery': battery,
+                'signal': _signalStatusLabel(),
                 'location_updated_at': now.toIso8601String(),
+                if ((ride?['alert_status'] ?? '')
+                        .toString()
+                        .trim()
+                        .toLowerCase() ==
+                    'active') ...{
+                  'alert_lat': position.latitude,
+                  'alert_lng': position.longitude,
+                  'alert_speed': speedKmh,
+                  'alert_signal': _signalStatusLabel(),
+                  'alert_battery': battery,
+                  'alert_at': now.toIso8601String(),
+                },
               })
               .eq('id', widget.rideId);
           synced = true;
@@ -1631,6 +1677,8 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         code == 'PGRST204' ||
         message.contains('current_lat') ||
         message.contains('current_lng') ||
+        message.contains('battery') ||
+        message.contains('signal') ||
         message.contains('active_ride_id') ||
         message.contains('location_updated_at');
   }
@@ -1644,6 +1692,14 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         message.contains('current_lng') ||
         message.contains('current_speed_mps') ||
         message.contains('current_heading') ||
+        message.contains('battery') ||
+        message.contains('signal') ||
+        message.contains('alert_lat') ||
+        message.contains('alert_lng') ||
+        message.contains('alert_speed') ||
+        message.contains('alert_signal') ||
+        message.contains('alert_battery') ||
+        message.contains('alert_by_avatar_url') ||
         message.contains('location_updated_at');
   }
 

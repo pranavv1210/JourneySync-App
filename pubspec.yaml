@@ -47,6 +47,7 @@ dependencies:
   image_cropper: ^9.1.0
   sentry_flutter: ^9.15.0
   url_launcher: ^6.3.1
+  battery_plus: ^6.2.1
 
 dev_dependencies:
   flutter_test:
