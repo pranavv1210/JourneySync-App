@@ -62,24 +62,28 @@ class NearbyRide {
     required this.ride,
     required this.hostName,
     required this.hostBike,
+    required this.hostAvatarUrl,
     required this.joined,
   });
 
   final RideRecord ride;
   final String hostName;
   final String hostBike;
+  final String hostAvatarUrl;
   final bool joined;
 
   NearbyRide copyWith({
     RideRecord? ride,
     String? hostName,
     String? hostBike,
+    String? hostAvatarUrl,
     bool? joined,
   }) {
     return NearbyRide(
       ride: ride ?? this.ride,
       hostName: hostName ?? this.hostName,
       hostBike: hostBike ?? this.hostBike,
+      hostAvatarUrl: hostAvatarUrl ?? this.hostAvatarUrl,
       joined: joined ?? this.joined,
     );
   }
@@ -201,6 +205,7 @@ class RideService {
           creatorProfiles[ride.creatorId] ?? const <String, String>{};
       final hostName = (profile['name'] ?? 'Rider').trim();
       final hostBike = (profile['bike'] ?? 'No bike added').trim();
+      final hostAvatarUrl = (profile['avatar_url'] ?? '').trim();
       final participantCount = participantCounts[ride.id] ?? 0;
 
       return NearbyRide(
@@ -216,6 +221,7 @@ class RideService {
         ),
         hostName: hostName.isNotEmpty ? hostName : 'Rider',
         hostBike: hostBike.isNotEmpty ? hostBike : 'No bike added',
+        hostAvatarUrl: hostAvatarUrl,
         joined:
             joinedRideIds.contains(ride.id) || ride.creatorId == currentUserId,
       );
@@ -494,7 +500,12 @@ class RideService {
         final row = await _supabaseService.fetchUserById(id);
         final name = (row?['name'] ?? '').toString();
         final bike = (row?['bike'] ?? '').toString();
-        return MapEntry(id, <String, String>{'name': name, 'bike': bike});
+        final avatarUrl = (row?['avatar_url'] ?? '').toString();
+        return MapEntry(id, <String, String>{
+          'name': name,
+          'bike': bike,
+          'avatar_url': avatarUrl,
+        });
       }),
     );
 

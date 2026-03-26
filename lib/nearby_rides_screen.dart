@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -15,13 +16,21 @@ class NearbyRidesScreen extends StatefulWidget {
 
 class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     with SingleTickerProviderStateMixin {
+  static const Duration _emptyStateDelay = Duration(seconds: 12);
+
   final RideService _rideService = RideService();
   late final AnimationController _radarController;
 
+  Timer? _emptyStateTimer;
+  DateTime? _scanStartedAt;
+
   bool searching = true;
   bool joiningByCode = false;
+  bool _showNoRidesFallback = false;
   String errorText = '';
   String currentUserId = '';
+  String currentUserName = 'You';
+  String currentUserAvatarUrl = '';
   String joiningRideId = '';
   List<NearbyRide> nearbyRides = <NearbyRide>[];
 
@@ -37,16 +46,21 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
 
   @override
   void dispose() {
+    _emptyStateTimer?.cancel();
     _radarController.dispose();
     super.dispose();
   }
 
   Future<void> _loadNearbyRides() async {
+    _emptyStateTimer?.cancel();
+    _scanStartedAt = DateTime.now();
     if (!mounted) return;
     setState(() {
       searching = true;
+      _showNoRidesFallback = false;
       errorText = '';
       joiningRideId = '';
+      nearbyRides = <NearbyRide>[];
     });
 
     try {
@@ -56,27 +70,61 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         throw Exception('Missing user session. Please login again.');
       }
 
+      final userName = (prefs.getString('userName') ?? 'You').trim();
+      final userAvatarUrl = (prefs.getString('userAvatarUrl') ?? '').trim();
+
       final rides = await _rideService.searchNearbyRides(
         userId,
         requestPermissionIfNeeded: true,
       );
       if (!mounted) return;
+
+      if (rides.isNotEmpty) {
+        setState(() {
+          currentUserId = userId;
+          currentUserName = userName.isNotEmpty ? userName : 'You';
+          currentUserAvatarUrl = userAvatarUrl;
+          nearbyRides = rides;
+          searching = false;
+          _showNoRidesFallback = false;
+        });
+        return;
+      }
+
       setState(() {
         currentUserId = userId;
-        nearbyRides = rides;
+        currentUserName = userName.isNotEmpty ? userName : 'You';
+        currentUserAvatarUrl = userAvatarUrl;
+        nearbyRides = <NearbyRide>[];
       });
+      _startEmptyStateCountdown();
     } catch (error) {
+      _emptyStateTimer?.cancel();
       if (!mounted) return;
       setState(() {
         errorText = _nearbyRidesFallbackMessage(error);
+        searching = false;
+        _showNoRidesFallback = false;
       });
-    } finally {
-      if (mounted) {
-        setState(() {
-          searching = false;
-        });
-      }
     }
+  }
+
+  void _startEmptyStateCountdown() {
+    final startedAt = _scanStartedAt ?? DateTime.now();
+    final elapsed = DateTime.now().difference(startedAt);
+    final remaining =
+        elapsed >= _emptyStateDelay
+            ? Duration.zero
+            : _emptyStateDelay - elapsed;
+
+    _emptyStateTimer?.cancel();
+    _emptyStateTimer = Timer(remaining, () {
+      if (!mounted || nearbyRides.isNotEmpty || errorText.isNotEmpty) return;
+      setState(() {
+        searching = false;
+        _showNoRidesFallback = true;
+      });
+    });
   }
 
   String _nearbyRidesFallbackMessage(Object error) {
@@ -268,9 +316,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
           'You are already part of "${result.rideTitle}".',
       };
       showAppToast(context, message, type: AppToastType.success);
-      if (!searching && errorText.isEmpty) {
-        await _loadNearbyRides();
-      }
+      await _loadNearbyRides();
     } catch (error) {
       if (!mounted) return;
       showAppToast(
@@ -313,54 +359,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
           ),
         ],
       ),
-      body:
-          searching
-              ? _radarLoading(primary, forest)
-              : _content(primary, forest),
-    );
-  }
-
-  Widget _radarLoading(Color primary, Color forest) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 220,
-            height: 220,
-            child: AnimatedBuilder(
-              animation: _radarController,
-              builder: (context, _) {
-                final sweepAngle = _radarController.value * 2 * math.pi;
-                return CustomPaint(
-                  painter: _RadarPainter(
-                    sweepAngle: sweepAngle,
-                    primary: primary,
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            'Scanning for nearby riders...',
-            style: TextStyle(
-              color: forest,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Please wait',
-            style: TextStyle(
-              color: forest.withValues(alpha: 0.65),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+      body: _content(primary, forest),
     );
   }
 
@@ -391,46 +390,208 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       );
     }
 
-    if (nearbyRides.isEmpty) {
-      return Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 22),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: primary.withValues(alpha: 0.22)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    if (searching || nearbyRides.isEmpty) {
+      return _radarExperience(
+        primary,
+        forest,
+        showFallback: _showNoRidesFallback,
+      );
+    }
+
+    return Column(
+      children: [
+        const SizedBox(height: 4),
+        _radarSurface(primary, forest, nearbyRides),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Row(
             children: [
-              Icon(Icons.radar, color: primary, size: 34),
-              const SizedBox(height: 10),
               Text(
-                'No nearby rides found',
+                '${nearbyRides.length} nearby ride${nearbyRides.length == 1 ? '' : 's'} found',
                 style: TextStyle(
                   color: forest,
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Ask a host to create a ride and keep it scheduled/live, then refresh radar.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: forest.withValues(alpha: 0.65),
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(height: 10),
+        Expanded(child: _rideList(primary, forest)),
+      ],
+    );
+  }
+
+  Widget _radarExperience(
+    Color primary,
+    Color forest, {
+    required bool showFallback,
+  }) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _radarSurface(primary, forest, nearbyRides),
+            const SizedBox(height: 18),
+            Text(
+              showFallback
+                  ? 'No nearby rides found'
+                  : 'Scanning for nearby rides...',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: forest,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              showFallback
+                  ? 'Ask a host to create a ride and keep it live, then refresh the radar.'
+                  : 'Radar keeps scanning for around 10 to 15 seconds before showing an empty result.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: forest.withValues(alpha: 0.68),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (showFallback) ...[
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadNearbyRides,
+                style: ElevatedButton.styleFrom(backgroundColor: primary),
+                child: const Text('Scan Again'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _radarSurface(Color primary, Color forest, List<NearbyRide> rides) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF2BB3F3), Color(0xFF1684DE)],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 26,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            width: 300,
+            height: 300,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final size = math.min(
+                  constraints.maxWidth,
+                  constraints.maxHeight,
+                );
+                final nodes = _buildRadarNodes(rides);
+                return Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _radarController,
+                      builder: (context, _) {
+                        final sweepAngle = _radarController.value * 2 * math.pi;
+                        return CustomPaint(
+                          size: Size.square(size),
+                          painter: _RadarPainter(
+                            sweepAngle: sweepAngle,
+                            primary: Colors.white,
+                          ),
+                        );
+                      },
+                    ),
+                    for (final node in nodes)
+                      _RadarRideMarker(
+                        ride: node.ride,
+                        xFactor: node.xFactor,
+                        yFactor: node.yFactor,
+                        visible: rides.isNotEmpty,
+                      ),
+                    _RadarCenterMarker(
+                      name: currentUserName,
+                      avatarUrl: currentUserAvatarUrl,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            rides.isNotEmpty
+                ? 'Nearby riders detected on radar'
+                : 'Radar is sweeping around you',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            rides.isNotEmpty
+                ? 'Tap Join Ride below to connect with one of them.'
+                : 'Waiting for nearby rides to appear in range.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<_RadarNode> _buildRadarNodes(List<NearbyRide> rides) {
+    if (rides.isEmpty) return const <_RadarNode>[];
+
+    const ringFactors = <double>[0.28, 0.44, 0.6, 0.77];
+    final nodes = <_RadarNode>[];
+    for (int index = 0; index < rides.length; index++) {
+      final ride = rides[index];
+      final hash = ride.ride.id.hashCode.abs() + index * 53;
+      final angle = ((hash % 360) / 180) * math.pi;
+      final ring = ringFactors[hash % ringFactors.length];
+      final x = 0.5 + math.cos(angle) * ring * 0.38;
+      final y = 0.5 + math.sin(angle) * ring * 0.38;
+      nodes.add(
+        _RadarNode(
+          ride: ride,
+          xFactor: x.clamp(0.15, 0.85),
+          yFactor: y.clamp(0.15, 0.85),
+        ),
       );
     }
+    return nodes;
+  }
 
+  Widget _rideList(Color primary, Color forest) {
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
       itemCount: nearbyRides.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
@@ -499,15 +660,28 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                'Host: ${ride.hostName} | ${ride.hostBike}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: forest.withValues(alpha: 0.75),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  _RadarAvatar(
+                    avatarUrl: ride.hostAvatarUrl,
+                    label: ride.hostName,
+                    radius: 16,
+                    borderColor: primary.withValues(alpha: 0.22),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Host: ${ride.hostName} | ${ride.hostBike}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: forest.withValues(alpha: 0.75),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -565,9 +739,9 @@ class _RadarPainter extends CustomPainter {
 
     final ringPaint =
         Paint()
-          ..color = primary.withValues(alpha: 0.25)
+          ..color = primary.withValues(alpha: 0.24)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5;
+          ..strokeWidth = 1.4;
     for (int i = 1; i <= 4; i++) {
       canvas.drawCircle(center, radius * (i / 4), ringPaint);
     }
@@ -576,11 +750,17 @@ class _RadarPainter extends CustomPainter {
     final sweepPaint =
         Paint()
           ..shader = SweepGradient(
-            startAngle: sweepAngle - 0.35,
+            startAngle: sweepAngle - 0.45,
             endAngle: sweepAngle,
-            colors: [Colors.transparent, primary.withValues(alpha: 0.45)],
+            colors: [Colors.transparent, primary.withValues(alpha: 0.42)],
           ).createShader(sweepRect);
-    canvas.drawArc(sweepRect, sweepAngle - 0.35, 0.35, true, sweepPaint);
+    canvas.drawArc(sweepRect, sweepAngle - 0.45, 0.45, true, sweepPaint);
+
+    final pulsePaint =
+        Paint()
+          ..color = primary.withValues(alpha: 0.18)
+          ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius * 0.16, pulsePaint);
 
     final dotPaint =
         Paint()
@@ -593,5 +773,172 @@ class _RadarPainter extends CustomPainter {
   bool shouldRepaint(covariant _RadarPainter oldDelegate) {
     return oldDelegate.sweepAngle != sweepAngle ||
         oldDelegate.primary != primary;
+  }
+}
+
+class _RadarNode {
+  const _RadarNode({
+    required this.ride,
+    required this.xFactor,
+    required this.yFactor,
+  });
+
+  final NearbyRide ride;
+  final double xFactor;
+  final double yFactor;
+}
+
+class _RadarRideMarker extends StatelessWidget {
+  const _RadarRideMarker({
+    required this.ride,
+    required this.xFactor,
+    required this.yFactor,
+    required this.visible,
+  });
+
+  final NearbyRide ride;
+  final double xFactor;
+  final double yFactor;
+  final bool visible;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionalTranslation(
+      translation: const Offset(-0.5, -0.5),
+      child: Align(
+        alignment: Alignment(xFactor * 2 - 1, yFactor * 2 - 1),
+        child: AnimatedScale(
+          duration: const Duration(milliseconds: 320),
+          scale: visible ? 1 : 0.7,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 320),
+            opacity: visible ? 1 : 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _RadarAvatar(
+                  avatarUrl: ride.hostAvatarUrl,
+                  label: ride.hostName,
+                  radius: 23,
+                  borderColor: Colors.white,
+                ),
+                const SizedBox(height: 6),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 88),
+                  child: Text(
+                    ride.hostName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RadarCenterMarker extends StatelessWidget {
+  const _RadarCenterMarker({required this.name, required this.avatarUrl});
+
+  final String name;
+  final String avatarUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 74,
+          height: 74,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 14,
+              ),
+            ],
+          ),
+          child: _RadarAvatar(
+            avatarUrl: avatarUrl,
+            label: name,
+            radius: 31,
+            borderColor: const Color(0xFF1BA2F4),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 110),
+          child: Text(
+            name.trim().isEmpty ? 'You' : name.trim(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RadarAvatar extends StatelessWidget {
+  const _RadarAvatar({
+    required this.avatarUrl,
+    required this.label,
+    required this.radius,
+    required this.borderColor,
+  });
+
+  final String avatarUrl;
+  final String label;
+  final double radius;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final clean = avatarUrl.trim();
+    final initial =
+        label.trim().isEmpty ? 'R' : label.trim().substring(0, 1).toUpperCase();
+
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: borderColor, width: 2),
+      ),
+      child: CircleAvatar(
+        radius: radius,
+        backgroundColor: Colors.white,
+        backgroundImage: clean.isNotEmpty ? NetworkImage(clean) : null,
+        onBackgroundImageError: (_, __) {},
+        child:
+            clean.isEmpty
+                ? Text(
+                  initial,
+                  style: TextStyle(
+                    color: const Color(0xFF0C4A6E),
+                    fontSize: radius * 0.75,
+                    fontWeight: FontWeight.w800,
+                  ),
+                )
+                : null,
+      ),
+    );
   }
 }

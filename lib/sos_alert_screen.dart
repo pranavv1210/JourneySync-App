@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import 'app_toast.dart';
 
 class SosAlertScreen extends StatefulWidget {
   const SosAlertScreen({super.key, required this.rideId});
@@ -13,14 +19,18 @@ class SosAlertScreen extends StatefulWidget {
 
 class _SosAlertScreenState extends State<SosAlertScreen> {
   final supabase = Supabase.instance.client;
+  final MapController _mapController = MapController();
 
   bool loading = true;
+  bool _useTerrainTiles = false;
   Map<String, dynamic>? ride;
   String loadError = "";
   String userPhone = "";
   String userId = "";
   String userName = "Rider";
   String userBike = "No bike added";
+  String userAvatarUrl = "";
+  Position? _currentPosition;
 
   @override
   void initState() {
@@ -35,6 +45,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
       userId = prefs.getString("userId") ?? "";
       userName = prefs.getString("userName") ?? "Rider";
       userBike = prefs.getString("userBike") ?? "No bike added";
+      userAvatarUrl = prefs.getString("userAvatarUrl") ?? "";
 
       final data =
           await supabase
@@ -53,12 +64,15 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
       }
 
       await _hydrateAlertFallbackFromUser(data);
+      await _loadCurrentPosition();
+
       if (!mounted) return;
       setState(() {
         ride = data;
         loadError = "";
         loading = false;
       });
+      _fitMapToAlert();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -66,6 +80,27 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
         loading = false;
       });
     }
+  }
+
+  Future<void> _loadCurrentPosition() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return;
+      }
+      _currentPosition = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+    } catch (_) {}
   }
 
   bool get isSelfAlert {
@@ -85,63 +120,130 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
     return userBike.trim().isEmpty ? "" : userBike.trim();
   }
 
+  String _alertPhone() {
+    final phone = ride?['alert_by']?.toString().trim();
+    if (phone != null && phone.isNotEmpty) return phone;
+    return userPhone.trim();
+  }
+
+  String _alertAvatarUrl() {
+    final avatar = ride?['alert_by_avatar_url']?.toString().trim();
+    if (avatar != null && avatar.isNotEmpty) return avatar;
+    return isSelfAlert ? userAvatarUrl.trim() : "";
+  }
+
+  DateTime? _alertAt() {
+    final candidates = [
+      ride?['alert_at'],
+      ride?['location_updated_at'],
+      ride?['created_at'],
+    ];
+    for (final raw in candidates) {
+      final parsed = DateTime.tryParse((raw ?? '').toString());
+      if (parsed != null) return parsed.toLocal();
+    }
+    return null;
+  }
+
   String _alertSince() {
-    final raw = ride?['alert_at']?.toString();
-    final parsed = raw == null ? null : DateTime.tryParse(raw);
-    if (parsed == null) return "Time unavailable";
+    final parsed = _alertAt();
+    if (parsed == null) return "just now";
     final diff = DateTime.now().difference(parsed);
-    if (diff.inMinutes < 1) return "Just now";
+    if (diff.inMinutes < 1) return "just now";
     if (diff.inMinutes < 60) return "${diff.inMinutes}m ago";
-    final hours = diff.inHours;
-    return "${hours}h ago";
+    if (diff.inHours < 24) return "${diff.inHours}h ago";
+    return "${diff.inDays}d ago";
+  }
+
+  String _signalDetectedLabel() {
+    final parsed = _alertAt();
+    if (parsed == null) return "Signal detected recently";
+    final time =
+        "${parsed.hour % 12 == 0 ? 12 : parsed.hour % 12}:${parsed.minute.toString().padLeft(2, '0')} ${parsed.hour >= 12 ? 'PM' : 'AM'}";
+    return "Signal detected $_alertSince() • $time";
+  }
+
+  double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString().trim());
+  }
+
+  LatLng? _alertLatLng() {
+    final lat = _toDouble(
+      ride?['alert_lat'] ??
+          ride?['current_lat'] ??
+          ride?['lat'] ??
+          ride?['start_lat'],
+    );
+    final lng = _toDouble(
+      ride?['alert_lng'] ??
+          ride?['current_lng'] ??
+          ride?['lng'] ??
+          ride?['start_lng'],
+    );
+    if (lat == null || lng == null) return null;
+    return LatLng(lat, lng);
   }
 
   String _coords() {
-    final lat = ride?['alert_lat'] ?? ride?['lat'] ?? ride?['start_lat'];
-    final lng = ride?['alert_lng'] ?? ride?['lng'] ?? ride?['start_lng'];
-    if (lat == null || lng == null) return "Coordinates unavailable";
-    return _toDms(lat, lng);
+    final point = _alertLatLng();
+    if (point == null) return "Waiting for live coordinates";
+    return "${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}";
   }
 
-  String _toDms(dynamic lat, dynamic lng) {
-    double? latD =
-        lat is num ? lat.toDouble() : double.tryParse(lat.toString());
-    double? lngD =
-        lng is num ? lng.toDouble() : double.tryParse(lng.toString());
-    if (latD == null || lngD == null) return "Coordinates unavailable";
-    String latDir = latD >= 0 ? "N" : "S";
-    String lngDir = lngD >= 0 ? "E" : "W";
-    latD = latD.abs();
-    lngD = lngD.abs();
-    String latStr = _dms(latD);
-    String lngStr = _dms(lngD);
-    return "$latDir $latStr  $lngDir $lngStr";
+  String _elevationLabel() {
+    final raw = _alertValue(const ['alert_elevation', 'elevation']);
+    if (raw != null) return raw;
+    return "Live";
   }
 
-  String _dms(double value) {
-    final deg = value.floor();
-    final minFloat = (value - deg) * 60;
-    final min = minFloat.floor();
-    final sec = ((minFloat - min) * 60);
-    return "$deg deg ${min.toString().padLeft(2, '0')}.${sec.toStringAsFixed(0).padLeft(2, '0')}'";
-  }
-
-  String _alertValue(List<String> keys, {String fallback = "--"}) {
+  String? _alertValue(List<String> keys) {
     for (final key in keys) {
       final value = ride?[key];
-      if (value != null && value.toString().trim().isNotEmpty) {
-        return value.toString();
-      }
+      final text = (value ?? '').toString().trim();
+      if (text.isNotEmpty) return text;
     }
-    return fallback;
+    return null;
+  }
+
+  String _distanceLabel() {
+    final current = _currentPosition;
+    final target = _alertLatLng();
+    if (current == null || target == null) return "Live";
+    final meters = Geolocator.distanceBetween(
+      current.latitude,
+      current.longitude,
+      target.latitude,
+      target.longitude,
+    );
+    if (meters < 1000) return "${meters.round()} m";
+    return "${(meters / 1000).toStringAsFixed(1)} km";
+  }
+
+  String _batteryLabel() {
+    return _alertValue(const ['alert_battery', 'battery']) ?? "N/A";
+  }
+
+  String _speedLabel() {
+    final speed = _toDouble(
+      ride?['alert_speed'] ?? ride?['speed_kmh'] ?? ride?['speed'],
+    );
+    if (speed != null && speed >= 0) {
+      return "${speed.round()} km/h";
+    }
+    final mps = _toDouble(ride?['current_speed_mps']);
+    if (mps != null && mps >= 0) {
+      return "${(mps * 3.6).round()} km/h";
+    }
+    return "0 km/h";
+  }
+
+  String _signalLabel() {
+    return _alertValue(const ['alert_signal', 'signal']) ?? "Tracked";
   }
 
   Future<void> _hydrateAlertFallbackFromUser(Map<String, dynamic> row) async {
-    final hasAlertIdentity =
-        (row['alert_by_name'] ?? '').toString().trim().isNotEmpty &&
-        (row['alert_by_bike'] ?? '').toString().trim().isNotEmpty;
-    if (hasAlertIdentity) return;
-
     final fallbackUserId =
         (row['alert_user_id'] ??
                 row['creator_id'] ??
@@ -156,7 +258,9 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
     try {
       final raw = await supabase
           .from('users')
-          .select('id,name,bike,phone')
+          .select(
+            'id,name,bike,phone,avatar_url,current_lat,current_lng,current_speed_mps,location_updated_at',
+          )
           .eq('id', targetUserId)
           .limit(1);
       final userRows = List<Map<String, dynamic>>.from(raw);
@@ -165,17 +269,121 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
       row['alert_by_name'] ??= user['name'];
       row['alert_by_bike'] ??= user['bike'];
       row['alert_by'] ??= user['phone'];
+      row['alert_by_avatar_url'] ??= user['avatar_url'];
+      row['alert_lat'] ??= user['current_lat'];
+      row['alert_lng'] ??= user['current_lng'];
+      row['current_lat'] ??= user['current_lat'];
+      row['current_lng'] ??= user['current_lng'];
+      row['current_speed_mps'] ??= user['current_speed_mps'];
+      row['alert_at'] ??= user['location_updated_at'];
+      row['location_updated_at'] ??= user['location_updated_at'];
     } catch (_) {}
+  }
+
+  void _fitMapToAlert() {
+    final target = _alertLatLng();
+    if (target == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _mapController.move(target, 15.5);
+    });
+  }
+
+  Future<void> _focusMyLocation() async {
+    if (_currentPosition == null) {
+      await _loadCurrentPosition();
+    }
+    final current = _currentPosition;
+    if (current == null) {
+      if (!mounted) return;
+      showAppToast(
+        context,
+        'Your current location is unavailable.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+    _mapController.move(LatLng(current.latitude, current.longitude), 15.5);
+  }
+
+  void _focusRiderLocation() {
+    final target = _alertLatLng();
+    if (target == null) {
+      showAppToast(
+        context,
+        'Rider location is not available yet.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+    _mapController.move(target, 16);
+  }
+
+  Future<void> _launchUri(Uri uri, String failureMessage) async {
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && mounted) {
+      showAppToast(context, failureMessage, type: AppToastType.error);
+    }
+  }
+
+  Future<void> _navigateToRider() async {
+    final target = _alertLatLng();
+    if (target == null) {
+      showAppToast(
+        context,
+        'Rider coordinates are not available yet.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=${target.latitude},${target.longitude}&travelmode=driving',
+    );
+    await _launchUri(uri, 'Could not open navigation.');
+  }
+
+  Future<void> _callRider() async {
+    final phone = _alertPhone();
+    if (phone.isEmpty) {
+      showAppToast(
+        context,
+        'Rider phone number is not available.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+    await _launchUri(
+      Uri(scheme: 'tel', path: phone),
+      'Could not start the call.',
+    );
+  }
+
+  Future<void> _callEmergencyServices() async {
+    await _launchUri(
+      Uri(scheme: 'tel', path: '112'),
+      'Could not contact emergency services.',
+    );
+  }
+
+  Future<void> _cancelAlert() async {
+    try {
+      await supabase
+          .from('rides')
+          .update({'alert_status': 'cleared'})
+          .eq('id', widget.rideId);
+    } catch (_) {}
+    if (!mounted) return;
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFFC72929);
-    const primaryDark = Color(0xFF9B1C1C);
-    const secondary = Color(0xFFD97706);
-    const tertiary = Color(0xFF166534);
-    const sand = Color(0xFFF8F6F6);
-    const sandWarm = Color(0xFFEFECE9);
+    const danger = Color(0xFFC72929);
+    const dangerDark = Color(0xFF991B1B);
+    const primary = Color(0xFFD46211);
+    const forest = Color(0xFF1E3A2F);
+    const background = Color(0xFFF8F7F6);
+    const panel = Color(0xFFF4F0EB);
 
     if (loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -183,6 +391,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
 
     if (loadError.isNotEmpty) {
       return Scaffold(
+        appBar: AppBar(),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -197,309 +406,315 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
     }
 
     return Scaffold(
-      backgroundColor: sand,
-      body: Stack(
+      backgroundColor: background,
+      body: Column(
         children: [
-          Column(
-            children: [
-              _banner(primary),
-              Expanded(
-                child: Stack(
-                  children: [
-                    _mapLayer(tertiary, primary),
-                    _floatingStats(primary, sandWarm, tertiary),
-                    _mapControls(),
-                  ],
-                ),
-              ),
-              _bottomPanel(
-                primary,
-                primaryDark,
-                secondary,
-                tertiary,
-                sandWarm,
-                isSelfAlert,
-              ),
-            ],
+          _banner(danger, forest),
+          Expanded(
+            child: Stack(
+              children: [
+                _mapLayer(forest, danger),
+                _floatingStats(primary, panel),
+                _mapControls(primary),
+              ],
+            ),
           ),
+          _bottomPanel(primary, danger, dangerDark, forest, panel, isSelfAlert),
         ],
       ),
     );
   }
 
-  Widget _banner(Color primary) {
+  Widget _banner(Color danger, Color forest) {
     return Container(
-      color: primary,
-      padding: const EdgeInsets.fromLTRB(20, 40, 20, 14),
+      color: danger,
+      padding: const EdgeInsets.fromLTRB(16, 42, 16, 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.warning, color: Colors.white, size: 28),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isSelfAlert ? "ALERT SENT" : "RIDER DOWN",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  Text(
-                    isSelfAlert
-                        ? "Help is on the way"
-                        : "Signal detected ${_alertSince()}",
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close, color: Colors.white),
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.white,
+            size: 30,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isSelfAlert ? "Alert Active" : "Rider Down",
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                Text(
+                  isSelfAlert
+                      ? "Emergency alert is live"
+                      : _signalDetectedLabel(),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _mapLayer(Color tertiary, Color primary) {
-    return Stack(
+  Widget _mapLayer(Color forest, Color danger) {
+    final target = _alertLatLng();
+    final current = _currentPosition;
+    final center =
+        target ??
+        (current != null
+            ? LatLng(current.latitude, current.longitude)
+            : const LatLng(12.9716, 77.5946));
+
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: center,
+        initialZoom: target != null ? 15.5 : 13,
+        minZoom: 3,
+        maxZoom: 18,
+      ),
       children: [
-        Positioned.fill(child: Container(color: const Color(0xFFE6E3DD))),
-        Positioned(
-          bottom: MediaQuery.of(context).size.height * 0.35,
-          left: MediaQuery.of(context).size.width * 0.4,
-          child: Column(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
+        TileLayer(
+          urlTemplate:
+              _useTerrainTiles
+                  ? 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
+                  : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          subdomains: const ['a', 'b', 'c'],
+          userAgentPackageName: 'com.example.journeysync',
+        ),
+        if (current != null)
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: LatLng(current.latitude, current.longitude),
+                width: 36,
+                height: 36,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: forest, width: 2),
+                  ),
+                  child: Icon(Icons.navigation, color: forest, size: 18),
                 ),
-                child: Icon(Icons.navigation, size: 16, color: tertiary),
               ),
             ],
           ),
-        ),
-        Positioned(
-          top: MediaQuery.of(context).size.height * 0.3,
-          right: MediaQuery.of(context).size.width * 0.3,
-          child: _sosMarker(primary),
-        ),
+        if (target != null)
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: target,
+                width: 70,
+                height: 70,
+                child: _sosMarker(danger),
+              ),
+            ],
+          ),
+        if (current != null && target != null)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: [LatLng(current.latitude, current.longitude), target],
+                color: danger.withValues(alpha: 0.82),
+                strokeWidth: 4,
+              ),
+            ],
+          ),
       ],
     );
   }
 
-  Widget _sosMarker(Color primary) {
+  Widget _sosMarker(Color danger) {
     return Stack(
       alignment: Alignment.center,
       children: [
-        _pulseRing(primary),
         Container(
-          width: 40,
-          height: 40,
+          width: 52,
+          height: 52,
           decoration: BoxDecoration(
-            color: primary,
+            color: danger.withValues(alpha: 0.18),
+            shape: BoxShape.circle,
+          ),
+        ),
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: danger,
             shape: BoxShape.circle,
             boxShadow: [
-              BoxShadow(color: primary.withValues(alpha: 0.5), blurRadius: 16),
+              BoxShadow(color: danger.withValues(alpha: 0.45), blurRadius: 18),
             ],
           ),
-          child: const Icon(Icons.priority_high, color: Colors.white, size: 20),
+          child: const Icon(Icons.priority_high, color: Colors.white, size: 22),
         ),
       ],
     );
   }
 
-  Widget _pulseRing(Color primary) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.3, end: 1),
-      duration: const Duration(seconds: 2),
-      curve: Curves.easeOut,
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: 1 - value,
-          child: Transform.scale(
-            scale: 3 * value,
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: primary.withValues(alpha: 0.3),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-        );
-      },
-      onEnd: () => setState(() {}),
-    );
-  }
-
-  Widget _floatingStats(Color primary, Color sandWarm, Color tertiary) {
+  Widget _floatingStats(Color primary, Color panel) {
     return Positioned(
-      top: 12,
-      left: 12,
-      right: 12,
+      top: 14,
+      left: 14,
+      right: 14,
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: sandWarm.withValues(alpha: 0.95),
-          borderRadius: BorderRadius.circular(10),
-          border: Border(left: BorderSide(color: primary, width: 4)),
+          color: Colors.white.withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Row(
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "TARGET COORDINATES",
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _coords(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(width: 1, height: 28, color: Colors.grey.shade300),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  "ELEVATION",
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _alertValue(const [
-                    'alert_elevation',
-                    'elevation',
-                  ], fallback: '--'),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
+            Expanded(child: _topStatBlock("Target Coordinates", _coords())),
+            Container(width: 1, height: 34, color: Colors.grey.shade300),
+            const SizedBox(width: 14),
+            _topStatBlock("Elevation", _elevationLabel(), alignEnd: true),
           ],
         ),
       ),
     );
   }
 
-  Widget _mapControls() {
+  Widget _topStatBlock(String label, String value, {bool alignEnd = false}) {
+    return Column(
+      crossAxisAlignment:
+          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.1,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _mapControls(Color primary) {
     return Positioned(
-      top: 90,
-      right: 12,
+      right: 14,
+      bottom: 22,
       child: Column(
         children: [
-          _mapControlButton(Icons.my_location),
+          _mapControlButton(Icons.my_location_rounded, onTap: _focusMyLocation),
           const SizedBox(height: 10),
-          _mapControlButton(Icons.layers),
+          _mapControlButton(
+            Icons.person_pin_circle_rounded,
+            onTap: _focusRiderLocation,
+          ),
+          const SizedBox(height: 10),
+          _mapControlButton(
+            Icons.layers_rounded,
+            onTap: () {
+              setState(() {
+                _useTerrainTiles = !_useTerrainTiles;
+              });
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _mapControlButton(IconData icon) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 12,
+  Widget _mapControlButton(IconData icon, {required VoidCallback onTap}) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 12,
+              ),
+            ],
           ),
-        ],
+          child: Icon(icon, color: Colors.grey.shade800),
+        ),
       ),
-      child: Icon(icon, color: Colors.grey.shade700),
     );
   }
 
   Widget _bottomPanel(
     Color primary,
-    Color primaryDark,
-    Color secondary,
-    Color tertiary,
-    Color sandWarm,
+    Color danger,
+    Color dangerDark,
+    Color forest,
+    Color panel,
     bool isSelf,
   ) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
       decoration: BoxDecoration(
-        color: sandWarm,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        color: panel,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, -6),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 50,
+            width: 52,
             height: 5,
             decoration: BoxDecoration(
               color: Colors.grey.shade300,
               borderRadius: BorderRadius.circular(999),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Row(
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: primary, width: 2),
-                ),
-                child: const Icon(Icons.person, color: Colors.black54),
-              ),
+              _avatarCard(danger),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -507,43 +722,28 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                   children: [
                     Text(
                       _alertName(),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
+                    const SizedBox(height: 5),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: primary.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          child: Text(
-                            isSelf ? "ALERT ACTIVE" : "NO MOVEMENT",
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: primary,
-                            ),
-                          ),
+                        _statusChip(
+                          isSelf ? "Alert Active" : "Needs Attention",
+                          color: danger,
                         ),
-                        const SizedBox(width: 8),
                         Text(
                           isSelf
-                              ? "You sent the alert"
-                              : "Since ${_alertSince()}",
+                              ? "You triggered this alert"
+                              : "Updated ${_alertSince()}",
                           style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey.shade600,
+                            fontSize: 11,
+                            color: Colors.grey.shade700,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -554,9 +754,9 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                       Text(
                         _alertBike(),
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade600,
+                          color: Colors.grey.shade700,
                         ),
                       ),
                     ],
@@ -567,18 +767,18 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    _alertValue(const [
-                      'alert_distance',
-                      'distance_km',
-                    ], fallback: '--'),
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+                    _distanceLabel(),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   Text(
-                    "Straight Line",
+                    "From you",
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: secondary,
+                      color: primary,
                     ),
                   ),
                 ],
@@ -588,89 +788,117 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
           const SizedBox(height: 16),
           Row(
             children: [
-              _statTile(
-                "Phone Bat",
-                _alertValue(const ['alert_battery', 'battery'], fallback: '--'),
-              ),
+              _statTile("Phone Battery", _batteryLabel()),
               const SizedBox(width: 10),
-              _statTile(
-                "Speed (mph)",
-                _alertValue(const [
-                  'alert_speed',
-                  'speed_mph',
-                  'speed',
-                ], fallback: '--'),
-              ),
+              _statTile("Speed", _speedLabel()),
               const SizedBox(width: 10),
-              _statTile(
-                "Signal",
-                _alertValue(const ['alert_signal', 'signal'], fallback: '--'),
-                highlight: tertiary,
-              ),
+              _statTile("Signal", _signalLabel(), highlight: forest),
             ],
           ),
-          const SizedBox(height: 14),
-          if (!isSelf)
-            Column(
+          const SizedBox(height: 16),
+          if (!isSelf) ...[
+            _primaryButton(
+              label: "Navigate to Rider",
+              icon: Icons.near_me_rounded,
+              color: danger,
+              onTap: _navigateToRider,
+            ),
+            const SizedBox(height: 10),
+            Row(
               children: [
-                _primaryButton(
-                  label: "Navigate to Rider",
-                  icon: Icons.near_me,
-                  color: primary,
-                  onTap: () {},
+                Expanded(
+                  child: _secondaryButton(
+                    label: "Call Rider",
+                    icon: Icons.call_rounded,
+                    onTap: _callRider,
+                  ),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _secondaryButton(
-                        label: "Call Rider",
-                        icon: Icons.call,
-                        onTap: () {},
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _outlinedButton(
-                        label: "SOS Services",
-                        icon: Icons.sos,
-                        color: primary,
-                        onTap: () {},
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            )
-          else
-            Column(
-              children: [
-                _primaryButton(
-                  label: "Cancel Alert",
-                  icon: Icons.cancel,
-                  color: primaryDark,
-                  onTap: () async {
-                    try {
-                      await supabase
-                          .from('rides')
-                          .update({'alert_status': 'cleared'})
-                          .eq('id', widget.rideId);
-                    } catch (_) {
-                      // If this column is not present in DB, keep UI usable.
-                    }
-                    if (!mounted) return;
-                    Navigator.pop(context);
-                  },
-                ),
-                const SizedBox(height: 10),
-                _secondaryButton(
-                  label: "Call Emergency Services",
-                  icon: Icons.call,
-                  onTap: () {},
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _outlinedButton(
+                    label: "SOS Services",
+                    icon: Icons.local_hospital_rounded,
+                    color: danger,
+                    onTap: _callEmergencyServices,
+                  ),
                 ),
               ],
             ),
+          ] else ...[
+            _primaryButton(
+              label: "Cancel Alert",
+              icon: Icons.cancel_rounded,
+              color: dangerDark,
+              onTap: _cancelAlert,
+            ),
+            const SizedBox(height: 10),
+            _secondaryButton(
+              label: "Call Emergency Services",
+              icon: Icons.call_rounded,
+              onTap: _callEmergencyServices,
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _avatarCard(Color danger) {
+    final avatar = _alertAvatarUrl();
+    return Container(
+      width: 68,
+      height: 68,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: danger.withValues(alpha: 0.3), width: 2),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child:
+            avatar.isNotEmpty
+                ? Image.network(
+                  avatar,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _avatarFallback(),
+                )
+                : _avatarFallback(),
+      ),
+    );
+  }
+
+  Widget _avatarFallback() {
+    final initial = _alertName().isEmpty ? 'R' : _alertName()[0].toUpperCase();
+    return Container(
+      color: const Color(0xFFF5F5F5),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w800,
+          color: Colors.black54,
+        ),
+      ),
+    );
+  }
+
+  Widget _statusChip(String label, {required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
       ),
     );
   }
@@ -678,25 +906,27 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
   Widget _statTile(String label, String value, {Color? highlight}) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.grey.shade200),
         ),
         child: Column(
           children: [
             Text(
               value,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
                 color: highlight ?? Colors.black87,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               label,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
@@ -721,17 +951,15 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 15),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 6,
+          elevation: 0,
         ),
-        icon: Icon(icon, color: Colors.white),
-        label: Text(
-          label.toUpperCase(),
-          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.6),
-        ),
+        icon: Icon(icon),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
       ),
     );
   }
@@ -746,18 +974,16 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
       child: ElevatedButton.icon(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.grey.shade200,
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
           elevation: 0,
         ),
-        icon: Icon(icon, color: Colors.black87),
-        label: Text(
-          label,
-          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87),
-        ),
+        icon: Icon(icon),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
     );
   }
@@ -775,13 +1001,13 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
         style: OutlinedButton.styleFrom(
           foregroundColor: color,
           side: BorderSide(color: color, width: 2),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
-        icon: Icon(icon, color: color),
-        label: Text(label, style: TextStyle(fontWeight: FontWeight.w700)),
+        icon: Icon(icon),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
     );
   }

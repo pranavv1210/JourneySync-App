@@ -143,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       Future<List<RideRecord>>? recentFuture;
       Future<List<NearbyRide>>? nearbyFuture;
       if (resolvedId.isNotEmpty) {
-        recentFuture = _rideService.fetchRecentRides(resolvedId);
+        recentFuture = _rideService.fetchRecentRides(resolvedId, limit: 3);
         nearbyFuture = _rideService.searchNearbyRides(resolvedId);
       }
       final weatherFuture = _weatherService.fetchCurrentWeather();
@@ -750,7 +750,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         else
           Column(
             children:
-                recentRides.map((ride) {
+                recentRides.take(3).map((ride) {
                   final title =
                       ride.title.trim().isNotEmpty ? ride.title : "Ride";
                   final destination =
@@ -801,17 +801,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       ),
                       child: Row(
                         children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.route,
-                              color: Colors.black54,
-                            ),
+                          _ridePreviewTile(
+                            primary: primary,
+                            forest: forest,
+                            ride: ride,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -1063,6 +1056,66 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     return "${months[(date.month - 1).clamp(0, 11)]} ${date.day}";
   }
 
+  Widget _ridePreviewTile({
+    required Color primary,
+    required Color forest,
+    required RideRecord ride,
+  }) {
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [const Color(0xFFFFF3E8), primary.withValues(alpha: 0.16)],
+        ),
+        border: Border.all(color: primary.withValues(alpha: 0.12)),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: CustomPaint(
+                painter: _RidePreviewPainter(
+                  lineColor: forest.withValues(alpha: 0.5),
+                  accentColor: primary,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 8,
+            top: 10,
+            child: _mapPin(primary.withValues(alpha: 0.9)),
+          ),
+          Positioned(
+            right: 8,
+            bottom: 10,
+            child: _mapPin(forest.withValues(alpha: 0.9)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mapPin(Color color) {
+    return Container(
+      width: 12,
+      height: 12,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 1.5),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4),
+        ],
+      ),
+    );
+  }
+
   Widget _bottomNav(Color primary) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -1170,5 +1223,71 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       shape: const CircleBorder(),
       child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
     );
+  }
+}
+
+class _RidePreviewPainter extends CustomPainter {
+  const _RidePreviewPainter({
+    required this.lineColor,
+    required this.accentColor,
+  });
+
+  final Color lineColor;
+  final Color accentColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gridPaint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.45)
+          ..strokeWidth = 1;
+    for (double dx = 10; dx < size.width; dx += 16) {
+      canvas.drawLine(Offset(dx, 0), Offset(dx, size.height), gridPaint);
+    }
+    for (double dy = 10; dy < size.height; dy += 16) {
+      canvas.drawLine(Offset(0, dy), Offset(size.width, dy), gridPaint);
+    }
+
+    final path =
+        Path()
+          ..moveTo(size.width * 0.18, size.height * 0.28)
+          ..cubicTo(
+            size.width * 0.28,
+            size.height * 0.16,
+            size.width * 0.42,
+            size.height * 0.72,
+            size.width * 0.56,
+            size.height * 0.52,
+          )
+          ..cubicTo(
+            size.width * 0.67,
+            size.height * 0.38,
+            size.width * 0.76,
+            size.height * 0.74,
+            size.width * 0.82,
+            size.height * 0.7,
+          );
+
+    final baseRoutePaint =
+        Paint()
+          ..color = lineColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4
+          ..strokeCap = StrokeCap.round;
+    canvas.drawPath(path, baseRoutePaint);
+
+    final accentPaint =
+        Paint()
+          ..color = accentColor.withValues(alpha: 0.7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round;
+    canvas.drawPath(path, accentPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RidePreviewPainter oldDelegate) {
+    return oldDelegate.lineColor != lineColor ||
+        oldDelegate.accentColor != accentColor;
   }
 }

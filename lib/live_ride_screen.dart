@@ -47,13 +47,12 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   String? _chatTableName;
   bool _isRefreshingLiveData = false;
   int _refreshTick = 0;
-  
+  bool _hasAutoCenteredOnUser = false;
+
   // Performance optimizations - caching
   final Map<String, Map<String, dynamic>> _cachedUserProfiles = {};
   DateTime? _lastMembersRefresh;
-  List<_LiveMember>? _cachedMembers;
   bool _destinationResolved = false;
-  int _mapUpdateCounter = 0;
 
   @override
   void initState() {
@@ -156,7 +155,6 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         ride = latestRide;
         members = refreshedMembers ?? members;
         chatCount = unreadCount;
-        _mapUpdateCounter++;
       });
       _refreshTick++;
     } catch (_) {
@@ -258,11 +256,11 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     final ids = userIds.map((id) => id.trim()).where((id) => id.isNotEmpty);
     final unique = ids.toSet().toList();
     if (unique.isEmpty) return <String, Map<String, dynamic>>{};
-    
+
     // Check cache first and filter out already cached IDs
     final notCached = <String>[];
     final result = <String, Map<String, dynamic>>{};
-    
+
     for (final id in unique) {
       if (_cachedUserProfiles.containsKey(id)) {
         result[id] = _cachedUserProfiles[id]!;
@@ -270,12 +268,12 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         notCached.add(id);
       }
     }
-    
+
     // Only fetch IDs that aren't cached
     if (notCached.isEmpty) {
       return result;
     }
-    
+
     try {
       final rows = await supabase
           .from('users')
@@ -283,7 +281,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
             'id,name,bike,avatar_url,current_lat,current_lng,active_ride_id',
           )
           .inFilter('id', notCached);
-      
+
       for (final row in rows) {
         final id = (row['id'] ?? '').toString().trim();
         final data = Map<String, dynamic>.from(row);
@@ -338,7 +336,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     if (_destinationResolved && destinationPoint != null) {
       return destinationPoint;
     }
-    
+
     final lat = _toDouble(row['end_lat'] ?? row['destination_lat']);
     final lng = _toDouble(row['end_lng'] ?? row['destination_lng']);
     if (lat != null && lng != null) {
@@ -415,8 +413,8 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       destination.lat,
       destination.lng,
     );
-    final miles = meters / 1609.344;
-    return "${miles.toStringAsFixed(1)} mi";
+    final kilometers = meters / 1000;
+    return "${kilometers.toStringAsFixed(1)} km";
   }
 
   String _etaArrivalLabel() {
@@ -488,17 +486,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                 _activeRideButton(forest),
                 const SizedBox(height: 8),
                 _locationStatusPill(forest),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _stopRideButton(danger),
-                  ),
-                ),
                 const Spacer(),
-                _navPrompt(forest),
-                const SizedBox(height: 10),
                 _fabRow(primary, danger),
                 const SizedBox(height: 12),
                 _bottomSheet(primary, warmSand, forest),
@@ -629,8 +617,8 @@ class _LiveRideScreenState extends State<LiveRideScreen>
             _statBlock("Dist", _distanceLabel()),
             _divider(),
             _statBlock(
-              "MPH",
-              _currentSpeedMph(),
+              "KM/H",
+              _currentSpeedKmh(),
               highlight: true,
               highlightColor: primary,
             ),
@@ -682,35 +670,45 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   }
 
   Widget _activeRideButton(Color forest) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _editRideTitle,
         borderRadius: BorderRadius.circular(999),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: forest,
-              borderRadius: BorderRadius.circular(999),
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: forest,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _rideTitle(),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.expand_more, size: 16, color: Colors.grey.shade600),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(_rideTitle(), style: TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(width: 8),
-          Icon(Icons.expand_more, size: 16, color: Colors.grey.shade600),
-        ],
+        ),
       ),
     );
   }
@@ -788,71 +786,45 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     );
   }
 
-  Widget _navPrompt(Color forest) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: forest.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.turn_right, color: Colors.white, size: 16),
-          const SizedBox(width: 8),
-          Text(
-            "Proceed toward ${_destination()} (${_distanceLabel()})",
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _fabRow(Color primary, Color danger) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GestureDetector(
-            onTap: _triggerSos,
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: danger,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
+          Column(
+            children: [
+              GestureDetector(
+                onTap: _triggerSos,
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: danger,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  "SOS",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                  child: const Center(
+                    child: Text(
+                      "SOS",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+              const SizedBox(height: 10),
+              _stopRideButton(danger),
+            ],
           ),
           Column(
             children: [
@@ -909,6 +881,78 @@ class _LiveRideScreenState extends State<LiveRideScreen>
     );
   }
 
+  Future<void> _editRideTitle() async {
+    final controller = TextEditingController(text: _rideTitle());
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 18,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 18,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Ride name',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  labelText: 'Ride title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Save'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (saved != true) {
+      controller.dispose();
+      return;
+    }
+
+    final title = controller.text.trim();
+    controller.dispose();
+    if (title.isEmpty) return;
+
+    try {
+      await supabase
+          .from('rides')
+          .update({'title': title})
+          .eq('id', widget.rideId);
+    } catch (_) {
+      await supabase
+          .from('rides')
+          .update({'name': title})
+          .eq('id', widget.rideId);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      ride = {...?ride, 'title': title, 'name': title};
+    });
+    showAppToast(context, 'Ride name updated', type: AppToastType.success);
+  }
+
   Future<void> _triggerSos() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -963,21 +1007,14 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       );
       return;
     }
-    _mapController.move(LatLng(current.latitude, current.longitude), 15.5);
+    _moveMapToCurrentPosition(current, zoom: 16.5);
   }
 
-  void _focusOnDestination() {
-    final destination = destinationPoint;
-    if (destination == null) {
+  void _moveMapToCurrentPosition(Position position, {double zoom = 16.5}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      showAppToast(
-        context,
-        'Destination location unavailable',
-        type: AppToastType.error,
-      );
-      return;
-    }
-    _mapController.move(LatLng(destination.lat, destination.lng), 14.5);
+      _mapController.move(LatLng(position.latitude, position.longitude), zoom);
+    });
   }
 
   Future<void> _openGroupChat() async {
@@ -1167,6 +1204,8 @@ class _LiveRideScreenState extends State<LiveRideScreen>
   }
 
   Widget _bottomSheet(Color primary, Color warmSand, Color forest) {
+    final hasDestinationPoint = destinationPoint != null;
+    final extraMembers = _extraMemberCount();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
@@ -1196,65 +1235,62 @@ class _LiveRideScreenState extends State<LiveRideScreen>
             ),
           ),
           const SizedBox(height: 12),
-          InkWell(
-            onTap: _focusOnDestination,
-            borderRadius: BorderRadius.circular(14),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: primary.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(Icons.flag, color: primary, size: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Next Stop',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: primary,
-                                letterSpacing: 0.6,
-                              ),
+                            child: Icon(Icons.flag, color: primary, size: 14),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Next Stop',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: primary,
+                              letterSpacing: 0.6,
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _destination(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.black87,
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _destination(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black87,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${_distanceLabel()} away • ${_etaArrivalLabel()}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        hasDestinationPoint
+                            ? '${_distanceLabel()} away • ${_etaArrivalLabel()}'
+                            : 'Location will appear when a destination is added',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  Icon(Icons.chevron_right, color: Colors.grey.shade600),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 14),
@@ -1266,25 +1302,27 @@ class _LiveRideScreenState extends State<LiveRideScreen>
               Row(
                 children: [
                   ..._bottomStackAvatars(),
-                  const SizedBox(width: 6),
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '+${_extraMemberCount()}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.grey.shade700,
+                  if (extraMembers > 0) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '+$extraMembers',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
               if (_chatTableName != null)
@@ -1310,37 +1348,32 @@ class _LiveRideScreenState extends State<LiveRideScreen>
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: primary,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          chatCount.toString(),
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                      if (chatCount > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: primary,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            chatCount.toString(),
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 )
               else
-                Text(
-                  'Chat unavailable',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
+                const SizedBox.shrink(),
             ],
           ),
         ],
@@ -1442,8 +1475,11 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       // Update position without full rebuild
       _latestPosition = current;
       if (mounted) {
-        _mapUpdateCounter++;
         setState(() {});
+      }
+      if (!_hasAutoCenteredOnUser) {
+        _hasAutoCenteredOnUser = true;
+        _moveMapToCurrentPosition(current);
       }
       await _syncLocationToRide(current);
     } catch (_) {}
@@ -1459,9 +1495,12 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         _latestPosition = position;
         // Only rebuild if map is visible (optimization)
         if (mounted) {
-          _mapUpdateCounter++;
           // Use light rebuild for just map updates
           setState(() {});
+        }
+        if (!_hasAutoCenteredOnUser) {
+          _hasAutoCenteredOnUser = true;
+          _moveMapToCurrentPosition(position);
         }
         _syncLocationToRide(position);
       },
@@ -1550,8 +1589,7 @@ class _LiveRideScreenState extends State<LiveRideScreen>
       if (!mounted) return;
       setState(() {
         _isTrackingLocation = true;
-        _trackingStatus =
-            synced ? 'Live location synced' : 'GPS active (cloud sync limited)';
+        _trackingStatus = synced ? 'Live location synced' : 'GPS active';
       });
     } catch (error) {
       if (!mounted) return;
@@ -1609,10 +1647,10 @@ class _LiveRideScreenState extends State<LiveRideScreen>
         message.contains('location_updated_at');
   }
 
-  String _currentSpeedMph() {
+  String _currentSpeedKmh() {
     final speedMps = _latestPosition?.speed;
     if (speedMps == null || speedMps <= 0) return "--";
-    return (speedMps * 2.23694).toStringAsFixed(0);
+    return (speedMps * 3.6).toStringAsFixed(0);
   }
 }
 
@@ -1701,11 +1739,7 @@ class _MemberMarkerWidget extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: Colors.white, width: 1.5),
                   ),
-                  child: const Icon(
-                    Icons.star,
-                    color: Colors.white,
-                    size: 9,
-                  ),
+                  child: const Icon(Icons.star, color: Colors.white, size: 9),
                 ),
               ),
           ],
@@ -1721,10 +1755,7 @@ class _MemberMarkerWidget extends StatelessWidget {
             member.id == currentUserId ? 'You' : member.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-            ),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
           ),
         ),
       ],
@@ -1733,10 +1764,7 @@ class _MemberMarkerWidget extends StatelessWidget {
 }
 
 class _MemberAvatar extends StatelessWidget {
-  const _MemberAvatar({
-    required this.avatarUrl,
-    required this.name,
-  });
+  const _MemberAvatar({required this.avatarUrl, required this.name});
 
   final String avatarUrl;
   final String name;
@@ -1753,9 +1781,7 @@ class _MemberAvatar extends StatelessWidget {
     }
 
     final initial =
-        name.trim().isEmpty
-            ? 'R'
-            : name.trim().substring(0, 1).toUpperCase();
+        name.trim().isEmpty ? 'R' : name.trim().substring(0, 1).toUpperCase();
     return CircleAvatar(
       radius: 20,
       backgroundColor: const Color(0xFF00C2CB).withValues(alpha: 0.16),
