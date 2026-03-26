@@ -121,29 +121,26 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
 
       if (status == JoinByCodeStatus.joinedDirectly) {
         setState(() {
-          nearbyRides = nearbyRides.map((existing) {
-            if (existing.ride.id != ride.ride.id) return existing;
-            return existing.copyWith(
-              joined: true,
-              ride: RideRecord(
-                id: existing.ride.id,
-                creatorId: existing.ride.creatorId,
-                title: existing.ride.title,
-                startLocation: existing.ride.startLocation,
-                endLocation: existing.ride.endLocation,
-                createdAt: existing.ride.createdAt,
-                participantCount: existing.ride.participantCount + 1,
-              ),
-            );
-          }).toList();
+          nearbyRides =
+              nearbyRides.map((existing) {
+                if (existing.ride.id != ride.ride.id) return existing;
+                return existing.copyWith(
+                  joined: true,
+                  ride: RideRecord(
+                    id: existing.ride.id,
+                    creatorId: existing.ride.creatorId,
+                    title: existing.ride.title,
+                    startLocation: existing.ride.startLocation,
+                    endLocation: existing.ride.endLocation,
+                    createdAt: existing.ride.createdAt,
+                    participantCount: existing.ride.participantCount + 1,
+                  ),
+                );
+              }).toList();
         });
       }
 
-      showAppToast(
-        context,
-        message,
-        type: AppToastType.success,
-      );
+      showAppToast(context, message, type: AppToastType.success);
     } catch (error) {
       if (!mounted) return;
       showAppToast(

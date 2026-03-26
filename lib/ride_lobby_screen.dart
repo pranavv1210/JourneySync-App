@@ -223,7 +223,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
 
   String _timeLabel() {
     final status = (ride?['status'] ?? '').toString().trim().toLowerCase();
-    if (status != 'active' && status != 'live' && status != 'ended' && status != 'completed') {
+    if (status != 'active' &&
+        status != 'live' &&
+        status != 'ended' &&
+        status != 'completed') {
       return "Pending Start";
     }
     final raw =
@@ -506,7 +509,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     }
     final titleCtrl = TextEditingController(text: _rideTitle());
     final destCtrl = TextEditingController(text: _destinationLabel());
-    final maxRidersCtrl = TextEditingController(text: (ride?['max_riders'] ?? '').toString());
+    final maxRidersCtrl = TextEditingController(
+      text: (ride?['max_riders'] ?? '').toString(),
+    );
 
     final saved = await showDialog<bool>(
       context: context,
@@ -530,7 +535,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                 TextField(
                   controller: maxRidersCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Max Riders (leave blank for unlimited)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Max Riders (leave blank for unlimited)',
+                  ),
                 ),
               ],
             ),
@@ -556,19 +563,18 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     final maxR = int.tryParse(maxRidersCtrl.text.trim());
 
     try {
-      await supabase.from('rides').update({
-        'title': title,
-        'end_location': dest,
-        'max_riders': maxR,
-      }).eq('id', widget.rideId);
+      await supabase
+          .from('rides')
+          .update({'title': title, 'end_location': dest, 'max_riders': maxR})
+          .eq('id', widget.rideId);
       await _reloadLobbyData();
       _showInfo('Ride details updated.');
     } catch (error) {
       try {
-        await supabase.from('rides').update({
-          'name': title,
-          'destination': dest,
-        }).eq('id', widget.rideId);
+        await supabase
+            .from('rides')
+            .update({'name': title, 'destination': dest})
+            .eq('id', widget.rideId);
         await _reloadLobbyData();
         _showInfo('Ride details updated.');
       } catch (nested) {

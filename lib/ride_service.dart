@@ -91,7 +91,10 @@ class RideService {
 
   final SupabaseService _supabaseService;
 
-  Future<List<RideRecord>> fetchRecentRides(String creatorId, {int limit = 5}) async {
+  Future<List<RideRecord>> fetchRecentRides(
+    String creatorId, {
+    int limit = 5,
+  }) async {
     final rows = await _supabaseService.fetchRecentRidesByCreator(
       creatorId: creatorId,
       limit: limit,
@@ -101,7 +104,10 @@ class RideService {
     return _attachParticipantCounts(rides);
   }
 
-  Future<List<RideRecord>> fetchNearbyRides(String currentUserId, {int limit = 50}) async {
+  Future<List<RideRecord>> fetchNearbyRides(
+    String currentUserId, {
+    int limit = 50,
+  }) async {
     final rows = await _supabaseService.fetchNearbyRides(
       excludeCreatorId: currentUserId,
       limit: limit,
@@ -162,7 +168,8 @@ class RideService {
           if (ride.status.trim().toLowerCase() == 'cancelled') return false;
 
           final startPoint = _parseLatLng(ride.startLocation);
-          if (startPoint == null) return true; // Show rides missing coords instead of hiding completely
+          if (startPoint == null)
+            return true; // Show rides missing coords instead of hiding completely
           final meters = Geolocator.distanceBetween(
             origin.lat,
             origin.lng,
@@ -224,10 +231,7 @@ class RideService {
     required String userId,
   }) async {
     try {
-      await _supabaseService.createJoinRequest(
-        rideId: rideId,
-        userId: userId,
-      );
+      await _supabaseService.createJoinRequest(rideId: rideId, userId: userId);
       return JoinByCodeStatus.requested;
     } on PostgrestException catch (error) {
       if ((error.code ?? '').trim() == '23505') {
@@ -237,11 +241,7 @@ class RideService {
     }
 
     // fallback if schema missing
-    await joinRide(
-      rideId: rideId,
-      userId: userId,
-      suppressDuplicate: true,
-    );
+    await joinRide(rideId: rideId, userId: userId, suppressDuplicate: true);
     return JoinByCodeStatus.joinedDirectly;
   }
 

@@ -77,82 +77,157 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
         foregroundColor: forest,
         elevation: 0,
       ),
-      body: loading
-        ? const Center(child: CircularProgressIndicator())
-        : allRides.isEmpty
-          ? const Center(child: Text("No rides found", style: TextStyle(color: forest, fontWeight: FontWeight.bold)))
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: allRides.length,
-              itemBuilder: (context, index) {
-                final ride = allRides[index];
-                final title = ride.title.trim().isNotEmpty ? ride.title : "Ride";
-                final destination = ride.endLocation.trim().isNotEmpty ? ride.endLocation : "Destination";
-                final dateLabel = _formatDate(ride.createdAt);
-                final statusLabel = _rideStatusLabel(ride);
+      body:
+          loading
+              ? const Center(child: CircularProgressIndicator())
+              : allRides.isEmpty
+              ? const Center(
+                child: Text(
+                  "No rides found",
+                  style: TextStyle(color: forest, fontWeight: FontWeight.bold),
+                ),
+              )
+              : ListView.builder(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                itemCount: allRides.length,
+                itemBuilder: (context, index) {
+                  final ride = allRides[index];
+                  final title =
+                      ride.title.trim().isNotEmpty ? ride.title : "Ride";
+                  final destination =
+                      ride.endLocation.trim().isNotEmpty
+                          ? ride.endLocation
+                          : "Destination";
+                  final dateLabel = _formatDate(ride.createdAt);
+                  final statusLabel = _rideStatusLabel(ride);
 
-                return InkWell(
-                  onTap: () async {
-                    if (statusLabel == 'Live') {
-                      await Navigator.push(context, MaterialPageRoute(builder: (_) => LiveRideScreen(rideId: ride.id)));
-                    } else if (ride.isCompleted) {
-                      await Navigator.push(context, MaterialPageRoute(builder: (_) => RideSummaryScreen(rideId: ride.id)));
-                    } else {
-                      await Navigator.push(context, MaterialPageRoute(builder: (_) => RideLobbyScreen(rideId: ride.id)));
-                    }
-                    _loadHistory();
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: sandDarker.withValues(alpha: 0.6)),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 60, height: 60,
-                          decoration: BoxDecoration(
-                            color: primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+                  return InkWell(
+                    onTap: () async {
+                      if (statusLabel == 'Live') {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => LiveRideScreen(rideId: ride.id),
                           ),
-                          child: const Icon(Icons.route, color: Colors.black54),
+                        );
+                      } else if (ride.isCompleted) {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RideSummaryScreen(rideId: ride.id),
+                          ),
+                        );
+                      } else {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RideLobbyScreen(rideId: ride.id),
+                          ),
+                        );
+                      }
+                      _loadHistory();
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: sandDarker.withValues(alpha: 0.6),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
-                              const SizedBox(height: 4),
-                              Text("$destination - ${ride.participantCount} riders", maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: ride.isCompleted ? const Color(0xFF00C2CB).withValues(alpha: 0.12) : primary.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.route,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                                child: Text(statusLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: ride.isCompleted ? const Color(0xFF00C2CB) : primary)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "$destination - ${ride.participantCount} riders",
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        ride.isCompleted
+                                            ? const Color(
+                                              0xFF00C2CB,
+                                            ).withValues(alpha: 0.12)
+                                            : primary.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    statusLabel,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color:
+                                          ride.isCompleted
+                                              ? const Color(0xFF00C2CB)
+                                              : primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                dateLabel,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(dateLabel, style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
     );
   }
 }

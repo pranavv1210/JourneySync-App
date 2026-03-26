@@ -764,11 +764,26 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                   return InkWell(
                     onTap: () async {
                       if (statusLabel == 'Live') {
-                        await Navigator.push(context, MaterialPageRoute(builder: (_) => LiveRideScreen(rideId: ride.id)));
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => LiveRideScreen(rideId: ride.id),
+                          ),
+                        );
                       } else if (ride.isCompleted) {
-                        await Navigator.push(context, MaterialPageRoute(builder: (_) => RideSummaryScreen(rideId: ride.id)));
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RideSummaryScreen(rideId: ride.id),
+                          ),
+                        );
                       } else {
-                        await Navigator.push(context, MaterialPageRoute(builder: (_) => RideLobbyScreen(rideId: ride.id)));
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RideLobbyScreen(rideId: ride.id),
+                          ),
+                        );
                       }
                       await _loadHomeData();
                     },
@@ -785,31 +800,75 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       ),
                       child: Row(
                         children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.route,
+                              color: Colors.black54,
+                            ),
                           ),
-                          child: const Icon(Icons.route, color: Colors.black54),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "$destination - ${ride.participantCount} riders",
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        ride.isCompleted
+                                            ? const Color(
+                                              0xFF00C2CB,
+                                            ).withValues(alpha: 0.12)
+                                            : primary.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    statusLabel,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color:
+                                          ride.isCompleted
+                                              ? const Color(0xFF00C2CB)
+                                              : primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "$destination - ${ride.participantCount} riders",
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                dateLabel,
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Colors.grey,
@@ -817,82 +876,42 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      ride.isCompleted
-                                          ? const Color(
-                                            0xFF00C2CB,
-                                          ).withValues(alpha: 0.12)
-                                          : primary.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  statusLabel,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    color:
-                                        ride.isCompleted
-                                            ? const Color(0xFF00C2CB)
-                                            : primary,
+                              if (isBusy)
+                                SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: primary,
                                   ),
+                                )
+                              else if (canDelete)
+                                PopupMenuButton<String>(
+                                  icon: Icon(
+                                    Icons.more_vert_rounded,
+                                    color: Colors.grey.shade600,
+                                    size: 18,
+                                  ),
+                                  onSelected: (value) async {
+                                    if (value == 'delete') {
+                                      await _confirmPermanentDeleteRide(
+                                        ride,
+                                        primary,
+                                      );
+                                    }
+                                  },
+                                  itemBuilder:
+                                      (context) => [
+                                        if (canDelete)
+                                          const PopupMenuItem(
+                                            value: 'delete',
+                                            child: Text('Delete Permanently'),
+                                          ),
+                                      ],
                                 ),
-                              ),
                             ],
                           ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              dateLabel,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            if (isBusy)
-                              SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: primary,
-                                ),
-                              )
-                            else if (canDelete)
-                              PopupMenuButton<String>(
-                                icon: Icon(
-                                  Icons.more_vert_rounded,
-                                  color: Colors.grey.shade600,
-                                  size: 18,
-                                ),
-                                onSelected: (value) async {
-                                  if (value == 'delete') {
-                                    await _confirmPermanentDeleteRide(
-                                      ride,
-                                      primary,
-                                    );
-                                  }
-                                },
-                                itemBuilder:
-                                    (context) => [
-                                      if (canDelete)
-                                        const PopupMenuItem(
-                                          value: 'delete',
-                                          child: Text('Delete Permanently'),
-                                        ),
-                                    ],
-                              ),
-                          ],
-                        ),
+                        ],
                       ),
                     ),
                   );
