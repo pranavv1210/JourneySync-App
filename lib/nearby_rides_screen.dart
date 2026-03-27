@@ -448,18 +448,18 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              showFallback
-                  ? 'Ask a host to create a ride and keep it live, then refresh the radar.'
-                  : 'Radar keeps scanning for around 10 to 15 seconds before showing an empty result.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: forest.withValues(alpha: 0.68),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+            if (showFallback) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Ask a host to create a ride and keep it live, then refresh the radar.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: forest.withValues(alpha: 0.68),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
+            ],
             if (showFallback) ...[
               const SizedBox(height: 16),
               ElevatedButton(
@@ -479,10 +479,10 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       margin: const EdgeInsets.symmetric(horizontal: 18),
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF2BB3F3), Color(0xFF1684DE)],
+          colors: [primary.withValues(alpha: 0.96), const Color(0xFFC65308)],
         ),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
@@ -538,29 +538,27 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
               },
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            rides.isNotEmpty
-                ? 'Nearby riders detected on radar'
-                : 'Radar is sweeping around you',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
+          if (rides.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Nearby riders detected on radar',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            rides.isNotEmpty
-                ? 'Tap Join Ride below to connect with one of them.'
-                : 'Waiting for nearby rides to appear in range.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+            const SizedBox(height: 4),
+            Text(
+              'Tap Join Ride below to connect with one of them.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -875,7 +873,7 @@ class _RadarCenterMarker extends StatelessWidget {
             avatarUrl: avatarUrl,
             label: name,
             radius: 31,
-            borderColor: const Color(0xFF1BA2F4),
+            borderColor: const Color(0xFFF7B267),
           ),
         ),
         const SizedBox(height: 8),
@@ -932,7 +930,7 @@ class _RadarAvatar extends StatelessWidget {
                 ? Text(
                   initial,
                   style: TextStyle(
-                    color: const Color(0xFF0C4A6E),
+                    color: const Color(0xFF8A3B08),
                     fontSize: radius * 0.75,
                     fontWeight: FontWeight.w800,
                   ),
