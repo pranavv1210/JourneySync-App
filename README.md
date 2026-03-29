@@ -92,6 +92,12 @@ flutter run --dart-define-from-file=dart_defines.local.json
 flutter build apk --release --dart-define-from-file=dart_defines.local.json
 ```
 
+4. Create and publish an Android release manually when you are ready:
+```powershell
+.\scripts\release.ps1 -Version 1.0.2
+```
+This command updates the app version, builds the signed Android APK, creates a git tag, pushes the branch and tag, uploads the APK to GitHub Releases, and publishes the release.
+
 ## Environment Values
 This project expects runtime `--dart-define` values:
 - `SUPABASE_URL`
@@ -113,6 +119,11 @@ flutter run \
 
 ## Android Signing
 For release signing, create `android/key.properties` from `android/key.properties.example` and point it to your keystore file.
+
+For automated local releases:
+- Install and log in to GitHub CLI with `gh auth login`
+- Keep `android/key.properties` configured locally
+- Keep `dart_defines.local.json` present locally
 
 ## iOS Notes
 Already configured permission keys in `ios/Runner/Info.plist`:
