@@ -477,22 +477,8 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   Widget _radarSurface(Color primary, Color forest, List<NearbyRide> rides) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 18),
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [primary.withValues(alpha: 0.96), const Color(0xFFC65308)],
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 26,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(28)),
       child: Column(
         children: [
           SizedBox(
@@ -542,8 +528,8 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
             const SizedBox(height: 8),
             Text(
               'Nearby riders detected on radar',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: forest,
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
               ),
@@ -553,7 +539,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
               'Tap Join Ride below to connect with one of them.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.85),
+                color: forest.withValues(alpha: 0.7),
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
