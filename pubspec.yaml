@@ -76,6 +76,7 @@ flutter:
     - assets/logo.png
     - assets/pattern.png
     - assets/profile.png
+    - assets/legal/privacy_policy.txt
 
 flutter_launcher_icons:
   android: true

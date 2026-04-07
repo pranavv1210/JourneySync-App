@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_toast.dart';
 import 'auth_service.dart';
+import 'legal_document_screen.dart';
 import 'login_screen.dart';
 import 'supabase_service.dart';
 
@@ -660,29 +661,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _showPrivacyPolicyModal() {
-    return _showContentModal(
-      title: 'Privacy Policy',
-      content:
-          'Effective date: February 24, 2026\n\n'
-          'JourneySync collects only the data needed to run the app safely:\n'
-          '- Phone number (for account verification)\n'
-          '- Profile details (name, bike)\n'
-          '- Ride data (title, start, destination, participants)\n'
-          '- Optional location data during map/live ride use\n\n'
-          'How we use data:\n'
-          '- Account authentication and profile retrieval\n'
-          '- Ride creation, discovery, and coordination\n'
-          '- Safety workflows like SOS context sharing\n\n'
-          'Data sharing:\n'
-          '- We do not sell user data.\n'
-          '- Ride-related information is shared only with app participants as required by features.\n\n'
-          'Data control:\n'
-          '- You can update profile fields in Settings.\n'
-          '- You can logout from this device anytime.\n\n'
-          'Questions about privacy:\n'
-          'journeysync.app@gmail.com',
-    );
+  Future<void> _showPrivacyPolicyModal() async {
+    try {
+      final content = await rootBundle.loadString(
+        'assets/legal/privacy_policy.txt',
+      );
+      if (!mounted) return;
+      await showLegalDocumentDialog(
+        context: context,
+        title: 'Privacy Policy',
+        content: content.trim(),
+        contentStyle: TextStyle(
+          color: forest.withValues(alpha: 0.85),
+          height: 1.5,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+        titleStyle: TextStyle(color: forest, fontWeight: FontWeight.w800),
+        actionColor: primary,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      await _showContentModal(
+        title: 'Privacy Policy',
+        content:
+            'Privacy policy is temporarily unavailable. Please contact journeysync.app@gmail.com.',
+      );
+    }
   }
 
   Future<void> _showTermsModal() {
