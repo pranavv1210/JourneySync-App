@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>JourneySync App</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Favicon -->
+<link rel="icon" href="assets/logo.png" type="image/png" />
+<link rel="apple-touch-icon" href="assets/logo.png" />
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#db7706", // Burnt Orange
+              "primary-dark": "#b45f04",
+              "secondary": "#15803d", // Forest Green for Safety section
+              "background-light": "#f4efea", // Updated to match user request "warm sand"
+              "background-dark": "#231a0f",
+            },
+            fontFamily: {
+              "display": ["Plus Jakarta Sans", "sans-serif"]
+            },
+            borderRadius: {
+              "DEFAULT": "0.375rem", 
+              "lg": "0.5rem", 
+              "xl": "0.75rem", 
+              "2xl": "1rem",
+              "3xl": "1.5rem",
+              "full": "9999px"
+            },
+            boxShadow: {
+              'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+              'glow': '0 0 15px rgba(219, 119, 6, 0.3)',
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+  html { scroll-behavior: smooth; }
+  /* Force-hide scrollbars on root elements (most browsers) while preserving scroll behavior. */
+  html, body {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  html::-webkit-scrollbar, body::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+    width: 0;
+    height: 0;
+  }
+  /* Also support the toggle class to hide scrollbars on descendant scrollable elements. */
+  html.hide-scrollbar, body.hide-scrollbar, .hide-scrollbar * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  html.hide-scrollbar::-webkit-scrollbar, body.hide-scrollbar::-webkit-scrollbar, .hide-scrollbar *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+        .glass-header {
+            background: rgba(244, 239, 234, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .text-gradient {
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .map-texture {
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23db7706' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .download-banner-glow {
+            background:
+              radial-gradient(circle at top right, rgba(219, 119, 6, 0.28), transparent 28%),
+              radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.08), transparent 24%);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-gray-800 dark:text-gray-100 antialiased overflow-x-hidden hide-scrollbar">
+<style>
+  /* Blur and disable background while modal is open; clicks fall through to the overlay */
+  body.modal-open > *:not(#video-modal):not(#legal-modal):not(#download-modal):not(script):not(style) {
+    filter: blur(6px);
+    transition: filter 180ms ease;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+  /* When a modal is open, nudge prominent CTAs down so they don't overlap the modal. */
+  body.modal-open #hero-ctas {
+    transform: translateY(56px);
+    transition: transform 200ms ease;
+    pointer-events: none;
+    opacity: 0.98;
+  }
+  /* Ensure modals stack above any CTAs or fixed elements */
+  #video-modal, #legal-modal, #download-modal { z-index: 99999 !important; }
+  #video-modal > div[role="dialog"], #legal-modal > div[role="dialog"], #download-modal > div[role="dialog"] { z-index: 100000 !important; position: relative; }
+  /* Lower persistent fixed elements while modal is open so they don't paint above it */
+  body.modal-open header,
+  body.modal-open footer,
+  body.modal-open #mobile-nav { z-index: 20 !important; }
+</style>
+<!-- Sticky Glassmorphism Header -->
+<header class="fixed top-0 w-full z-50 glass-header border-b border-gray-200/50 dark:border-white/10 transition-all duration-300">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between items-center h-20">
+<!-- Logo -->
+<div class="flex items-center gap-2 group cursor-pointer">
+  <img src="assets/logo.png" alt="JourneySync" class="w-10 h-10 rounded-xl object-cover shadow-glow group-hover:scale-105 transition-transform" />
+  <span class="font-display font-bold text-xl tracking-tight text-gray-900 dark:text-white">JourneySync</span>
+</div>
+<!-- Desktop Navigation -->
+<nav class="hidden md:flex space-x-8">
+<a class="text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors" href="#features">Features</a>
+<a class="text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors" href="#how-it-works">How It Works</a>
+<a class="text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors" href="#safety">Safety</a>
+<!-- Reviews link removed per user request -->
+</nav>
+<!-- CTA Button (visible on mobile and desktop) -->
+<div class="flex items-center gap-4">
+  <a href="#download-banner" onclick="handleHeaderDownloadCTA(event)" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all transform hover:-translate-y-0.5">
+    Get the App
+  </a>
+</div>
+<!-- Mobile Menu Button -->
+<div class="md:hidden flex items-center">
+  <button id="mobile-menu-btn" aria-controls="mobile-nav" aria-expanded="false" class="text-gray-600 dark:text-gray-300 hover:text-primary focus:outline-none">
+    <span class="material-icons-round text-3xl">menu</span>
+  </button>
+</div>
+</div>
+
+</div>
+</header>
+<!-- Video Demo Modal (moved outside header) -->
+<div id="video-modal" class="fixed inset-0 hidden flex items-start justify-center z-60 px-4 pt-24" aria-hidden="true">
+  <div class="absolute inset-0 bg-black/70" data-close-video></div>
+  <div role="dialog" aria-modal="true" aria-labelledby="video-title" class="relative bg-black w-full max-w-md rounded-xl shadow-2xl p-4 max-h-[80vh]">
+    <div class="flex justify-between items-start mb-2">
+      <h3 id="video-title" class="text-white text-lg font-bold">Demo</h3>
+      <button id="video-close" class="text-white hover:text-gray-200" aria-label="Close">✕</button>
+    </div>
+    <div class="w-full">
+      <video id="demo-video" class="w-full h-auto max-h-[72vh] rounded-md bg-black" controls playsinline>
+        <!-- source left empty initially for lazy load; data-default keeps original path -->
+        <source data-default="./assets/demovideo.mp4" src="" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </div>
+  </div>
+</div>
+<!-- Mobile navigation (collapsible) -->
+<div id="mobile-nav" class="md:hidden hidden bg-background-light dark:bg-background-dark border-b border-gray-200/50 dark:border-white/5 fixed left-0 right-0 z-40 shadow-md" style="top:5rem; max-height:calc(100vh - 5rem); overflow:auto;">
+  <div class="px-4 pb-4">
+    <nav class="flex flex-col gap-2 py-3">
+      <a class="py-3 px-3 rounded hover:bg-primary/10" href="#features">Features</a>
+      <a class="py-3 px-3 rounded hover:bg-primary/10" href="#how-it-works">How It Works</a>
+      <a class="py-3 px-3 rounded hover:bg-primary/10" href="#safety">Safety</a>
+      <a class="py-3 px-3 rounded hover:bg-primary/10" href="#" onclick="openDownloadModal(event)">Download</a>
+    </nav>
+  </div>
+</div>
+<!-- Hero Section -->
+<section class="relative pt-32 pb-20 lg:pt-40 lg:pb-28 overflow-hidden">
+<!-- Background Pattern -->
+<div class="absolute inset-0 map-texture opacity-60 pointer-events-none"></div>
+<div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent pointer-events-none"></div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+<div class="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+<!-- Left Content -->
+<div class="max-w-2xl">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-6 animate-fade-in-up">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                        v 1.0.2 beta availabe
+                    </div>
+<h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-[1.05] mb-6">
+                        Ride Together. <br/>
+<span class="text-primary">Ride Safe.</span>
+</h1>
+<p class="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed max-w-lg">
+                        The ultimate co-pilot for group rides. Experience real-time tracking, hazard alerts, and seamless pack communication on your next adventure.
+                    </p>
+<div class="flex flex-col gap-6 w-full max-w-lg">
+  <div id="hero-ctas" class="flex flex-col sm:flex-row gap-4">
+    <button onclick="openDownloadModal(event)" class="flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-base font-bold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all transform hover:-translate-y-1 cursor-pointer w-full sm:w-auto">
+      <span class="material-icons-round">download</span>
+      Start Your Journey
+    </button>
+    <button id="watch-demo-btn" type="button" data-video="./assets/demovideo.mp4" onclick="(function(){const vmodal=document.getElementById('video-modal');const vid=document.getElementById('demo-video');if(!vmodal||!vid)return;document.body.style.overflow='hidden';document.body.classList.add('modal-open');vmodal.classList.remove('hidden');vmodal.setAttribute('aria-hidden','false');const s=vid.querySelector('source');if(s && !s.src){s.src=s.getAttribute('data-default')||s.src;}try{vid.load();const p=vid.play();if(p&&p.catch){p.catch(()=>{vid.muted=true;vid.play().catch(()=>{});});}}catch(e){} })(); return false;" class="flex items-center justify-center gap-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-primary hover:text-primary dark:hover:border-primary dark:hover:text-primary px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-base font-bold transition-all w-full sm:w-auto">
+      <span class="material-icons-round">play_circle</span>
+      Watch Demo
+    </button>
+  </div>
+  <div class="flex items-center justify-center sm:justify-start gap-2 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-500/30 px-4 py-2.5 rounded-lg shadow-sm w-fit self-center sm:self-start mx-auto sm:mx-0">
+    <span class="material-icons-round text-[18px]">verified_user</span>
+    <span class="text-xs sm:text-sm font-semibold tracking-wide">100% Verified Secure &amp; Fully Functional Working Guarantee</span>
+  </div>
+</div>
+<!-- Trusted-by avatars removed per user request -->
+</div>
+<!-- Right Content: Phone Mockup -->
+<div class="relative lg:h-[600px] flex items-center justify-center lg:justify-end group perspective-1000">
+<!-- Decor elements -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl opacity-50 dark:opacity-20 pointer-events-none"></div>
+<!-- Phone Frame -->
+<div class="relative w-64 h-[480px] md:w-[300px] md:h-[600px] bg-gray-900 rounded-[3rem] border-8 border-gray-800 shadow-2xl overflow-hidden md:transform md:rotate-y-12 md:rotate-z-2 hover:rotate-0 transition-transform duration-700 ease-out z-20">
+<!-- Notch -->
+<div class="absolute top-0 inset-x-0 h-6 bg-gray-800 z-30 rounded-b-xl w-40 mx-auto"></div>
+<!-- Screen Content -->
+<div class="w-full h-full bg-gray-100 relative">
+<!-- Map Background -->
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Aerial view of a winding road through a forest" data-location="Blue Ridge Parkway" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTOzGY8jSZhGrYh88mHxpg2-0itR96QEwDwTiyVSFJmIVkKaFizX9e_XvimM1KMO3ejLZjGlKW6HSrrX76rQsJLwrVcha7n18POK_5Sl-Rz8KixV4LpkxAWv8Gasy9WRNZVFZEf41unQr-Hkfwsc-dyQvCIbUOm9GvDvWdnHktDJ99g6EIiOJs4VMeWMS7Uo1tExmx2N0uw3Eqjya9YYBbf375GTo7UW7ZLfvOy9_8ndCKrZ5OdB7H_aI5agzlQVTLa2QA_OqJ0sY');">
+<div class="absolute inset-0 bg-black/10"></div>
+</div>
+<!-- UI Overlay -->
+<div class="absolute top-12 left-4 right-4 flex justify-between items-start">
+<div class="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg">
+<div class="text-xs text-gray-500 font-bold uppercase">Distance</div>
+<div class="text-lg font-bold text-gray-900">42.5 mi</div>
+</div>
+<div class="bg-primary text-white p-2 rounded-lg shadow-lg flex items-center gap-1">
+<span class="material-icons-round text-sm">people</span>
+<span class="text-sm font-bold">4 Riders</span>
+</div>
+</div>
+<!-- User Pins on Map -->
+<div class="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+<div class="w-10 h-10 bg-primary border-2 border-white rounded-full flex items-center justify-center shadow-lg relative z-10">
+<img alt="Leader avatar" class="w-full h-full rounded-full object-cover" data-alt="Avatar of the ride leader" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7b9CpyHlolsdo42OCNL28l24AEYPQErUdFlmN9yOY17R3qtfrG6sFvDMPFBGtzvUIzDglU4sppbsswqTLkdlb--wxPgSAQbrJ1W4ejKcm81rbh7w8fdhmvSitRpejc_1GOykhP2k8aCHV1kLx9Kn2c8nKyzlKf5aEDUBmdHLxZ8axp9nNjK8EnVvaqZ7XOQyyHUT9fE5kxZdxkYGvkj3542c0jkmIHP1U9lCnLbipDeFOZarKnp4-dK9FszjvQXP2HTPC60zUVXE"/>
+</div>
+<div class="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-primary -mt-1"></div>
+</div>
+<div class="absolute bottom-1/3 left-1/3 transform flex flex-col items-center">
+<div class="w-8 h-8 bg-blue-500 border-2 border-white rounded-full flex items-center justify-center shadow-lg relative z-10">
+<span class="text-white text-xs font-bold">JD</span>
+</div>
+<div class="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-blue-500 -mt-0.5"></div>
+</div>
+<!-- Bottom Sheet UI -->
+<div class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl p-6 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+<div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4"></div>
+<div class="flex items-center justify-between mb-4">
+<div>
+<h3 class="font-bold text-gray-900">Pacific Coast Run</h3>
+<p class="text-xs text-gray-500">Live • 2h 15m elapsed</p>
+</div>
+<button class="bg-red-500 text-white p-2 rounded-full shadow-lg">
+<span class="material-icons-round">mic_off</span>
+</button>
+</div>
+<div class="flex gap-3 overflow-x-auto pb-2">
+<div class="flex-shrink-0 w-12 h-12 rounded-full border-2 border-green-500 p-0.5">
+<img alt="Rider 1" class="w-full h-full rounded-full object-cover" data-alt="Avatar of rider 1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRdBkVs9zcj2ppT1bniuCwjIYv5xyXR_WymBL_yJBmYFMaqdoKmZLkbcG2Z4aNVH7p_b9_QhYTBaXidlMPbfO7fRV2fKcGuYzKGSJB6LHjerAJTaEIlS7gCB7vkZAR8l8PWlHzN_U9p9gdIVEowRzJTExVxc7Ri-4dLVG9ymHdYdozHNVJoeSOws663_PLdguV22ULu9QjNy1I4t_ykXOA-P0mxvbCpzekEDEqmz7kGEhT7rH6EWtNp-RNJr_ceEfs9wXG0weHRzQ"/>
+</div>
+<div class="flex-shrink-0 w-12 h-12 rounded-full border-2 border-gray-200 p-0.5 opacity-50">
+<img alt="Rider 2" class="w-full h-full rounded-full object-cover" data-alt="Avatar of rider 2" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDavBA-fvZ331ScV9zjeZPwi6LbMI0iyq_Q9xhF5SknTrAHmIS44Y-ALy9rFv7cEeiKTlU1tCAFHXWOkhJ2n-X_i5BDe52yBRmFOUXu0c75ZWtJU25Tq0bsWPm1JReXiQLwQMTFJ9D9cD3KJilp6EkqHYeaWbLA3GlA2A98gAKwhOediGgbv3EAkuyq6hjCYepN0EYcTv4kEw-0QcN7tbCP9mJ6CpC2MKsX7w1nRDgJnledYyr-G3dxo6zSRF68cwp7Ls8KeUBitmE"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Features Section -->
+<section class="py-20 relative bg-white dark:bg-gray-900" id="features">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="text-center max-w-3xl mx-auto mb-16">
+<span class="text-primary font-bold uppercase tracking-wider text-sm">Built for Real Riders</span>
+<h2 class="mt-3 text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">Everything you need for the long haul.</h2>
+<p class="mt-4 text-gray-600 dark:text-gray-400 text-lg">Designed by motorcycle enthusiasts to solve the real problems of group touring.</p>
+</div>
+<div class="grid md:grid-cols-3 gap-8">
+<!-- Feature 1 -->
+<div class="bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
+<div class="w-14 h-14 bg-white dark:bg-gray-700 rounded-xl flex items-center justify-center text-primary shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300">
+<span class="material-icons-round text-3xl">share_location</span>
+</div>
+<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Live Group Tracking</h3>
+<p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Never lose a rider again. See everyone's position in real-time, even when the pack gets stretched out on twisty roads.
+                    </p>
+</div>
+<!-- Feature 2 -->
+<div class="bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
+<div class="w-14 h-14 bg-white dark:bg-gray-700 rounded-xl flex items-center justify-center text-primary shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300">
+<span class="material-icons-round text-3xl">signal_wifi_off</span>
+</div>
+<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Offline Maps</h3>
+<p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Adventure doesn't always have cell service. Download high-res topographic maps and navigate seamlessly anywhere.
+                    </p>
+</div>
+<!-- Feature 3 -->
+<div class="bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
+<div class="w-14 h-14 bg-white dark:bg-gray-700 rounded-xl flex items-center justify-center text-primary shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300">
+<span class="material-icons-round text-3xl">headset_mic</span>
+</div>
+<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Pack Intercom</h3>
+<p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Low-latency voice chat optimized for wind noise reduction. Coordinate gas stops or warn of hazards instantly.
+                    </p>
+</div>
+</div>
+</div>
+</section>
+<!-- How It Works Section -->
+<section class="py-20 bg-background-light dark:bg-background-dark border-t border-gray-200 dark:border-gray-800" id="how-it-works">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="mb-12">
+<h2 class="text-3xl font-extrabold text-gray-900 dark:text-white">Get Rolling in Seconds</h2>
+</div>
+<div class="relative">
+<!-- Connecting Line (Desktop) -->
+<div class="hidden md:block absolute top-12 left-0 w-full h-1 bg-gray-200 dark:bg-gray-700 -z-10"></div>
+<div class="grid md:grid-cols-4 gap-8">
+<!-- Step 1 -->
+<div class="relative">
+<div class="w-24 h-24 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center border-4 border-background-light dark:border-background-dark shadow-lg mb-6 z-10 mx-auto md:mx-0">
+<span class="text-3xl font-extrabold text-primary">1</span>
+</div>
+<h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 text-center md:text-left">Create Lobby</h3>
+<p class="text-sm text-gray-600 dark:text-gray-400 text-center md:text-left">Start a private ride lobby and set your destination.</p>
+</div>
+<!-- Step 2 -->
+<div class="relative">
+<div class="w-24 h-24 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center border-4 border-background-light dark:border-background-dark shadow-lg mb-6 z-10 mx-auto md:mx-0">
+<span class="text-3xl font-extrabold text-primary">2</span>
+</div>
+<h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 text-center md:text-left">Invite Crew</h3>
+<p class="text-sm text-gray-600 dark:text-gray-400 text-center md:text-left">Share a simple link or QR code to add your friends.</p>
+</div>
+<!-- Step 3 -->
+<div class="relative">
+<div class="w-24 h-24 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center border-4 border-background-light dark:border-background-dark shadow-lg mb-6 z-10 mx-auto md:mx-0">
+<span class="text-3xl font-extrabold text-primary">3</span>
+</div>
+<h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 text-center md:text-left">Sync Route</h3>
+<p class="text-sm text-gray-600 dark:text-gray-400 text-center md:text-left">Everyone gets the same GPS route instantly.</p>
+</div>
+<!-- Step 4 -->
+<div class="relative">
+<div class="w-24 h-24 bg-primary text-white rounded-full flex items-center justify-center border-4 border-background-light dark:border-background-dark shadow-lg shadow-primary/30 mb-6 z-10 mx-auto md:mx-0">
+<span class="material-icons-round text-4xl">motorcycle</span>
+</div>
+<h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 text-center md:text-left">Ride Connected</h3>
+<p class="text-sm text-gray-600 dark:text-gray-400 text-center md:text-left">Hit the road with peace of mind and full connectivity.</p>
+</div>
+</div>
+<!-- Lobby Mockup (Small) -->
+<div class="mt-16 bg-white dark:bg-gray-800 rounded-xl p-6 shadow-soft border border-gray-100 dark:border-gray-700 max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-8">
+<div class="flex-1 space-y-4">
+<h4 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+<span class="material-icons-round text-primary">qr_code_2</span>
+                            Seamless Onboarding
+                        </h4>
+<p class="text-gray-600 dark:text-gray-400">
+                            No more "wait, let me type that address." Just scan the lobby QR code and your phone configures the entire route automatically. Works cross-platform.
+                        </p>
+</div>
+<div class="w-full md:w-64 bg-gray-100 dark:bg-gray-900 rounded-lg p-4 aspect-[4/3] flex items-center justify-center relative overflow-hidden group">
+<div class="absolute inset-0 bg-cover bg-center opacity-80" data-alt="Close up of a phone screen showing a QR code for ride sharing" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCqrlr2ZVW33SkURhlo3RXRaedar1DhD6M66yYFuD8X--cnr9g9SroYb-kqQXLzHFK4qYVVjDUz60x_71OLWib0QidiRC_KarxwTxNL7Gx04UJXz2sQhQYA-zMxv0Pue_nFj7SQ9GsJLT_xEUU7yj5FXqRGQ5wY69eI67GfXCct2xK2gTaE7JYzrQuqrBKW3vm8I1VWr49spLvdqdaeDVI-T82ZOQYF-ZEQuWES-fLuFfg89sgFJwvRGFtU5SnIUG-2vxdyF-xJcEY');"></div>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+<div class="bg-white p-3 rounded-lg shadow-lg">
+<span class="material-icons-round text-4xl text-gray-800">qr_code</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Pricing and Hardware sections removed — footer links will show coming-soon messages -->
+
+<!-- Safety Section -->
+<section class="py-20 bg-white dark:bg-gray-900 overflow-hidden relative" id="safety">
+<!-- Decoration -->
+<div class="absolute top-0 right-0 w-1/3 h-full bg-secondary/5 skew-x-12 origin-top-right z-0"></div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+<div class="grid lg:grid-cols-2 gap-12 items-center">
+<!-- Left Content -->
+<div class="order-2 lg:order-1">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-wider mb-4">
+<span class="material-icons-round text-sm">security</span>
+                        Safety First
+                    </div>
+<h2 class="text-4xl font-extrabold text-gray-900 dark:text-white mb-6">When it matters most, <br/>we've got your back.</h2>
+<div class="space-y-8">
+<div class="flex gap-4">
+<div class="flex-shrink-0 w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-icons-round text-2xl">sensors</span>
+</div>
+<div>
+<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Automated Crash Detection</h3>
+<p class="text-gray-600 dark:text-gray-400">Uses your phone's gyroscope and accelerometer to detect impacts. If you don't respond, we alert your emergency contacts and the rest of the pack with your exact coordinates.</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex-shrink-0 w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-icons-round text-2xl">notifications_active</span>
+</div>
+<div>
+<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">SOS Beacon</h3>
+<p class="text-gray-600 dark:text-gray-400">One-tap emergency broadcast to all riders in your lobby. Instantly overrides navigation to guide help to you.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Content: Safety Mockup -->
+<div class="order-1 lg:order-2 flex justify-center">
+<div class="relative w-[280px] h-[560px] bg-gray-900 rounded-[2.5rem] border-8 border-gray-800 shadow-2xl overflow-hidden">
+<div class="absolute top-0 inset-x-0 h-6 bg-gray-800 z-30 rounded-b-xl w-32 mx-auto"></div>
+<!-- Emergency Screen UI -->
+<div class="w-full h-full bg-gray-900 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+<!-- Blinking Red Background Effect -->
+<div class="absolute inset-0 bg-red-600 opacity-20 animate-pulse"></div>
+<div class="relative z-10">
+<div class="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center text-white mb-6 mx-auto shadow-[0_0_30px_rgba(239,68,68,0.6)] animate-pulse">
+<span class="material-icons-round text-4xl">sos</span>
+</div>
+<h3 class="text-2xl font-bold text-white mb-2">Crash Detected</h3>
+<p class="text-gray-300 text-sm mb-8">Sending alert in <span class="text-red-400 font-mono text-xl font-bold">14s</span></p>
+<button class="w-full bg-white text-gray-900 font-bold py-3 rounded-xl mb-3 shadow-lg">I'm Okay - Cancel</button>
+<button class="w-full bg-red-600 text-white font-bold py-3 rounded-xl shadow-lg border border-red-500">Call 911 Now</button>
+</div>
+<!-- Map fragment at bottom -->
+<div class="absolute bottom-0 inset-x-0 h-1/3 opacity-30">
+<img alt="Map background" class="w-full h-full object-cover grayscale" data-alt="Dark map interface background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuL4_M8pL7Co4efakUhj6G3GKnNqhon68HCG_qeAPogRS9cBwC-yqglxut413gA5VEazrpzfg6yNMtQgfXVm2loNFXCoGR6oe-hPrRV5n-2D3IBf6dkTv-LSTxEdvKfhvB3goQbo8M5GwkvvpchRbQMo-o_vli4RWaQN9RL65yCED_QtgQmA3TFWfCT9isTdYGSHXJ3zhxEGoCMgdZtBtZjm0DRyjKXkEjlpPI_0rFdf2oMRcumR33h9zKwpxISX6dOXCrDjgIJao"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="download-banner" class="py-8 sm:py-12 bg-white dark:bg-gray-900">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="relative overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl">
+<div class="absolute inset-0 download-banner-glow pointer-events-none"></div>
+<div class="absolute -left-10 top-10 w-32 h-32 bg-primary/15 blur-3xl rounded-full pointer-events-none"></div>
+<div class="absolute right-10 bottom-0 w-40 h-40 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
+<div class="relative grid lg:grid-cols-[1.25fr_0.9fr] gap-10 items-center px-6 py-8 sm:px-10 sm:py-10 lg:px-16 lg:py-12">
+<div class="max-w-2xl">
+<div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/8 border border-white/10 text-sm font-semibold text-primary mb-6">
+  <img src="assets/logo.png" alt="JourneySync logo" class="w-8 h-8 rounded-lg object-cover" />
+  JourneySync App
+</div>
+<h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight mb-4">Get JourneySync on your phone now.</h2>
+<p class="text-base sm:text-lg text-gray-300 max-w-xl mb-8">Scan the QR code to download the Android APK instantly, or tap the button below to install it directly from this page.</p>
+<div class="flex flex-col sm:flex-row gap-4">
+  <button onclick="openDownloadModal(event)" class="flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white px-6 py-3.5 rounded-xl text-base font-bold shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all transform hover:-translate-y-1 cursor-pointer">
+    <span class="material-icons-round">download</span>
+    Download the App
+  </button>
+  <a href="#download" class="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors">
+    <span class="material-icons-round">arrow_downward</span>
+    More Download Info
+  </a>
+</div>
+</div>
+<div class="relative flex justify-center lg:justify-end">
+<div class="relative w-full max-w-[320px]">
+  <div class="absolute -left-6 top-14 hidden sm:flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-white shadow-xl rotate-[-12deg]">
+    <span class="material-icons-round text-3xl">two_wheeler</span>
+  </div>
+  <div class="absolute -right-4 bottom-10 hidden sm:flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-white text-primary shadow-xl rotate-[10deg]">
+    <span class="material-icons-round text-3xl">route</span>
+  </div>
+  <div class="mx-auto w-[260px] sm:w-[290px] rounded-[2.4rem] border-[10px] border-[#303030] bg-[#0f0f0f] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.45)]">
+    <div class="mx-auto mb-3 h-7 w-28 rounded-full bg-[#232323]"></div>
+    <div class="rounded-[2rem] bg-[#f7f2ec] p-5 text-center">
+      <a id="download-qr-link" href="./journeysync.apk" class="block" aria-label="Scan to download JourneySync APK">
+        <img id="download-qr-image" src="" alt="QR code to download JourneySync" class="mx-auto w-full max-w-[220px] rounded-2xl bg-white p-3 shadow-lg" loading="lazy" />
+      </a>
+      <p class="mt-4 text-xl font-extrabold text-primary">Scan to download</p>
+      <p class="mt-2 text-sm font-medium text-gray-600">Android APK available now</p>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer CTA -->
+<section id="download" class="py-24 bg-background-dark text-white relative overflow-hidden">
+<div class="absolute inset-0 opacity-10 map-texture"></div>
+<div class="max-w-4xl mx-auto px-4 text-center relative z-10">
+<h2 class="text-4xl md:text-5xl font-extrabold mb-6">Ready to lead the pack?</h2>
+<p class="text-lg text-gray-400 mb-10 max-w-2xl mx-auto">Android: APK available for direct download — install the APK to get the app now. iOS: App Store update coming soon. </p>
+<p class="text-sm text-gray-500 mb-12">Note: The app is currently in early access. Please report any issues to our GitHub repository.</p>
+<div class="flex flex-col items-center justify-center gap-6">
+  <button onclick="openDownloadModal(event)" class="flex items-center gap-3 bg-white text-gray-900 hover:bg-gray-100 px-6 py-3.5 rounded-xl font-bold transition-all transform hover:-translate-y-1 w-full sm:w-auto justify-center shadow-lg hover:shadow-xl cursor-pointer">
+    <img alt="Android Logo" class="w-6 h-6" data-alt="Android robot logo icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWLiWNysWHnxnKB2jSuRwpvBo-W2H5BdxmtC1uu_Of8Qktf7TM2ncQtxESasM87Eceb7TK7rEcMqPHODG8_2MIU4KYBcz01PP955s8utVQr165dAdx-JJ51gZhi87Pke2cdsLYno1LbcJRxz6f1Q7xh0DmId4hJ7vOGkpmNsvZ1SFRPezzAtfKcmgwcOpv1TvLDLuXCS1mX0qnVaN3qcjWCq59vnwMiMYpI3VkL2AbVpptyurhr78kfY-zGWlO9Y7CGPLvR1dPtZk"/>
+    <span class="text-sm">Download JourneySync APK</span>
+  </button>
+  <div class="flex items-center gap-2 bg-green-900/40 text-green-400 border border-green-500/30 px-5 py-2.5 rounded-lg shadow-sm">
+    <span class="material-icons-round text-[20px]">verified_user</span>
+    <span class="text-sm font-semibold tracking-wide">100% Verified Secure &amp; Fully Functional Working Guarantee</span>
+  </div>
+</div>
+</div>
+</section>
+<!-- Footer Links -->
+<footer class="bg-gray-900 border-t border-gray-800 text-gray-400 py-12 text-sm">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+<div class="col-span-2 md:col-span-1">
+<div class="flex items-center gap-2 mb-4 text-white">
+  <img src="assets/logo.png" alt="JourneySync" class="w-6 h-6 rounded-md object-cover" />
+  <span class="font-bold text-lg">JourneySync</span>
+</div>
+<p class="text-xs leading-relaxed mb-4">
+                    The #1 app for motorcycle group riding coordination, safety, and community.
+                </p>
+<div class="flex gap-4">
+  <a class="hover:opacity-90 transition-opacity" href="https://github.com/pranavv1210/journeysync-app" target="_blank" rel="noopener noreferrer" aria-label="JourneySync GitHub">
+    <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.53-1.35-1.3-1.71-1.3-1.71-1.06-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.73 1.27 3.4.97.11-.76.41-1.27.74-1.56-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.2-3.1-.12-.29-.52-1.47.11-3.06 0 0 .98-.31 3.2 1.18.93-.26 1.92-.39 2.91-.39.99 0 1.98.13 2.91.39 2.22-1.5 3.2-1.18 3.2-1.18.63 1.59.23 2.77.11 3.06.75.81 1.2 1.84 1.2 3.1 0 4.43-2.7 5.4-5.27 5.68.42.36.8 1.07.8 2.16 0 1.56-.01 2.82-.01 3.2 0 .31.21.68.8.56C20.71 21.4 24 17.09 24 12c0-6.35-5.15-11.5-12-11.5z"/>
+    </svg>
+  </a>
+</div>
+</div>
+<div>
+<h4 class="font-bold text-white mb-4">Product</h4>
+<ul class="space-y-2">
+<li><a class="hover:text-primary transition-colors" href="#features">Features</a></li>
+<li><a class="hover:text-primary transition-colors coming-soon" href="#" data-item="Pricing">Pricing</a></li>
+<li><a class="hover:text-primary transition-colors coming-soon" href="#" data-item="Hardware Support">Hardware Support</a></li>
+<li><a class="hover:text-primary transition-colors" href="#download">Download</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-white mb-4">Company</h4>
+<ul class="space-y-2">
+<li><a class="hover:text-primary transition-colors info-link" href="#" data-info="about">About Us</a></li>
+<li><a class="hover:text-primary transition-colors info-link" href="#" data-info="careers">Careers</a></li>
+<li><a class="hover:text-primary transition-colors info-link" href="#" data-info="blog">Blog</a></li>
+<li><a class="hover:text-primary transition-colors info-link" href="#" data-info="contact">Contact</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-white mb-4">Legal</h4>
+<ul class="space-y-2">
+<li><a class="hover:text-primary transition-colors legal-link" href="#" data-legal="privacy">Privacy Policy</a></li>
+<li><a class="hover:text-primary transition-colors legal-link" href="#" data-legal="terms">Terms of Use</a></li>
+<li><a class="hover:text-primary transition-colors legal-link" href="#" data-legal="safety">Safety Disclaimer</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+<p>© 2026 JourneySync Inc. All rights reserved.</p>
+<p class="mt-2 md:mt-0 flex items-center gap-1">
+                Made with <span class="text-red-500 material-icons-round text-sm">favorite</span> for riders.
+            </p>
+</div>
+</footer>
+<div id="coming-soon-toast" role="status" aria-live="polite" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg opacity-0 pointer-events-none transition-opacity duration-300">
+  <span id="coming-soon-text" class="text-sm"></span>
+</div>
+
+<script>
+  // Show a small toast when links with .coming-soon are clicked
+  (function(){
+    const toast = document.getElementById('coming-soon-toast');
+    const toastText = document.getElementById('coming-soon-text');
+    function showToast(msg){
+      toastText.textContent = msg;
+      toast.style.opacity = '1';
+      toast.classList.remove('pointer-events-none');
+      clearTimeout(window._comingSoonTimer);
+      window._comingSoonTimer = setTimeout(()=>{
+        toast.style.opacity = '0';
+        toast.classList.add('pointer-events-none');
+      }, 3000);
+    }
+    document.addEventListener('click', function(e){
+      const el = e.target.closest && e.target.closest('.coming-soon');
+      if(!el) return;
+      e.preventDefault();
+      const item = el.getAttribute('data-item') || 'This feature';
+      showToast(item + ' will be available soon. Stay tuned!');
+    });
+  })();
+</script>
+
+<!-- Modal for legal and company info -->
+<div id="legal-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 px-4" aria-hidden="true">
+  <div class="absolute inset-0 bg-black/60" data-close></div>
+  <div role="dialog" aria-modal="true" aria-labelledby="legal-title" class="relative bg-white dark:bg-gray-900 w-11/12 max-w-3xl rounded-xl shadow-2xl p-6 max-h-[80vh]">
+    <div class="flex justify-between items-start mb-4">
+      <h3 id="legal-title" class="text-xl font-bold text-gray-900 dark:text-white">Info</h3>
+      <button id="legal-close" class="text-gray-600 dark:text-gray-300 hover:text-gray-900" aria-label="Close">✕</button>
+    </div>
+    <div id="legal-content" class="prose prose-sm dark:prose-invert text-gray-700 dark:text-gray-200" style="overflow:auto; max-height:calc(80vh - 72px);"></div>
+  </div>
+</div>
+
+<script>
+  (function(){
+    const modal = document.getElementById('legal-modal');
+    const content = document.getElementById('legal-content');
+    const closeBtn = document.getElementById('legal-close');
+    const overlay = modal && modal.querySelector('[data-close]');
+
+    const templates = {
+      privacy: `
+        <div class="space-y-3">
+          <p class="text-sm text-gray-500">This app uses the official Termly privacy policy.</p>
+          <iframe
+            src="privacy-policy.html"
+            title="Privacy Policy"
+            class="w-full rounded-lg border border-gray-200"
+            style="height:56vh;"
+          ></iframe>
+          <p class="text-sm">
+            <a href="privacy-policy.html" target="_blank" rel="noopener" class="text-primary underline">Open privacy policy in a new tab</a>
+          </p>
+        </div>
+      `,
+      terms: `
+        <div class="flex items-start gap-3 mb-3">
+          <svg class="w-6 h-6 text-primary mt-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3 5h18M7 5v14a2 2 0 002 2h6a2 2 0 002-2V5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>
+            <h5 class="mt-0 mb-1">TERMS OF USE</h5>
+            <p class="mb-0"><strong>Last updated</strong> April 06, 2026</p>
+          </div>
+        </div>
+        <pre class="whitespace-pre-wrap text-sm leading-relaxed">AGREEMENT TO OUR LEGAL TERMS
+We are JourneySync ("Company," "we," "us," "our").
+
+We operate JourneySync App, as well as any other related products and services that refer or link to these legal terms (the "Legal Terms") (collectively, the "Services").
+
+You can contact us by email at journeysync.app@gmail.com or by mail to JourneySync, 19 Anandha Dhamma, 3rd Main Road, Optimum Garden Layout, Ayyapanagar, Bengaluru, Karnataka 560036, India.
+
+These Legal Terms constitute a legally binding agreement made between you, whether personally or on behalf of an entity ("you"), and JourneySync, concerning your access to and use of the Services. You agree that by accessing the Services, you have read, understood, and agreed to be bound by all of these Legal Terms. IF YOU DO NOT AGREE WITH ALL OF THESE LEGAL TERMS, THEN YOU ARE EXPRESSLY PROHIBITED FROM USING THE SERVICES AND YOU MUST DISCONTINUE USE IMMEDIATELY.
+
+Supplemental terms and conditions or documents that may be posted on the Services from time to time are hereby expressly incorporated herein by reference. We reserve the right, in our sole discretion, to make changes or modifications to these Legal Terms at any time and for any reason. We will alert you about any changes by updating the "Last updated" date of these Legal Terms, and you waive any right to receive specific notice of each such change. It is your responsibility to periodically review these Legal Terms to stay informed of updates. You will be subject to, and will be deemed to have been made aware of and to have accepted, the changes in any revised Legal Terms by your continued use of the Services after the date such revised Legal Terms are posted.
+
+We recommend that you print a copy of these Legal Terms for your records.
+
+TABLE OF CONTENTS
+1. OUR SERVICES
+2. INTELLECTUAL PROPERTY RIGHTS
+3. USER REPRESENTATIONS
+4. PROHIBITED ACTIVITIES
+5. USER GENERATED CONTRIBUTIONS
+6. CONTRIBUTION LICENSE
+7. SERVICES MANAGEMENT
+8. TERM AND TERMINATION
+9. MODIFICATIONS AND INTERRUPTIONS
+10. GOVERNING LAW
+11. DISPUTE RESOLUTION
+12. CORRECTIONS
+13. DISCLAIMER
+14. LIMITATIONS OF LIABILITY
+15. INDEMNIFICATION
+16. USER DATA
+17. ELECTRONIC COMMUNICATIONS, TRANSACTIONS, AND SIGNATURES
+18. MISCELLANEOUS
+19. CONTACT US
+
+1. OUR SERVICES
+The information provided when using the Services is not intended for distribution to or use by any person or entity in any jurisdiction or country where such distribution or use would be contrary to law or regulation or which would subject us to any registration requirement within such jurisdiction or country. Accordingly, those persons who choose to access the Services from other locations do so on their own initiative and are solely responsible for compliance with local laws, if and to the extent local laws are applicable.
+
+2. INTELLECTUAL PROPERTY RIGHTS
+Our intellectual property
+We are the owner or the licensee of all intellectual property rights in our Services, including all source code, databases, functionality, software, website designs, audio, video, text, photographs, and graphics in the Services (collectively, the "Content"), as well as the trademarks, service marks, and logos contained therein (the "Marks").
+
+Our Content and Marks are protected by copyright and trademark laws (and various other intellectual property rights and unfair competition laws) and treaties around the world.
+
+The Content and Marks are provided in or through the Services "AS IS" for your personal, non-commercial use or internal business purpose only.
+Your use of our Services
+Subject to your compliance with these Legal Terms, including the "PROHIBITED ACTIVITIES" section below, we grant you a non-exclusive, non-transferable, revocable license to:
+access the Services; and
+download or print a copy of any portion of the Content to which you have properly gained access,
+solely for your personal, non-commercial use or internal business purpose.
+
+Except as set out in this section or elsewhere in our Legal Terms, no part of the Services and no Content or Marks may be copied, reproduced, aggregated, republished, uploaded, posted, publicly displayed, encoded, translated, transmitted, distributed, sold, licensed, or otherwise exploited for any commercial purpose whatsoever, without our express prior written permission.
+
+If you wish to make any use of the Services, Content, or Marks other than as set out in this section or elsewhere in our Legal Terms, please address your request to: journeysync.app@gmail.com. If we ever grant you the permission to post, reproduce, or publicly display any part of our Services or Content, you must identify us as the owners or licensors of the Services, Content, or Marks and ensure that any copyright or proprietary notice appears or is visible on posting, reproducing, or displaying our Content.
+
+We reserve all rights not expressly granted to you in and to the Services, Content, and Marks.
+
+Any breach of these Intellectual Property Rights will constitute a material breach of our Legal Terms and your right to use our Services will terminate immediately.
+Your submissions
+Please review this section and the "PROHIBITED ACTIVITIES" section carefully prior to using our Services to understand the (a) rights you give us and (b) obligations you have when you post or upload any content through the Services.
+
+Submissions: By directly sending us any question, comment, suggestion, idea, feedback, or other information about the Services ("Submissions"), you agree to assign to us all intellectual property rights in such Submission. You agree that we shall own this Submission and be entitled to its unrestricted use and dissemination for any lawful purpose, commercial or otherwise, without acknowledgment or compensation to you.
+
+You are responsible for what you post or upload: By sending us Submissions through any part of the Services you:
+confirm that you have read and agree with our "PROHIBITED ACTIVITIES" and will not post, send, publish, upload, or transmit through the Services any Submission that is illegal, harassing, hateful, harmful, defamatory, obscene, bullying, abusive, discriminatory, threatening to any person or group, sexually explicit, false, inaccurate, deceitful, or misleading;
+to the extent permissible by applicable law, waive any and all moral rights to any such Submission;
+warrant that any such Submission are original to you or that you have the necessary rights and licenses to submit such Submissions and that you have full authority to grant us the above-mentioned rights in relation to your Submissions; and
+warrant and represent that your Submissions do not constitute confidential information.
+You are solely responsible for your Submissions and you expressly agree to reimburse us for any and all losses that we may suffer because of your breach of (a) this section, (b) any third party's intellectual property rights, or (c) applicable law.
+
+3. USER REPRESENTATIONS
+By using the Services, you represent and warrant that: (1) you have the legal capacity and you agree to comply with these Legal Terms; (2) you are not a minor in the jurisdiction in which you reside; (3) you will not access the Services through automated or non-human means, whether through a bot, script or otherwise; (4) you will not use the Services for any illegal or unauthorized purpose; and (5) your use of the Services will not violate any applicable law or regulation.
+
+If you provide any information that is untrue, inaccurate, not current, or incomplete, we have the right to suspend or terminate your account and refuse any and all current or future use of the Services (or any portion thereof).
+
+4. PROHIBITED ACTIVITIES
+You may not access or use the Services for any purpose other than that for which we make the Services available. The Services may not be used in connection with any commercial endeavors except those that are specifically endorsed or approved by us.
+
+As a user of the Services, you agree not to:
+Systematically retrieve data or other content from the Services to create or compile, directly or indirectly, a collection, compilation, database, or directory without written permission from us.
+Trick, defraud, or mislead us and other users, especially in any attempt to learn sensitive account information such as user passwords.
+Circumvent, disable, or otherwise interfere with security-related features of the Services, including features that prevent or restrict the use or copying of any Content or enforce limitations on the use of the Services and/or the Content contained therein.
+Disparage, tarnish, or otherwise harm, in our opinion, us and/or the Services.
+Use any information obtained from the Services in order to harass, abuse, or harm another person.
+Make improper use of our support services or submit false reports of abuse or misconduct.
+Use the Services in a manner inconsistent with any applicable laws or regulations.
+Engage in unauthorized framing of or linking to the Services.
+Upload or transmit (or attempt to upload or to transmit) viruses, Trojan horses, or other material, including excessive use of capital letters and spamming (continuous posting of repetitive text), that interferes with any party's uninterrupted use and enjoyment of the Services or modifies, impairs, disrupts, alters, or interferes with the use, features, functions, operation, or maintenance of the Services.
+Engage in any automated use of the system, such as using scripts to send comments or messages, or using any data mining, robots, or similar data gathering and extraction tools.
+Delete the copyright or other proprietary rights notice from any Content.
+Attempt to impersonate another user or person or use the username of another user.
+Upload or transmit (or attempt to upload or to transmit) any material that acts as a passive or active information collection or transmission mechanism, including without limitation, clear graphics interchange formats ("gifs"), 1x1 pixels, web bugs, cookies, or other similar devices (sometimes referred to as "spyware" or "passive collection mechanisms" or "pcms").
+Interfere with, disrupt, or create an undue burden on the Services or the networks or services connected to the Services.
+Harass, annoy, intimidate, or threaten any of our employees or agents engaged in providing any portion of the Services to you.
+Attempt to bypass any measures of the Services designed to prevent or restrict access to the Services, or any portion of the Services.
+Copy or adapt the Services' software, including but not limited to Flash, PHP, HTML, JavaScript, or other code.
+Except as permitted by applicable law, decipher, decompile, disassemble, or reverse engineer any of the software comprising or in any way making up a part of the Services.
+Except as may be the result of standard search engine or Internet browser usage, use, launch, develop, or distribute any automated system, including without limitation, any spider, robot, cheat utility, scraper, or offline reader that accesses the Services, or use or launch any unauthorized script or other software.
+Use a buying agent or purchasing agent to make purchases on the Services.
+Make any unauthorized use of the Services, including collecting usernames and/or email addresses of users by electronic or other means for the purpose of sending unsolicited email, or creating user accounts by automated means or under false pretenses.
+Use the Services as part of any effort to compete with us or otherwise use the Services and/or the Content for any revenue-generating endeavor or commercial enterprise.
+
+5. USER GENERATED CONTRIBUTIONS
+The Services does not offer users to submit or post content. We may provide you with the opportunity to create, submit, post, display, transmit, perform, publish, distribute, or broadcast content and materials to us or on the Services, including but not limited to text, writings, video, audio, photographs, graphics, comments, suggestions, or personal information or other material (collectively, "Contributions"). Contributions may be viewable by other users of the Services and through third-party websites. When you create or make available any Contributions, you thereby represent and warrant that:
+
+6. CONTRIBUTION LICENSE
+You and Services agree that we may access, store, process, and use any information and personal data that you provide and your choices (including settings).
+
+By submitting suggestions or other feedback regarding the Services, you agree that we can use and share such feedback for any purpose without compensation to you.
+
+We do not assert any ownership over your Contributions. You retain full ownership of all of your Contributions and any intellectual property rights or other proprietary rights associated with your Contributions. We are not liable for any statements or representations in your Contributions provided by you in any area on the Services. You are solely responsible for your Contributions to the Services and you expressly agree to exonerate us from any and all responsibility and to refrain from any legal action against us regarding your Contributions.
+
+7. SERVICES MANAGEMENT
+We reserve the right, but not the obligation, to: (1) monitor the Services for violations of these Legal Terms; (2) take appropriate legal action against anyone who, in our sole discretion, violates the law or these Legal Terms, including without limitation, reporting such user to law enforcement authorities; (3) in our sole discretion and without limitation, refuse, restrict access to, limit the availability of, or disable (to the extent technologically feasible) any of your Contributions or any portion thereof; (4) in our sole discretion and without limitation, notice, or liability, to remove from the Services or otherwise disable all files and content that are excessive in size or are in any way burdensome to our systems; and (5) otherwise manage the Services in a manner designed to protect our rights and property and to facilitate the proper functioning of the Services.
+
+8. TERM AND TERMINATION
+These Legal Terms shall remain in full force and effect while you use the Services. WITHOUT LIMITING ANY OTHER PROVISION OF THESE LEGAL TERMS, WE RESERVE THE RIGHT TO, IN OUR SOLE DISCRETION AND WITHOUT NOTICE OR LIABILITY, DENY ACCESS TO AND USE OF THE SERVICES (INCLUDING BLOCKING CERTAIN IP ADDRESSES), TO ANY PERSON FOR ANY REASON OR FOR NO REASON, INCLUDING WITHOUT LIMITATION FOR BREACH OF ANY REPRESENTATION, WARRANTY, OR COVENANT CONTAINED IN THESE LEGAL TERMS OR OF ANY APPLICABLE LAW OR REGULATION. WE MAY TERMINATE YOUR USE OR PARTICIPATION IN THE SERVICES OR DELETE ANY CONTENT OR INFORMATION THAT YOU POSTED AT ANY TIME, WITHOUT WARNING, IN OUR SOLE DISCRETION.
+
+If we terminate or suspend your account for any reason, you are prohibited from registering and creating a new account under your name, a fake or borrowed name, or the name of any third party, even if you may be acting on behalf of the third party. In addition to terminating or suspending your account, we reserve the right to take appropriate legal action, including without limitation pursuing civil, criminal, and injunctive redress.
+
+9. MODIFICATIONS AND INTERRUPTIONS
+We reserve the right to change, modify, or remove the contents of the Services at any time or for any reason at our sole discretion without notice. However, we have no obligation to update any information on our Services. We will not be liable to you or any third party for any modification, price change, suspension, or discontinuance of the Services.
+
+We cannot guarantee the Services will be available at all times. We may experience hardware, software, or other problems or need to perform maintenance related to the Services, resulting in interruptions, delays, or errors. We reserve the right to change, revise, update, suspend, discontinue, or otherwise modify the Services at any time or for any reason without notice to you. You agree that we have no liability whatsoever for any loss, damage, or inconvenience caused by your inability to access or use the Services during any downtime or discontinuance of the Services. Nothing in these Legal Terms will be construed to obligate us to maintain and support the Services or to supply any corrections, updates, or releases in connection therewith.
+
+10. GOVERNING LAW
+These Legal Terms shall be governed by and defined following the laws of India. JourneySync and yourself irrevocably consent that the courts of Bengaluru, Karnataka, India shall have exclusive jurisdiction to resolve any dispute which may arise in connection with these Legal Terms.
+
+11. DISPUTE RESOLUTION
+Informal Negotiations
+To expedite resolution and control the cost of any dispute, controversy, or claim related to these Legal Terms (each a "Dispute" and collectively, the "Disputes") brought by either you or us (individually, a "Party" and collectively, the "Parties"), the Parties agree to first attempt to negotiate any Dispute (except those Disputes expressly provided below) informally for at least 30 days before initiating arbitration. Such informal negotiations commence upon written notice from one Party to the other Party.
+Binding Arbitration
+Any dispute arising out of or in connection with these Legal Terms, including any question regarding its existence, validity, or termination, shall be referred to and finally resolved by the International Commercial Arbitration Court under the European Arbitration Chamber (Belgium, Brussels, Avenue Louise, 146) according to the Rules of this ICAC, which, as a result of referring to it, is considered as the part of this clause. The number of arbitrators shall be 1. The seat, or legal place, or arbitration shall be Bengaluru, Karnataka, India. The language of the proceedings shall be English. The governing law of these Legal Terms shall be substantive law of India.
+Restrictions
+The Parties agree that any arbitration shall be limited to the Dispute between the Parties individually. To the full extent permitted by law, (a) no arbitration shall be joined with any other proceeding; (b) there is no right or authority for any Dispute to be arbitrated on a class-action basis or to utilize class action procedures; and (c) there is no right or authority for any Dispute to be brought in a purported representative capacity on behalf of the general public or any other persons.
+Exceptions to Informal Negotiations and Arbitration
+The Parties agree that the following Disputes are not subject to the above provisions concerning informal negotiations binding arbitration: (a) any Disputes seeking to enforce or protect, or concerning the validity of, any of the intellectual property rights of a Party; (b) any Dispute related to, or arising from, allegations of theft, piracy, invasion of privacy, or unauthorized use; and (c) any claim for injunctive relief. If this provision is found to be illegal or unenforceable, then neither Party will elect to arbitrate any Dispute falling within that portion of this provision found to be illegal or unenforceable and such Dispute shall be decided by a court of competent jurisdiction within the courts listed for jurisdiction above, and the Parties agree to submit to the personal jurisdiction of that court.
+
+12. CORRECTIONS
+There may be information on the Services that contains typographical errors, inaccuracies, or omissions, including descriptions, pricing, availability, and various other information. We reserve the right to correct any errors, inaccuracies, or omissions and to change or update the information on the Services at any time, without prior notice.
+
+13. DISCLAIMER
+THE SERVICES ARE PROVIDED ON AN AS-IS AND AS-AVAILABLE BASIS. YOU AGREE THAT YOUR USE OF THE SERVICES WILL BE AT YOUR SOLE RISK. TO THE FULLEST EXTENT PERMITTED BY LAW, WE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED, IN CONNECTION WITH THE SERVICES AND YOUR USE THEREOF, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. WE MAKE NO WARRANTIES OR REPRESENTATIONS ABOUT THE ACCURACY OR COMPLETENESS OF THE SERVICES' CONTENT OR THE CONTENT OF ANY WEBSITES OR MOBILE APPLICATIONS LINKED TO THE SERVICES AND WE WILL ASSUME NO LIABILITY OR RESPONSIBILITY FOR ANY (1) ERRORS, MISTAKES, OR INACCURACIES OF CONTENT AND MATERIALS, (2) PERSONAL INJURY OR PROPERTY DAMAGE, OF ANY NATURE WHATSOEVER, RESULTING FROM YOUR ACCESS TO AND USE OF THE SERVICES, (3) ANY UNAUTHORIZED ACCESS TO OR USE OF OUR SECURE SERVERS AND/OR ANY AND ALL PERSONAL INFORMATION AND/OR FINANCIAL INFORMATION STORED THEREIN, (4) ANY INTERRUPTION OR CESSATION OF TRANSMISSION TO OR FROM THE SERVICES, (5) ANY BUGS, VIRUSES, TROJAN HORSES, OR THE LIKE WHICH MAY BE TRANSMITTED TO OR THROUGH THE SERVICES BY ANY THIRD PARTY, AND/OR (6) ANY ERRORS OR OMISSIONS IN ANY CONTENT AND MATERIALS OR FOR ANY LOSS OR DAMAGE OF ANY KIND INCURRED AS A RESULT OF THE USE OF ANY CONTENT POSTED, TRANSMITTED, OR OTHERWISE MADE AVAILABLE VIA THE SERVICES. WE DO NOT WARRANT, ENDORSE, GUARANTEE, OR ASSUME RESPONSIBILITY FOR ANY PRODUCT OR SERVICE ADVERTISED OR OFFERED BY A THIRD PARTY THROUGH THE SERVICES, ANY HYPERLINKED WEBSITE, OR ANY WEBSITE OR MOBILE APPLICATION FEATURED IN ANY BANNER OR OTHER ADVERTISING, AND WE WILL NOT BE A PARTY TO OR IN ANY WAY BE RESPONSIBLE FOR MONITORING ANY TRANSACTION BETWEEN YOU AND ANY THIRD-PARTY PROVIDERS OF PRODUCTS OR SERVICES. AS WITH THE PURCHASE OF A PRODUCT OR SERVICE THROUGH ANY MEDIUM OR IN ANY ENVIRONMENT, YOU SHOULD USE YOUR BEST JUDGMENT AND EXERCISE CAUTION WHERE APPROPRIATE.
+
+14. LIMITATIONS OF LIABILITY
+IN NO EVENT WILL WE OR OUR DIRECTORS, EMPLOYEES, OR AGENTS BE LIABLE TO YOU OR ANY THIRD PARTY FOR ANY DIRECT, INDIRECT, CONSEQUENTIAL, EXEMPLARY, INCIDENTAL, SPECIAL, OR PUNITIVE DAMAGES, INCLUDING LOST PROFIT, LOST REVENUE, LOSS OF DATA, OR OTHER DAMAGES ARISING FROM YOUR USE OF THE SERVICES, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. NOTWITHSTANDING ANYTHING TO THE CONTRARY CONTAINED HEREIN, OUR LIABILITY TO YOU FOR ANY CAUSE WHATSOEVER AND REGARDLESS OF THE FORM OF THE ACTION, WILL AT ALL TIMES BE LIMITED TO THE LESSER OF THE AMOUNT PAID, IF ANY, BY YOU TO US OR INR 1,000. CERTAIN US STATE LAWS AND INTERNATIONAL LAWS DO NOT ALLOW LIMITATIONS ON IMPLIED WARRANTIES OR THE EXCLUSION OR LIMITATION OF CERTAIN DAMAGES. IF THESE LAWS APPLY TO YOU, SOME OR ALL OF THE ABOVE DISCLAIMERS OR LIMITATIONS MAY NOT APPLY TO YOU, AND YOU MAY HAVE ADDITIONAL RIGHTS.
+
+15. INDEMNIFICATION
+You agree to defend, indemnify, and hold us harmless, including our subsidiaries, affiliates, and all of our respective officers, agents, partners, and employees, from and against any loss, damage, liability, claim, or demand, including reasonable attorneys' fees and expenses, made by any third party due to or arising out of: (1) use of the Services; (2) breach of these Legal Terms; (3) any breach of your representations and warranties set forth in these Legal Terms; (4) your violation of the rights of a third party, including but not limited to intellectual property rights; or (5) any overt harmful act toward any other user of the Services with whom you connected via the Services. Notwithstanding the foregoing, we reserve the right, at your expense, to assume the exclusive defense and control of any matter for which you are required to indemnify us, and you agree to cooperate, at your expense, with our defense of such claims. We will use reasonable efforts to notify you of any such claim, action, or proceeding which is subject to this indemnification upon becoming aware of it.
+
+16. USER DATA
+We will maintain certain data that you transmit to the Services for the purpose of managing the performance of the Services, as well as data relating to your use of the Services. Although we perform regular routine backups of data, you are solely responsible for all data that you transmit or that relates to any activity you have undertaken using the Services. You agree that we shall have no liability to you for any loss or corruption of any such data, and you hereby waive any right of action against us arising from any such loss or corruption of such data.
+
+17. ELECTRONIC COMMUNICATIONS, TRANSACTIONS, AND SIGNATURES
+Visiting the Services, sending us emails, and completing online forms constitute electronic communications. You consent to receive electronic communications, and you agree that all agreements, notices, disclosures, and other communications we provide to you electronically, via email and on the Services, satisfy any legal requirement that such communication be in writing. YOU HEREBY AGREE TO THE USE OF ELECTRONIC SIGNATURES, CONTRACTS, ORDERS, AND OTHER RECORDS, AND TO ELECTRONIC DELIVERY OF NOTICES, POLICIES, AND RECORDS OF TRANSACTIONS INITIATED OR COMPLETED BY US OR VIA THE SERVICES. You hereby waive any rights or requirements under any statutes, regulations, rules, ordinances, or other laws in any jurisdiction which require an original signature or delivery or retention of non-electronic records, or to payments or the granting of credits by any means other than electronic means.
+
+18. MISCELLANEOUS
+These Legal Terms and any policies or operating rules posted by us on the Services or in respect to the Services constitute the entire agreement and understanding between you and us. Our failure to exercise or enforce any right or provision of these Legal Terms shall not operate as a waiver of such right or provision. These Legal Terms operate to the fullest extent permissible by law. We may assign any or all of our rights and obligations to others at any time. We shall not be responsible or liable for any loss, damage, delay, or failure to act caused by any cause beyond our reasonable control. If any provision or part of a provision of these Legal Terms is determined to be unlawful, void, or unenforceable, that provision or part of the provision is deemed severable from these Legal Terms and does not affect the validity and enforceability of any remaining provisions. There is no joint venture, partnership, employment or agency relationship created between you and us as a result of these Legal Terms or use of the Services. You agree that these Legal Terms will not be construed against us by virtue of having drafted them. You hereby waive any and all defenses you may have based on the electronic form of these Legal Terms and the lack of signing by the parties hereto to execute these Legal Terms.
+
+19. CONTACT US
+In order to resolve a complaint regarding the Services or to receive further information regarding use of the Services, please contact us at:
+
+JourneySync
+19 Anandha Dhamma, 3rd Main Road,
+Optimum Garden Layout, Ayyapanagar
+Bengaluru, Karnataka 560036
+India
+journeysync.app@gmail.com</pre>
+      `,
+      safety: `
+        <div class="flex items-start gap-3 mb-3">
+          <svg class="w-6 h-6 text-primary mt-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5zm0 7v13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>
+            <h5 class="mt-0">Safety Disclaimer</h5>
+            <p class="mb-2">JourneySync is designed to enhance ride coordination, not replace responsible riding practices.</p>
+          </div>
+        </div>
+        <p class="mb-2">Users must:</p>
+        <ul class="list-disc ml-5 mb-3">
+          <li>Follow all traffic laws</li>
+          <li>Wear proper riding gear</li>
+          <li>Maintain safe riding distances</li>
+          <li>Stop safely before interacting with the app</li>
+          <li>Avoid interacting with the app while riding</li>
+        </ul>
+        <p class="mb-2">Emergency alerts notify ride participants only and do not replace professional emergency services.</p>
+        <p class="mb-2">JourneySync is not liable for accidents, injuries, fatalities, damages, or losses arising from ride participation. Ride responsibly.</p>
+      `,
+      about: `
+        <div class="flex items-start gap-3 mb-3">
+          <svg class="w-6 h-6 text-primary mt-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="8" r="3" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 20c1.8-2.5 4.5-4 6.5-4s4.7 1.5 6.5 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>
+            <h5 class="mt-0">About Us</h5>
+            <p class="mb-2">JourneySync was built by riders who experienced the challenges of unstructured group rides. Our mission is to improve motorcycle ride safety without complicating the experience.</p>
+          </div>
+        </div>
+        <p class="mb-2">We created JourneySync to bring:</p>
+        <ul class="list-disc ml-5 mb-3">
+          <li>Real-time visibility</li>
+          <li>Organized ride management</li>
+          <li>Safer group coordination</li>
+        </ul>
+        <p class="mb-2">Currently focused on the Bengaluru riding community, we aim to grow responsibly based on real rider feedback.</p>
+      `,
+      careers: `
+        <div class="flex items-start gap-3 mb-3">
+          <svg class="w-6 h-6 text-primary mt-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M16 3H8v4h8V3z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>
+            <h5 class="mt-0">Careers</h5>
+            <p class="mb-2">JourneySync is an early-stage platform focused on rider safety and technology. We welcome passionate individuals interested in:</p>
+          </div>
+        </div>
+        <ul class="list-disc ml-5 mb-3">
+          <li>Android development</li>
+          <li>UI/UX design</li>
+          <li>Community growth</li>
+          <li>Ride safety innovation</li>
+        </ul>
+        <p class="mb-2">To collaborate, contact: <a href="mailto:journeysync.app@gmail.com" class="text-primary">journeysync.app@gmail.com</a></p>
+      `,
+      blog: `
+        <div class="flex items-start gap-3 mb-3">
+          <svg class="w-6 h-6 text-primary mt-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 19h16M4 6h16M4 12h16" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>
+            <h5 class="mt-0">Blog</h5>
+            <p class="mb-2">The JourneySync Blog will share:</p>
+          </div>
+        </div>
+        <ul class="list-disc ml-5 mb-3">
+          <li>Safe riding tips</li>
+          <li>Group ride coordination insights</li>
+          <li>Product updates</li>
+          <li>Community ride stories</li>
+        </ul>
+        <p class="mb-2">Coming soon.</p>
+      `,
+      contact: `
+        <div class="flex items-start gap-3 mb-3">
+          <svg class="w-6 h-6 text-primary mt-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3 8l9 6 9-6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>
+            <h5 class="mt-0">Contact</h5>
+            <p class="mb-2">Have questions or feedback? Email us at <a href="mailto:journeysync.app@gmail.com" class="text-primary">journeysync.app@gmail.com</a></p>
+            <p class="mb-1">Location: Bengaluru, India</p>
+            <p class="mb-1">We aim to respond within 24–48 hours.</p>
+          </div>
+        </div>
+      `
+    };
+
+    let _lastFocused = null;
+    const titles = {
+      privacy: 'Privacy Policy',
+      terms: 'Terms of Use',
+      safety: 'Safety Disclaimer',
+      about: 'About Us',
+      careers: 'Careers',
+      blog: 'Blog',
+      contact: 'Contact'
+    };
+
+    function openModal(key){
+      if(!templates[key]) return;
+      _lastFocused = document.activeElement;
+      // prevent background scrolling
+      document.body.style.overflow = 'hidden';
+      const titleEl = document.getElementById('legal-title');
+      titleEl.textContent = titles[key] || 'Info';
+      content.innerHTML = templates[key];
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden','false');
+      const firstFocusable = modal.querySelector('button, a, input, textarea') || closeBtn;
+      (firstFocusable || closeBtn).focus();
+    }
+
+    function closeModal(){
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden','true');
+      // restore background scrolling
+      document.body.style.overflow = '';
+      if(_lastFocused && typeof _lastFocused.focus === 'function') _lastFocused.focus();
+    }
+
+    document.addEventListener('click', function(e){
+      const el = e.target.closest && (e.target.closest('.legal-link') || e.target.closest('.info-link'));
+      if(!el) return;
+      e.preventDefault();
+      const key = el.getAttribute('data-legal') || el.getAttribute('data-info');
+      openModal(key);
+    });
+
+    if(closeBtn) closeBtn.addEventListener('click', closeModal);
+    if(overlay) overlay.addEventListener('click', closeModal);
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeModal(); });
+  })();
+
+  // Mobile menu toggle
+  (function(){
+    const btn = document.getElementById('mobile-menu-btn');
+    const nav = document.getElementById('mobile-nav');
+    if(!btn || !nav) return;
+    btn.addEventListener('click', function(){
+      const expanded = this.getAttribute('aria-expanded') === 'true';
+      this.setAttribute('aria-expanded', (!expanded).toString());
+      nav.classList.toggle('hidden');
+    });
+    // hide menu after clicking a link
+    nav.addEventListener('click', function(e){
+      if(e.target.tagName === 'A'){
+        nav.classList.add('hidden');
+        btn.setAttribute('aria-expanded','false');
+      }
+    });
+  })();
+
+  // Demo video modal handlers
+  (function(){
+    const btn = document.getElementById('watch-demo-btn');
+    const vmodal = document.getElementById('video-modal');
+    const vclose = document.getElementById('video-close');
+    const voverlay = vmodal && vmodal.querySelector('[data-close-video]');
+    const video = document.getElementById('demo-video');
+    let _last = null;
+    if(!btn || !vmodal || !video) return;
+
+    function openVideo(src){
+      _last = document.activeElement;
+      if(src) {
+        // update source if provided
+        const s = video.querySelector('source');
+        if(s) s.src = src;
+        try{ video.load(); }catch(e){}
+      }
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open');
+      vmodal.classList.remove('hidden');
+      vmodal.setAttribute('aria-hidden','false');
+      // Try to play with audio; if browser blocks autoplay with sound,
+      // mute and try again so the demo reliably starts.
+      try {
+        const p = video.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => {
+            try { video.muted = true; video.play().catch(()=>{}); } catch(e){}
+          });
+        }
+      } catch(e) {
+        try { video.muted = true; video.play().catch(()=>{}); } catch(e){}
+      }
+      (vclose || video).focus();
+    }
+
+    function closeVideo(){
+      vmodal.classList.add('hidden');
+      vmodal.setAttribute('aria-hidden','true');
+      try{ video.pause(); video.currentTime = 0; }catch(e){}
+      // reset source to stop downloads (optional)
+      const s = video.querySelector('source');
+      if(s) s.src = s.getAttribute('data-default') || s.src;
+      document.body.style.overflow = '';
+      document.body.classList.remove('modal-open');
+      if(_last && typeof _last.focus === 'function') _last.focus();
+    }
+
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      const src = this.getAttribute('data-video') || './demovideo.mp4';
+      openVideo(src);
+    });
+    if(vclose) vclose.addEventListener('click', closeVideo);
+    if(voverlay) voverlay.addEventListener('click', closeVideo);
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeVideo(); });
+  })();
+</script>
+
+<!-- Download Modal -->
+<div id="download-modal" class="fixed inset-0 hidden flex items-center justify-center z-[100000] px-4" aria-hidden="true">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" data-close-download></div>
+  <div role="dialog" aria-modal="true" aria-labelledby="download-title" class="relative bg-white dark:bg-gray-900 w-11/12 max-w-md rounded-2xl shadow-2xl p-8 text-center border border-gray-100 dark:border-gray-800">
+    <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-5 text-primary shadow-inner">
+      <span class="material-icons-round text-3xl">download_for_offline</span>
+    </div>
+    <h3 id="download-title" class="text-2xl font-bold text-gray-900 dark:text-white mb-3">Install JourneySync</h3>
+    <p class="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
+      You are about to download the official <strong>Android APK</strong> (~29MB).<br>
+      This app is secure, verified, and fully operational. Are you sure you want to proceed?
+    </p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <button class="px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 font-bold transition-colors w-full sm:w-auto" data-close-download>No, Cancel</button>
+      <a href="./journeysync.apk" download onclick="closeDownloadModal()" class="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark font-bold transition-all shadow-lg hover:shadow-xl w-full sm:w-auto">Yes, Download</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function handleHeaderDownloadCTA(e) {
+    if(e) e.preventDefault();
+
+    if(window.innerWidth < 768) {
+      openDownloadModal();
+      return;
+    }
+
+    const banner = document.getElementById('download-banner');
+    if(!banner) return;
+
+    const header = document.querySelector('header');
+    const headerOffset = header ? header.offsetHeight + 24 : 100;
+    const targetTop = banner.getBoundingClientRect().top + window.pageYOffset - headerOffset;
+
+    window.scrollTo({
+      top: Math.max(targetTop, 0),
+      behavior: 'smooth'
+    });
+  }
+
+  function openDownloadModal(e) {
+    if(e) e.preventDefault();
+    const dmodal = document.getElementById('download-modal');
+    if(!dmodal) return;
+    document.body.style.overflow = 'hidden';
+    document.body.classList.add('modal-open');
+    dmodal.classList.remove('hidden');
+    dmodal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeDownloadModal() {
+    const dmodal = document.getElementById('download-modal');
+    if(!dmodal) return;
+    dmodal.classList.add('hidden');
+    dmodal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    document.body.classList.remove('modal-open');
+  }
+
+  (function(){
+    const doverlay = document.querySelector('[data-close-download]');
+    const dcancels = document.querySelectorAll('[data-close-download]');
+    dcancels.forEach(btn => {
+      btn.addEventListener('click', closeDownloadModal);
+    });
+    document.addEventListener('keydown', function(e){ 
+      if(e.key === 'Escape') closeDownloadModal(); 
+    });
+  })();
+
+  (function() {
+    const qrImage = document.getElementById('download-qr-image');
+    const qrLink = document.getElementById('download-qr-link');
+    if(!qrImage || !qrLink) return;
+
+    const apkUrl = new URL('./journeysync.apk', window.location.href).href;
+    qrLink.href = apkUrl;
+    qrImage.src = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=' + encodeURIComponent(apkUrl);
+  })();
+</script>
+
+</body>
+</html>
+
+<style>
+  /* Hide scrollbar for modal content */
+  #legal-content {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  #legal-content::-webkit-scrollbar { display: none; width: 0; height: 0; }
+</style>
