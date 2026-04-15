@@ -1137,10 +1137,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             label: "Rides",
             active: false,
             onTap: () {
-              Navigator.push(
-                context,
-                buildAppRoute(const NearbyRidesScreen()),
-              );
+              Navigator.push(context, buildAppRoute(const NearbyRidesScreen()));
             },
             primary: primary,
           ),
@@ -1150,10 +1147,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             label: "Map",
             active: false,
             onTap: () {
-              Navigator.push(
-                context,
-                buildAppRoute(const MapScreen()),
-              );
+              Navigator.push(context, buildAppRoute(const MapScreen()));
             },
             primary: primary,
           ),
@@ -1162,10 +1156,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             label: "Profile",
             active: false,
             onTap: () {
-              Navigator.push(
-                context,
-                buildAppRoute(const SettingsScreen()),
-              );
+              Navigator.push(context, buildAppRoute(const SettingsScreen()));
             },
             primary: primary,
           ),
@@ -1206,10 +1197,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       backgroundColor: primary,
       elevation: 8,
       onPressed: () async {
-        await Navigator.push(
-          context,
-          buildAppRoute(const CreateRideScreen()),
-        );
+        await Navigator.push(context, buildAppRoute(const CreateRideScreen()));
         await _loadHomeData();
       },
       shape: const CircleBorder(),

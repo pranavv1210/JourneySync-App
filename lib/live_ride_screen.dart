@@ -319,7 +319,9 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
   LatLng? get _startPoint {
     final ride = _ride;
     if (ride == null) return null;
-    return _parseLatLng((ride['start_location'] ?? ride['start'] ?? '').toString());
+    return _parseLatLng(
+      (ride['start_location'] ?? ride['start'] ?? '').toString(),
+    );
   }
 
   List<LatLng> get _routePolyline {
@@ -341,14 +343,17 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
         _liveLocations.where((location) => location.isStale).toList();
     if (staleLocations.isNotEmpty) {
       final staleUser = staleLocations.first.userId;
-      final staleMember = _members.where((member) => member.userId == staleUser);
+      final staleMember = _members.where(
+        (member) => member.userId == staleUser,
+      );
       final name = staleMember.isEmpty ? 'A rider' : staleMember.first.name;
       return '$name appears stationary for 5+ minutes';
     }
 
     final lastMovementAt = _lastMovementAt;
     if (lastMovementAt != null &&
-        DateTime.now().difference(lastMovementAt) >= const Duration(minutes: 5)) {
+        DateTime.now().difference(lastMovementAt) >=
+            const Duration(minutes: 5)) {
       return 'You appear stationary for 5+ minutes';
     }
 
@@ -371,7 +376,10 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
       return LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
     }
     if (_liveLocations.isNotEmpty) {
-      return LatLng(_liveLocations.first.latitude, _liveLocations.first.longitude);
+      return LatLng(
+        _liveLocations.first.latitude,
+        _liveLocations.first.longitude,
+      );
     }
     if (_routePolyline.isNotEmpty) {
       return _routePolyline.first;
@@ -414,7 +422,9 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
               children: const [
                 LoadingSkeleton(height: 58, radius: 20),
                 SizedBox(height: 14),
-                Expanded(child: LoadingSkeleton(height: double.infinity, radius: 28)),
+                Expanded(
+                  child: LoadingSkeleton(height: double.infinity, radius: 28),
+                ),
                 SizedBox(height: 14),
                 LoadingSkeleton(height: 220, radius: 28),
               ],
@@ -475,29 +485,26 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
 
   Widget _buildMap() {
     final routePoints = _routePolyline;
-    final liveMarkers = _liveLocations
-        .map(
-          (location) {
-            RideMember? member;
-            for (final item in _members) {
-              if (item.userId == location.userId) {
-                member = item;
-                break;
-              }
+    final liveMarkers =
+        _liveLocations.map((location) {
+          RideMember? member;
+          for (final item in _members) {
+            if (item.userId == location.userId) {
+              member = item;
+              break;
             }
-            return Marker(
-              point: LatLng(location.latitude, location.longitude),
-              width: 94,
-              height: 76,
-              child: _MemberMarker(
-                member: member,
-                isCurrentUser: location.userId == _currentUserId,
-                isStale: location.isStale,
-              ),
-            );
-          },
-        )
-        .toList();
+          }
+          return Marker(
+            point: LatLng(location.latitude, location.longitude),
+            width: 94,
+            height: 76,
+            child: _MemberMarker(
+              member: member,
+              isCurrentUser: location.userId == _currentUserId,
+              isStale: location.isStale,
+            ),
+          );
+        }).toList();
 
     return FlutterMap(
       mapController: _mapController,
@@ -634,7 +641,9 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFFEF3C7),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+        border: Border.all(
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+        ),
       ),
       child: Row(
         children: [
@@ -702,7 +711,10 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
                 child: _InfoMetric(
                   label: 'Ride State',
                   value: _safetyMessage.isEmpty ? 'All moving' : 'Safety alert',
-                  color: _safetyMessage.isEmpty ? _forest : const Color(0xFFD97706),
+                  color:
+                      _safetyMessage.isEmpty
+                          ? _forest
+                          : const Color(0xFFD97706),
                 ),
               ),
             ],
@@ -727,7 +739,10 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
                 itemBuilder: (context, index) {
                   final stop = routeStops[index];
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(999),
@@ -787,7 +802,9 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                member.userId == _currentUserId ? 'You' : member.name,
+                                member.userId == _currentUserId
+                                    ? 'You'
+                                    : member.name,
                                 style: TextStyle(
                                   color: _forest,
                                   fontWeight: FontWeight.w800,
@@ -982,7 +999,8 @@ class _MemberMarker extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-              color: isStale ? const Color(0xFFD97706) : const Color(0xFFFF6A00),
+              color:
+                  isStale ? const Color(0xFFD97706) : const Color(0xFFFF6A00),
               width: 2,
             ),
             boxShadow: [

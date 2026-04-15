@@ -715,7 +715,11 @@ class SupabaseService {
     if (normalized.isEmpty) return null;
 
     Future<Map<String, dynamic>?> getRide(String columns) {
-      return _client.from('rides').select(columns).eq('id', normalized).maybeSingle();
+      return _client
+          .from('rides')
+          .select(columns)
+          .eq('id', normalized)
+          .maybeSingle();
     }
 
     try {
@@ -738,25 +742,30 @@ class SupabaseService {
                 '')
             .toString()
             .trim();
-    final memberRows = await fetchParticipantsByRideIds(<String>[normalizedRideId]);
-    final userIds = <String>{
-      ...memberRows
-          .map((row) => (row['user_id'] ?? '').toString().trim())
-          .where((id) => id.isNotEmpty),
-      if (hostId.isNotEmpty) hostId,
-    }.toList();
+    final memberRows = await fetchParticipantsByRideIds(<String>[
+      normalizedRideId,
+    ]);
+    final userIds =
+        <String>{
+          ...memberRows
+              .map((row) => (row['user_id'] ?? '').toString().trim())
+              .where((id) => id.isNotEmpty),
+          if (hostId.isNotEmpty) hostId,
+        }.toList();
 
     final users = await fetchUsersByIds(userIds);
     return userIds.map((userId) {
       final row = users[userId];
       return RideMember(
         userId: userId,
-        name: ((row?['name'] ?? 'Rider').toString().trim().isEmpty)
-            ? 'Rider'
-            : (row?['name'] ?? 'Rider').toString().trim(),
-        bike: ((row?['bike'] ?? 'No bike added').toString().trim().isEmpty)
-            ? 'No bike added'
-            : (row?['bike'] ?? 'No bike added').toString().trim(),
+        name:
+            ((row?['name'] ?? 'Rider').toString().trim().isEmpty)
+                ? 'Rider'
+                : (row?['name'] ?? 'Rider').toString().trim(),
+        bike:
+            ((row?['bike'] ?? 'No bike added').toString().trim().isEmpty)
+                ? 'No bike added'
+                : (row?['bike'] ?? 'No bike added').toString().trim(),
         avatarUrl: (row?['avatar_url'] ?? '').toString().trim(),
         isHost: userId == hostId,
       );
@@ -767,7 +776,11 @@ class SupabaseService {
     List<String> userIds,
   ) async {
     final ids =
-        userIds.map((id) => id.trim()).where((id) => id.isNotEmpty).toSet().toList();
+        userIds
+            .map((id) => id.trim())
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList();
     if (ids.isEmpty) return <String, Map<String, dynamic>>{};
 
     try {
@@ -814,22 +827,26 @@ class SupabaseService {
     final normalized = rideId.trim();
     if (normalized.isEmpty) return null;
     try {
-      final row = await _client
-          .from('ride_routes')
-          .select()
-          .eq('ride_id', normalized)
-          .maybeSingle();
+      final row =
+          await _client
+              .from('ride_routes')
+              .select()
+              .eq('ride_id', normalized)
+              .maybeSingle();
       if (row == null) return null;
       final rawStops = (row['stops'] as List?) ?? const [];
       return RideRoute(
         rideId: normalized,
         startLabel: (row['start_label'] ?? '').toString().trim(),
         endLabel: (row['end_label'] ?? '').toString().trim(),
-        stops: rawStops
-            .whereType<Map>()
-            .map((stop) => RouteStop.fromJson(Map<String, dynamic>.from(stop)))
-            .toList()
-          ..sort((a, b) => a.order.compareTo(b.order)),
+        stops:
+            rawStops
+                .whereType<Map>()
+                .map(
+                  (stop) => RouteStop.fromJson(Map<String, dynamic>.from(stop)),
+                )
+                .toList()
+              ..sort((a, b) => a.order.compareTo(b.order)),
       );
     } on PostgrestException catch (error) {
       if (_isMissingRideRoutesSchema(error)) return null;

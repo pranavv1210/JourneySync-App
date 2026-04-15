@@ -80,8 +80,9 @@ class LiveTrackingService {
 
   void _emit() {
     if (_controller.isClosed) return;
-    final values = _cache.values.toList()
-      ..sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+    final values =
+        _cache.values.toList()
+          ..sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
     _controller.add(values);
   }
 

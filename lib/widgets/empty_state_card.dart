@@ -46,10 +46,7 @@ class EmptyStateCard extends StatelessWidget {
                 height: 1.4,
               ),
             ),
-            if (action != null) ...[
-              const SizedBox(height: 16),
-              action!,
-            ],
+            if (action != null) ...[const SizedBox(height: 16), action!],
           ],
         ),
       ),

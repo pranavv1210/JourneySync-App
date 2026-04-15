@@ -902,7 +902,9 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
             filled: true,
             fillColor: Colors.white,
             enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+              borderSide: BorderSide(
+                color: Colors.black.withValues(alpha: 0.05),
+              ),
               borderRadius: BorderRadius.circular(14),
             ),
             focusedBorder: OutlineInputBorder(

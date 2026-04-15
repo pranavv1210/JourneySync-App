@@ -471,7 +471,8 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
               const SizedBox(height: 16),
               EmptyStateCard(
                 title: 'No active rides yet',
-                message: 'Nearby group rides will appear here when someone starts one.',
+                message:
+                    'Nearby group rides will appear here when someone starts one.',
                 icon: Icons.radar_rounded,
                 foreground: forest,
               ),
