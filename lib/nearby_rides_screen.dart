@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_toast.dart';
 import 'ride_service.dart';
+import 'widgets/empty_state_card.dart';
 
 class NearbyRidesScreen extends StatefulWidget {
   const NearbyRidesScreen({super.key});
@@ -439,7 +440,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
             const SizedBox(height: 18),
             Text(
               showFallback
-                  ? 'No nearby rides found'
+                  ? 'No riders nearby'
                   : 'Scanning for nearby rides...',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -466,6 +467,13 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                 onPressed: _loadNearbyRides,
                 style: ElevatedButton.styleFrom(backgroundColor: primary),
                 child: const Text('Scan Again'),
+              ),
+              const SizedBox(height: 16),
+              EmptyStateCard(
+                title: 'No active rides yet',
+                message: 'Nearby group rides will appear here when someone starts one.',
+                icon: Icons.radar_rounded,
+                foreground: forest,
               ),
             ],
           ],

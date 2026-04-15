@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_navigation.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'setup_error_screen.dart';
@@ -40,11 +41,9 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
     if (initError != null) {
-      Navigator.pushReplacement(
+      replaceWithAppRoute(
         context,
-        MaterialPageRoute(
-          builder: (_) => SetupErrorScreen(errorMessage: initError.toString()),
-        ),
+        SetupErrorScreen(errorMessage: initError.toString()),
       );
       return;
     }
@@ -54,16 +53,10 @@ class _SplashScreenState extends State<SplashScreen>
     final loggedIn = prefs.getBool('isLoggedIn') ?? false;
 
     if (loggedIn) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      replaceWithAppRoute(context, const HomeScreen());
       return;
     }
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    replaceWithAppRoute(context, const LoginScreen());
   }
 
   @override

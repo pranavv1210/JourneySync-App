@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_config.dart';
+import 'models/ride_member.dart';
+import 'models/ride_route.dart';
 
 class SupabaseService {
   SupabaseService({SupabaseClient? client})
@@ -20,6 +22,8 @@ class SupabaseService {
       'id,phone,name,bike,created_at';
   static const String _rideColumnsWithCreator =
       'id,creator_id,title,start_location,end_location,created_at';
+  static const String _rideColumnsWithHost =
+      'id,host_id,title,start_location,end_location,created_at';
   static const String _rideColumnsWithUser =
       'id,user_id,title,start_location,end_location,created_at';
   static const String _rideColumnsLegacy =
@@ -242,6 +246,25 @@ class SupabaseService {
           excludeCreatorId.trim().isEmpty
               ? await _client
                   .from('rides')
+                  .select(_rideColumnsWithHost)
+                  .order('created_at', ascending: false)
+                  .limit(limit)
+              : await _client
+                  .from('rides')
+                  .select(_rideColumnsWithHost)
+                  .not('host_id', 'eq', excludeCreatorId.trim())
+                  .order('created_at', ascending: false)
+                  .limit(limit);
+      return List<Map<String, dynamic>>.from(rows);
+    } on PostgrestException catch (error) {
+      if (!_isMissingRideHostColumn(error)) rethrow;
+    }
+
+    try {
+      final rows =
+          excludeCreatorId.trim().isEmpty
+              ? await _client
+                  .from('rides')
                   .select(_rideColumnsWithCreator)
                   .order('created_at', ascending: false)
                   .limit(limit)
@@ -313,6 +336,27 @@ class SupabaseService {
       'created_at': DateTime.now().toIso8601String(),
     };
     final payload = <String, dynamic>{...basePayload, ...optionalPayload};
+    try {
+      final row =
+          await _client
+              .from('rides')
+              .insert({...payload, 'host_id': creatorId.trim()})
+              .select(_rideColumnsWithHost)
+              .single();
+      return row;
+    } on PostgrestException catch (error) {
+      if (_isMissingRideOptionalColumns(error) && optionalPayload.isNotEmpty) {
+        final row =
+            await _client
+                .from('rides')
+                .insert({...basePayload, 'host_id': creatorId.trim()})
+                .select(_rideColumnsWithHost)
+                .single();
+        return row;
+      }
+      if (!_isMissingRideHostColumn(error)) rethrow;
+    }
+
     try {
       final row =
           await _client
@@ -391,10 +435,42 @@ class SupabaseService {
     required String rideId,
     required String userId,
   }) async {
+    try {
+      await _client.from('ride_members').insert({
+        'ride_id': rideId.trim(),
+        'user_id': userId.trim(),
+      });
+      return;
+    } on PostgrestException catch (error) {
+      if (!_isMissingRideMembersSchema(error)) rethrow;
+    }
+
     await _client.from('participants').insert({
       'ride_id': rideId.trim(),
       'user_id': userId.trim(),
     });
+  }
+
+  Future<void> removeParticipant({
+    required String rideId,
+    required String userId,
+  }) async {
+    try {
+      await _client
+          .from('ride_members')
+          .delete()
+          .eq('ride_id', rideId.trim())
+          .eq('user_id', userId.trim());
+      return;
+    } on PostgrestException catch (error) {
+      if (!_isMissingRideMembersSchema(error)) rethrow;
+    }
+
+    await _client
+        .from('participants')
+        .delete()
+        .eq('ride_id', rideId.trim())
+        .eq('user_id', userId.trim());
   }
 
   Future<void> createJoinRequest({
@@ -592,6 +668,16 @@ class SupabaseService {
       return <Map<String, dynamic>>[];
     }
 
+    try {
+      final rows = await _client
+          .from('ride_members')
+          .select('ride_id,user_id')
+          .inFilter('ride_id', ids);
+      return List<Map<String, dynamic>>.from(rows);
+    } on PostgrestException catch (error) {
+      if (!_isMissingRideMembersSchema(error)) rethrow;
+    }
+
     final rows = await _client
         .from('participants')
         .select('ride_id,user_id')
@@ -607,11 +693,148 @@ class SupabaseService {
       return <Map<String, dynamic>>[];
     }
 
+    try {
+      final rows = await _client
+          .from('ride_members')
+          .select('ride_id,user_id')
+          .eq('user_id', normalized);
+      return List<Map<String, dynamic>>.from(rows);
+    } on PostgrestException catch (error) {
+      if (!_isMissingRideMembersSchema(error)) rethrow;
+    }
+
     final rows = await _client
         .from('participants')
         .select('ride_id,user_id')
         .eq('user_id', normalized);
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<Map<String, dynamic>?> fetchRideById(String rideId) async {
+    final normalized = rideId.trim();
+    if (normalized.isEmpty) return null;
+
+    Future<Map<String, dynamic>?> getRide(String columns) {
+      return _client.from('rides').select(columns).eq('id', normalized).maybeSingle();
+    }
+
+    try {
+      return await getRide('*');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<RideMember>> fetchRideMembers(String rideId) async {
+    final normalizedRideId = rideId.trim();
+    if (normalizedRideId.isEmpty) return <RideMember>[];
+
+    final ride = await fetchRideById(normalizedRideId);
+    final hostId =
+        (ride?['host_id'] ??
+                ride?['creator_id'] ??
+                ride?['user_id'] ??
+                ride?['leader_id'] ??
+                '')
+            .toString()
+            .trim();
+    final memberRows = await fetchParticipantsByRideIds(<String>[normalizedRideId]);
+    final userIds = <String>{
+      ...memberRows
+          .map((row) => (row['user_id'] ?? '').toString().trim())
+          .where((id) => id.isNotEmpty),
+      if (hostId.isNotEmpty) hostId,
+    }.toList();
+
+    final users = await fetchUsersByIds(userIds);
+    return userIds.map((userId) {
+      final row = users[userId];
+      return RideMember(
+        userId: userId,
+        name: ((row?['name'] ?? 'Rider').toString().trim().isEmpty)
+            ? 'Rider'
+            : (row?['name'] ?? 'Rider').toString().trim(),
+        bike: ((row?['bike'] ?? 'No bike added').toString().trim().isEmpty)
+            ? 'No bike added'
+            : (row?['bike'] ?? 'No bike added').toString().trim(),
+        avatarUrl: (row?['avatar_url'] ?? '').toString().trim(),
+        isHost: userId == hostId,
+      );
+    }).toList();
+  }
+
+  Future<Map<String, Map<String, dynamic>>> fetchUsersByIds(
+    List<String> userIds,
+  ) async {
+    final ids =
+        userIds.map((id) => id.trim()).where((id) => id.isNotEmpty).toSet().toList();
+    if (ids.isEmpty) return <String, Map<String, dynamic>>{};
+
+    try {
+      final rows = await _client
+          .from('users')
+          .select(_userColumnsWithAvatar)
+          .inFilter('id', ids);
+      return {
+        for (final row in rows)
+          (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
+      };
+    } on PostgrestException catch (error) {
+      if (!_isMissingAvatarColumn(error)) rethrow;
+      final rows = await _client
+          .from('users')
+          .select(_userColumnsWithoutAvatar)
+          .inFilter('id', ids);
+      return {
+        for (final row in rows)
+          (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
+      };
+    }
+  }
+
+  Future<void> saveRideRoute({
+    required String rideId,
+    required String hostId,
+    required String startLabel,
+    required String endLabel,
+    required List<RouteStop> stops,
+  }) async {
+    final payload = <String, dynamic>{
+      'ride_id': rideId.trim(),
+      'host_id': hostId.trim(),
+      'start_label': startLabel.trim(),
+      'end_label': endLabel.trim(),
+      'stops': stops.map((stop) => stop.toJson()).toList(),
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    await _client.from('ride_routes').upsert(payload, onConflict: 'ride_id');
+  }
+
+  Future<RideRoute?> fetchRideRoute(String rideId) async {
+    final normalized = rideId.trim();
+    if (normalized.isEmpty) return null;
+    try {
+      final row = await _client
+          .from('ride_routes')
+          .select()
+          .eq('ride_id', normalized)
+          .maybeSingle();
+      if (row == null) return null;
+      final rawStops = (row['stops'] as List?) ?? const [];
+      return RideRoute(
+        rideId: normalized,
+        startLabel: (row['start_label'] ?? '').toString().trim(),
+        endLabel: (row['end_label'] ?? '').toString().trim(),
+        stops: rawStops
+            .whereType<Map>()
+            .map((stop) => RouteStop.fromJson(Map<String, dynamic>.from(stop)))
+            .toList()
+          ..sort((a, b) => a.order.compareTo(b.order)),
+      );
+    } on PostgrestException catch (error) {
+      if (_isMissingRideRoutesSchema(error)) return null;
+      rethrow;
+    }
   }
 
   Stream<List<Map<String, dynamic>>> watchRides() {
@@ -662,6 +885,14 @@ class SupabaseService {
         message.contains('creator_id');
   }
 
+  bool _isMissingRideHostColumn(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    final message = error.message.toLowerCase();
+    return code == '42703' ||
+        code == 'PGRST204' && message.contains('host_id') ||
+        message.contains('host_id');
+  }
+
   bool _isMissingRideUserColumn(PostgrestException error) {
     final code = (error.code ?? '').trim();
     final message = error.message.toLowerCase();
@@ -690,5 +921,21 @@ class SupabaseService {
       return false;
     }
     return message.contains('start_time') || message.contains('max_riders');
+  }
+
+  bool _isMissingRideMembersSchema(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    return code == '42P01' ||
+        code == '42703' ||
+        code == 'PGRST204' ||
+        error.message.toLowerCase().contains('ride_members');
+  }
+
+  bool _isMissingRideRoutesSchema(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    return code == '42P01' ||
+        code == '42703' ||
+        code == 'PGRST204' ||
+        error.message.toLowerCase().contains('ride_routes');
   }
 }

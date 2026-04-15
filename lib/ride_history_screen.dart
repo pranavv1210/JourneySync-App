@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_navigation.dart';
 import 'ride_service.dart';
 import 'ride_lobby_screen.dart';
 import 'ride_summary_screen.dart';
 import 'live_ride_screen.dart';
 import 'package:intl/intl.dart';
+import 'widgets/empty_state_card.dart';
 
 class RideHistoryScreen extends StatefulWidget {
   const RideHistoryScreen({super.key});
@@ -163,11 +165,11 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
           loading
               ? const Center(child: CircularProgressIndicator())
               : allRides.isEmpty
-              ? const Center(
-                child: Text(
-                  "No rides found",
-                  style: TextStyle(color: forest, fontWeight: FontWeight.bold),
-                ),
+              ? const EmptyStateCard(
+                title: 'No journeys yet',
+                message: 'Finished and scheduled rides will appear here.',
+                icon: Icons.history_rounded,
+                foreground: forest,
               )
               : ListView.builder(
                 padding: const EdgeInsets.symmetric(
@@ -192,23 +194,17 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                       if (statusLabel == 'Live') {
                         await Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => LiveRideScreen(rideId: ride.id),
-                          ),
+                          buildAppRoute(LiveRideScreen(rideId: ride.id)),
                         );
                       } else if (ride.isCompleted) {
                         await Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => RideSummaryScreen(rideId: ride.id),
-                          ),
+                          buildAppRoute(RideSummaryScreen(rideId: ride.id)),
                         );
                       } else {
                         await Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => RideLobbyScreen(rideId: ride.id),
-                          ),
+                          buildAppRoute(RideLobbyScreen(rideId: ride.id)),
                         );
                       }
                       _loadHistory();

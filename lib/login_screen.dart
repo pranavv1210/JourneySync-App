@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app_toast.dart';
+import 'app_navigation.dart';
 import 'auth_service.dart';
 import 'home_screen.dart';
 
@@ -630,10 +631,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      replaceWithAppRoute(context, const HomeScreen());
     } catch (error) {
       if (!mounted) return;
       final errorText = error.toString();
@@ -708,10 +706,7 @@ class _LoginScreenState extends State<LoginScreen> {
         jwtToken: "",
       );
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      replaceWithAppRoute(context, const HomeScreen());
     } catch (error) {
       if (!mounted) return;
       showAppToast(

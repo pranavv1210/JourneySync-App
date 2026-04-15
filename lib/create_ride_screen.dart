@@ -8,6 +8,8 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_toast.dart';
+import 'app_navigation.dart';
+import 'models/ride_route.dart';
 import 'ride_service.dart';
 import 'ride_lobby_screen.dart';
 
@@ -21,6 +23,7 @@ class CreateRideScreen extends StatefulWidget {
 class _CreateRideScreenState extends State<CreateRideScreen> {
   final TextEditingController rideNameController = TextEditingController();
   final TextEditingController destinationController = TextEditingController();
+  final TextEditingController stopsController = TextEditingController();
   final RideService _rideService = RideService();
   final MapController _mapController = MapController();
   bool isCreating = false;
@@ -290,20 +293,26 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
         maxRiders: maxRiders.round(),
       );
 
+      final routeStops = await _resolveStops(destination);
+      await _rideService.saveRideRoute(
+        rideId: createdRide.id,
+        hostId: creatorId,
+        startLabel: currentLocationLabel,
+        endLabel: destination,
+        stops: routeStops,
+      );
+
       if (!mounted) return;
       showAppToast(
         context,
         "Ride created successfully",
         type: AppToastType.success,
       );
-      Navigator.pushReplacement(
+      replaceWithAppRoute(
         context,
-        MaterialPageRoute(
-          builder:
-              (_) => RideLobbyScreen(
-                rideId: createdRide.id,
-                initialMaxRiders: maxRiders.round(),
-              ),
+        RideLobbyScreen(
+          rideId: createdRide.id,
+          initialMaxRiders: maxRiders.round(),
         ),
       );
     } catch (error) {
@@ -363,6 +372,12 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                         ),
                         const SizedBox(height: 20),
                         _logisticsSection(
+                          forest: forest,
+                          primary: primary,
+                          neutralWarm: neutralWarm,
+                        ),
+                        const SizedBox(height: 20),
+                        _stopsSection(
                           forest: forest,
                           primary: primary,
                           neutralWarm: neutralWarm,
@@ -854,6 +869,52 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     );
   }
 
+  Widget _stopsSection({
+    required Color forest,
+    required Color primary,
+    required Color neutralWarm,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "ROUTE STOPS",
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+            color: forest.withValues(alpha: 0.8),
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: stopsController,
+          minLines: 2,
+          maxLines: 4,
+          style: TextStyle(color: forest, fontWeight: FontWeight.w600),
+          decoration: InputDecoration(
+            hintText: "Optional. Add one stop per line",
+            helperText: "Example: Fuel stop\nBreakfast point",
+            helperStyle: TextStyle(
+              color: neutralWarm.withValues(alpha: 0.9),
+              fontWeight: FontWeight.w600,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: primary, width: 2),
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _logisticsSection({
     required Color forest,
     required Color primary,
@@ -1005,7 +1066,72 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     destinationController.removeListener(_onDestinationChanged);
     rideNameController.dispose();
     destinationController.dispose();
+    stopsController.dispose();
     super.dispose();
+  }
+
+  Future<List<RouteStop>> _resolveStops(String destinationLabel) async {
+    final rawStops =
+        stopsController.text
+            .split(RegExp(r'[\n,]+'))
+            .map((stop) => stop.trim())
+            .where((stop) => stop.isNotEmpty)
+            .toList();
+    final resolved = <RouteStop>[];
+    for (var index = 0; index < rawStops.length; index++) {
+      final point = await _geocodeSingle(rawStops[index]);
+      if (point == null) continue;
+      resolved.add(
+        RouteStop(
+          label: rawStops[index],
+          latitude: point.latitude,
+          longitude: point.longitude,
+          order: index,
+        ),
+      );
+    }
+    if (destinationLatLng != null) {
+      resolved.add(
+        RouteStop(
+          label: destinationLabel,
+          latitude: destinationLatLng!.latitude,
+          longitude: destinationLatLng!.longitude,
+          order: resolved.length,
+        ),
+      );
+    }
+    return resolved;
+  }
+
+  Future<LatLng?> _geocodeSingle(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.length < 3) return null;
+    try {
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+        'q': trimmed,
+        'format': 'jsonv2',
+        'limit': '1',
+      });
+      final response = await http.get(
+        uri,
+        headers: const {
+          'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)',
+        },
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! List || decoded.isEmpty) return null;
+      final first = decoded.first;
+      if (first is! Map<String, dynamic>) return null;
+      final lat = double.tryParse((first['lat'] ?? '').toString());
+      final lng = double.tryParse((first['lon'] ?? '').toString());
+      if (lat == null || lng == null) return null;
+      return LatLng(lat, lng);
+    } catch (_) {
+      return null;
+    }
   }
 
   bool _looksLikeUuid(String value) {

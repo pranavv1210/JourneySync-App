@@ -14,6 +14,7 @@ import 'ride_history_screen.dart';
 import 'ride_lobby_screen.dart';
 import 'ride_summary_screen.dart';
 import 'live_ride_screen.dart';
+import 'widgets/empty_state_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -466,7 +467,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           onTap: () async {
             await Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const CreateRideScreen()),
+              buildAppRoute(const CreateRideScreen()),
             );
             await _loadHomeData();
           },
@@ -578,7 +579,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           onTap: () async {
             await Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const NearbyRidesScreen()),
+              buildAppRoute(const NearbyRidesScreen()),
             );
             await _loadHomeData();
           },
@@ -715,7 +716,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const RideHistoryScreen()),
+                  buildAppRoute(const RideHistoryScreen()),
                 );
               },
               child: Text(
@@ -731,20 +732,17 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         ),
         if (recentRides.isEmpty)
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: sandDarker.withValues(alpha: 0.6)),
             ),
-            child: Center(
-              child: Text(
-                "No recent rides",
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+            child: EmptyStateCard(
+              title: 'No journeys yet',
+              message: 'Create a ride to start tracking your group route.',
+              icon: Icons.route_outlined,
+              foreground: forest,
             ),
           )
         else
@@ -767,23 +765,17 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       if (statusLabel == 'Live') {
                         await Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => LiveRideScreen(rideId: ride.id),
-                          ),
+                          buildAppRoute(LiveRideScreen(rideId: ride.id)),
                         );
                       } else if (ride.isCompleted) {
                         await Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => RideSummaryScreen(rideId: ride.id),
-                          ),
+                          buildAppRoute(RideSummaryScreen(rideId: ride.id)),
                         );
                       } else {
                         await Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => RideLobbyScreen(rideId: ride.id),
-                          ),
+                          buildAppRoute(RideLobbyScreen(rideId: ride.id)),
                         );
                       }
                       await _loadHomeData();
@@ -1147,7 +1139,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const NearbyRidesScreen()),
+                buildAppRoute(const NearbyRidesScreen()),
               );
             },
             primary: primary,
@@ -1160,7 +1152,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const MapScreen()),
+                buildAppRoute(const MapScreen()),
               );
             },
             primary: primary,
@@ -1172,7 +1164,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                buildAppRoute(const SettingsScreen()),
               );
             },
             primary: primary,
@@ -1216,7 +1208,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       onPressed: () async {
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const CreateRideScreen()),
+          buildAppRoute(const CreateRideScreen()),
         );
         await _loadHomeData();
       },

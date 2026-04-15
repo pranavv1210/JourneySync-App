@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_toast.dart';
 import 'ride_service.dart';
+import 'widgets/empty_state_card.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -456,18 +457,17 @@ class _MapScreenState extends State<MapScreen> {
   Widget _ridesTray(Color primary, Color forest) {
     if (nearbyRides.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: forest.withValues(alpha: 0.1)),
         ),
-        child: Text(
-          'No nearby live rides. Ask your group to start a ride and come online.',
-          style: TextStyle(
-            color: forest.withValues(alpha: 0.8),
-            fontWeight: FontWeight.w600,
-          ),
+        child: EmptyStateCard(
+          title: 'No riders nearby',
+          message: 'Ask your group to start a ride and come online.',
+          icon: Icons.map_outlined,
+          foreground: forest,
         ),
       );
     }

@@ -2,6 +2,9 @@ import 'supabase_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'models/ride_member.dart';
+import 'models/ride_route.dart';
+
 enum JoinByCodeStatus {
   requested,
   joinedDirectly,
@@ -264,6 +267,37 @@ class RideService {
     }
   }
 
+  Future<void> leaveRide({
+    required String rideId,
+    required String userId,
+  }) async {
+    await _supabaseService.removeParticipant(rideId: rideId, userId: userId);
+  }
+
+  Future<List<RideMember>> fetchRideMembers(String rideId) {
+    return _supabaseService.fetchRideMembers(rideId);
+  }
+
+  Future<void> saveRideRoute({
+    required String rideId,
+    required String hostId,
+    required String startLabel,
+    required String endLabel,
+    required List<RouteStop> stops,
+  }) {
+    return _supabaseService.saveRideRoute(
+      rideId: rideId,
+      hostId: hostId,
+      startLabel: startLabel,
+      endLabel: endLabel,
+      stops: stops,
+    );
+  }
+
+  Future<RideRoute?> fetchRideRoute(String rideId) {
+    return _supabaseService.fetchRideRoute(rideId);
+  }
+
   Future<JoinByCodeResult> joinRideByAccessCode({
     required String accessCode,
     required String userId,
@@ -389,7 +423,11 @@ class RideService {
 
   RideRecord _toRideRecord(Map<String, dynamic> row) {
     final creator =
-        (row['creator_id'] ?? row['user_id'] ?? row['leader_id'] ?? '')
+        (row['host_id'] ??
+                row['creator_id'] ??
+                row['user_id'] ??
+                row['leader_id'] ??
+                '')
             .toString()
             .trim();
     final status = (row['status'] ?? '').toString().trim();
