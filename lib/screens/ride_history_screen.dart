@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_navigation.dart';
 import '../services/ride_service.dart';
+import '../models/ride_record.dart';
 import 'ride_lobby_screen.dart';
 import 'ride_summary_screen.dart';
 import 'live_ride_screen.dart';

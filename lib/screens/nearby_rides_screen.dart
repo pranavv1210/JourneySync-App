@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/ride_record.dart';
 import '../widgets/app_toast.dart';
 import '../services/ride_service.dart';
 import '../widgets/empty_state_card.dart';
