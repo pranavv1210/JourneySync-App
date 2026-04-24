@@ -212,7 +212,8 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
     // 3. It's been 30 seconds (heartbeat).
     final shouldSync =
         lastSync == null ||
-        (lastMove != null && now.difference(lastMove) < const Duration(seconds: 10)) ||
+        (lastMove != null &&
+            now.difference(lastMove) < const Duration(seconds: 10)) ||
         now.difference(lastSync) >= const Duration(seconds: 30);
 
     if (!shouldSync) return;

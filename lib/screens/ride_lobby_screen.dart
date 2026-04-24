@@ -315,7 +315,11 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       replaceWithAppRoute(context, LiveRideScreen(rideId: widget.rideId));
     } catch (error) {
       if (!mounted) return;
-      showAppToast(context, "Could not start ride: $error", type: AppToastType.error);
+      showAppToast(
+        context,
+        "Could not start ride: $error",
+        type: AppToastType.error,
+      );
     }
   }
 
