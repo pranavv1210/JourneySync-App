@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'app_navigation.dart';
-import 'app_config.dart';
-import 'splash_screen.dart';
+import 'services/app_navigation.dart';
+import 'services/app_config.dart';
+import 'screens/splash_screen.dart';
 
 const String _supabaseUrl = String.fromEnvironment(
   'SUPABASE_URL',

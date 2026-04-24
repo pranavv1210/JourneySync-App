@@ -2,95 +2,10 @@ import 'supabase_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'models/ride_member.dart';
-import 'models/ride_route.dart';
+import '../models/ride_member.dart';
+import '../models/ride_route.dart';
 
-enum JoinByCodeStatus {
-  requested,
-  joinedDirectly,
-  alreadyRequested,
-  alreadyJoined,
-}
-
-class JoinByCodeResult {
-  const JoinByCodeResult({
-    required this.status,
-    required this.rideId,
-    required this.rideTitle,
-  });
-
-  final JoinByCodeStatus status;
-  final String rideId;
-  final String rideTitle;
-}
-
-class RideRecord {
-  const RideRecord({
-    required this.id,
-    required this.creatorId,
-    required this.title,
-    required this.startLocation,
-    required this.endLocation,
-    required this.createdAt,
-    this.status = '',
-    this.endedAt,
-    this.archived = false,
-    this.participantCount = 0,
-  });
-
-  final String id;
-  final String creatorId;
-  final String title;
-  final String startLocation;
-  final String endLocation;
-  final DateTime? createdAt;
-  final String status;
-  final DateTime? endedAt;
-  final bool archived;
-  final int participantCount;
-
-  bool get isCompleted =>
-      endedAt != null ||
-      status.toLowerCase() == 'ended' ||
-      status.toLowerCase() == 'completed';
-
-  bool get isScheduled =>
-      !isCompleted &&
-      status.toLowerCase() != 'active' &&
-      status.toLowerCase() != 'live';
-}
-
-class NearbyRide {
-  const NearbyRide({
-    required this.ride,
-    required this.hostName,
-    required this.hostBike,
-    required this.hostAvatarUrl,
-    required this.joined,
-  });
-
-  final RideRecord ride;
-  final String hostName;
-  final String hostBike;
-  final String hostAvatarUrl;
-  final bool joined;
-
-  NearbyRide copyWith({
-    RideRecord? ride,
-    String? hostName,
-    String? hostBike,
-    String? hostAvatarUrl,
-    bool? joined,
-  }) {
-    return NearbyRide(
-      ride: ride ?? this.ride,
-      hostName: hostName ?? this.hostName,
-      hostBike: hostBike ?? this.hostBike,
-      hostAvatarUrl: hostAvatarUrl ?? this.hostAvatarUrl,
-      joined: joined ?? this.joined,
-    );
-  }
-}
+import '../models/ride_record.dart';
 
 class RideService {
   RideService({SupabaseService? supabaseService})
@@ -296,6 +211,27 @@ class RideService {
 
   Future<RideRoute?> fetchRideRoute(String rideId) {
     return _supabaseService.fetchRideRoute(rideId);
+  }
+
+  Future<void> startRide(String rideId) async {
+    try {
+      await _supabaseService.updateRideStatus(
+        rideId: rideId,
+        status: 'active',
+        timestampColumn: 'started_at',
+      );
+    } catch (_) {
+      // Fallback if status update fails
+      await _supabaseService.updateRideStatus(rideId: rideId, status: 'active');
+    }
+  }
+
+  Future<void> finishRide(String rideId) async {
+    await _supabaseService.updateRideStatus(
+      rideId: rideId,
+      status: 'completed',
+      timestampColumn: 'ended_at',
+    );
   }
 
   Future<JoinByCodeResult> joinRideByAccessCode({
@@ -528,26 +464,19 @@ class RideService {
     List<String> creatorIds,
   ) async {
     final uniqueIds =
-        creatorIds.map((id) => id.trim()).where((id) => id.isNotEmpty).toSet();
+        creatorIds.map((id) => id.trim()).where((id) => id.isNotEmpty).toList();
     if (uniqueIds.isEmpty) {
       return <String, Map<String, String>>{};
     }
 
-    final entries = await Future.wait(
-      uniqueIds.map((id) async {
-        final row = await _supabaseService.fetchUserById(id);
-        final name = (row?['name'] ?? '').toString();
-        final bike = (row?['bike'] ?? '').toString();
-        final avatarUrl = (row?['avatar_url'] ?? '').toString();
-        return MapEntry(id, <String, String>{
-          'name': name,
-          'bike': bike,
-          'avatar_url': avatarUrl,
-        });
-      }),
-    );
-
-    return Map<String, Map<String, String>>.fromEntries(entries);
+    final profiles = await _supabaseService.fetchUsersByIds(uniqueIds);
+    return profiles.map((id, row) {
+      return MapEntry(id, {
+        'name': (row['name'] ?? 'Rider').toString(),
+        'bike': (row['bike'] ?? 'No bike added').toString(),
+        'avatar_url': (row['avatar_url'] ?? '').toString(),
+      });
+    });
   }
 
   String _normalizeAccessCode(String value) {

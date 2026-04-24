@@ -4,8 +4,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'app_toast.dart';
+import '../widgets/app_toast.dart';
 import 'live_ride_screen.dart';
+import '../services/ride_service.dart';
+import '../services/app_navigation.dart';
 
 class RideLobbyScreen extends StatefulWidget {
   const RideLobbyScreen({
@@ -23,6 +25,7 @@ class RideLobbyScreen extends StatefulWidget {
 
 class _RideLobbyScreenState extends State<RideLobbyScreen> {
   final supabase = Supabase.instance.client;
+  final _rideService = RideService();
 
   bool loading = true;
   Map<String, dynamic>? ride;
@@ -306,25 +309,14 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
 
   Future<void> _startRide() async {
     try {
-      await supabase
-          .from('rides')
-          .update({
-            'status': 'active',
-            'started_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', widget.rideId);
-    } catch (_) {
-      await supabase
-          .from('rides')
-          .update({'status': 'active'})
-          .eq('id', widget.rideId);
+      await _rideService.startRide(widget.rideId);
+      if (!mounted) return;
+      showAppToast(context, "Ride started", type: AppToastType.success);
+      replaceWithAppRoute(context, LiveRideScreen(rideId: widget.rideId));
+    } catch (error) {
+      if (!mounted) return;
+      showAppToast(context, "Could not start ride: $error", type: AppToastType.error);
     }
-    if (!mounted) return;
-    showAppToast(context, "Ride started", type: AppToastType.success);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => LiveRideScreen(rideId: widget.rideId)),
-    );
   }
 
   Future<void> _approveJoinRequest(_LobbyRequest request) async {

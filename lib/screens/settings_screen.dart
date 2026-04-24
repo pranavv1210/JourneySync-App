@@ -4,11 +4,11 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'app_toast.dart';
-import 'auth_service.dart';
+import '../widgets/app_toast.dart';
+import '../services/auth_service.dart';
 import 'legal_document_screen.dart';
 import 'login_screen.dart';
-import 'supabase_service.dart';
+import '../services/supabase_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

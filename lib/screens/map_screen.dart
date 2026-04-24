@@ -4,9 +4,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'app_toast.dart';
-import 'ride_service.dart';
-import 'widgets/empty_state_card.dart';
+import '../widgets/app_toast.dart';
+import '../services/ride_service.dart';
+import '../widgets/empty_state_card.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});

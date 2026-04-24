@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'app_toast.dart';
-import 'app_navigation.dart';
-import 'auth_service.dart';
+import '../widgets/app_toast.dart';
+import '../services/app_navigation.dart';
+import '../services/auth_service.dart';
 import 'home_screen.dart';
 
 enum AuthMode { newAccount, existingAccount }

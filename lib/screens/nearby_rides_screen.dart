@@ -4,9 +4,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'app_toast.dart';
-import 'ride_service.dart';
-import 'widgets/empty_state_card.dart';
+import '../widgets/app_toast.dart';
+import '../services/ride_service.dart';
+import '../widgets/empty_state_card.dart';
 
 class NearbyRidesScreen extends StatefulWidget {
   const NearbyRidesScreen({super.key});

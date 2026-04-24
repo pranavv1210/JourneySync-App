@@ -3,8 +3,8 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_config.dart';
-import 'models/ride_member.dart';
-import 'models/ride_route.dart';
+import '../models/ride_member.dart';
+import '../models/ride_route.dart';
 
 class SupabaseService {
   SupabaseService({SupabaseClient? client})
@@ -802,6 +802,33 @@ class SupabaseService {
         for (final row in rows)
           (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
       };
+    }
+  }
+
+  Future<void> updateRideStatus({
+    required String rideId,
+    required String status,
+    String? timestampColumn,
+  }) async {
+    final payload = <String, dynamic>{'status': status.trim()};
+    if (timestampColumn != null) {
+      payload[timestampColumn] = DateTime.now().toIso8601String();
+    }
+
+    try {
+      await _client.from('rides').update(payload).eq('id', rideId.trim());
+    } on PostgrestException catch (error) {
+      if (timestampColumn != null &&
+          (error.code == '42703' ||
+              error.message.toLowerCase().contains(timestampColumn))) {
+        // Retry without the timestamp column if it doesn't exist
+        await _client
+            .from('rides')
+            .update({'status': status.trim()})
+            .eq('id', rideId.trim());
+        return;
+      }
+      rethrow;
     }
   }
 

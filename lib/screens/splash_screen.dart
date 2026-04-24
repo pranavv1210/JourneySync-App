@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'app_navigation.dart';
+import '../services/app_navigation.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'setup_error_screen.dart';

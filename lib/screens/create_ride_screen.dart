@@ -7,10 +7,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'app_toast.dart';
-import 'app_navigation.dart';
-import 'models/ride_route.dart';
-import 'ride_service.dart';
+import '../widgets/app_toast.dart';
+import '../services/app_navigation.dart';
+import '../models/ride_route.dart';
+import '../services/ride_service.dart';
 import 'ride_lobby_screen.dart';
 
 class CreateRideScreen extends StatefulWidget {

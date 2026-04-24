@@ -8,17 +8,17 @@ import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'app_navigation.dart';
-import 'app_toast.dart';
-import 'models/live_location.dart';
-import 'models/ride_member.dart';
-import 'models/ride_route.dart';
-import 'ride_service.dart';
+import '../services/app_navigation.dart';
+import '../widgets/app_toast.dart';
+import '../models/live_location.dart';
+import '../models/ride_member.dart';
+import '../models/ride_route.dart';
+import '../services/ride_service.dart';
 import 'ride_summary_screen.dart';
-import 'services/live_tracking_service.dart';
-import 'supabase_service.dart';
-import 'widgets/empty_state_card.dart';
-import 'widgets/loading_skeleton.dart';
+import '../services/live_tracking_service.dart';
+import '../services/supabase_service.dart';
+import '../widgets/empty_state_card.dart';
+import '../widgets/loading_skeleton.dart';
 
 class LiveRideScreen extends StatefulWidget {
   const LiveRideScreen({super.key, required this.rideId});
@@ -50,6 +50,7 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
   StreamSubscription<List<LiveLocation>>? _liveLocationSubscription;
   LatLng? _lastMovementPoint;
   DateTime? _lastMovementAt;
+  DateTime? _lastSyncAt;
   String _trackingStatus = 'Starting live location...';
   bool _centeredMap = false;
 
@@ -200,6 +201,22 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
   Future<void> _syncCurrentPosition() async {
     final position = _currentPosition;
     if (position == null || _currentUserId.isEmpty) return;
+
+    final now = DateTime.now();
+    final lastSync = _lastSyncAt;
+    final lastMove = _lastMovementAt;
+
+    // Only sync if:
+    // 1. We haven't synced yet.
+    // 2. We moved in the last 10 seconds.
+    // 3. It's been 30 seconds (heartbeat).
+    final shouldSync =
+        lastSync == null ||
+        (lastMove != null && now.difference(lastMove) < const Duration(seconds: 10)) ||
+        now.difference(lastSync) >= const Duration(seconds: 30);
+
+    if (!shouldSync) return;
+
     try {
       final batteryLevel = await _safeBatteryPercent();
       await _liveTrackingService.syncLocation(
@@ -209,6 +226,7 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
         battery: batteryLevel,
         signal: 'GPS active',
       );
+      _lastSyncAt = now;
       if (!mounted) return;
       setState(() {
         _trackingStatus = 'Live location synced';
@@ -260,13 +278,7 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
       _finishingRide = true;
     });
     try {
-      await Supabase.instance.client
-          .from('rides')
-          .update({
-            'status': 'completed',
-            'ended_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', widget.rideId);
+      await _rideService.finishRide(widget.rideId);
       if (!mounted) return;
       replaceWithAppRoute(context, RideSummaryScreen(rideId: widget.rideId));
     } catch (error) {

@@ -3,7 +3,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'app_toast.dart';
+import '../widgets/app_toast.dart';
 
 class RideSummaryScreen extends StatefulWidget {
   const RideSummaryScreen({super.key, required this.rideId});

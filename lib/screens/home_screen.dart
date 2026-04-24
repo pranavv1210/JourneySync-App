@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'app_toast.dart';
-import 'app_navigation.dart';
+import '../widgets/app_toast.dart';
+import '../services/app_navigation.dart';
 import 'create_ride_screen.dart';
 import 'map_screen.dart';
 import 'nearby_rides_screen.dart';
-import 'ride_service.dart';
+import '../services/ride_service.dart';
 import 'settings_screen.dart';
-import 'supabase_service.dart';
-import 'weather_service.dart';
+import '../services/supabase_service.dart';
+import '../services/weather_service.dart';
 import 'ride_history_screen.dart';
 import 'ride_lobby_screen.dart';
 import 'ride_summary_screen.dart';
 import 'live_ride_screen.dart';
-import 'widgets/empty_state_card.dart';
+import '../widgets/empty_state_card.dart';
+import '../models/ride_record.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -762,7 +763,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                   final statusColors = _rideStatusColors(statusLabel);
                   return InkWell(
                     onTap: () async {
-                      if (statusLabel == 'Live') {
+                      if (ride.isActive) {
                         await Navigator.push(
                           context,
                           buildAppRoute(LiveRideScreen(rideId: ride.id)),
