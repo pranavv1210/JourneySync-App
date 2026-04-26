@@ -5,11 +5,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../services/app_navigation.dart';
 import '../widgets/app_toast.dart';
 import '../services/ride_service.dart';
 import '../services/live_tracking_service.dart';
@@ -41,7 +39,6 @@ class _RideModeScreenState extends State<RideModeScreen>
   String _currentUserName = '';
   String? _leaderId;
 
-  Map<String, dynamic>? _ride;
   List<RideMember> _members = [];
   List<LiveLocation> _liveLocations = [];
   Position? _currentPosition;
@@ -91,7 +88,6 @@ class _RideModeScreenState extends State<RideModeScreen>
           });
 
       setState(() {
-        _ride = ride;
         _members = members;
         _loading = false;
       });
@@ -207,9 +203,14 @@ class _RideModeScreenState extends State<RideModeScreen>
         'user_name': _currentUserName,
         'type': 'SOS',
       });
-      showAppToast(context, "SOS Alert Broadcasted!");
+      if (mounted) showAppToast(context, "SOS Alert Broadcasted!");
     } catch (e) {
-      showAppToast(context, "Failed to send SOS: $e", type: AppToastType.error);
+      if (mounted)
+        showAppToast(
+          context,
+          "Failed to send SOS: $e",
+          type: AppToastType.error,
+        );
     }
   }
 
@@ -270,8 +271,9 @@ class _RideModeScreenState extends State<RideModeScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (_loading)
+    if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       body: Stack(
@@ -429,7 +431,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _circleBtn(Icons.my_location, Colors.blue, () {
-                      if (_currentPosition != null)
+                      if (_currentPosition != null) {
                         _mapController.move(
                           LatLng(
                             _currentPosition!.latitude,
@@ -437,6 +439,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                           ),
                           15,
                         );
+                      }
                       setState(() => _followingLeader = false);
                     }),
                     if (_leaderId != null && _leaderId != _currentUserId)
