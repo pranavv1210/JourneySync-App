@@ -213,6 +213,51 @@ class _RideModeScreenState extends State<RideModeScreen>
     }
   }
 
+  Future<void> _endRide() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('End Ride?'),
+            content: const Text(
+              'This will stop tracking and complete your journey.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF6A00),
+                ),
+                child: const Text('End Ride'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _rideService.finishRide(widget.rideId);
+        await _liveTrackingService.clearLiveLocation(
+          rideId: widget.rideId,
+          userId: _currentUserId,
+        );
+        if (!mounted) return;
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      } catch (e) {
+        if (!mounted) return;
+        showAppToast(
+          context,
+          'Error ending ride: $e',
+          type: AppToastType.error,
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _rideTimer?.cancel();
@@ -258,7 +303,9 @@ class _RideModeScreenState extends State<RideModeScreen>
                           () => RideMember(
                             userId: loc.userId,
                             name: 'Rider',
-                            role: 'member',
+                            bike: 'No bike added',
+                            avatarUrl: '',
+                            isHost: false,
                           ),
                     );
                     return Marker(
@@ -286,7 +333,7 @@ class _RideModeScreenState extends State<RideModeScreen>
           if (_activeAlert != null)
             Positioned.fill(
               child: Container(
-                color: Colors.red.withOpacity(0.3),
+                color: Colors.red.withValues(alpha: 0.3),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.all(24),
@@ -476,7 +523,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
-        color: color ?? const Color(0xFFF1EEE9).withOpacity(0.9),
+        color: color ?? const Color(0xFFF1EEE9).withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
       ),
