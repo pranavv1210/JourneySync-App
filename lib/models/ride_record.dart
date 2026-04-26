@@ -10,10 +10,12 @@ class RideRecord {
     this.endedAt,
     this.archived = false,
     this.participantCount = 0,
+    this.rideLeaderId,
   });
 
   final String id;
   final String creatorId;
+  final String? rideLeaderId;
   final String title;
   final String startLocation;
   final String endLocation;

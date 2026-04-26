@@ -14,6 +14,7 @@ import 'ride_history_screen.dart';
 import 'ride_lobby_screen.dart';
 import 'ride_summary_screen.dart';
 import 'live_ride_screen.dart';
+import 'ride_mode_screen.dart';
 import '../widgets/empty_state_card.dart';
 import '../models/ride_record.dart';
 
@@ -766,7 +767,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       if (ride.isActive) {
                         await Navigator.push(
                           context,
-                          buildAppRoute(LiveRideScreen(rideId: ride.id)),
+                          buildAppRoute(RideModeScreen(rideId: ride.id)),
                         );
                       } else if (ride.isCompleted) {
                         await Navigator.push(
