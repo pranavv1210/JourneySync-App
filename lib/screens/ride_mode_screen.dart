@@ -57,11 +57,16 @@ class _RideModeScreenState extends State<RideModeScreen>
   Timer? _syncTimer;
   final List<Map<String, dynamic>> _offlineQueue = [];
 
+  // Route Sync
+  List<LatLng> _routePoints = [];
+  RealtimeChannel? _routeChannel;
+
   @override
   void initState() {
     super.initState();
     _initRideMode();
     _setupAlertSubscription();
+    _setupRouteSubscription();
   }
 
   Future<void> _initRideMode() async {
@@ -86,6 +91,19 @@ class _RideModeScreenState extends State<RideModeScreen>
             setState(() => _liveLocations = locations);
             _handleAutoCenterLogic(locations);
           });
+
+      // Initial route fetch
+      try {
+        final routeData =
+            await _supabase
+                .from('ride_routes')
+                .select()
+                .eq('ride_id', widget.rideId)
+                .maybeSingle();
+        if (routeData != null) {
+          _handleRouteUpdate(routeData);
+        }
+      } catch (_) {}
 
       setState(() {
         _members = members;
@@ -152,6 +170,51 @@ class _RideModeScreenState extends State<RideModeScreen>
       const Duration(seconds: 4),
       (_) => _syncPosition(),
     );
+  }
+
+  void _setupRouteSubscription() {
+    _routeChannel = _supabase.channel('ride_routes:${widget.rideId}');
+    _routeChannel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'ride_routes',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'ride_id',
+            value: widget.rideId,
+          ),
+          callback: (payload) {
+            if (!mounted) return;
+            _handleRouteUpdate(payload.newRecord);
+          },
+        )
+        .subscribe();
+  }
+
+  void _handleRouteUpdate(Map<String, dynamic> data) {
+    try {
+      final List<dynamic>? pointsRaw = data['route_points'];
+      if (pointsRaw != null) {
+        final List<LatLng> points =
+            pointsRaw
+                .map(
+                  (p) => LatLng(
+                    (p['lat'] as num).toDouble(),
+                    (p['lng'] as num).toDouble(),
+                  ),
+                )
+                .toList();
+        setState(() {
+          _routePoints = points;
+        });
+        if (points.isNotEmpty) {
+          showAppToast(context, "Route synchronized!", type: AppToastType.info);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error parsing route: $e');
+    }
   }
 
   Future<void> _syncPosition() async {
@@ -269,6 +332,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     _positionSubscription?.cancel();
     _liveLocationSubscription?.cancel();
     _alertChannel?.unsubscribe();
+    _routeChannel?.unsubscribe();
     super.dispose();
   }
 
@@ -299,6 +363,16 @@ class _RideModeScreenState extends State<RideModeScreen>
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.journeysync',
               ),
+              if (_routePoints.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _routePoints,
+                      strokeWidth: 5,
+                      color: const Color(0xFFD97706),
+                    ),
+                  ],
+                ),
               MarkerLayer(
                 markers: [
                   ..._liveLocations.map((loc) {

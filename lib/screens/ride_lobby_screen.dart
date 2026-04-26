@@ -4,6 +4,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
+import 'package:http/http.dart' as http;
 import '../widgets/app_toast.dart';
 import 'ride_mode_screen.dart';
 import '../services/ride_service.dart';
@@ -1379,6 +1381,28 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (_isCurrentUserHost()) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _addRouteDialog,
+                  icon: const Icon(Icons.add_road),
+                  label: const Text(
+                    "SYNC ROUTE FROM GOOGLE MAPS",
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primary,
+                    side: BorderSide(color: primary, width: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -1425,6 +1449,118 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _addRouteDialog() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Sync Route'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Paste a Google Maps link to sync the route with all riders.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    hintText: 'https://maps.app.goo.gl/...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, controller.text.trim()),
+                child: const Text('Extract Route'),
+              ),
+            ],
+          ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      _processRouteLink(result);
+    }
+  }
+
+  Future<void> _processRouteLink(String link) async {
+    setState(() => loading = true);
+    try {
+      final points = await _extractRoutePoints(link);
+      if (points.isEmpty) {
+        throw Exception('No valid coordinates found in the link.');
+      }
+
+      final pointsJson =
+          points
+              .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+              .toList();
+
+      await supabase.from('ride_routes').upsert({
+        'ride_id': widget.rideId,
+        'route_points': pointsJson,
+      });
+
+      _showInfo('Route synced successfully!');
+    } catch (e) {
+      _showInfo('Failed to extract route: $e');
+    } finally {
+      await _reloadLobbyData();
+    }
+  }
+
+  Future<List<LatLng>> _extractRoutePoints(String link) async {
+    String finalUrl = link;
+
+    // Handle short URLs
+    if (link.contains('maps.app.goo.gl') || link.contains('goo.gl/maps')) {
+      try {
+        await Supabase.instance.client.functions.invoke(
+          'resolve-url',
+          body: {'url': link},
+        );
+        // If the user doesn't have an edge function, we can try to resolve it via http package
+        // but often CORS or other issues hit. Let's try http first.
+      } catch (_) {
+        // Fallback to basic redirect follower
+        try {
+          final request = http.Request('GET', Uri.parse(link))
+            ..followRedirects = false;
+          final response = await request.send();
+          if (response.headers.containsKey('location')) {
+            finalUrl = response.headers['location']!;
+          }
+        } catch (_) {}
+      }
+    }
+
+    // Try to find all lat,lng pairs in the URL
+    // Format: @lat,lng or dir/lat,lng/lat,lng or q=lat,lng
+    final regex = RegExp(r'([-+]?\d+\.\d+),\s*([-+]?\d+\.\d+)');
+    final matches = regex.allMatches(finalUrl);
+
+    final points = <LatLng>[];
+    for (final match in matches) {
+      final lat = double.tryParse(match.group(1)!);
+      final lng = double.tryParse(match.group(2)!);
+      if (lat != null && lng != null) {
+        points.add(LatLng(lat, lng));
+      }
+    }
+
+    // If it's a dir link, sometimes it uses place names. 
+    // This is a complex case, but for now we extract all visible coordinates.
+    return points;
   }
 }
 
