@@ -203,14 +203,17 @@ class _RideModeScreenState extends State<RideModeScreen>
         'user_name': _currentUserName,
         'type': 'SOS',
       });
-      if (mounted) showAppToast(context, "SOS Alert Broadcasted!");
+      if (mounted) {
+        showAppToast(context, "SOS Alert Broadcasted!");
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         showAppToast(
           context,
           "Failed to send SOS: $e",
           type: AppToastType.error,
         );
+      }
     }
   }
 

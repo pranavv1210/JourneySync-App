@@ -5,7 +5,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_toast.dart';
-import 'live_ride_screen.dart';
 import 'ride_mode_screen.dart';
 import '../services/ride_service.dart';
 import '../services/app_navigation.dart';
