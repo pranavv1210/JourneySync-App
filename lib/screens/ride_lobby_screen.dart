@@ -1502,9 +1502,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       }
 
       final pointsJson =
-          points
-              .map((p) => {'lat': p.latitude, 'lng': p.longitude})
-              .toList();
+          points.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList();
 
       await supabase.from('ride_routes').upsert({
         'ride_id': widget.rideId,
@@ -1558,7 +1556,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       }
     }
 
-    // If it's a dir link, sometimes it uses place names. 
+    // If it's a dir link, sometimes it uses place names.
     // This is a complex case, but for now we extract all visible coordinates.
     return points;
   }
