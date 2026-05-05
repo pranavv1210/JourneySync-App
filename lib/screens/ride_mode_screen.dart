@@ -12,6 +12,7 @@ import '../widgets/app_toast.dart';
 import '../services/ride_service.dart';
 import '../services/live_tracking_service.dart';
 import '../services/supabase_service.dart';
+import '../services/navigation_service.dart';
 import '../models/live_location.dart';
 import '../models/ride_member.dart';
 
@@ -38,6 +39,7 @@ class _RideModeScreenState extends State<RideModeScreen>
   String _currentUserId = '';
   String _currentUserName = '';
   String? _leaderId;
+  Map<String, dynamic>? _rideData;
 
   List<RideMember> _members = [];
   List<LiveLocation> _liveLocations = [];
@@ -79,6 +81,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       if (ride == null) throw Exception('Ride not found');
 
       _leaderId = ride['ride_leader_id'] ?? ride['creator_id'];
+      _rideData = ride;
       final members = await _rideService.fetchRideMembers(widget.rideId);
 
       _startTimer();
@@ -158,13 +161,26 @@ class _RideModeScreenState extends State<RideModeScreen>
   }
 
   Future<void> _startLocationTracking() async {
+    // Request background location permission for Android
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.deniedForever) {
+      return;
+    }
+
     _positionSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 3,
+        distanceFilter: 5, // Update every 5 meters for smoother tracking
       ),
     ).listen((position) {
-      if (mounted) setState(() => _currentPosition = position);
+      // Update position even when not mounted to continue background tracking
+      _currentPosition = position;
+      if (mounted) {
+        setState(() {});
+      }
     });
     _syncTimer = Timer.periodic(
       const Duration(seconds: 4),
@@ -278,6 +294,72 @@ class _RideModeScreenState extends State<RideModeScreen>
         );
       }
     }
+  }
+
+  /// Extracts destination coordinates from ride data
+  /// Supports multiple field names for flexibility
+  LatLng? _getDestinationCoordinates() {
+    final ride = _rideData;
+    if (ride == null) return null;
+
+    // Try different possible field names for destination
+    final destLocation =
+        ride['end_location'] ?? ride['destination'] ?? ride['end_latlng'];
+    if (destLocation == null) return null;
+
+    // Handle string format "lat,lng"
+    if (destLocation is String) {
+      final parts = destLocation.split(',');
+      if (parts.length == 2) {
+        final lat = double.tryParse(parts[0].trim());
+        final lng = double.tryParse(parts[1].trim());
+        if (lat != null && lng != null) {
+          return LatLng(lat, lng);
+        }
+      }
+    }
+
+    // Handle map format with lat/lng keys
+    if (destLocation is Map) {
+      final lat = (destLocation['lat'] ?? destLocation['latitude'])?.toDouble();
+      final lng =
+          (destLocation['lng'] ?? destLocation['longitude'])?.toDouble();
+      if (lat != null && lng != null) {
+        return LatLng(lat, lng);
+      }
+    }
+
+    // Try to get from route points if available (last point is destination)
+    if (_routePoints.isNotEmpty) {
+      return _routePoints.last;
+    }
+
+    return null;
+  }
+
+  /// Launches Google Maps navigation to the ride destination
+  Future<void> _launchNavigation() async {
+    final destination = _getDestinationCoordinates();
+    if (destination == null) {
+      if (mounted) {
+        showAppToast(
+          context,
+          'Destination coordinates not available',
+          type: AppToastType.error,
+        );
+      }
+      return;
+    }
+
+    final ride = _rideData;
+    final destinationName = ride?['title'] ?? ride?['name'] ?? 'Destination';
+
+    await NavigationService.navigateToDestination(
+      context,
+      destination.latitude,
+      destination.longitude,
+      destinationName: destinationName.toString(),
+    );
   }
 
   Future<void> _endRide() async {
@@ -557,6 +639,11 @@ class _RideModeScreenState extends State<RideModeScreen>
                         ),
                         color: Colors.white,
                       ),
+                    _circleBtn(
+                      Icons.navigation,
+                      const Color(0xFF4CAF50),
+                      _launchNavigation,
+                    ),
                     _circleBtn(Icons.warning, Colors.red, _triggerSOS),
                   ],
                 ),

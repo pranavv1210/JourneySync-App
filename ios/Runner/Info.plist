@@ -47,6 +47,15 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>JourneySync uses your location during live rides to share real-time position with your group.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>JourneySync needs background location access to continue tracking your ride even when using navigation apps.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>JourneySync needs background location access to continue tracking your ride even when using navigation apps.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>JourneySync needs access to your photo library so you can choose a profile picture.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
