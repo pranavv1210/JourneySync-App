@@ -1,0 +1,282 @@
+# Instincts generated from https://github.com/pranavv1210/JourneySync-App
+# Generated: 2026-05-27T09:28:03.804Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: JourneySync-App-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/pranavv1210/JourneySync-App
+---
+
+# JourneySync App Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat
+
+## Evidence
+
+- 1 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat: implement live rider tracking and repository quality templates
+
+---
+id: JourneySync-App-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/pranavv1210/JourneySync-App
+---
+
+# JourneySync App Commit Length
+
+## Action
+
+Write moderate-length commit messages (~68 characters)
+
+## Evidence
+
+- Average commit message length: 68 chars
+- Based on 1 commits
+
+---
+id: JourneySync-App-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/pranavv1210/JourneySync-App
+---
+
+# JourneySync App Naming Files
+
+## Action
+
+Use snake_case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: snake_case
+
+---
+id: JourneySync-App-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/pranavv1210/JourneySync-App
+---
+
+# JourneySync App Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: JourneySync-App-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/pranavv1210/JourneySync-App
+---
+
+# JourneySync App Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: JourneySync-App-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/pranavv1210/JourneySync-App
+---
+
+# JourneySync App Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: journeysync-app-instinct-file-naming
+trigger: "When creating a new Kotlin file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: pranavv1210/JourneySync-App
+---
+
+# Journeysync App Instinct File Naming
+
+## Action
+
+Name the file using snake_case
+
+## Evidence
+
+- Pattern in namingConventions.files: snake_case
+
+---
+id: journeysync-app-instinct-function-naming
+trigger: "When defining a function in Kotlin"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: pranavv1210/JourneySync-App
+---
+
+# Journeysync App Instinct Function Naming
+
+## Action
+
+Use camelCase for the function name
+
+## Evidence
+
+- Pattern in namingConventions.functions: camelCase
+
+---
+id: journeysync-app-instinct-class-naming
+trigger: "When defining a class in Kotlin"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: pranavv1210/JourneySync-App
+---
+
+# Journeysync App Instinct Class Naming
+
+## Action
+
+Use PascalCase for the class name
+
+## Evidence
+
+- Pattern in namingConventions.classes: PascalCase
+
+---
+id: journeysync-app-instinct-constant-naming
+trigger: "When defining a constant in Kotlin"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: pranavv1210/JourneySync-App
+---
+
+# Journeysync App Instinct Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for the constant name
+
+## Evidence
+
+- Pattern in namingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: journeysync-app-instinct-import-style
+trigger: "When importing modules in Kotlin files"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: pranavv1210/JourneySync-App
+---
+
+# Journeysync App Instinct Import Style
+
+## Action
+
+Use relative imports
+
+## Evidence
+
+- Pattern in importStyle: relative
+
+---
+id: journeysync-app-instinct-export-style
+trigger: "When exporting modules or functions"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: pranavv1210/JourneySync-App
+---
+
+# Journeysync App Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle: named
+
+---
+id: journeysync-app-instinct-test-location
+trigger: "When adding or updating tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: pranavv1210/JourneySync-App
+---
+
+# Journeysync App Instinct Test Location
+
+## Action
+
+Place test files in the separate 'test' folder at the root level
+
+## Evidence
+
+- Pattern in folderStructure.testLocation: separate
+- Presence of 'test' folder
+
+---
+id: journeysync-app-instinct-git-commit-format
+trigger: "When writing a git commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: pranavv1210/JourneySync-App
+---
+
+# Journeysync App Instinct Git Commit Format
+
+## Action
+
+Use the conventional commit format with the 'feat' prefix for features
+
+## Evidence
+
+- Pattern in commits.type: conventional
+- Pattern in commits.prefixes: ['feat']
+- Example: 'feat: implement live rider tracking and repository quality templates'
+
