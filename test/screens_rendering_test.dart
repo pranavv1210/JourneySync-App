@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:journeysync/services/app_config.dart';
 import 'package:journeysync/screens/login_screen.dart';
 import 'package:journeysync/screens/home_screen.dart';
 
@@ -16,9 +17,8 @@ void main() {
     // Initialize dummy Supabase client to support widget instantiation
     // that references Supabase.instance.client.
     await Supabase.initialize(
-      url: 'https://vvhzofxwiwlffyzyovlw.supabase.co',
-      anonKey:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2aHpvZnh3aXdsZmZ5enlvdmx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyMjc4MzAsImV4cCI6MjA4NjgwMzgzMH0.eSlUSJMJtANHnS91VG_ofZW_jO1j-d9zR51w7XqtFKU',
+      url: AppConfig.supabaseUrl,
+      anonKey: AppConfig.supabaseAnonKey,
     );
   });
 
