@@ -1,20 +1,26 @@
 import 'dart:async';
+
+import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:battery_plus/battery_plus.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../widgets/app_toast.dart';
-import '../services/ride_service.dart';
+import '../models/rider_location.dart';
 import '../services/live_tracking_service.dart';
-import '../services/supabase_service.dart';
 import '../services/navigation_service.dart';
-import '../models/live_location.dart';
-import '../models/ride_member.dart';
+import '../services/realtime_service.dart';
+import '../services/ride_service.dart';
+import '../services/supabase_service.dart';
+import '../widgets/app_toast.dart';
+import '../widgets/rider_marker.dart';
+import '../widgets/smooth_marker.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RideModeScreen — Production-Grade Live Rider Tracking
+// ─────────────────────────────────────────────────────────────────────────────
 
 class RideModeScreen extends StatefulWidget {
   const RideModeScreen({super.key, required this.rideId});
@@ -26,193 +32,208 @@ class RideModeScreen extends StatefulWidget {
 
 class _RideModeScreenState extends State<RideModeScreen>
     with TickerProviderStateMixin {
+  // ── Services ───────────────────────────────────────────────────────────────
   final RideService _rideService = RideService();
   final SupabaseService _supabaseService = SupabaseService();
-  final LiveTrackingService _liveTrackingService = LiveTrackingService();
+  final LiveTrackingService _trackingService = LiveTrackingService();
+  final RealtimeService _realtimeService = RealtimeService();
   final MapController _mapController = MapController();
   final Battery _battery = Battery();
-  final SupabaseClient _supabase = Supabase.instance.client;
 
+  // ── User / Ride state ──────────────────────────────────────────────────────
   bool _loading = true;
-  bool _isOffline = false;
-  bool _followingLeader = false;
   String _currentUserId = '';
-  String _currentUserName = '';
+  String _currentUserName = 'Rider';
+  String _currentBikeName = 'No bike added';
   String? _leaderId;
   Map<String, dynamic>? _rideData;
 
-  List<RideMember> _members = [];
-  List<LiveLocation> _liveLocations = [];
+  // ── Live locations ─────────────────────────────────────────────────────────
+  List<RiderLocation> _riderLocations = [];
+  StreamSubscription<List<RiderLocation>>? _locationStreamSub;
+
+  // ── GPS / position ─────────────────────────────────────────────────────────
   Position? _currentPosition;
+  StreamSubscription<Position>? _gpsStreamSub;
 
-  // SOS State
+  // ── Connectivity ───────────────────────────────────────────────────────────
+  bool _isOffline = false;
+
+  // ── Follow leader mode ─────────────────────────────────────────────────────
+  bool _followingLeader = false;
+
+  // ── SOS ───────────────────────────────────────────────────────────────────
   Map<String, dynamic>? _activeAlert;
-  RealtimeChannel? _alertChannel;
+  Timer? _alertDismissTimer;
 
-  // Ride Timer
+  // ── Ride timer ─────────────────────────────────────────────────────────────
   int _secondsElapsed = 0;
   Timer? _rideTimer;
 
-  // Tracking & Offline Queue
-  StreamSubscription<Position>? _positionSubscription;
-  StreamSubscription<List<LiveLocation>>? _liveLocationSubscription;
-  Timer? _syncTimer;
-  final List<Map<String, dynamic>> _offlineQueue = [];
-
-  // Route Sync
+  // ── Route sync ─────────────────────────────────────────────────────────────
   List<LatLng> _routePoints = [];
-  RealtimeChannel? _routeChannel;
+  double? _destinationLat;
+  double? _destinationLng;
+
+  // ── Tracking active badge animation ───────────────────────────────────────
+  late AnimationController _trackingPulse;
+
+  // ── Interpolated positions cache (for smooth markers) ──────────────────────
+  /// Maps userId → current smoothly-interpolated LatLng.
+  /// Updated by SmoothMarker builders and used to track the animated position.
+  final Map<String, LatLng> _interpolatedPositions = {};
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LIFECYCLE
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
+
+    _trackingPulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+
     _initRideMode();
-    _setupAlertSubscription();
-    _setupRouteSubscription();
   }
 
   Future<void> _initRideMode() async {
     try {
+      // ── Load user prefs ──────────────────────────────────────────────────
       final prefs = await SharedPreferences.getInstance();
       _currentUserId = (prefs.getString('userId') ?? '').trim();
       _currentUserName = (prefs.getString('userName') ?? 'Rider').trim();
+      _currentBikeName =
+          (prefs.getString('userBike') ?? 'No bike added').trim();
 
+      // ── Fetch ride data ──────────────────────────────────────────────────
       final ride = await _supabaseService.fetchRideById(widget.rideId);
       if (ride == null) throw Exception('Ride not found');
 
-      _leaderId = ride['ride_leader_id'] ?? ride['creator_id'];
+      _leaderId =
+          (ride['ride_leader_id'] ?? ride['host_id'] ?? ride['creator_id'])
+              ?.toString()
+              .trim();
       _rideData = ride;
-      final members = await _rideService.fetchRideMembers(widget.rideId);
 
-      _startTimer();
-      await _startLocationTracking();
+      // ── Start timer ──────────────────────────────────────────────────────
+      _startRideTimer();
 
-      _liveLocationSubscription = _liveTrackingService
+      // ── Start GPS position stream (local, for UI position dot) ───────────
+      await _startLocalGpsStream();
+
+      // ── Start enriched sync via LiveTrackingService ──────────────────────
+      _trackingService.batteryLevelProvider = _getBatteryLevel;
+      await _trackingService.startSyncing(
+        rideId: widget.rideId,
+        userId: _currentUserId,
+        userName: _currentUserName,
+        bikeName: _currentBikeName,
+        isLeader: _leaderId == _currentUserId,
+      );
+
+      // ── Subscribe to incoming rider positions ────────────────────────────
+      _locationStreamSub = _trackingService
           .watchRideLocations(widget.rideId)
-          .listen((locations) {
-            if (!mounted) return;
-            setState(() => _liveLocations = locations);
-            _handleAutoCenterLogic(locations);
-          });
+          .listen(_onRiderLocationsUpdate);
 
-      // Initial route fetch
+      // ── Subscribe to SOS + route via RealtimeService ─────────────────────
+      _realtimeService.startListening(
+        rideId: widget.rideId,
+        onAlert: _onSosAlert,
+        onRoute: _onRouteUpdate,
+      );
+
+      // ── Fetch initial route ───────────────────────────────────────────────
       try {
-        final routeData =
-            await _supabase
-                .from('ride_routes')
-                .select()
-                .eq('ride_id', widget.rideId)
-                .maybeSingle();
-        if (routeData != null) {
-          _handleRouteUpdate(routeData);
-        }
+        final routeData = await _rideService.fetchRideRouteMap(widget.rideId);
+        if (routeData != null) _onRouteUpdate(routeData);
       } catch (_) {}
 
-      setState(() {
-        _members = members;
-        _loading = false;
-      });
+      if (mounted) setState(() => _loading = false);
     } catch (e) {
       if (!mounted) return;
-      showAppToast(context, 'Error: $e', type: AppToastType.error);
+      showAppToast(
+        context,
+        'Error starting ride: $e',
+        type: AppToastType.error,
+      );
       Navigator.pop(context);
     }
   }
 
-  void _setupAlertSubscription() {
-    _alertChannel = _supabase.channel('ride_alerts:${widget.rideId}');
-    _alertChannel!
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'ride_alerts',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'ride_id',
-            value: widget.rideId,
-          ),
-          callback: (payload) {
-            if (!mounted) return;
-            setState(() => _activeAlert = payload.newRecord);
-            HapticFeedback.vibrate();
-            Timer(const Duration(seconds: 8), () {
-              if (mounted) setState(() => _activeAlert = null);
-            });
-          },
-        )
-        .subscribe();
+  // ── GPS stream (local display only — tracking service handles upload) ──────
+  Future<void> _startLocalGpsStream() async {
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.deniedForever) return;
+
+    _gpsStreamSub = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 3,
+      ),
+    ).listen((pos) {
+      _currentPosition = pos;
+      if (mounted) setState(() {});
+    });
   }
 
-  void _handleAutoCenterLogic(List<LiveLocation> locations) {
+  // ─────────────────────────────────────────────────────────────────────────
+  // CALLBACKS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _onRiderLocationsUpdate(List<RiderLocation> locations) {
+    if (!mounted) return;
+
+    // Check our own offline status from the service.
+    final nowOffline = _trackingService.isOffline;
+    setState(() {
+      _riderLocations = locations;
+      _isOffline = nowOffline;
+    });
+
+    _handleFollowLeader(locations);
+  }
+
+  void _handleFollowLeader(List<RiderLocation> locations) {
     if (!_followingLeader || _leaderId == null) return;
     try {
-      final leaderLoc = locations.firstWhere((l) => l.userId == _leaderId);
+      final leader = locations.firstWhere((l) => l.userId == _leaderId);
       _mapController.move(
-        LatLng(leaderLoc.latitude, leaderLoc.longitude),
+        LatLng(leader.latitude, leader.longitude),
         _mapController.camera.zoom,
       );
     } catch (_) {}
   }
 
-  void _startTimer() {
-    _rideTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) setState(() => _secondsElapsed++);
+  void _onSosAlert(Map<String, dynamic> alert) {
+    if (!mounted) return;
+    HapticFeedback.vibrate();
+    setState(() => _activeAlert = alert);
+    _alertDismissTimer?.cancel();
+    _alertDismissTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted) setState(() => _activeAlert = null);
     });
   }
 
-  Future<void> _startLocationTracking() async {
-    // Request background location permission for Android
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.deniedForever) {
-      return;
-    }
-
-    _positionSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5, // Update every 5 meters for smoother tracking
-      ),
-    ).listen((position) {
-      // Update position even when not mounted to continue background tracking
-      _currentPosition = position;
-      if (mounted) {
-        setState(() {});
-      }
-    });
-    _syncTimer = Timer.periodic(
-      const Duration(seconds: 4),
-      (_) => _syncPosition(),
-    );
-  }
-
-  void _setupRouteSubscription() {
-    _routeChannel = _supabase.channel('ride_routes:${widget.rideId}');
-    _routeChannel!
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'ride_routes',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'ride_id',
-            value: widget.rideId,
-          ),
-          callback: (payload) {
-            if (!mounted) return;
-            _handleRouteUpdate(payload.newRecord);
-          },
-        )
-        .subscribe();
-  }
-
-  void _handleRouteUpdate(Map<String, dynamic> data) {
+  void _onRouteUpdate(Map<String, dynamic> data) {
     try {
+      final destLat = (data['destination_lat'] as num?)?.toDouble();
+      final destLng = (data['destination_lng'] as num?)?.toDouble();
+
+      if (destLat != null && destLng != null) {
+        _destinationLat = destLat;
+        _destinationLng = destLng;
+      }
+
       final List<dynamic>? pointsRaw = data['route_points'];
-      if (pointsRaw != null) {
-        final List<LatLng> points =
+      if (pointsRaw != null && pointsRaw.isNotEmpty) {
+        _routePoints =
             pointsRaw
                 .map(
                   (p) => LatLng(
@@ -221,144 +242,97 @@ class _RideModeScreenState extends State<RideModeScreen>
                   ),
                 )
                 .toList();
-        setState(() {
-          _routePoints = points;
-        });
-        if (points.isNotEmpty) {
-          showAppToast(context, "Route synchronized!", type: AppToastType.info);
-        }
+      }
+
+      final hasRoute =
+          _routePoints.isNotEmpty || (destLat != null && destLng != null);
+      setState(() {});
+
+      if (hasRoute && mounted) {
+        showAppToast(context, 'Route synchronized!', type: AppToastType.info);
       }
     } catch (e) {
-      debugPrint('Error parsing route: $e');
+      debugPrint('[RideMode] Route parse error: $e');
     }
   }
 
-  Future<void> _syncPosition() async {
-    if (_currentPosition == null) return;
-    int? battery = 0;
-    try {
-      battery = await _battery.batteryLevel;
-    } catch (_) {}
+  // ─────────────────────────────────────────────────────────────────────────
+  // ACTIONS
+  // ─────────────────────────────────────────────────────────────────────────
 
-    final payload = {
-      'ride_id': widget.rideId,
-      'user_id': _currentUserId,
-      'latitude': _currentPosition!.latitude,
-      'longitude': _currentPosition!.longitude,
-      'battery': '$battery%',
-      'updated_at': DateTime.now().toIso8601String(),
-    };
-
-    try {
-      await _supabase.from('live_locations').upsert(payload);
-      if (_isOffline) setState(() => _isOffline = false);
-      _processOfflineQueue();
-    } catch (e) {
-      if (!_isOffline) setState(() => _isOffline = true);
-      _offlineQueue.add(payload);
-      if (_offlineQueue.length > 20) _offlineQueue.removeAt(0);
-    }
+  void _startRideTimer() {
+    _rideTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _secondsElapsed++);
+    });
   }
 
-  Future<void> _processOfflineQueue() async {
-    if (_offlineQueue.isEmpty) return;
-    final copy = List.from(_offlineQueue);
-    _offlineQueue.clear();
-    for (var p in copy) {
-      try {
-        await _supabase.from('live_locations').upsert(p);
-      } catch (_) {
-        _offlineQueue.add(p);
-      }
+  Future<int?> _getBatteryLevel() async {
+    try {
+      return await _battery.batteryLevel;
+    } catch (_) {
+      return null;
     }
   }
 
   Future<void> _triggerSOS() async {
     HapticFeedback.heavyImpact();
     try {
-      await _supabase.from('ride_alerts').insert({
-        'ride_id': widget.rideId,
-        'user_id': _currentUserId,
-        'user_name': _currentUserName,
-        'type': 'SOS',
-      });
-      if (mounted) {
-        showAppToast(context, "SOS Alert Broadcasted!");
-      }
+      await _realtimeService.triggerSOS(
+        rideId: widget.rideId,
+        userId: _currentUserId,
+        userName: _currentUserName,
+        latitude: _currentPosition?.latitude,
+        longitude: _currentPosition?.longitude,
+      );
+      if (mounted) showAppToast(context, 'SOS Alert Sent!');
     } catch (e) {
       if (mounted) {
         showAppToast(
           context,
-          "Failed to send SOS: $e",
+          'Failed to send SOS: $e',
           type: AppToastType.error,
         );
       }
     }
   }
 
-  /// Extracts destination coordinates from ride data
-  /// Supports multiple field names for flexibility
-  LatLng? _getDestinationCoordinates() {
+  LatLng? _getDestinationCoords() {
+    if (_destinationLat != null && _destinationLng != null) {
+      return LatLng(_destinationLat!, _destinationLng!);
+    }
     final ride = _rideData;
     if (ride == null) return null;
-
-    // Try different possible field names for destination
-    final destLocation =
-        ride['end_location'] ?? ride['destination'] ?? ride['end_latlng'];
-    if (destLocation == null) return null;
-
-    // Handle string format "lat,lng"
-    if (destLocation is String) {
-      final parts = destLocation.split(',');
+    final dest = ride['end_location'] ?? ride['destination'];
+    if (dest is String) {
+      final parts = dest.split(',');
       if (parts.length == 2) {
         final lat = double.tryParse(parts[0].trim());
         final lng = double.tryParse(parts[1].trim());
-        if (lat != null && lng != null) {
-          return LatLng(lat, lng);
-        }
+        if (lat != null && lng != null) return LatLng(lat, lng);
       }
     }
-
-    // Handle map format with lat/lng keys
-    if (destLocation is Map) {
-      final lat = (destLocation['lat'] ?? destLocation['latitude'])?.toDouble();
-      final lng =
-          (destLocation['lng'] ?? destLocation['longitude'])?.toDouble();
-      if (lat != null && lng != null) {
-        return LatLng(lat, lng);
-      }
-    }
-
-    // Try to get from route points if available (last point is destination)
-    if (_routePoints.isNotEmpty) {
-      return _routePoints.last;
-    }
-
+    if (_routePoints.isNotEmpty) return _routePoints.last;
     return null;
   }
 
-  /// Launches Google Maps navigation to the ride destination
   Future<void> _launchNavigation() async {
-    final destination = _getDestinationCoordinates();
-    if (destination == null) {
+    final dest = _getDestinationCoords();
+    if (dest == null) {
       if (mounted) {
         showAppToast(
           context,
-          'Destination coordinates not available',
+          'Destination not available',
           type: AppToastType.error,
         );
       }
       return;
     }
-
-    final ride = _rideData;
-    final destinationName = ride?['title'] ?? ride?['name'] ?? 'Destination';
-
+    final name = _rideData?['title'] ?? _rideData?['name'] ?? 'Destination';
     await NavigationService.navigateToDestination(
       context,
-      destination.latitude,
-      destination.longitude,
-      destinationName: destinationName.toString(),
+      dest.latitude,
+      dest.longitude,
+      destinationName: name.toString(),
     );
   }
 
@@ -366,316 +340,336 @@ class _RideModeScreenState extends State<RideModeScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
-          (context) => AlertDialog(
+          (ctx) => AlertDialog(
             title: const Text('End Ride?'),
             content: const Text(
               'This will stop tracking and complete your journey.',
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(ctx, false),
                 child: const Text('Cancel'),
               ),
               FilledButton(
-                onPressed: () => Navigator.pop(context, true),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFFFF6A00),
                 ),
+                onPressed: () => Navigator.pop(ctx, true),
                 child: const Text('End Ride'),
               ),
             ],
           ),
     );
 
-    if (confirmed == true) {
-      try {
-        await _rideService.finishRide(widget.rideId);
-        await _liveTrackingService.clearLiveLocation(
-          rideId: widget.rideId,
-          userId: _currentUserId,
-        );
-        if (!mounted) return;
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      } catch (e) {
-        if (!mounted) return;
-        showAppToast(
-          context,
-          'Error ending ride: $e',
-          type: AppToastType.error,
-        );
-      }
+    if (confirmed != true) return;
+
+    try {
+      await _trackingService.stopSyncing();
+      await _rideService.finishRide(widget.rideId);
+      await _trackingService.clearLiveLocation(
+        rideId: widget.rideId,
+        userId: _currentUserId,
+      );
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (e) {
+      if (!mounted) return;
+      showAppToast(context, 'Error ending ride: $e', type: AppToastType.error);
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // DISPOSE
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   void dispose() {
     _rideTimer?.cancel();
-    _syncTimer?.cancel();
-    _positionSubscription?.cancel();
-    _liveLocationSubscription?.cancel();
-    _alertChannel?.unsubscribe();
-    _routeChannel?.unsubscribe();
+    _alertDismissTimer?.cancel();
+    _trackingPulse.dispose();
+    _locationStreamSub?.cancel();
+    _gpsStreamSub?.cancel();
+    _realtimeService.stopListening();
+    // Note: _trackingService.dispose() is NOT called here because the user
+    // might minimize the app and come back. Call stopSyncing() + clearLiveLocation()
+    // only on intentional ride end. The service auto-reconnects.
     super.dispose();
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BUILD
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: Color(0xFFF4EFEA),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Color(0xFFFF6A00)),
+              SizedBox(height: 16),
+              Text(
+                'Starting Ride…',
+                style: TextStyle(
+                  color: Color(0xFFFF6A00),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
       body: Stack(
         children: [
-          // MAP LAYER
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter:
-                  _currentPosition != null
-                      ? LatLng(
-                        _currentPosition!.latitude,
-                        _currentPosition!.longitude,
-                      )
-                      : const LatLng(20.5, 78.9),
-              initialZoom: 15,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.journeysync',
-              ),
-              if (_routePoints.isNotEmpty)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: _routePoints,
-                      strokeWidth: 5,
-                      color: const Color(0xFFD97706),
-                    ),
-                  ],
-                ),
-              MarkerLayer(
-                markers: [
-                  ..._liveLocations.map((loc) {
-                    final member = _members.firstWhere(
-                      (m) => m.userId == loc.userId,
-                      orElse:
-                          () => RideMember(
-                            userId: loc.userId,
-                            name: 'Rider',
-                            bike: 'No bike added',
-                            avatarUrl: '',
-                            isHost: false,
-                          ),
-                    );
-                    return Marker(
-                      key: ValueKey(loc.userId),
-                      point: LatLng(loc.latitude, loc.longitude),
-                      width: 90,
-                      height: 90,
-                      child: SmoothMarker(
-                        position: LatLng(loc.latitude, loc.longitude),
-                        child: _MemberMarker(
-                          member: member,
-                          isCurrentUser: loc.userId == _currentUserId,
-                          isLeader: loc.userId == _leaderId,
-                          isStale: loc.isStale,
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ],
-          ),
+          // ── MAP LAYER ────────────────────────────────────────────────────
+          _buildMap(),
 
-          // SOS ALERT OVERLAY
-          if (_activeAlert != null)
-            Positioned.fill(
-              child: Container(
-                color: Colors.red.withValues(alpha: 0.3),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black26, blurRadius: 20),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.red,
-                          size: 64,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "EMERGENCY ALERT",
-                          style: TextStyle(
-                            color: Colors.red.shade900,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 20,
-                          ),
-                        ),
-                        Text(
-                          "${_activeAlert!['user_name']} triggered SOS!",
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          // ── SOS OVERLAY ──────────────────────────────────────────────────
+          if (_activeAlert != null) _buildSOSOverlay(),
 
-          // TOP HUD
+          // ── TOP HUD ──────────────────────────────────────────────────────
           SafeArea(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Column(
-                children: [
-                  _hudPill(
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.timer,
-                          color: Color(0xFFFF6A00),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatDuration(_secondsElapsed),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_isOffline)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: _hudPill(
-                        const Text(
-                          "Reconnecting...",
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                        color: Colors.white,
-                      ),
-                    ),
-                ],
-              ),
+            child: Column(
+              children: [_buildTopHUD(), if (_isOffline) _buildOfflineBar()],
             ),
           ),
 
-          // BOTTOM ACTIONS
+          // ── BOTTOM ACTIONS ────────────────────────────────────────────────
           Positioned(
             left: 20,
-            bottom: 40,
             right: 20,
-            child: Column(
+            bottom: 40,
+            child: _buildBottomActions(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MAP
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildMap() {
+    final initialCenter =
+        _currentPosition != null
+            ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+            : const LatLng(20.5, 78.9);
+
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(initialCenter: initialCenter, initialZoom: 15.0),
+      children: [
+        // Tile layer
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.example.journeysync',
+        ),
+        // Route polyline
+        PolylineLayer(polylines: _buildPolylines()),
+        // Markers
+        _buildMarkerLayer(),
+      ],
+    );
+  }
+
+  List<Polyline> _buildPolylines() {
+    final polylines = <Polyline>[];
+
+    if (_routePoints.isNotEmpty) {
+      polylines.add(
+        Polyline(
+          points: _routePoints,
+          strokeWidth: 5.0,
+          color: const Color(0xFFD97706),
+          borderColor: const Color(0xFFFF6A00).withValues(alpha: 0.3),
+          borderStrokeWidth: 2,
+        ),
+      );
+    } else if (_destinationLat != null &&
+        _destinationLng != null &&
+        _currentPosition != null) {
+      // Fallback straight line to destination
+      polylines.add(
+        Polyline(
+          points: [
+            LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+            LatLng(_destinationLat!, _destinationLng!),
+          ],
+          strokeWidth: 4.0,
+          color: const Color(0xFFD97706).withValues(alpha: 0.7),
+        ),
+      );
+    }
+
+    return polylines;
+  }
+
+  Widget _buildMarkerLayer() {
+    final markers = <Marker>[];
+
+    // ── Destination marker ───────────────────────────────────────────────
+    if (_destinationLat != null && _destinationLng != null) {
+      markers.add(
+        Marker(
+          key: const ValueKey('destination'),
+          point: LatLng(_destinationLat!, _destinationLng!),
+          width: 60,
+          height: 80,
+          child: DestinationMarker(
+            label: (_rideData?['title'] ?? 'Destination').toString(),
+          ),
+        ),
+      );
+    }
+
+    // ── Current user marker (always show, from GPS stream) ────────────────
+    if (_currentPosition != null) {
+      // Only show separate current-user dot if they're NOT in the live list yet
+      final inLiveList = _riderLocations.any((l) => l.userId == _currentUserId);
+      if (!inLiveList) {
+        markers.add(
+          Marker(
+            key: ValueKey('current_user_dot_$_currentUserId'),
+            point: LatLng(
+              _currentPosition!.latitude,
+              _currentPosition!.longitude,
+            ),
+            width: 60,
+            height: 60,
+            child: CurrentUserMarker(
+              heading:
+                  _currentPosition!.heading >= 0
+                      ? _currentPosition!.heading
+                      : null,
+              isOffline: _isOffline,
+            ),
+          ),
+        );
+      }
+    }
+
+    // ── Live rider markers ─────────────────────────────────────────────────
+    for (final loc in _riderLocations) {
+      final isCurrentUser = loc.userId == _currentUserId;
+      final isLeader = loc.userId == _leaderId || loc.isLeader;
+
+      markers.add(
+        _buildAnimatedRiderMarker(
+          location: loc,
+          isCurrentUser: isCurrentUser,
+          isLeader: isLeader,
+        ),
+      );
+    }
+
+    return MarkerLayer(markers: markers);
+  }
+
+  /// Builds a single rider marker that uses SmoothMarker for interpolation.
+  ///
+  /// Because flutter_map requires [Marker.point] to be set at construction
+  /// time, we use a StatefulWidget approach: the SmoothMarker's builder
+  /// callback receives the interpolated LatLng and we update our cache.
+  /// The outer Marker.point is set to the *current interpolated* position
+  /// stored in [_interpolatedPositions] so the marker renders at the right
+  /// place without rebuilding the entire map.
+  Marker _buildAnimatedRiderMarker({
+    required RiderLocation location,
+    required bool isCurrentUser,
+    required bool isLeader,
+  }) {
+    // Use the latest known interpolated position for the marker's point,
+    // falling back to the raw GPS position for new riders.
+    final displayPos =
+        _interpolatedPositions[location.userId] ??
+        LatLng(location.latitude, location.longitude);
+
+    return Marker(
+      key: ValueKey('rider_${location.userId}'),
+      point: displayPos,
+      width: isLeader ? 100 : 80,
+      height: isLeader ? 120 : 100,
+      child: _AnimatedRiderMarkerWidget(
+        location: location,
+        isCurrentUser: isCurrentUser,
+        isLeader: isLeader,
+        onPositionUpdate: (interpolated) {
+          // Store the interpolated position so future [Marker.point] is correct.
+          _interpolatedPositions[location.userId] = interpolated;
+        },
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // HUD WIDGETS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildTopHUD() {
+    final liveCount = _riderLocations.length;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Timer pill
+          _HUDPill(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _circleBtn(Icons.my_location, Colors.blue, () {
-                      if (_currentPosition != null) {
-                        _mapController.move(
-                          LatLng(
-                            _currentPosition!.latitude,
-                            _currentPosition!.longitude,
-                          ),
-                          15,
-                        );
-                      }
-                      setState(() => _followingLeader = false);
-                    }),
-                    if (_leaderId != null && _leaderId != _currentUserId)
-                      _hudPill(
-                        GestureDetector(
-                          onTap:
-                              () => setState(
-                                () => _followingLeader = !_followingLeader,
-                              ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _followingLeader
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                size: 16,
-                                color:
-                                    _followingLeader
-                                        ? Colors.blue
-                                        : Colors.grey,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                _followingLeader
-                                    ? "Following Leader"
-                                    : "Follow Leader",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      _followingLeader
-                                          ? Colors.blue
-                                          : Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        color: Colors.white,
-                      ),
-                    _circleBtn(
-                      Icons.navigation,
-                      const Color(0xFF4CAF50),
-                      _launchNavigation,
-                    ),
-                    _circleBtn(Icons.warning, Colors.red, _triggerSOS),
-                  ],
+                const Icon(
+                  Icons.timer_rounded,
+                  color: Color(0xFFFF6A00),
+                  size: 16,
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: AnimatedPress(
-                    onPressed: _endRide,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF6A00),
-                        borderRadius: BorderRadius.circular(28),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Text(
-                          "END RIDE",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
+                const SizedBox(width: 6),
+                Text(
+                  _formatDuration(_secondsElapsed),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Live riders count + tracking dot
+          _HUDPill(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedBuilder(
+                  animation: _trackingPulse,
+                  builder:
+                      (context, _) => Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color.lerp(
+                            const Color(0xFF4CAF50),
+                            const Color(0xFF81C784),
+                            _trackingPulse.value,
                           ),
                         ),
                       ),
-                    ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$liveCount LIVE',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2E7D32),
                   ),
                 ),
               ],
@@ -686,233 +680,355 @@ class _RideModeScreenState extends State<RideModeScreen>
     );
   }
 
-  Widget _hudPill(Widget child, {Color? color}) {
+  Widget _buildOfflineBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: color ?? const Color(0xFFF1EEE9).withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+        color: Colors.orange.shade100,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.orange.shade300),
       ),
-      child: child,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.wifi_off_rounded, color: Colors.orange, size: 16),
+          const SizedBox(width: 8),
+          const Text(
+            'Reconnecting… GPS cached locally',
+            style: TextStyle(
+              color: Colors.orange,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _circleBtn(IconData icon, Color color, VoidCallback onTap) {
-    return AnimatedPress(
-      onPressed: onTap,
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
+  Widget _buildSOSOverlay() {
+    return Positioned.fill(
+      child: GestureDetector(
+        onTap: () => setState(() => _activeAlert = null),
+        child: Container(
+          color: Colors.red.withValues(alpha: 0.25),
+          child: Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 32),
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withValues(alpha: 0.3),
+                    blurRadius: 30,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.red,
+                      size: 44,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'EMERGENCY ALERT',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_activeAlert!['user_name'] ?? 'A rider'} triggered SOS!',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Tap anywhere to dismiss',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        child: Icon(icon, color: color),
       ),
     );
   }
 
-  String _formatDuration(int s) {
-    return "${(s ~/ 3600).toString().padLeft(2, '0')}:${((s % 3600) ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}";
-  }
-}
+  Widget _buildBottomActions() {
+    final hasLeader = _leaderId != null && _leaderId != _currentUserId;
+    final hasDest = _getDestinationCoords() != null;
 
-// FEATURE 1: SMOOTH MARKER ANIMATION
-class SmoothMarker extends StatefulWidget {
-  final LatLng position;
-  final Widget child;
-  const SmoothMarker({required this.position, required this.child, super.key});
-  @override
-  State<SmoothMarker> createState() => _SmoothMarkerState();
-}
-
-class _SmoothMarkerState extends State<SmoothMarker>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _latAnim;
-  late Animation<double> _lngAnim;
-  LatLng _prevPos = const LatLng(0, 0);
-
-  @override
-  void initState() {
-    super.initState();
-    _prevPos = widget.position;
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _setupAnims();
-  }
-
-  void _setupAnims() {
-    _latAnim = Tween<double>(
-      begin: _prevPos.latitude,
-      end: widget.position.latitude,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-    _lngAnim = Tween<double>(
-      begin: _prevPos.longitude,
-      end: widget.position.longitude,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void didUpdateWidget(SmoothMarker old) {
-    super.didUpdateWidget(old);
-    if (old.position != widget.position) {
-      _prevPos = LatLng(_latAnim.value, _lngAnim.value);
-      _setupAnims();
-      _controller.forward(from: 0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder:
-          (context, _) =>
-              Transform.translate(offset: Offset.zero, child: widget.child),
-    );
-  }
-}
-
-// FEATURE 5: MICRO-INTERACTIONS
-class AnimatedPress extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onPressed;
-  const AnimatedPress({
-    required this.child,
-    required this.onPressed,
-    super.key,
-  });
-  @override
-  State<AnimatedPress> createState() => _AnimatedPressState();
-}
-
-class _AnimatedPressState extends State<AnimatedPress>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  @override
-  void initState() {
-    _c = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-      lowerBound: 0.95,
-      upperBound: 1.0,
-      value: 1.0,
-    );
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _c.reverse(),
-      onTapUp: (_) {
-        _c.forward();
-        widget.onPressed();
-      },
-      onTapCancel: () => _c.forward(),
-      child: ScaleTransition(scale: _c, child: widget.child),
-    );
-  }
-}
-
-class _MemberMarker extends StatelessWidget {
-  final RideMember member;
-  final bool isCurrentUser;
-  final bool isLeader;
-  final bool isStale;
-  const _MemberMarker({
-    required this.member,
-    required this.isCurrentUser,
-    required this.isLeader,
-    required this.isStale,
-  });
-
-  @override
-  Widget build(BuildContext context) {
     return Column(
       children: [
-        Stack(
-          alignment: Alignment.topRight,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color:
-                      isLeader
-                          ? Colors.amber
-                          : (isCurrentUser
-                              ? const Color(0xFFFF6A00)
-                              : Colors.blue),
-                  width: 3,
+            // My location button
+            _CircleButton(
+              icon: Icons.my_location_rounded,
+              color: Colors.blue,
+              onTap: () {
+                if (_currentPosition != null) {
+                  _mapController.move(
+                    LatLng(
+                      _currentPosition!.latitude,
+                      _currentPosition!.longitude,
+                    ),
+                    15,
+                  );
+                }
+                setState(() => _followingLeader = false);
+              },
+            ),
+
+            // Follow leader button
+            if (hasLeader)
+              _HUDPill(
+                child: GestureDetector(
+                  onTap:
+                      () =>
+                          setState(() => _followingLeader = !_followingLeader),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _followingLeader
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
+                        size: 14,
+                        color:
+                            _followingLeader
+                                ? const Color(0xFF2196F3)
+                                : Colors.grey,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _followingLeader ? 'Following Leader' : 'Follow Leader',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color:
+                              _followingLeader
+                                  ? const Color(0xFF2196F3)
+                                  : Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              child: _Avatar(member: member),
+
+            // Navigation button
+            _CircleButton(
+              icon: Icons.navigation_rounded,
+              color: hasDest ? const Color(0xFF4CAF50) : Colors.grey,
+              onTap: hasDest ? _launchNavigation : null,
             ),
-            if (isLeader)
-              const Icon(
-                Icons.workspace_premium,
-                color: Colors.amber,
-                size: 24,
-              ),
+
+            // SOS button
+            _CircleButton(
+              icon: Icons.warning_rounded,
+              color: Colors.red,
+              onTap: _triggerSOS,
+            ),
           ],
         ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
-          ),
-          child: Text(
-            isCurrentUser ? "You" : member.name,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+
+        const SizedBox(height: 16),
+
+        // End Ride button
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: AnimatedPress(
+            onPressed: _endRide,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF6A00), Color(0xFFFF8C42)],
+                ),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF6A00).withValues(alpha: 0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  'END RIDE',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ],
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  String _formatDuration(int s) {
+    final h = s ~/ 3600;
+    final m = (s % 3600) ~/ 60;
+    final sec = s % 60;
+    return '${h.toString().padLeft(2, '0')}:'
+        '${m.toString().padLeft(2, '0')}:'
+        '${sec.toString().padLeft(2, '0')}';
+  }
 }
 
-class _Avatar extends StatelessWidget {
-  final RideMember member;
-  const _Avatar({required this.member});
+// ─────────────────────────────────────────────────────────────────────────────
+// ANIMATED RIDER MARKER WIDGET
+// Internal stateful widget that wraps SmoothMarker + premium marker widgets
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AnimatedRiderMarkerWidget extends StatefulWidget {
+  const _AnimatedRiderMarkerWidget({
+    required this.location,
+    required this.isCurrentUser,
+    required this.isLeader,
+    required this.onPositionUpdate,
+  });
+
+  final RiderLocation location;
+  final bool isCurrentUser;
+  final bool isLeader;
+  final void Function(LatLng interpolated) onPositionUpdate;
+
+  @override
+  State<_AnimatedRiderMarkerWidget> createState() =>
+      _AnimatedRiderMarkerWidgetState();
+}
+
+class _AnimatedRiderMarkerWidgetState
+    extends State<_AnimatedRiderMarkerWidget> {
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 20,
-      backgroundColor: const Color(0xFFFFE8D4),
-      backgroundImage:
-          member.avatarUrl.isNotEmpty ? NetworkImage(member.avatarUrl) : null,
-      child:
-          member.avatarUrl.isEmpty
-              ? Text(
-                member.name[0].toUpperCase(),
-                style: const TextStyle(
-                  color: Color(0xFFFF6A00),
-                  fontWeight: FontWeight.bold,
-                ),
-              )
-              : null,
+    final targetPos = LatLng(
+      widget.location.latitude,
+      widget.location.longitude,
+    );
+
+    return SmoothMarker(
+      position: targetPos,
+      builder: (context, interpolated) {
+        // Notify parent of new animated position so Marker.point stays in sync.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.onPositionUpdate(interpolated);
+        });
+
+        return widget.isLeader
+            ? LeaderMarker(
+              location: widget.location,
+              isCurrentUser: widget.isCurrentUser,
+            )
+            : widget.isCurrentUser
+            ? CurrentUserMarker(
+              heading: widget.location.heading,
+              isOffline: false,
+            )
+            : RiderMarker(
+              location: widget.location,
+              isCurrentUser: widget.isCurrentUser,
+            );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HUD PILL WIDGET
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _HUDPill extends StatelessWidget {
+  const _HUDPill({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1EEE9).withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CIRCLE BUTTON
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CircleButton extends StatelessWidget {
+  const _CircleButton({required this.icon, required this.color, this.onTap});
+
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedPress(
+      onPressed: onTap ?? () {},
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: onTap != null ? Colors.white : Colors.grey.shade100,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: onTap != null ? color : Colors.grey.shade400),
+      ),
     );
   }
 }

@@ -982,4 +982,52 @@ class SupabaseService {
         code == 'PGRST204' ||
         error.message.toLowerCase().contains('ride_routes');
   }
+
+  // ==================== ROUTE SYNC METHODS ====================
+
+  /// Upserts a ride route with destination coordinates and optional route points
+  /// Used for saving routes from Google Maps links
+  Future<void> upsertRideRoute({
+    required String rideId,
+    double? destinationLat,
+    double? destinationLng,
+    List<Map<String, dynamic>>? routePoints,
+  }) async {
+    final payload = <String, dynamic>{
+      'ride_id': rideId.trim(),
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+
+    if (destinationLat != null) {
+      payload['destination_lat'] = destinationLat;
+    }
+    if (destinationLng != null) {
+      payload['destination_lng'] = destinationLng;
+    }
+    if (routePoints != null && routePoints.isNotEmpty) {
+      payload['route_points'] = routePoints;
+    }
+
+    await _client.from('ride_routes').upsert(payload, onConflict: 'ride_id');
+  }
+
+  /// Fetches ride route data by ride ID
+  /// Returns null if route not found or table doesn't exist
+  Future<Map<String, dynamic>?> fetchRideRouteMap(String rideId) async {
+    final normalized = rideId.trim();
+    if (normalized.isEmpty) return null;
+
+    try {
+      final row =
+          await _client
+              .from('ride_routes')
+              .select()
+              .eq('ride_id', normalized)
+              .maybeSingle();
+      return row;
+    } on PostgrestException catch (error) {
+      if (_isMissingRideRoutesSchema(error)) return null;
+      rethrow;
+    }
+  }
 }

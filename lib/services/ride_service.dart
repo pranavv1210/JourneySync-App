@@ -517,4 +517,67 @@ class RideService {
   bool _isDuplicateRow(PostgrestException error) {
     return (error.code ?? '').trim() == '23505';
   }
+
+  // ==================== ROUTE SYNC METHODS ====================
+
+  /// Saves a route from a Google Maps link to the ride_routes table
+  /// Returns true if successful, false otherwise
+  Future<bool> saveRouteFromGoogleMapsLink({
+    required String rideId,
+    required double destinationLat,
+    required double destinationLng,
+  }) async {
+    try {
+      await _supabaseService.upsertRideRoute(
+        rideId: rideId,
+        destinationLat: destinationLat,
+        destinationLng: destinationLng,
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Fetches the raw route data map for a specific ride.
+  /// Returns the raw [Map] or null if not found.
+  Future<Map<String, dynamic>?> fetchRideRouteMap(String rideId) async {
+    try {
+      // Use the supabase service's raw map variant (line 1016 in supabase_service)
+      return await Supabase.instance.client
+          .from('ride_routes')
+          .select()
+          .eq('ride_id', rideId.trim())
+          .maybeSingle()
+          .then((row) => row != null ? Map<String, dynamic>.from(row) : null);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Saves a ride route with full route points (premium feature)
+  Future<bool> saveRideRouteFull({
+    required String rideId,
+    required String hostId,
+    required String startLabel,
+    required String endLabel,
+    required List<({double lat, double lng, String? name})> stops,
+  }) async {
+    try {
+      final routePoints =
+          stops
+              .map(
+                (stop) => {'lat': stop.lat, 'lng': stop.lng, 'name': stop.name},
+              )
+              .toList();
+
+      await _supabaseService.upsertRideRoute(
+        rideId: rideId,
+        routePoints: routePoints,
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }

@@ -84,6 +84,24 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
 
       _liveLocationSubscription = _liveTrackingService
           .watchRideLocations(widget.rideId)
+          .map(
+            (locations) =>
+                locations
+                    .map(
+                      (loc) => LiveLocation(
+                        userId: loc.userId,
+                        rideId: loc.rideId,
+                        latitude: loc.latitude,
+                        longitude: loc.longitude,
+                        updatedAt: loc.updatedAt,
+                        speedMps: loc.speed,
+                        heading: loc.heading,
+                        battery: loc.battery,
+                        signal: loc.signal,
+                      ),
+                    )
+                    .toList(),
+          )
           .listen((locations) {
             if (!mounted) return;
             setState(() {
