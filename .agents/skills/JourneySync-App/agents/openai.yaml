@@ -1,0 +1,6 @@
+interface:
+  display_name: "JourneySync App"
+  short_description: "Repo-specific patterns and workflows for JourneySync-App"
+  default_prompt: "Use the JourneySync-App repo skill to follow existing architecture, testing, and workflow conventions."
+policy:
+  allow_implicit_invocation: true
