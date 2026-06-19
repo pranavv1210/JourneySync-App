@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:journeysync/services/app_config.dart';
 import 'package:journeysync/screens/login_screen.dart';
 import 'package:journeysync/screens/home_screen.dart';
+import 'package:journeysync/widgets/premium/premium_button.dart';
 
 void main() {
   setUpAll(() async {
@@ -32,11 +33,11 @@ void main() {
       expect(find.text('JourneySync'), findsOneWidget);
 
       // Verify that the form mode toggles exist
-      expect(find.text('Existing Account'), findsOneWidget);
-      expect(find.text('New Account'), findsOneWidget);
+      expect(find.text('Sign In'), findsOneWidget);
+      expect(find.text('Create Account'), findsAtLeastNWidgets(1));
 
-      // Verify primary action button exists
-      expect(find.byType(ElevatedButton), findsOneWidget);
+      // Verify primary action button exists (PremiumButton, not ElevatedButton)
+      expect(find.byType(PremiumButton), findsOneWidget);
     });
 
     testWidgets(
