@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_config.dart';
@@ -45,6 +44,106 @@ class SupabaseService {
     }
 
     return _fetchUserSingle(eqColumn: 'id', eqValue: normalized);
+  }
+
+  Future<Map<String, dynamic>?> fetchOrCreateCurrentUserProfile({
+    required String cachedUserId,
+    required String cachedPhone,
+    required String cachedName,
+    required String cachedBike,
+  }) async {
+    final authUser = _client.auth.currentUser;
+    debugPrint('SUPABASE AUTH USER ID: ${authUser?.id}');
+    debugPrint('SUPABASE AUTH USER PHONE: ${authUser?.phone}');
+
+    final authUserId = (authUser?.id ?? '').trim();
+    final authPhone = (authUser?.phone ?? '').trim();
+    final authMetadata = authUser?.userMetadata ?? const <String, dynamic>{};
+    final metadataPhone =
+        (authMetadata['phone'] ??
+                authMetadata['phone_number'] ??
+                authMetadata['mobile'] ??
+                '')
+            .toString()
+            .trim();
+    final metadataName =
+        (authMetadata['name'] ??
+                authMetadata['full_name'] ??
+                authMetadata['first_name'] ??
+                '')
+            .toString()
+            .trim();
+
+    final preferredId =
+        authUserId.isNotEmpty ? authUserId : cachedUserId.trim();
+    final preferredPhone =
+        authPhone.isNotEmpty
+            ? authPhone
+            : metadataPhone.isNotEmpty
+            ? metadataPhone
+            : cachedPhone.trim();
+
+    Map<String, dynamic>? row;
+    if (preferredId.isNotEmpty) {
+      row = await fetchUserById(preferredId);
+    }
+    if (row == null && preferredPhone.isNotEmpty) {
+      row = await fetchUserByPhone(preferredPhone);
+    }
+    if (row != null) {
+      return row;
+    }
+
+    if (authUserId.isEmpty) {
+      return null;
+    }
+
+    return upsertAuthenticatedUserProfile(
+      userId: authUserId,
+      phone: preferredPhone,
+      name:
+          cachedName.trim().isNotEmpty
+              ? cachedName.trim()
+              : metadataName.isNotEmpty
+              ? metadataName
+              : 'Rider',
+      bike: cachedBike.trim().isNotEmpty ? cachedBike.trim() : 'No bike added',
+    );
+  }
+
+  Future<Map<String, dynamic>> upsertAuthenticatedUserProfile({
+    required String userId,
+    required String phone,
+    required String name,
+    required String bike,
+  }) async {
+    final payload = <String, dynamic>{
+      'id': userId.trim(),
+      'phone': phone.trim().isEmpty ? null : phone.trim(),
+      'name': name.trim().isEmpty ? 'Rider' : name.trim(),
+      'bike': bike.trim().isEmpty ? 'No bike added' : bike.trim(),
+    };
+
+    try {
+      final row =
+          await _client
+              .from('users')
+              .upsert(payload, onConflict: 'id')
+              .select(_userColumnsWithAvatar)
+              .single();
+      return row;
+    } on PostgrestException catch (error) {
+      if (_isMissingAvatarColumn(error)) {
+        final row =
+            await _client
+                .from('users')
+                .upsert(payload, onConflict: 'id')
+                .select(_userColumnsWithoutAvatar)
+                .single();
+        return row;
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> createUser({

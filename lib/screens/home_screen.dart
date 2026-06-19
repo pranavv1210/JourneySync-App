@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -100,23 +102,21 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       var fetchedProfileFromServer = false;
 
       Map<String, dynamic>? userRow;
-      if (cachedUserId.trim().isNotEmpty) {
-        try {
-          userRow = await _supabaseService.fetchUserById(cachedUserId);
-          fetchedProfileFromServer = userRow != null;
-        } catch (error) {
-          profileErrorText = _humanizeLoadError(error);
+      try {
+        userRow = await _loadProfileWithRetry(
+          cachedUserId: cachedUserId,
+          cachedPhone: cachedPhone,
+          cachedName: cachedName,
+          cachedBike: cachedBike,
+        );
+        fetchedProfileFromServer = userRow != null;
+        if (userRow == null) {
+          profileErrorText =
+              'Please sign in again. No active profile session was found.';
         }
-      }
-      if (userRow == null && cachedPhone.trim().isNotEmpty) {
-        try {
-          userRow = await _supabaseService.fetchUserByPhone(cachedPhone);
-          fetchedProfileFromServer = userRow != null;
-        } catch (error) {
-          if (profileErrorText.isEmpty) {
-            profileErrorText = _humanizeLoadError(error);
-          }
-        }
+      } catch (error, stackTrace) {
+        _logProfileLoadError(error, stackTrace);
+        profileErrorText = _humanizeLoadError(error);
       }
 
       resolvedId = (userRow?['id'] ?? resolvedId).toString().trim();
@@ -179,7 +179,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 ? profileErrorText
                 : '';
       });
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _logProfileLoadError(error, stackTrace);
       if (!mounted) return;
       setState(() => loadError = _humanizeLoadError(error));
     } finally {
@@ -201,6 +202,35 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       name = (prefs.getString('userName') ?? 'Rider').trim();
       bike = (prefs.getString('userBike') ?? 'No bike added').trim();
     });
+  }
+
+  Future<Map<String, dynamic>?> _loadProfileWithRetry({
+    required String cachedUserId,
+    required String cachedPhone,
+    required String cachedName,
+    required String cachedBike,
+  }) async {
+    Future<Map<String, dynamic>?> load() {
+      return _supabaseService.fetchOrCreateCurrentUserProfile(
+        cachedUserId: cachedUserId,
+        cachedPhone: cachedPhone,
+        cachedName: cachedName,
+        cachedBike: cachedBike,
+      );
+    }
+
+    try {
+      return await load().timeout(const Duration(seconds: 15));
+    } on TimeoutException catch (error, stackTrace) {
+      _logProfileLoadError(error, stackTrace);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      return load().timeout(const Duration(seconds: 15));
+    }
+  }
+
+  void _logProfileLoadError(Object error, StackTrace stackTrace) {
+    debugPrint('PROFILE LOAD ERROR: $error');
+    debugPrint(stackTrace.toString());
   }
 
   @override
@@ -309,18 +339,40 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   String _humanizeLoadError(Object error) {
+    if (error is TimeoutException) {
+      return 'Offline Mode. Using cached profile.';
+    }
     if (error is PostgrestException) {
       final code = (error.code ?? '').trim();
       final message = error.message.toLowerCase();
-      if (code == '42501' || message.contains('row-level security')) {
-        return 'Supabase RLS is blocking reads. Add SELECT policy for users/rides.';
+      if (code == 'PGRST116') {
+        return 'Creating your profile...';
       }
+      if (code == '42501' || message.contains('row-level security')) {
+        return 'Supabase RLS is blocking profile reads. Add own-profile SELECT/INSERT/UPDATE policies.';
+      }
+      if (code == '401' ||
+          code == '403' ||
+          code == 'PGRST301' ||
+          message.contains('jwt') ||
+          message.contains('unauthorized') ||
+          message.contains('forbidden')) {
+        return 'Please sign in again.';
+      }
+      if (code == '42P01' || message.contains('does not exist')) {
+        return 'Profile table is missing in Supabase.';
+      }
+      return 'Could not load profile from Supabase: ${error.message}';
     }
     final raw = error.toString().toLowerCase();
     if (raw.contains('socket') || raw.contains('timeout')) {
-      return 'Network issue while loading data. Showing cached profile.';
+      return 'Offline Mode. Using cached profile.';
     }
-    return 'Failed to load latest data. Showing cached profile.';
+    if (raw.contains('no active profile session') ||
+        raw.contains('session expired')) {
+      return 'Please sign in again.';
+    }
+    return 'Could not load profile from Supabase.';
   }
 
   Widget _buildHeader() {
