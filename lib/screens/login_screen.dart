@@ -196,6 +196,12 @@ class _LoginScreenState extends State<LoginScreen>
                     width: 20,
                     height: 20,
                     fit: BoxFit.cover,
+                    errorBuilder:
+                        (context, error, stackTrace) => const Icon(
+                          Icons.two_wheeler_rounded,
+                          size: 20,
+                          color: Colors.white,
+                        ),
                   ),
                 ),
               ),
