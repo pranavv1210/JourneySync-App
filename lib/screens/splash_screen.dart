@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_navigation.dart';
+import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'setup_error_screen.dart';
@@ -16,15 +17,24 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late final AnimationController loadingController;
+  late final AnimationController _logoController;
+  late final Animation<double> _logoScale;
+  late final Animation<double> _logoOpacity;
 
   @override
   void initState() {
     super.initState();
-    loadingController = AnimationController(
+    _logoController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
+      duration: const Duration(milliseconds: 1200),
+    );
+    _logoScale = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _logoController, curve: AppCurves.easeOutBack),
+    );
+    _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _logoController, curve: AppCurves.easeOutCubic),
+    );
+    _logoController.forward();
     _decideNavigation();
   }
 
@@ -32,7 +42,7 @@ class _SplashScreenState extends State<SplashScreen>
     Object? initError;
     try {
       await Future.wait([
-        Future.delayed(const Duration(seconds: 2)),
+        Future.delayed(const Duration(milliseconds: 2200)),
         widget.initializationFuture ?? Future.value(),
       ]);
     } catch (error) {
@@ -61,19 +71,14 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    loadingController.dispose();
+    _logoController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    const background = Color(0xFFF4EFEA);
-    const primary = Color(0xFFF26C0D);
-    const brandGray = Color(0xFF2F2F2F);
-    const forestGreen = Color(0xFF2D4438);
-
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -81,206 +86,127 @@ class _SplashScreenState extends State<SplashScreen>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _TopoPatternPainter(
-                      color: brandGray.withValues(alpha: 0.06),
-                    ),
-                  ),
-                ),
+                // Ambient gradient orbs
                 Positioned(
-                  top: 160,
-                  left: 60,
+                  top: -60,
+                  right: -40,
                   child: Container(
-                    width: 220,
-                    height: 220,
+                    width: 260,
+                    height: 260,
                     decoration: BoxDecoration(
-                      color: primary.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: primary.withValues(alpha: 0.12),
-                          blurRadius: 80,
-                          spreadRadius: 12,
-                        ),
-                      ],
+                      color: AppColors.primary.withValues(alpha: 0.08),
                     ),
                   ),
                 ),
                 Positioned(
-                  bottom: 170,
-                  right: 56,
+                  bottom: -40,
+                  left: -60,
+                  child: Container(
+                    width: 240,
+                    height: 240,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.forest.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 240,
+                  left: -80,
                   child: Container(
                     width: 180,
                     height: 180,
                     decoration: BoxDecoration(
-                      color: forestGreen.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: forestGreen.withValues(alpha: 0.12),
-                          blurRadius: 80,
-                          spreadRadius: 10,
-                        ),
-                      ],
+                      color: AppColors.primary.withValues(alpha: 0.05),
                     ),
                   ),
                 ),
+
+                // Center content
                 Center(
-                  child: TweenAnimationBuilder<double>(
-                    duration: const Duration(milliseconds: 900),
-                    curve: Curves.easeOutCubic,
-                    tween: Tween(begin: 0, end: 1),
-                    builder: (context, value, child) {
+                  child: AnimatedBuilder(
+                    animation: _logoController,
+                    builder: (context, _) {
                       return Opacity(
-                        opacity: value,
-                        child: Transform.translate(
-                          offset: Offset(0, (1 - value) * 20),
-                          child: child,
+                        opacity: _logoOpacity.value,
+                        child: Transform.scale(
+                          scale: _logoScale.value,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Logo
+                              Container(
+                                width: 96,
+                                height: 96,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(24),
+                                  boxShadow: AppShadows.primary,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Image.asset(
+                                    'assets/logo.png',
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 28),
+                              // Brand name
+                              Text(
+                                'JourneySync',
+                                style: AppTypography.displayMedium.copyWith(
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              // Gradient divider
+                              Container(
+                                width: 48,
+                                height: 3,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(999),
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      AppColors.primary,
+                                      AppColors.forest,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Ride Together. Stay Together.',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 126,
-                          height: 126,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            clipBehavior: Clip.none,
-                            children: [
-                              Positioned.fill(
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(26),
-                                    border: Border.all(
-                                      color: primary.withValues(alpha: 0.22),
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                width: 102,
-                                height: 102,
-                                decoration: BoxDecoration(
-                                  color: primary,
-                                  borderRadius: BorderRadius.circular(22),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: primary.withValues(alpha: 0.25),
-                                      blurRadius: 22,
-                                      offset: const Offset(0, 10),
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Image.asset(
-                                      "assets/logo.png",
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: "Journey",
-                                style: TextStyle(
-                                  color: brandGray,
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.4,
-                                ),
-                              ),
-                              TextSpan(
-                                text: "Sync",
-                                style: TextStyle(
-                                  color: primary,
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          width: 52,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(999),
-                            gradient: const LinearGradient(
-                              colors: [primary, forestGreen],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          "Ride Together. Ride Safe.",
-                          style: TextStyle(
-                            color: brandGray.withValues(alpha: 0.8),
-                            fontSize: 17,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.1,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
+
+                // Bottom loading indicator
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: 36,
+                  bottom: 48,
                   child: Column(
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: Container(
-                          width: 84,
-                          height: 4,
-                          color: brandGray.withValues(alpha: 0.12),
-                          child: AnimatedBuilder(
-                            animation: loadingController,
-                            builder: (context, _) {
-                              return LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final width = constraints.maxWidth;
-                                  final offsetX =
-                                      (loadingController.value * width * 2) -
-                                      width;
-                                  return Transform.translate(
-                                    offset: Offset(offsetX, 0),
-                                    child: Container(
-                                      width: width,
-                                      color: primary,
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
+                      _PremiumLoader(),
+                      const SizedBox(height: 16),
                       Text(
-                        "v1.0.2 Beta",
-                        style: TextStyle(
-                          color: brandGray.withValues(alpha: 0.38),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.1,
+                        'v1.0.2 Beta',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textTertiary,
+                          letterSpacing: 1.2,
                         ),
                       ),
                     ],
@@ -295,31 +221,61 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-class _TopoPatternPainter extends CustomPainter {
-  _TopoPatternPainter({required this.color});
+class _PremiumLoader extends StatefulWidget {
+  @override
+  State<_PremiumLoader> createState() => _PremiumLoaderState();
+}
 
-  final Color color;
+class _PremiumLoaderState extends State<_PremiumLoader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.4
-          ..strokeCap = StrokeCap.round;
-
-    const spacing = 60.0;
-    const arm = 4.0;
-    for (double y = 24; y < size.height + spacing; y += spacing) {
-      for (double x = 24; x < size.width + spacing; x += spacing) {
-        canvas.drawLine(Offset(x - arm, y), Offset(x + arm, y), paint);
-        canvas.drawLine(Offset(x, y - arm), Offset(x, y + arm), paint);
-      }
-    }
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
   }
 
   @override
-  bool shouldRepaint(covariant _TopoPatternPainter oldDelegate) =>
-      oldDelegate.color != color;
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            width: 80,
+            height: 3,
+            color: AppColors.divider,
+            child: Stack(
+              children: [
+                Transform.translate(
+                  offset: Offset((_controller.value * 160) - 80, 0),
+                  child: Container(
+                    width: 80,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.forest],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

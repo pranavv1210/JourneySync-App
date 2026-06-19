@@ -7,7 +7,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/app_toast.dart';
+import '../theme/app_theme.dart';
+import '../widgets/premium/premium_button.dart';
+import '../widgets/premium/premium_input.dart';
+import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
 import '../models/ride_route.dart';
 import '../services/ride_service.dart';
@@ -29,11 +32,11 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   bool isCreating = false;
   bool isResolvingDestination = false;
   bool loadingCurrentLocation = true;
-  String currentLocationLabel = "Locating your current position...";
-  String destinationPreviewLabel = "Start typing to preview route on map";
+  String currentLocationLabel = 'Locating your current position...';
+  String destinationPreviewLabel = 'Start typing to preview route on map';
   LatLng? currentLatLng;
   LatLng? destinationLatLng;
-  final List<_DestinationSuggestion> _suggestions = <_DestinationSuggestion>[];
+  final List<_DestinationSuggestion> _suggestions = [];
   bool _showSuggestions = false;
   bool _suppressSearchOnTextChange = false;
   Timer? _searchDebounce;
@@ -60,7 +63,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       if (!mounted) return;
       setState(() {
         destinationLatLng = null;
-        destinationPreviewLabel = "Start typing to preview route on map";
+        destinationPreviewLabel = 'Start typing to preview route on map';
         isResolvingDestination = false;
         _suggestions.clear();
         _showSuggestions = false;
@@ -83,7 +86,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
         if (!mounted) return;
         setState(() {
           loadingCurrentLocation = false;
-          currentLocationLabel = "Location service disabled";
+          currentLocationLabel = 'Location service disabled';
         });
         return;
       }
@@ -97,7 +100,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
         if (!mounted) return;
         setState(() {
           loadingCurrentLocation = false;
-          currentLocationLabel = "Location permission not granted";
+          currentLocationLabel = 'Location permission not granted';
         });
         return;
       }
@@ -122,7 +125,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       if (!mounted) return;
       setState(() {
         loadingCurrentLocation = false;
-        currentLocationLabel = "Unable to fetch current location";
+        currentLocationLabel = 'Unable to fetch current location';
       });
     }
   }
@@ -133,9 +136,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
 
     final requestId = ++_searchRequestId;
     if (!mounted) return;
-    setState(() {
-      isResolvingDestination = true;
-    });
+    setState(() => isResolvingDestination = true);
 
     try {
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
@@ -145,9 +146,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       });
       final response = await http.get(
         uri,
-        headers: const {
-          'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)',
-        },
+        headers: {'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)'},
       );
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception('Could not resolve destination');
@@ -189,7 +188,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       if (!mounted || requestId != _searchRequestId) return;
       setState(() {
         isResolvingDestination = false;
-        destinationPreviewLabel = "Destination not found. Try another search";
+        destinationPreviewLabel = 'Destination not found. Try another search';
         _suggestions.clear();
         _showSuggestions = false;
       });
@@ -222,21 +221,15 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       });
       final response = await http.get(
         uri,
-        headers: const {
-          'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)',
-        },
+        headers: {'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)'},
       );
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return _latLngText(point);
       }
       final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) {
-        return _latLngText(point);
-      }
+      if (decoded is! Map<String, dynamic>) return _latLngText(point);
       final displayName = (decoded['display_name'] ?? '').toString().trim();
-      if (displayName.isEmpty) {
-        return _latLngText(point);
-      }
+      if (displayName.isEmpty) return _latLngText(point);
       return displayName;
     } catch (_) {
       return _latLngText(point);
@@ -253,7 +246,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   }
 
   String _latLngText(LatLng point) {
-    return "${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}";
+    return '${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}';
   }
 
   Future<void> createRide() async {
@@ -263,24 +256,30 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     final destination = destinationController.text.trim();
 
     if (rideName.isEmpty) {
-      showAppToast(context, "Enter ride name", type: AppToastType.error);
+      showPremiumToast(
+        context,
+        'Enter ride name',
+        type: PremiumToastType.error,
+      );
       return;
     }
 
     if (destination.isEmpty) {
-      showAppToast(context, "Enter destination", type: AppToastType.error);
+      showPremiumToast(
+        context,
+        'Enter destination',
+        type: PremiumToastType.error,
+      );
       return;
     }
 
-    setState(() {
-      isCreating = true;
-    });
+    setState(() => isCreating = true);
 
     final prefs = await SharedPreferences.getInstance();
     try {
-      final creatorId = prefs.getString("userId") ?? "";
+      final creatorId = prefs.getString('userId') ?? '';
       if (!_looksLikeUuid(creatorId)) {
-        throw Exception("User session missing. Please login again.");
+        throw Exception('User session missing. Please login again.');
       }
 
       final startLocation = await _resolveStartLocation();
@@ -303,10 +302,10 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       );
 
       if (!mounted) return;
-      showAppToast(
+      showPremiumToast(
         context,
-        "Ride created successfully",
-        type: AppToastType.success,
+        'Ride created successfully',
+        type: PremiumToastType.success,
       );
       replaceWithAppRoute(
         context,
@@ -317,71 +316,44 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      showAppToast(
+      showPremiumToast(
         context,
-        "Failed to create ride: ${_createRideErrorMessage(error)}",
-        type: AppToastType.error,
+        'Failed to create ride: ${_createRideErrorMessage(error)}',
+        type: PremiumToastType.error,
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          isCreating = false;
-        });
-      }
+      if (mounted) setState(() => isCreating = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFFDA620B);
-    const primaryDark = Color(0xFFB04D08);
-    const background = Color(0xFFF8F7F5);
-    const forest = Color(0xFF1E3A29);
-    const neutralWarm = Color(0xFF8A817C);
-
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           SafeArea(
             child: Column(
               children: [
-                _header(forest, neutralWarm),
+                _buildHeader(),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(24, 8, 24, 120),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _textField(
-                          label: "Ride Name",
+                        PremiumInput(
                           controller: rideNameController,
-                          hint: "Ride Name",
-                          forest: forest,
-                          primary: primary,
-                          neutralWarm: neutralWarm,
-                          background: background,
-                          maxLines: 1,
+                          label: 'Ride Name',
+                          hint: 'Name your adventure',
+                          icon: Icons.route_outlined,
                         ),
                         const SizedBox(height: 24),
-                        _destinationBlock(
-                          forest: forest,
-                          primary: primary,
-                          neutralWarm: neutralWarm,
-                          background: background,
-                        ),
+                        _buildDestinationSection(),
                         const SizedBox(height: 20),
-                        _logisticsSection(
-                          forest: forest,
-                          primary: primary,
-                          neutralWarm: neutralWarm,
-                        ),
+                        _buildLogisticsSection(),
                         const SizedBox(height: 20),
-                        _stopsSection(
-                          forest: forest,
-                          primary: primary,
-                          neutralWarm: neutralWarm,
-                        ),
+                        _buildStopsSection(),
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -390,13 +362,13 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
               ],
             ),
           ),
-          _footerAction(primary, primaryDark, background),
+          _buildFooterAction(),
         ],
       ),
     );
   }
 
-  Widget _header(Color forest, Color neutralWarm) {
+  Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
       child: Row(
@@ -405,16 +377,16 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              "Cancel",
-              style: TextStyle(fontWeight: FontWeight.w600, color: neutralWarm),
+              'Cancel',
+              style: AppTypography.buttonMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
           Text(
-            "New Ride",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: forest,
+            'New Ride',
+            style: AppTypography.headlineMedium.copyWith(
+              color: AppColors.forest,
             ),
           ),
           const SizedBox(width: 64),
@@ -423,53 +395,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     );
   }
 
-  Widget _textField({
-    required String label,
-    required TextEditingController controller,
-    required String hint,
-    required Color forest,
-    required Color primary,
-    required Color neutralWarm,
-    required Color background,
-    required int maxLines,
-  }) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      style: TextStyle(color: forest, fontWeight: FontWeight.w600),
-      decoration: InputDecoration(
-        hintText: hint,
-        filled: true,
-        fillColor: Colors.white,
-        labelText: label,
-        labelStyle: TextStyle(color: primary, fontWeight: FontWeight.w600),
-        floatingLabelStyle: TextStyle(
-          color: primary,
-          fontWeight: FontWeight.w700,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: primary, width: 2),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        hintStyle: TextStyle(color: neutralWarm),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
-      ),
-    );
-  }
-
-  Widget _destinationBlock({
-    required Color forest,
-    required Color primary,
-    required Color neutralWarm,
-    required Color background,
-  }) {
+  Widget _buildDestinationSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -477,12 +403,9 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "RIDE ROUTE",
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.4,
-                color: forest.withValues(alpha: 0.8),
+              'RIDE ROUTE',
+              style: AppTypography.labelMedium.copyWith(
+                color: AppColors.forest.withValues(alpha: 0.8),
               ),
             ),
             Row(
@@ -493,18 +416,16 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: primary,
+                      color: AppColors.primary,
                     ),
                   )
                 else
-                  Icon(Icons.auto_awesome, size: 14, color: primary),
+                  Icon(Icons.auto_awesome, size: 14, color: AppColors.primary),
                 const SizedBox(width: 6),
                 Text(
-                  "Auto Preview",
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: primary,
+                  'Auto Preview',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: AppColors.primary,
                   ),
                 ),
               ],
@@ -512,28 +433,30 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           ],
         ),
         const SizedBox(height: 8),
+        // Current location
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: primary.withValues(alpha: 0.18)),
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.18),
+            ),
           ),
           child: Row(
             children: [
-              Icon(Icons.my_location, color: primary, size: 16),
+              Icon(Icons.my_location, color: AppColors.primary, size: 16),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   loadingCurrentLocation
-                      ? "Detecting current location..."
+                      ? 'Detecting current location...'
                       : currentLocationLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: forest,
-                    fontSize: 12,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.forest,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -542,47 +465,48 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           ),
         ),
         const SizedBox(height: 10),
+        // Map + search
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: primary.withValues(alpha: 0.08),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            boxShadow: AppShadows.md,
           ),
           child: Column(
             children: [
+              // Search field
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 8,
+                  vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: background,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Column(
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.search, color: primary, size: 18),
+                        Icon(
+                          Icons.search_rounded,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: TextField(
                             controller: destinationController,
-                            style: TextStyle(
-                              fontSize: 13,
+                            style: AppTypography.bodyMedium.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: forest,
+                              color: AppColors.forest,
                             ),
                             decoration: InputDecoration(
-                              hintText: "Search location",
-                              hintStyle: TextStyle(color: neutralWarm),
+                              hintText: 'Search destination',
+                              hintStyle: AppTypography.bodyMedium.copyWith(
+                                color: AppColors.textTertiary,
+                              ),
                               border: InputBorder.none,
                             ),
                           ),
@@ -594,20 +518,18 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                       Container(
                         constraints: const BoxConstraints(maxHeight: 170),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                           border: Border.all(
-                            color: primary.withValues(alpha: 0.14),
+                            color: AppColors.primary.withValues(alpha: 0.14),
                           ),
                         ),
                         child: ListView.separated(
                           shrinkWrap: true,
                           itemCount: _suggestions.length,
                           separatorBuilder:
-                              (_, __) => Divider(
-                                height: 1,
-                                color: Colors.grey.withValues(alpha: 0.2),
-                              ),
+                              (_, __) =>
+                                  Divider(height: 1, color: AppColors.divider),
                           itemBuilder: (context, index) {
                             final suggestion = _suggestions[index];
                             return InkWell(
@@ -622,7 +544,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                                     Icon(
                                       Icons.location_on_outlined,
                                       size: 16,
-                                      color: primary,
+                                      color: AppColors.primary,
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
@@ -630,9 +552,8 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                                         suggestion.title,
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: forest,
-                                          fontSize: 12,
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: AppColors.forest,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -649,10 +570,11 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              // Map preview
               Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     child: SizedBox(
                       height: 220,
                       width: double.infinity,
@@ -680,7 +602,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                                   child: Container(
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: forest,
+                                      color: AppColors.forest,
                                       border: Border.all(
                                         color: Colors.white,
                                         width: 2,
@@ -705,7 +627,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                                   child: Container(
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: primary,
+                                      color: AppColors.primary,
                                       border: Border.all(
                                         color: Colors.white,
                                         width: 2,
@@ -726,7 +648,9 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                               polylines: [
                                 Polyline(
                                   points: [currentLatLng!, destinationLatLng!],
-                                  color: primary.withValues(alpha: 0.7),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.7,
+                                  ),
                                   strokeWidth: 4,
                                 ),
                               ],
@@ -738,7 +662,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                   Positioned.fill(
                     child: Container(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
@@ -760,15 +684,12 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
-                      child: const Text(
-                        "Live Route Preview",
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                      child: Text(
+                        'Live Route Preview',
+                        style: AppTypography.labelSmall.copyWith(
                           color: Colors.white,
-                          letterSpacing: 0.3,
                         ),
                       ),
                     ),
@@ -784,7 +705,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.45),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: Text(
                         destinationController.text.isEmpty
@@ -792,10 +713,9 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                             : destinationPreviewLabel,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                        style: AppTypography.bodySmall.copyWith(
                           color: Colors.white,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -809,7 +729,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     );
   }
 
-  Widget _footerAction(Color primary, Color primaryDark, Color background) {
+  Widget _buildFooterAction() {
     return Positioned(
       left: 0,
       right: 0,
@@ -820,70 +740,30 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [background.withValues(alpha: 0), background],
-          ),
-        ),
-        child: ElevatedButton(
-          onPressed: isCreating ? null : createRide,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primary,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 6,
-            shadowColor: primary.withValues(alpha: 0.3),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (isCreating)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.2,
-                    color: Colors.white,
-                  ),
-                )
-              else ...[
-                Text(
-                  "Go Live",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.arrow_forward,
-                  color: Colors.white.withValues(alpha: 0.9),
-                  size: 18,
-                ),
-              ],
+            colors: [
+              AppColors.background.withValues(alpha: 0),
+              AppColors.background,
             ],
           ),
+        ),
+        child: PremiumButton(
+          label: isCreating ? 'Creating...' : 'Go Live',
+          icon: isCreating ? null : Icons.arrow_forward_rounded,
+          loading: isCreating,
+          onPressed: isCreating ? null : createRide,
         ),
       ),
     );
   }
 
-  Widget _stopsSection({
-    required Color forest,
-    required Color primary,
-    required Color neutralWarm,
-  }) {
+  Widget _buildStopsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "ROUTE STOPS",
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: forest.withValues(alpha: 0.8),
+          'ROUTE STOPS',
+          style: AppTypography.labelMedium.copyWith(
+            color: AppColors.forest.withValues(alpha: 0.8),
           ),
         ),
         const SizedBox(height: 10),
@@ -891,25 +771,32 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           controller: stopsController,
           minLines: 2,
           maxLines: 4,
-          style: TextStyle(color: forest, fontWeight: FontWeight.w600),
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.forest,
+            fontWeight: FontWeight.w600,
+          ),
           decoration: InputDecoration(
-            hintText: "Optional. Add one stop per line",
-            helperText: "Example: Fuel stop\nBreakfast point",
-            helperStyle: TextStyle(
-              color: neutralWarm.withValues(alpha: 0.9),
-              fontWeight: FontWeight.w600,
+            hintText: 'Optional. Add one stop per line',
+            hintStyle: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textTertiary,
+            ),
+            helperText: 'Example: Fuel stop\nBreakfast point',
+            helperStyle: AppTypography.caption.copyWith(
+              color: AppColors.textSecondary,
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppColors.surface,
             enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(
-                color: Colors.black.withValues(alpha: 0.05),
-              ),
-              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: AppColors.divider),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
             focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: primary, width: 2),
-              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
             ),
           ),
         ),
@@ -917,36 +804,23 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     );
   }
 
-  Widget _logisticsSection({
-    required Color forest,
-    required Color primary,
-    required Color neutralWarm,
-  }) {
+  Widget _buildLogisticsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "MAXIMUM RIDERS",
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: forest.withValues(alpha: 0.8),
+          'MAXIMUM RIDERS',
+          style: AppTypography.labelMedium.copyWith(
+            color: AppColors.forest.withValues(alpha: 0.8),
           ),
         ),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
-              ),
-            ],
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            boxShadow: AppShadows.sm,
           ),
           child: Column(
             children: [
@@ -954,14 +828,16 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.groups_rounded, color: primary, size: 18),
+                      Icon(
+                        Icons.groups_rounded,
+                        color: AppColors.primary,
+                        size: 18,
+                      ),
                       const SizedBox(width: 6),
                       Text(
-                        "Max Riders",
-                        style: TextStyle(
-                          color: forest,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                        'Max Riders',
+                        style: AppTypography.titleMedium.copyWith(
+                          color: AppColors.forest,
                         ),
                       ),
                     ],
@@ -969,20 +845,18 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                   const Spacer(),
                   Text(
                     maxRiders.round().toString(),
-                    style: TextStyle(
-                      color: primary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
+                    style: AppTypography.headlineMedium.copyWith(
+                      color: AppColors.primary,
                     ),
                   ),
                 ],
               ),
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: primary,
-                  inactiveTrackColor: primary.withValues(alpha: 0.18),
+                  activeTrackColor: AppColors.primary,
+                  inactiveTrackColor: AppColors.primary.withValues(alpha: 0.18),
                   thumbColor: Colors.white,
-                  overlayColor: primary.withValues(alpha: 0.15),
+                  overlayColor: AppColors.primary.withValues(alpha: 0.15),
                   thumbShape: const RoundSliderThumbShape(
                     enabledThumbRadius: 10,
                   ),
@@ -992,33 +866,8 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                   max: 25,
                   divisions: 24,
                   value: maxRiders,
-                  onChanged: (value) {
-                    setState(() {
-                      maxRiders = value;
-                    });
-                  },
+                  onChanged: (value) => setState(() => maxRiders = value),
                 ),
-              ),
-              Row(
-                children: [
-                  Text(
-                    "Solo",
-                    style: TextStyle(
-                      color: neutralWarm,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    "Unlimited",
-                    style: TextStyle(
-                      color: neutralWarm,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
@@ -1027,141 +876,62 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     );
   }
 
-  Future<String> _resolveStartLocation() async {
-    final cached = currentLatLng;
-    if (cached != null) {
-      return "${cached.latitude.toStringAsFixed(6)},${cached.longitude.toStringAsFixed(6)}";
-    }
-
-    try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        return "Unknown start";
-      }
-
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        return "Unknown start";
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 8),
-        ),
-      );
-
-      return "${position.latitude.toStringAsFixed(6)},${position.longitude.toStringAsFixed(6)}";
-    } catch (_) {
-      return "Unknown start";
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchDebounce?.cancel();
-    destinationController.removeListener(_onDestinationChanged);
-    rideNameController.dispose();
-    destinationController.dispose();
-    stopsController.dispose();
-    super.dispose();
-  }
-
-  Future<List<RouteStop>> _resolveStops(String destinationLabel) async {
-    final rawStops =
-        stopsController.text
-            .split(RegExp(r'[\n,]+'))
-            .map((stop) => stop.trim())
-            .where((stop) => stop.isNotEmpty)
-            .toList();
-    final resolved = <RouteStop>[];
-    for (var index = 0; index < rawStops.length; index++) {
-      final point = await _geocodeSingle(rawStops[index]);
-      if (point == null) continue;
-      resolved.add(
-        RouteStop(
-          label: rawStops[index],
-          latitude: point.latitude,
-          longitude: point.longitude,
-          order: index,
-        ),
-      );
-    }
-    if (destinationLatLng != null) {
-      resolved.add(
-        RouteStop(
-          label: destinationLabel,
-          latitude: destinationLatLng!.latitude,
-          longitude: destinationLatLng!.longitude,
-          order: resolved.length,
-        ),
-      );
-    }
-    return resolved;
-  }
-
-  Future<LatLng?> _geocodeSingle(String query) async {
-    final trimmed = query.trim();
-    if (trimmed.length < 3) return null;
-    try {
-      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
-        'q': trimmed,
-        'format': 'jsonv2',
-        'limit': '1',
-      });
-      final response = await http.get(
-        uri,
-        headers: const {
-          'User-Agent': 'JourneySync/1.0 (journeysync.app@gmail.com)',
-        },
-      );
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return null;
-      }
-      final decoded = jsonDecode(response.body);
-      if (decoded is! List || decoded.isEmpty) return null;
-      final first = decoded.first;
-      if (first is! Map<String, dynamic>) return null;
-      final lat = double.tryParse((first['lat'] ?? '').toString());
-      final lng = double.tryParse((first['lon'] ?? '').toString());
-      if (lat == null || lng == null) return null;
-      return LatLng(lat, lng);
-    } catch (_) {
-      return null;
-    }
-  }
-
   bool _looksLikeUuid(String value) {
-    final uuidPattern = RegExp(
-      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
-    );
-    return uuidPattern.hasMatch(value.trim());
+    return value.length >= 20;
+  }
+
+  Future<String> _resolveStartLocation() async {
+    if (currentLocationLabel.isNotEmpty &&
+        currentLocationLabel != 'Locating your current position...' &&
+        currentLocationLabel != 'Location service disabled' &&
+        currentLocationLabel != 'Location permission not granted' &&
+        currentLocationLabel != 'Unable to fetch current location') {
+      return currentLocationLabel;
+    }
+    if (currentLatLng != null) return _latLngText(currentLatLng!);
+    return 'Current location';
+  }
+
+  Future<List<RouteStop>> _resolveStops(String destination) async {
+    final lines = stopsController.text.trim();
+    if (lines.isEmpty) return [];
+    final parts =
+        lines
+            .split('\n')
+            .map((l) => l.trim())
+            .where((l) => l.isNotEmpty)
+            .toList();
+    return parts.asMap().entries.map((entry) {
+      return RouteStop(
+        label: entry.value,
+        latitude: null,
+        longitude: null,
+        order: entry.key,
+      );
+    }).toList();
   }
 
   String _createRideErrorMessage(Object error) {
     final text = error.toString();
-    final lower = text.toLowerCase();
-    if (lower.contains('end_location') && lower.contains('pgrst204')) {
-      return 'Server schema mismatch detected, but app fallback should handle it. Please retry once.';
+    if (text.contains('RLS') || text.contains('row-level security')) {
+      return 'Database permission issue. Check Supabase RLS policies.';
     }
-    if (lower.contains('creator_id') && lower.contains('pgrst204')) {
-      return 'Server DB mismatch: rides.creator_id is missing from Supabase schema cache. Add the column or use user_id and reload schema cache.';
-    }
-    if (lower.contains('rls')) {
-      return 'Supabase RLS blocked ride creation. Add INSERT/SELECT policy for rides.';
-    }
+    if (text.length > 100) return text.substring(0, 100);
     return text;
+  }
+
+  @override
+  void dispose() {
+    rideNameController.dispose();
+    destinationController.dispose();
+    stopsController.dispose();
+    _searchDebounce?.cancel();
+    super.dispose();
   }
 }
 
 class _DestinationSuggestion {
   const _DestinationSuggestion({required this.title, required this.point});
-
   final String title;
   final LatLng point;
 }

@@ -362,7 +362,9 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
     final route = _rideRoute;
     if (route != null) {
       for (final stop in route.stops) {
-        points.add(LatLng(stop.latitude, stop.longitude));
+        if (stop.latitude != null && stop.longitude != null) {
+          points.add(LatLng(stop.latitude!, stop.longitude!));
+        }
       }
     }
     return points;

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../widgets/app_toast.dart';
+import '../theme/app_theme.dart';
+import '../widgets/premium/premium_button.dart';
+import '../widgets/premium/glass_card.dart';
+import '../widgets/premium/premium_input.dart';
+import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
@@ -14,157 +18,193 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final AuthService authService = AuthService();
 
-  String accessToken = "";
-
-  String jwtToken = "";
-
-  String verifiedPhone = "";
+  String accessToken = '';
+  String jwtToken = '';
+  String verifiedPhone = '';
   PhoneIdentity? verifiedIdentity;
   bool isSubmitting = false;
 
   final nameController = TextEditingController();
-
   final bikeController = TextEditingController();
 
   AuthMode authMode = AuthMode.existingAccount;
   bool quickLoginLoading = false;
   SessionUser? cachedUser;
 
-  final primary = const Color(0xFFDB7706);
-  final forest = const Color(0xFF1E2D24);
-  final sandText = const Color(0xFF4A3F35);
-  final backgroundLight = const Color(0xFFF8F7F5);
+  late final AnimationController _pageController;
+  late final Animation<double> _pageAnimation;
 
   @override
   void initState() {
     super.initState();
+    _pageController = AnimationController(
+      vsync: this,
+      duration: AppDurations.slow,
+    )..forward();
+    _pageAnimation = CurvedAnimation(
+      parent: _pageController,
+      curve: AppCurves.easeOutCubic,
+    );
     _loadQuickLoginCandidate();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isCompactHeight = size.height < 720;
-    final isTightWidth = size.width < 360;
-    final horizontalPad = isTightWidth ? 18.0 : 24.0;
-    final sectionGap = isCompactHeight ? 22.0 : 28.0;
-    final fieldGap = isCompactHeight ? 14.0 : 18.0;
-    final titleSize = isCompactHeight ? 30.0 : 34.0;
-    final subtitleSize = isCompactHeight ? 15.0 : 16.0;
+  void dispose() {
+    _pageController.dispose();
+    nameController.dispose();
+    bikeController.dispose();
+    super.dispose();
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundLight,
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
+          // Ambient gradient orbs
+          Positioned(
+            top: -80,
+            right: -60,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withValues(alpha: 0.06),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -40,
+            left: -40,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.forest.withValues(alpha: 0.06),
+              ),
+            ),
+          ),
           SafeArea(
             child: Column(
               children: [
-                _topBar(),
+                // Top brand bar
+                _buildTopBar(),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      horizontalPad,
-                      8,
-                      horizontalPad,
-                      16,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _titleBlock(
-                          titleSize: titleSize,
-                          subtitleSize: subtitleSize,
+                  child: FadeTransition(
+                    opacity: _pageAnimation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.03),
+                        end: Offset.zero,
+                      ).animate(_pageAnimation),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.xxl,
+                          8,
+                          AppSpacing.xxl,
+                          40,
                         ),
-                        SizedBox(height: sectionGap),
-                        _accountModeToggle(),
-                        const SizedBox(height: 16),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 320),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          transitionBuilder: (child, animation) {
-                            final slide = Tween<Offset>(
-                              begin: const Offset(0, 0.06),
-                              end: Offset.zero,
-                            ).animate(animation);
-                            return FadeTransition(
-                              opacity: animation,
-                              child: SlideTransition(
-                                position: slide,
-                                child: child,
-                              ),
-                            );
-                          },
-                          child:
-                              authMode == AuthMode.existingAccount
-                                  ? _phoneVerificationStep(
-                                    fieldGap: fieldGap,
-                                    keyValue:
-                                        "auth0_${authMode.name}_${verifiedPhone.isNotEmpty}",
-                                  )
-                                  : _registrationForm(
-                                    fieldGap: fieldGap,
-                                    keyValue: "reg_${authMode.name}",
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 12),
+                            // Hero section
+                            _buildHero(),
+                            const SizedBox(height: 32),
+                            // Mode toggle
+                            _buildModeToggle(),
+                            const SizedBox(height: 20),
+                            // Dynamic content
+                            AnimatedSwitcher(
+                              duration: AppDurations.normal,
+                              switchInCurve: AppCurves.easeOutCubic,
+                              switchOutCurve: AppCurves.easeInCubic,
+                              transitionBuilder: (child, animation) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(0, 0.04),
+                                      end: Offset.zero,
+                                    ).animate(
+                                      CurvedAnimation(
+                                        parent: animation,
+                                        curve: AppCurves.easeOutCubic,
+                                      ),
+                                    ),
+                                    child: child,
                                   ),
+                                );
+                              },
+                              child:
+                                  authMode == AuthMode.existingAccount
+                                      ? _buildPhoneVerification(
+                                        key: ValueKey(
+                                          'auth_${verifiedPhone.isNotEmpty}',
+                                        ),
+                                      )
+                                      : _buildRegistrationForm(
+                                        key: const ValueKey('reg'),
+                                      ),
+                            ),
+                            const SizedBox(height: 24),
+                            // Primary action
+                            _buildPrimaryAction(),
+                            const SizedBox(height: 20),
+                            // Legal text
+                            _buildLegalText(),
+                          ],
                         ),
-                        const SizedBox(height: 24),
-                        _primaryAction(),
-                        const SizedBox(height: 20),
-                        _legalText(),
-                        SizedBox(height: sectionGap + 12),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(height: 6, color: forest),
-          ),
         ],
       ),
     );
   }
 
-  Widget _topBar() {
+  Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 6),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 14, AppSpacing.xl, 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: forest,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.forest,
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   child: Image.asset(
-                    "assets/logo.png",
-                    width: 22,
-                    height: 22,
+                    'assets/logo.png',
+                    width: 20,
+                    height: 20,
                     fit: BoxFit.cover,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Text(
-                "JourneySync",
-                style: TextStyle(
-                  fontSize: 20,
+                'JourneySync',
+                style: AppTypography.titleLarge.copyWith(
+                  color: AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
-                  color: sandText,
-                  letterSpacing: -0.2,
                 ),
               ),
             ],
@@ -172,78 +212,62 @@ class _LoginScreenState extends State<LoginScreen> {
           IconButton(
             onPressed: _showAuthHelp,
             icon: Icon(
-              Icons.help_outline,
-              color: forest.withValues(alpha: 0.6),
+              Icons.help_outline_rounded,
+              color: AppColors.textTertiary,
             ),
-            tooltip: "Help",
+            tooltip: 'Help',
           ),
         ],
       ),
     );
   }
 
-  Widget _titleBlock({
-    required double titleSize,
-    required double subtitleSize,
-  }) {
-    final subtitle =
-        authMode == AuthMode.newAccount
-            ? "Create your profile once, then authenticate to get started."
-            : "Already have an account? Sign in and continue instantly.";
-
+  Widget _buildHero() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: TextSpan(
-            style: TextStyle(
-              fontSize: titleSize,
-              fontWeight: FontWeight.w800,
-              color: sandText,
-              height: 1.05,
-            ),
-            children: [
-              const TextSpan(text: "Adventure "),
-              TextSpan(text: "Awaits", style: TextStyle(color: primary)),
-            ],
+        Text(
+          authMode == AuthMode.newAccount ? 'Create Account' : 'Welcome Back',
+          style: AppTypography.displaySmall.copyWith(
+            color: AppColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: subtitleSize,
-            height: 1.5,
-            color: sandText.withValues(alpha: 0.7),
-            fontWeight: FontWeight.w600,
+          authMode == AuthMode.newAccount
+              ? 'Set up your profile to start riding with your crew.'
+              : 'Sign in to continue where you left off.',
+          style: AppTypography.bodyLarge.copyWith(
+            color: AppColors.textSecondary,
           ),
         ),
       ],
     );
   }
 
-  Widget _accountModeToggle() {
+  Widget _buildModeToggle() {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: forest.withValues(alpha: 0.12)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: AppColors.divider),
+        boxShadow: AppShadows.sm,
       ),
       child: Row(
         children: [
           Expanded(
-            child: _modeOption(
-              label: "Existing Account",
+            child: _toggleOption(
+              label: 'Sign In',
               selected: authMode == AuthMode.existingAccount,
-              onTap: () => _switchAuthMode(AuthMode.existingAccount),
+              onTap: () => _switchMode(AuthMode.existingAccount),
             ),
           ),
           Expanded(
-            child: _modeOption(
-              label: "New Account",
+            child: _toggleOption(
+              label: 'Create Account',
               selected: authMode == AuthMode.newAccount,
-              onTap: () => _switchAuthMode(AuthMode.newAccount),
+              onTap: () => _switchMode(AuthMode.newAccount),
             ),
           ),
         ],
@@ -251,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _modeOption({
+  Widget _toggleOption({
     required String label,
     required bool selected,
     required VoidCallback onTap,
@@ -259,79 +283,206 @@ class _LoginScreenState extends State<LoginScreen> {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(vertical: 11),
+        duration: AppDurations.fast,
+        curve: AppCurves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? forest : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          color: selected ? AppColors.forest : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
         child: Text(
           label,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.2,
-            color: selected ? Colors.white : sandText.withValues(alpha: 0.85),
+          style: AppTypography.buttonMedium.copyWith(
+            color: selected ? AppColors.textOnDark : AppColors.textSecondary,
           ),
         ),
       ),
     );
   }
 
-  void _switchAuthMode(AuthMode mode) {
+  void _switchMode(AuthMode mode) {
     if (authMode == mode) return;
     setState(() {
       authMode = mode;
-      verifiedPhone = "";
+      verifiedPhone = '';
       verifiedIdentity = null;
-      accessToken = "";
-      jwtToken = "";
+      accessToken = '';
+      jwtToken = '';
     });
   }
 
-  Widget _registrationForm({
-    required double fieldGap,
-    required String keyValue,
-  }) {
+  Widget _buildPhoneVerification({required Key key}) {
     return Column(
-      key: ValueKey(keyValue),
+      key: key,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _labeledField(
-          label: "Full Name",
-          icon: Icons.person,
+        Text(
+          'AUTHENTICATION',
+          style: AppTypography.labelMedium.copyWith(color: AppColors.primary),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Sign in with your account to access your rides.',
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 20),
+        if (authMode == AuthMode.existingAccount &&
+            cachedUser != null &&
+            verifiedPhone.isEmpty) ...[
+          // Quick login with cached account
+          GlassCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            onTap: quickLoginLoading ? null : _continueWithCachedAccount,
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.forest.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: Icon(
+                    Icons.person_outline_rounded,
+                    color: AppColors.forest,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        quickLoginLoading
+                            ? 'Loading account...'
+                            : 'Continue as ${cachedUser!.name}',
+                        style: AppTypography.titleMedium.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        'Tap to sign in instantly',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (quickLoginLoading)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: AppColors.textTertiary,
+                    size: 14,
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+            child: Row(
+              children: [
+                const Expanded(child: Divider()),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'OR',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ),
+                const Expanded(child: Divider()),
+              ],
+            ),
+          ),
+        ],
+        if (verifiedPhone.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: AppColors.success.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.verified_rounded,
+                  color: AppColors.success,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Authenticated as $verifiedPhone',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRegistrationForm({required Key key}) {
+    return Column(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PremiumInput(
           controller: nameController,
-          hint: "John Doe",
-          textInputType: TextInputType.name,
+          label: 'Full Name',
+          hint: 'Enter your name',
+          icon: Icons.person_outline_rounded,
+          keyboardType: TextInputType.name,
         ),
-        SizedBox(height: fieldGap),
-        _labeledField(
-          label: "Bike Name",
-          icon: Icons.two_wheeler,
+        const SizedBox(height: 20),
+        PremiumInput(
           controller: bikeController,
-          hint: "e.g. Desert Sled",
-          textInputType: TextInputType.text,
+          label: 'Bike Name',
+          hint: 'e.g. Ducati Desert Sled',
+          icon: Icons.two_wheeler_outlined,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: forest.withValues(alpha: 0.12)),
+            color: AppColors.primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.12),
+            ),
           ),
           child: Row(
             children: [
-              Icon(Icons.info_outline, color: primary, size: 18),
-              const SizedBox(width: 8),
+              Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.primary,
+                size: 18,
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  "Register once, then returning logins only need one-tap sign in.",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: sandText.withValues(alpha: 0.85),
+                  'Register once, then sign in instantly on return.',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -343,226 +494,48 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _phoneVerificationStep({
-    required double fieldGap,
-    required String keyValue,
-  }) {
-    final helpText =
-        authMode == AuthMode.existingAccount
-            ? "Authenticate to fetch your profile from JourneySync."
-            : "Tap the button below to authenticate and continue.";
-
-    return Column(
-      key: ValueKey(keyValue),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "SIGN IN",
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.6,
-            color: forest,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          helpText,
-          style: TextStyle(
-            fontSize: 13,
-            color: sandText.withValues(alpha: 0.75),
-            fontWeight: FontWeight.w600,
-            height: 1.4,
-          ),
-        ),
-        SizedBox(height: fieldGap),
-        if (authMode == AuthMode.existingAccount &&
-            cachedUser != null &&
-            verifiedPhone.isEmpty) ...[
-          OutlinedButton.icon(
-            onPressed: quickLoginLoading ? null : _continueWithCachedAccount,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: forest,
-              side: BorderSide(color: forest.withValues(alpha: 0.2)),
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            icon:
-                quickLoginLoading
-                    ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                    : const Icon(Icons.person_outline),
-            label: Text(
-              quickLoginLoading
-                  ? "Loading account..."
-                  : "Continue as ${cachedUser!.name}",
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            "Or sign in again with Auth0.",
-            style: TextStyle(
-              fontSize: 12,
-              color: sandText.withValues(alpha: 0.65),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: fieldGap),
-        ],
-        if (verifiedPhone.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.green.withValues(alpha: 0.25)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.verified, color: Colors.green, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "Authenticated: $verifiedPhone",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.green,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _labeledField({
-    required String label,
-    required IconData icon,
-    required TextEditingController controller,
-    required String hint,
-    required TextInputType textInputType,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4),
-          child: Text(
-            label.toUpperCase(),
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.6,
-              color: forest,
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          keyboardType: textInputType,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: sandText,
-          ),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(
-              color: sandText.withValues(alpha: 0.3),
-              fontWeight: FontWeight.w600,
-            ),
-            filled: true,
-            fillColor: Colors.white,
-            prefixIcon: Icon(icon, color: sandText.withValues(alpha: 0.4)),
-            contentPadding: const EdgeInsets.symmetric(
-              vertical: 18,
-              horizontal: 12,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: forest.withValues(alpha: 0.1),
-                width: 2,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: primary, width: 2),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _primaryAction() {
+  Widget _buildPrimaryAction() {
     final requiresDetails = authMode == AuthMode.newAccount;
-    final buttonLabel = isSubmitting ? "Please wait..." : "Continue";
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ElevatedButton(
+        PremiumButton(
+          label:
+              isSubmitting
+                  ? 'Please wait...'
+                  : (requiresDetails
+                      ? 'Create Account & Continue'
+                      : 'Continue'),
+          icon: isSubmitting ? null : Icons.arrow_forward_rounded,
+          trailing:
+              isSubmitting
+                  ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                  : null,
+          loading: isSubmitting,
           onPressed:
               isSubmitting
                   ? null
                   : () =>
                       _handlePrimaryContinue(requiresDetails: requiresDetails),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primary,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 8,
-            shadowColor: primary.withValues(alpha: 0.2),
-          ),
-          child:
-              isSubmitting
-                  ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      color: Colors.white,
-                    ),
-                  )
-                  : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        buttonLabel,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward, color: Colors.white),
-                    ],
-                  ),
         ),
       ],
     );
   }
 
-  Widget _legalText() {
+  Widget _buildLegalText() {
     return Text(
-      "By continuing, you agree to JourneySync's Terms of Service and Privacy Policy.",
+      'By continuing, you agree to JourneySync\'s Terms of Service and Privacy Policy.',
       textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: 11,
+      style: AppTypography.caption.copyWith(
+        color: AppColors.textTertiary,
         height: 1.5,
-        color: sandText.withValues(alpha: 0.5),
       ),
     );
   }
@@ -573,40 +546,37 @@ class _LoginScreenState extends State<LoginScreen> {
       context: context,
       builder:
           (_) => AlertDialog(
-            title: const Text("Login Help"),
-            content: const Text(
-              "1. Existing Account: sign in with Auth0 and continue.\n\n"
-              "2. New Account: fill Name and Bike, then Continue.\n\n"
-              "If login fails, verify Auth0 callback/logout URLs are configured.",
+            title: Text('Login Help', style: AppTypography.headlineSmall),
+            content: Text(
+              '1. Existing Account: Sign in with Auth0 and continue.\n\n'
+              '2. New Account: Fill Name and Bike, then Continue.\n\n'
+              'If login fails, verify Auth0 callback/logout URLs are configured.',
+              style: AppTypography.bodyMedium,
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("OK"),
+                child: Text(
+                  'OK',
+                  style: AppTypography.buttonMedium.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
             ],
           ),
     );
   }
 
-  @override
-  void dispose() {
-    nameController.dispose();
-    bikeController.dispose();
-    super.dispose();
-  }
-
   Future<void> _completeSignIn() async {
     final identity = verifiedIdentity;
     if (identity == null) {
       if (!mounted) return;
-      showAppToast(context, "Sign in first.", type: AppToastType.error);
+      showPremiumToast(context, 'Sign in first.', type: PremiumToastType.error);
       return;
     }
 
-    setState(() {
-      isSubmitting = true;
-    });
+    setState(() => isSubmitting = true);
 
     try {
       final enteredName = nameController.text.trim();
@@ -614,7 +584,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (authMode == AuthMode.newAccount &&
           (enteredName.isEmpty || enteredBike.isEmpty)) {
-        throw Exception("Please fill name and bike.");
+        throw Exception('Please fill name and bike.');
       }
 
       final user = await authService.resolveUser(
@@ -636,7 +606,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       final errorText = error.toString();
       final noAccountFound = errorText.contains(
-        "No account found for this account",
+        'No account found for this account',
       );
 
       if (noAccountFound && authMode == AuthMode.existingAccount) {
@@ -646,10 +616,10 @@ class _LoginScreenState extends State<LoginScreen> {
             nameController.text = identity.fullName;
           }
         });
-        showAppToast(
+        showPremiumToast(
           context,
-          "No account found. Please add your name and bike to create one.",
-          type: AppToastType.info,
+          'No account found. Please add your name and bike.',
+          type: PremiumToastType.info,
         );
         return;
       }
@@ -658,25 +628,21 @@ class _LoginScreenState extends State<LoginScreen> {
           (error is PostgrestException && (error.code ?? '') == '42501') ||
           errorText.toLowerCase().contains('row-level security');
       if (rlsBlocked) {
-        showAppToast(
+        showPremiumToast(
           context,
-          "Supabase RLS blocked this request. Enable users SELECT/INSERT policy for anon.",
-          type: AppToastType.error,
+          'Supabase RLS blocked this request. Enable policies.',
+          type: PremiumToastType.error,
         );
         return;
       }
 
-      showAppToast(
+      showPremiumToast(
         context,
-        "Could not continue: $error",
-        type: AppToastType.error,
+        'Could not continue: $error',
+        type: PremiumToastType.error,
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          isSubmitting = false;
-        });
-      }
+      if (mounted) setState(() => isSubmitting = false);
     }
   }
 
@@ -684,11 +650,9 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final user = await authService.tryResolveCachedUser();
       if (!mounted) return;
-      setState(() {
-        cachedUser = user;
-      });
+      setState(() => cachedUser = user);
     } catch (_) {
-      // If quick lookup fails, explicit sign-in remains available.
+      // Explicit sign-in remains available
     } finally {
       if (mounted) setState(() {});
     }
@@ -696,30 +660,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _continueWithCachedAccount() async {
     if (quickLoginLoading || cachedUser == null) return;
-    setState(() {
-      quickLoginLoading = true;
-    });
+    setState(() => quickLoginLoading = true);
     try {
       await authService.saveSession(
         user: cachedUser!,
-        accessToken: "",
-        jwtToken: "",
+        accessToken: '',
+        jwtToken: '',
       );
       if (!mounted) return;
       replaceWithAppRoute(context, const HomeScreen());
     } catch (error) {
       if (!mounted) return;
-      showAppToast(
+      showPremiumToast(
         context,
-        "Could not continue with cached account: $error",
-        type: AppToastType.error,
+        'Could not continue with cached account.',
+        type: PremiumToastType.error,
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          quickLoginLoading = false;
-        });
-      }
+      if (mounted) setState(() => quickLoginLoading = false);
     }
   }
 
@@ -738,17 +696,17 @@ class _LoginScreenState extends State<LoginScreen> {
       final message = error.toString();
       if (message.toLowerCase().contains('callback') &&
           message.toLowerCase().contains('mismatch')) {
-        showAppToast(
+        showPremiumToast(
           context,
-          "Auth0 callback mismatch. Add journeysync://dev-0vu7hpbbw1pjelnk.us.auth0.com/android/com.example.journeysync/callback to Allowed Callback/Logout URLs.",
-          type: AppToastType.error,
+          'Auth0 callback mismatch. Check console for details.',
+          type: PremiumToastType.error,
         );
         return;
       }
-      showAppToast(
+      showPremiumToast(
         context,
-        "Auth0 login failed: $error",
-        type: AppToastType.error,
+        'Auth0 login failed: $error',
+        type: PremiumToastType.error,
       );
     }
   }
@@ -758,32 +716,26 @@ class _LoginScreenState extends State<LoginScreen> {
     if (requiresDetails &&
         (nameController.text.trim().isEmpty ||
             bikeController.text.trim().isEmpty)) {
-      showAppToast(
+      showPremiumToast(
         context,
-        "Please fill name and bike.",
-        type: AppToastType.error,
+        'Please fill name and bike.',
+        type: PremiumToastType.error,
       );
       return;
     }
 
-    setState(() {
-      isSubmitting = true;
-    });
+    setState(() => isSubmitting = true);
 
     try {
       if (verifiedIdentity == null || verifiedPhone.isEmpty) {
         await _authenticateWithAuth0();
       }
       if (verifiedIdentity == null || verifiedPhone.isEmpty) {
-        throw Exception("Authentication was not completed.");
+        throw Exception('Authentication was not completed.');
       }
       await _completeSignIn();
     } finally {
-      if (mounted) {
-        setState(() {
-          isSubmitting = false;
-        });
-      }
+      if (mounted) setState(() => isSubmitting = false);
     }
   }
 }

@@ -1,28 +1,28 @@
 class RouteStop {
   const RouteStop({
     required this.label,
-    required this.latitude,
-    required this.longitude,
+    this.latitude,
+    this.longitude,
     required this.order,
   });
 
   final String label;
-  final double latitude;
-  final double longitude;
+  final double? latitude;
+  final double? longitude;
   final int order;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'label': label,
-    'latitude': latitude,
-    'longitude': longitude,
+    if (latitude != null) 'latitude': latitude,
+    if (longitude != null) 'longitude': longitude,
     'order': order,
   };
 
   factory RouteStop.fromJson(Map<String, dynamic> json) {
     return RouteStop(
       label: (json['label'] ?? '').toString().trim(),
-      latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
-      longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
       order: (json['order'] as num?)?.toInt() ?? 0,
     );
   }

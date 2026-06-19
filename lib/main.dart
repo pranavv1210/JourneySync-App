@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/app_navigation.dart';
 import 'services/app_config.dart';
 import 'screens/splash_screen.dart';
+import 'theme/app_theme.dart';
 
 const String _supabaseUrl = String.fromEnvironment(
   'SUPABASE_URL',
@@ -70,6 +71,8 @@ class JourneySyncApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      title: 'JourneySync',
+      theme: AppTheme.light,
       navigatorObservers: [appRouteObserver],
       home: SplashScreen(initializationFuture: initializationFuture),
     );

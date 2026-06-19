@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../widgets/app_toast.dart';
+import '../theme/app_theme.dart';
+import '../widgets/premium/glass_card.dart';
+import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
 import 'create_ride_screen.dart';
 import 'map_screen.dart';
@@ -29,12 +31,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   final RideService _rideService = RideService();
   final WeatherService _weatherService = WeatherService();
 
-  String name = "Rider";
-  String bike = "No bike added";
-  String userPhone = "";
-  String userId = "";
-  String loadError = "";
-  String weatherText = "Weather unavailable";
+  String name = 'Rider';
+  String bike = 'No bike added';
+  String userPhone = '';
+  String userId = '';
+  String loadError = '';
+  String weatherText = 'Weather unavailable';
 
   bool loading = false;
   bool refreshingHome = false;
@@ -70,20 +72,15 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   Future<void> _loadHomeData({bool showBlockingLoader = false}) async {
-    if (!mounted) {
-      return;
-    }
-    if (showBlockingLoader) {
-      setState(() {
+    if (!mounted) return;
+    setState(() {
+      if (showBlockingLoader) {
         loading = true;
-        loadError = "";
-      });
-    } else {
-      setState(() {
+      } else {
         refreshingHome = true;
-        loadError = "";
-      });
-    }
+      }
+      loadError = '';
+    });
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -156,8 +153,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           final nearby = await nearbyFuture;
           fetchedNearby = nearby.map((item) => item.ride).toList();
         } catch (error) {
-          // Keep home usable even if ride list fetch fails.
-          debugPrint("Home ride fetch failed: $error");
+          debugPrint('Home ride fetch failed: $error');
         }
       }
       try {
@@ -166,12 +162,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           weatherValue = weather.displayText.trim();
         }
       } catch (error) {
-        debugPrint("Weather fetch failed: $error");
+        debugPrint('Weather fetch failed: $error');
       }
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         name = resolvedName.isNotEmpty ? resolvedName : 'Rider';
         bike = resolvedBike.isNotEmpty ? resolvedBike : 'No bike added';
@@ -183,15 +177,11 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         loadError =
             !fetchedProfileFromServer && profileErrorText.isNotEmpty
                 ? profileErrorText
-                : "";
+                : '';
       });
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        loadError = _humanizeLoadError(error);
-      });
+      if (!mounted) return;
+      setState(() => loadError = _humanizeLoadError(error));
     } finally {
       if (mounted) {
         setState(() {
@@ -215,19 +205,36 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFFD46211);
-    const primaryDark = Color(0xFFB04E0A);
-
-    const forest = Color(0xFF1E3A2F);
-    const background = Color(0xFFF8F7F6);
-    const sandDarker = Color(0xFFE8E4DE);
-
     if (loading && recentRides.isEmpty && nearbyRides.isEmpty) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Loading your rides...',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           SafeArea(
@@ -242,33 +249,35 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                         if (refreshingHome)
                           const Padding(
                             padding: EdgeInsets.only(bottom: 10),
-                            child: LinearProgressIndicator(minHeight: 2),
+                            child: LinearProgressIndicator(
+                              minHeight: 2,
+                              color: AppColors.primary,
+                            ),
                           ),
                         if (loadError.isNotEmpty)
                           Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                               border: Border.all(
-                                color: primary.withValues(alpha: 0.2),
+                                color: AppColors.primary.withValues(alpha: 0.2),
                               ),
                             ),
                             child: Row(
                               children: [
                                 Icon(
-                                  Icons.info_outline,
-                                  color: primary,
+                                  Icons.info_outline_rounded,
+                                  color: AppColors.primary,
                                   size: 16,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     loadError,
-                                    style: TextStyle(
-                                      color: forest,
-                                      fontSize: 12,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: AppColors.forest,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -276,24 +285,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                               ],
                             ),
                           ),
-                        _header(primary, forest),
-                        const SizedBox(height: 18),
-                        _quickStatus(
-                          primary,
-                          forest,
-                          sandDarker,
-                          weatherText,
-                          bike,
-                        ),
-                        const SizedBox(height: 22),
-                        _primaryActions(
-                          primary,
-                          primaryDark,
-                          forest,
-                          nearbyRides,
-                        ),
-                        const SizedBox(height: 22),
-                        _recentJourneysSection(primary, forest, sandDarker),
+                        _buildHeader(),
+                        const SizedBox(height: 20),
+                        _buildQuickStatus(),
+                        const SizedBox(height: 24),
+                        _buildPrimaryActions(),
+                        const SizedBox(height: 24),
+                        _buildRecentJourneys(),
                         const SizedBox(height: 16),
                       ],
                     ),
@@ -304,9 +302,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           ),
         ],
       ),
-      bottomNavigationBar: _bottomNav(primary),
+      bottomNavigationBar: _buildBottomNav(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: _centerRideButton(primary),
+      floatingActionButton: _buildCenterRideButton(),
     );
   }
 
@@ -325,145 +323,126 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     return 'Failed to load latest data. Showing cached profile.';
   }
 
-  Widget _header(Color primary, Color forest) {
+  Widget _buildHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "WELCOME BACK",
-          style: TextStyle(
-            fontSize: 12,
-            color: primary.withValues(alpha: 0.8),
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.6,
-          ),
+          'WELCOME BACK',
+          style: AppTypography.labelMedium.copyWith(color: AppColors.primary),
         ),
         const SizedBox(height: 4),
         Text(
           "Let's ride, $name",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            color: forest,
-          ),
+          style: AppTypography.headlineLarge.copyWith(color: AppColors.forest),
         ),
       ],
     );
   }
 
-  Widget _quickStatus(
-    Color primary,
-    Color forest,
-    Color sandDarker,
-    String weather,
-    String bike,
-  ) {
+  Widget _buildQuickStatus() {
     return Row(
       children: [
         Expanded(
-          child: _statusCard(
-            icon: Icons.wb_sunny,
-            iconBg: const Color(0xFFEFF6FF),
-            iconColor: Colors.blue,
-            title: "Weather",
-            value: weather,
-            borderColor: sandDarker,
-            textColor: forest,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _statusCard(
-            icon: Icons.two_wheeler,
-            iconBg: primary.withValues(alpha: 0.1),
-            iconColor: primary,
-            title: "My Bike",
-            value: bike,
-            borderColor: sandDarker,
-            textColor: forest,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _statusCard({
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    required String title,
-    required String value,
-    required Color borderColor,
-    required Color textColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor.withValues(alpha: 0.6)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: PremiumCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
               children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w600,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: const Icon(
+                    Icons.wb_sunny_rounded,
+                    color: Color(0xFF2563EB),
+                    size: 20,
                   ),
                 ),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Weather',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                      Text(
+                        weatherText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.titleMedium.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: PremiumCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Icon(
+                    Icons.two_wheeler_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'My Bike',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                      Text(
+                        bike,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.titleMedium.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _primaryActions(
-    Color primary,
-    Color primaryDark,
-    Color forest,
-    List<RideRecord> nearby,
-  ) {
+  Widget _buildPrimaryActions() {
     final nearbySubtitle =
-        nearby.isEmpty
-            ? "No nearby rides right now"
-            : "${nearby.length} ride(s) found nearby";
+        nearbyRides.isEmpty
+            ? 'No nearby rides right now'
+            : '${nearbyRides.length} ride(s) found nearby';
 
     return Column(
       children: [
+        // Create Ride Card
         GestureDetector(
           onTap: () async {
             await Navigator.push(
@@ -476,56 +455,45 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             height: 190,
             width: double.infinity,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
-                colors: [primary, primaryDark],
+              borderRadius: BorderRadius.circular(AppRadius.xxl),
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryDark],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: primary.withValues(alpha: 0.25),
-                  blurRadius: 24,
-                  offset: const Offset(0, 12),
-                ),
-              ],
+              boxShadow: AppShadows.primary,
             ),
             child: Stack(
               children: [
                 Positioned.fill(
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(AppRadius.xxl),
                     child: Image.network(
-                      "https://images.unsplash.com/photo-1558980664-10ea9b4b3bd3?auto=format&fit=crop&w=1200&q=80",
+                      'https://images.unsplash.com/photo-1558980664-10ea9b4b3bd3?auto=format&fit=crop&w=1200&q=80',
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) {
-                        return Image.network(
-                          "https://images.unsplash.com/photo-1558980394-4c7c9299fe96?auto=format&fit=crop&w=1200&q=80",
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) {
-                            return Container(
-                              color: primaryDark.withValues(alpha: 0.45),
-                              alignment: Alignment.center,
-                              child: Icon(
-                                Icons.two_wheeler,
-                                size: 68,
-                                color: Colors.white.withValues(alpha: 0.35),
-                              ),
-                            );
-                          },
-                        );
-                      },
+                      errorBuilder:
+                          (_, __, ___) => Container(
+                            color: AppColors.primaryDark.withValues(
+                              alpha: 0.45,
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.two_wheeler,
+                              size: 68,
+                              color: Colors.white.withValues(alpha: 0.35),
+                            ),
+                          ),
                     ),
                   ),
                 ),
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(AppRadius.xxl),
                       gradient: LinearGradient(
                         colors: [
-                          primary.withValues(alpha: 0.82),
-                          primaryDark.withValues(alpha: 0.88),
+                          AppColors.primary.withValues(alpha: 0.82),
+                          AppColors.primaryDark.withValues(alpha: 0.88),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -547,25 +515,22 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: const Icon(
-                          Icons.add,
+                          Icons.add_rounded,
                           color: Colors.white,
                           size: 26,
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        "Create Ride",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
+                        'Create Ride',
+                        style: AppTypography.headlineMedium.copyWith(
                           color: Colors.white,
                         ),
                       ),
                       Text(
-                        "Plan a route and invite friends",
-                        style: TextStyle(
+                        'Plan a route and invite friends',
+                        style: AppTypography.bodyMedium.copyWith(
                           color: Colors.white70,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -576,6 +541,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           ),
         ),
         const SizedBox(height: 14),
+        // Nearby Rides Card
         GestureDetector(
           onTap: () async {
             await Navigator.push(
@@ -589,16 +555,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             width: double.infinity,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: primary, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: forest.withValues(alpha: 0.06),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.xxl),
+              border: Border.all(color: AppColors.primary, width: 2),
+              boxShadow: AppShadows.lg,
             ),
             child: Stack(
               children: [
@@ -610,7 +570,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                     height: 130,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: primary.withValues(alpha: 0.06),
+                      color: AppColors.primary.withValues(alpha: 0.06),
                     ),
                   ),
                 ),
@@ -622,7 +582,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                     height: 56,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: primary.withValues(alpha: 0.08),
+                      color: AppColors.primary.withValues(alpha: 0.08),
                     ),
                   ),
                 ),
@@ -634,18 +594,20 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: primary.withValues(alpha: 0.1),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: Icon(Icons.near_me, color: primary, size: 24),
+                      child: Icon(
+                        Icons.near_me_rounded,
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      "Nearby Active Rides",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: forest,
+                      'Nearby Active Rides',
+                      style: AppTypography.headlineSmall.copyWith(
+                        color: AppColors.forest,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -653,14 +615,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       nearbySubtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w600,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.textTertiary,
                       ),
                     ),
                   ],
                 ),
-                if (nearby.isNotEmpty)
+                if (nearbyRides.isNotEmpty)
                   Positioned(
                     top: 4,
                     right: 2,
@@ -670,20 +631,25 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFD9F5E5),
+                        color: AppColors.success.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.circle, size: 8, color: Color(0xFF2FA865)),
-                          SizedBox(width: 6),
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.success,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
                           Text(
-                            "LIVE",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF2FA865),
+                            'LIVE',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.success,
                             ),
                           ),
                         ],
@@ -698,7 +664,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
-  Widget _recentJourneysSection(Color primary, Color forest, Color sandDarker) {
+  Widget _buildRecentJourneys() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -706,11 +672,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Recent Journeys",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: forest,
+              'Recent Journeys',
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.forest,
               ),
             ),
             TextButton(
@@ -721,29 +685,22 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 );
               },
               child: Text(
-                "View All",
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: primary,
+                'View All',
+                style: AppTypography.buttonMedium.copyWith(
+                  color: AppColors.primary,
                 ),
               ),
             ),
           ],
         ),
         if (recentRides.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: sandDarker.withValues(alpha: 0.6)),
-            ),
+          PremiumCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: EmptyStateCard(
               title: 'No journeys yet',
               message: 'Create a ride to start tracking your group route.',
               icon: Icons.route_outlined,
-              foreground: forest,
+              foreground: AppColors.forest,
             ),
           )
         else
@@ -751,11 +708,11 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             children:
                 recentRides.take(3).map((ride) {
                   final title =
-                      ride.title.trim().isNotEmpty ? ride.title : "Ride";
+                      ride.title.trim().isNotEmpty ? ride.title : 'Ride';
                   final destination =
                       ride.endLocation.trim().isNotEmpty
                           ? ride.endLocation
-                          : "Destination";
+                          : 'Destination';
                   final dateLabel = _formatDate(ride.createdAt);
                   final isBusy = rideActionLoadingId == ride.id;
                   final canDelete = ride.isScheduled || ride.isCompleted;
@@ -781,24 +738,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       }
                       await _loadHomeData();
                     },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    child: PremiumCard(
                       margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: sandDarker.withValues(alpha: 0.6),
-                        ),
-                      ),
                       child: Row(
                         children: [
-                          _ridePreviewTile(
-                            primary: primary,
-                            forest: forest,
-                            ride: ride,
-                          ),
+                          _buildRidePreviewTile(ride: ride),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -808,17 +753,17 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                   title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                  style: AppTypography.titleMedium.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  "$destination - ${ride.participantCount} riders",
+                                  '$destination - ${ride.participantCount} riders',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.w600,
+                                  style: AppTypography.caption.copyWith(
+                                    color: AppColors.textTertiary,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -833,9 +778,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                   ),
                                   child: Text(
                                     statusLabel,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
+                                    style: AppTypography.labelSmall.copyWith(
                                       color: statusColors.fg,
                                     ),
                                   ),
@@ -848,10 +791,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                             children: [
                               Text(
                                 dateLabel,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.w600,
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.textTertiary,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -861,22 +802,19 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                   height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: primary,
+                                    color: AppColors.primary,
                                   ),
                                 )
                               else if (canDelete)
                                 PopupMenuButton<String>(
                                   icon: Icon(
                                     Icons.more_vert_rounded,
-                                    color: Colors.grey.shade600,
+                                    color: AppColors.textTertiary,
                                     size: 18,
                                   ),
                                   onSelected: (value) async {
                                     if (value == 'delete') {
-                                      await _confirmPermanentDeleteRide(
-                                        ride,
-                                        primary,
-                                      );
+                                      await _confirmPermanentDeleteRide(ride);
                                     }
                                   },
                                   itemBuilder:
@@ -913,13 +851,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     final normalized = statusLabel.trim().toLowerCase();
     if (normalized == 'live') {
       return (
-        bg: const Color(0xFF2FA865).withValues(alpha: 0.14),
-        fg: const Color(0xFF2FA865),
+        bg: AppColors.success.withValues(alpha: 0.14),
+        fg: AppColors.success,
       );
     }
     if (normalized == 'scheduled') {
       return (
-        bg: const Color(0xFFF5A524).withValues(alpha: 0.16),
+        bg: AppColors.warning.withValues(alpha: 0.16),
         fg: const Color(0xFFD88300),
       );
     }
@@ -930,20 +868,17 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       );
     }
     return (
-      bg: const Color(0xFFF26C0D).withValues(alpha: 0.12),
-      fg: const Color(0xFFF26C0D),
+      bg: AppColors.primary.withValues(alpha: 0.12),
+      fg: AppColors.primary,
     );
   }
 
-  Future<void> _confirmPermanentDeleteRide(
-    RideRecord ride,
-    Color primary,
-  ) async {
+  Future<void> _confirmPermanentDeleteRide(RideRecord ride) async {
     if (!ride.isScheduled && !ride.isCompleted) {
-      showAppToast(
+      showPremiumToast(
         context,
         'Only scheduled/completed rides can be deleted.',
-        type: AppToastType.error,
+        type: PremiumToastType.error,
       );
       return;
     }
@@ -951,18 +886,18 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Delete Ride?'),
+            title: Text('Delete Ride?', style: AppTypography.headlineSmall),
             content: const Text(
-              'This will permanently delete this ride for everyone and remove it from Supabase.',
+              'This will permanently delete this ride for everyone.',
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
+                child: Text('Cancel', style: AppTypography.buttonMedium),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.error),
                 child: const Text('Delete'),
               ),
             ],
@@ -980,7 +915,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       },
       successMessage: 'Ride deleted.',
       failureMessage: 'Could not delete ride.',
-      primary: primary,
     );
   }
 
@@ -989,39 +923,30 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     required Future<void> Function() action,
     required String successMessage,
     required String failureMessage,
-    required Color primary,
   }) async {
     if (rideActionLoadingId.isNotEmpty) return;
-    setState(() {
-      rideActionLoadingId = rideId;
-    });
+    setState(() => rideActionLoadingId = rideId);
     try {
       await action();
       if (!mounted) return;
-      showAppToast(context, successMessage, type: AppToastType.success);
+      showPremiumToast(context, successMessage, type: PremiumToastType.success);
       await _loadHomeData();
     } catch (error) {
       if (!mounted) return;
-      showAppToast(
+      showPremiumToast(
         context,
         '$failureMessage ${_rideActionError(error)}',
-        type: AppToastType.error,
+        type: PremiumToastType.error,
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          rideActionLoadingId = '';
-        });
-      }
+      if (mounted) setState(() => rideActionLoadingId = '');
     }
   }
 
   String _rideActionError(Object error) {
     if (error is PostgrestException) {
       final code = (error.code ?? '').trim();
-      if (code == '42501') {
-        return 'RLS policy is blocking this action.';
-      }
+      if (code == '42501') return 'RLS policy is blocking this action.';
       if (code == 'PGRST204' || code == '42703') {
         return 'Missing required table column in Supabase schema.';
       }
@@ -1031,50 +956,49 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   String _formatDate(DateTime? date) {
-    if (date == null) return "-";
+    if (date == null) return '-';
     const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
-    return "${months[(date.month - 1).clamp(0, 11)]} ${date.day}";
+    return '${months[(date.month - 1).clamp(0, 11)]} ${date.day}';
   }
 
-  Widget _ridePreviewTile({
-    required Color primary,
-    required Color forest,
-    required RideRecord ride,
-  }) {
+  Widget _buildRidePreviewTile({required RideRecord ride}) {
     return Container(
       width: 60,
       height: 60,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [const Color(0xFFFFF3E8), primary.withValues(alpha: 0.16)],
+          colors: [
+            const Color(0xFFFFF3E8),
+            AppColors.primary.withValues(alpha: 0.16),
+          ],
         ),
-        border: Border.all(color: primary.withValues(alpha: 0.12)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
       ),
       child: Stack(
         children: [
           Positioned.fill(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
               child: CustomPaint(
                 painter: _RidePreviewPainter(
-                  lineColor: forest.withValues(alpha: 0.5),
-                  accentColor: primary,
+                  lineColor: AppColors.forest.withValues(alpha: 0.5),
+                  accentColor: AppColors.primary,
                 ),
               ),
             ),
@@ -1082,12 +1006,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           Positioned(
             left: 8,
             top: 10,
-            child: _mapPin(primary.withValues(alpha: 0.9)),
+            child: _mapPin(AppColors.primary.withValues(alpha: 0.9)),
           ),
           Positioned(
             right: 8,
             bottom: 10,
-            child: _mapPin(forest.withValues(alpha: 0.9)),
+            child: _mapPin(AppColors.forest.withValues(alpha: 0.9)),
           ),
         ],
       ),
@@ -1109,12 +1033,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
-  Widget _bottomNav(Color primary) {
+  Widget _buildBottomNav() {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade100)),
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.divider)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -1126,40 +1050,31 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _navItem(
-            icon: Icons.home,
-            label: "Home",
-            active: true,
-            onTap: () {},
-            primary: primary,
-          ),
+          _navItem(icon: Icons.home_rounded, label: 'Home', active: true),
           _navItem(
             icon: Icons.route_outlined,
-            label: "Rides",
+            label: 'Rides',
             active: false,
             onTap: () {
               Navigator.push(context, buildAppRoute(const NearbyRidesScreen()));
             },
-            primary: primary,
           ),
           const SizedBox(width: 46),
           _navItem(
-            icon: Icons.map,
-            label: "Map",
+            icon: Icons.map_outlined,
+            label: 'Map',
             active: false,
             onTap: () {
               Navigator.push(context, buildAppRoute(const MapScreen()));
             },
-            primary: primary,
           ),
           _navItem(
-            icon: Icons.person_outline,
-            label: "Profile",
+            icon: Icons.person_outline_rounded,
+            label: 'Profile',
             active: false,
             onTap: () {
               Navigator.push(context, buildAppRoute(const SettingsScreen()));
             },
-            primary: primary,
           ),
         ],
       ),
@@ -1170,22 +1085,24 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     required IconData icon,
     required String label,
     required bool active,
-    required VoidCallback onTap,
-    required Color primary,
+    VoidCallback? onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: active ? primary : Colors.grey, size: 24),
+          Icon(
+            icon,
+            color: active ? AppColors.primary : AppColors.textTertiary,
+            size: 24,
+          ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 10,
+            style: AppTypography.caption.copyWith(
               fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-              color: active ? primary : Colors.grey,
+              color: active ? AppColors.primary : AppColors.textTertiary,
             ),
           ),
         ],
@@ -1193,9 +1110,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
-  Widget _centerRideButton(Color primary) {
+  Widget _buildCenterRideButton() {
     return FloatingActionButton(
-      backgroundColor: primary,
+      backgroundColor: AppColors.primary,
       elevation: 8,
       onPressed: () async {
         await Navigator.push(context, buildAppRoute(const CreateRideScreen()));
