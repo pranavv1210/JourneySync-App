@@ -266,7 +266,14 @@ class _MapScreenState extends State<MapScreen> {
               bottom: 14,
               child: _ridesTray(primary, forest),
             ),
-          if (loading) Center(child: RideLoadingIndicator(label: 'Scanning radar...', compact: true, color: primary)),
+          if (loading)
+            Center(
+              child: RideLoadingIndicator(
+                label: 'Scanning radar...',
+                compact: true,
+                color: primary,
+              ),
+            ),
         ],
       ),
     );

@@ -261,7 +261,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-
                         if (loadError.isNotEmpty)
                           Container(
                             margin: const EdgeInsets.only(bottom: 12),

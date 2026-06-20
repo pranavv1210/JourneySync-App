@@ -7,6 +7,7 @@ import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'edit_profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -122,7 +123,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () async {
                         final updated = await Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const EditProfileScreen(),
+                          ),
                         );
                         if (updated == true) {
                           _loadProfile();
@@ -138,7 +141,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               height: 56,
                               decoration: BoxDecoration(
                                 color: AppColors.forest.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(AppRadius.lg),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.lg,
+                                ),
                               ),
                               child: Icon(
                                 Icons.person_rounded,
@@ -167,7 +172,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ],
                               ),
                             ),
-                            Icon(Icons.edit_rounded, color: AppColors.textTertiary, size: 20),
+                            Icon(
+                              Icons.edit_rounded,
+                              color: AppColors.textTertiary,
+                              size: 20,
+                            ),
                           ],
                         ),
                       ),
@@ -180,19 +189,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: Icons.person_outline_rounded,
                         title: 'Emergency Contacts',
                         subtitle: 'Manage your emergency contacts',
-                        onTap: () => _showComingSoonDialog('Emergency Contacts', 'You will be able to add up to 3 emergency contacts who will be notified if a crash is detected.'),
+                        onTap:
+                            () => _showComingSoonDialog(
+                              'Emergency Contacts',
+                              'You will be able to add up to 3 emergency contacts who will be notified if a crash is detected.',
+                            ),
                       ),
                       _buildSettingTile(
                         icon: Icons.shield_outlined,
                         title: 'Privacy',
                         subtitle: 'Control your data and visibility',
-                        onTap: () => _showComingSoonDialog('Privacy Settings', 'Manage who can see your live location and ride history.'),
+                        onTap:
+                            () => _showComingSoonDialog(
+                              'Privacy Settings',
+                              'Manage who can see your live location and ride history.',
+                            ),
                       ),
                       _buildSettingTile(
                         icon: Icons.palette_outlined,
                         title: 'Theme',
                         subtitle: 'Customize your experience',
-                        onTap: () => _showComingSoonDialog('Theme Customization', 'Switch between Light, Dark, and System Default themes.'),
+                        onTap:
+                            () => _showComingSoonDialog(
+                              'Theme Customization',
+                              'Switch between Light, Dark, and System Default themes.',
+                            ),
                       ),
                     ]),
 
@@ -215,13 +236,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: Icons.notifications_outlined,
                         title: 'Notifications',
                         subtitle: 'Ride alerts and updates',
-                        onTap: () => _showComingSoonDialog('Notifications', 'Configure push notifications for nearby rides and group messages.'),
+                        onTap:
+                            () => _showComingSoonDialog(
+                              'Notifications',
+                              'Configure push notifications for nearby rides and group messages.',
+                            ),
                       ),
                       _buildSettingTile(
                         icon: Icons.info_outline_rounded,
                         title: 'About',
                         subtitle: 'JourneySync v1.1.0',
-                        onTap: () => _showComingSoonDialog('About JourneySync', 'JourneySync is designed for riders to sync their journeys securely. Version 1.1.0.'),
+                        onTap:
+                            () => _showComingSoonDialog(
+                              'About JourneySync',
+                              'JourneySync is designed for riders to sync their journeys securely. Version 1.1.0.',
+                            ),
                       ),
                     ]),
 
@@ -273,13 +302,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadius.md),
-      onTap: onTap ?? () {
-        showPremiumToast(
-          context,
-          '$title coming soon',
-          type: PremiumToastType.info,
-        );
-      },
+      onTap:
+          onTap ??
+          () {
+            showPremiumToast(
+              context,
+              '$title coming soon',
+              type: PremiumToastType.info,
+            );
+          },
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
@@ -340,40 +371,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showComingSoonDialog(String title, String message) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title, style: AppTypography.headlineSmall),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close', style: AppTypography.buttonMedium),
+      builder:
+          (context) => AlertDialog(
+            title: Text(title, style: AppTypography.headlineSmall),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Close', style: AppTypography.buttonMedium),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   void _showDeleteAccountDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete Account', style: AppTypography.headlineSmall),
-        content: const Text('Are you sure you want to delete your account? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: AppTypography.buttonMedium),
+      builder:
+          (context) => AlertDialog(
+            title: Text('Delete Account', style: AppTypography.headlineSmall),
+            content: const Text(
+              'Are you sure you want to delete your account? This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel', style: AppTypography.buttonMedium),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  showPremiumToast(
+                    context,
+                    'Account deletion request submitted.',
+                    type: PremiumToastType.info,
+                  );
+                },
+                style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                child: const Text('Delete'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              showPremiumToast(context, 'Account deletion request submitted.', type: PremiumToastType.info);
-            },
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
     );
   }
 }

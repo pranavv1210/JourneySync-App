@@ -57,7 +57,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     final bikeNumber = _bikeNumberController.text.trim();
 
     if (name.isEmpty) {
-      showPremiumToast(context, 'Name cannot be empty', type: PremiumToastType.error);
+      showPremiumToast(
+        context,
+        'Name cannot be empty',
+        type: PremiumToastType.error,
+      );
       return;
     }
 
@@ -78,11 +82,19 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       await prefs.setString('userBikeNumber', bikeNumber);
 
       if (!mounted) return;
-      showPremiumToast(context, 'Profile saved!', type: PremiumToastType.success);
+      showPremiumToast(
+        context,
+        'Profile saved!',
+        type: PremiumToastType.success,
+      );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      showPremiumToast(context, 'Failed to save: $e', type: PremiumToastType.error);
+      showPremiumToast(
+        context,
+        'Failed to save: $e',
+        type: PremiumToastType.error,
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -155,15 +167,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                                 width: 2,
                               ),
                             ),
-                            child: _avatarUrl.isNotEmpty
-                                ? ClipOval(
-                                    child: Image.network(
-                                      _avatarUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => _buildInitialsAvatar(),
-                                    ),
-                                  )
-                                : _buildInitialsAvatar(),
+                            child:
+                                _avatarUrl.isNotEmpty
+                                    ? ClipOval(
+                                      child: Image.network(
+                                        _avatarUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (_, __, ___) =>
+                                                _buildInitialsAvatar(),
+                                      ),
+                                    )
+                                    : _buildInitialsAvatar(),
                           ),
                         ],
                       ),
@@ -309,7 +324,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   keyboardType: keyboardType,
                   textCapitalization: textCapitalization,
                   style: AppTypography.bodyMedium.copyWith(
-                    color: readOnly ? AppColors.textSecondary : AppColors.textPrimary,
+                    color:
+                        readOnly
+                            ? AppColors.textSecondary
+                            : AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(

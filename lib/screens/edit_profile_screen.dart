@@ -17,7 +17,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _nameController = TextEditingController();
   final _bikeController = TextEditingController();
   final _phoneController = TextEditingController();
-  
+
   bool _loading = true;
   bool _saving = false;
 
@@ -40,7 +40,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _saveProfile() async {
     if (_nameController.text.trim().isEmpty) {
-      showPremiumToast(context, 'Name cannot be empty', type: PremiumToastType.error);
+      showPremiumToast(
+        context,
+        'Name cannot be empty',
+        type: PremiumToastType.error,
+      );
       return;
     }
 
@@ -53,7 +57,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final name = _nameController.text.trim();
       final bike = _bikeController.text.trim();
       final phone = _phoneController.text.trim();
-      
+
       await prefs.setString('userName', name);
       await prefs.setString('userBike', bike);
       await prefs.setString('userPhone', phone);
@@ -61,11 +65,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final userId = prefs.getString('userId') ?? '';
       if (userId.isNotEmpty) {
         try {
-          await Supabase.instance.client.from('users').update({
-            'name': name,
-            'bike': bike,
-            'phone': phone,
-          }).eq('id', userId);
+          await Supabase.instance.client
+              .from('users')
+              .update({'name': name, 'bike': bike, 'phone': phone})
+              .eq('id', userId);
         } catch (e) {
           debugPrint('Error updating profile in Supabase: $e');
           // Non-blocking if offline
@@ -73,11 +76,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
 
       if (!mounted) return;
-      showPremiumToast(context, 'Profile updated successfully', type: PremiumToastType.success);
+      showPremiumToast(
+        context,
+        'Profile updated successfully',
+        type: PremiumToastType.success,
+      );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      showPremiumToast(context, 'Error saving profile', type: PremiumToastType.error);
+      showPremiumToast(
+        context,
+        'Error saving profile',
+        type: PremiumToastType.error,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -104,7 +115,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.sm),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl,
+                AppSpacing.lg,
+                AppSpacing.xl,
+                AppSpacing.sm,
+              ),
               child: Row(
                 children: [
                   IconButton(
@@ -115,73 +131,116 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   const SizedBox(width: 8),
                   Text(
                     'Edit Profile',
-                    style: AppTypography.headlineMedium.copyWith(color: AppColors.textPrimary),
+                    style: AppTypography.headlineMedium.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ],
               ),
             ),
-            
+
             Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(AppSpacing.xl),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          GlassCard(
-                            padding: const EdgeInsets.all(AppSpacing.xl),
-                            elevated: true,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Name', style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary)),
-                                const SizedBox(height: 8),
-                                TextField(
-                                  controller: _nameController,
-                                  decoration: InputDecoration(
-                                    hintText: 'Enter your name',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child:
+                  _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : SingleChildScrollView(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            GlassCard(
+                              padding: const EdgeInsets.all(AppSpacing.xl),
+                              elevated: true,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Name',
+                                    style: AppTypography.labelMedium.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 20),
-                                
-                                Text('Vehicle Name', style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary)),
-                                const SizedBox(height: 8),
-                                TextField(
-                                  controller: _bikeController,
-                                  decoration: InputDecoration(
-                                    hintText: 'E.g. Royal Enfield Classic 350',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _nameController,
+                                    decoration: InputDecoration(
+                                      hintText: 'Enter your name',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadius.md,
+                                        ),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 12,
+                                          ),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 20),
-                                
-                                Text('Mobile Number', style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary)),
-                                const SizedBox(height: 8),
-                                TextField(
-                                  controller: _phoneController,
-                                  keyboardType: TextInputType.phone,
-                                  decoration: InputDecoration(
-                                    hintText: 'Enter your mobile number',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  const SizedBox(height: 20),
+
+                                  Text(
+                                    'Vehicle Name',
+                                    style: AppTypography.labelMedium.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _bikeController,
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          'E.g. Royal Enfield Classic 350',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadius.md,
+                                        ),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 12,
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  Text(
+                                    'Mobile Number',
+                                    style: AppTypography.labelMedium.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _phoneController,
+                                    keyboardType: TextInputType.phone,
+                                    decoration: InputDecoration(
+                                      hintText: 'Enter your mobile number',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadius.md,
+                                        ),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 12,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 32),
-                          PremiumButton(
-                            label: _saving ? 'Saving...' : 'Save Changes',
-                            onPressed: _saving ? null : _saveProfile,
-                            variant: PremiumButtonVariant.primary,
-                          ),
-                        ],
+                            const SizedBox(height: 32),
+                            PremiumButton(
+                              label: _saving ? 'Saving...' : 'Save Changes',
+                              onPressed: _saving ? null : _saveProfile,
+                              variant: PremiumButtonVariant.primary,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
             ),
           ],
         ),
