@@ -16,6 +16,7 @@ import '../services/ride_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/rider_marker.dart';
+import '../widgets/ride_loading_indicator.dart';
 import '../widgets/smooth_marker.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -406,19 +407,9 @@ class _RideModeScreenState extends State<RideModeScreen>
       return const Scaffold(
         backgroundColor: Color(0xFFF4EFEA),
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: Color(0xFFFF6A00)),
-              SizedBox(height: 16),
-              Text(
-                'Starting Ride…',
-                style: TextStyle(
-                  color: Color(0xFFFF6A00),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+          child: RideLoadingIndicator(
+            label: 'Starting Ride…',
+            color: Color(0xFFFF6A00),
           ),
         ),
       );

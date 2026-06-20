@@ -8,6 +8,7 @@ import '../models/ride_record.dart';
 import '../widgets/app_toast.dart';
 import '../services/ride_service.dart';
 import '../widgets/empty_state_card.dart';
+import '../widgets/ride_loading_indicator.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -265,7 +266,7 @@ class _MapScreenState extends State<MapScreen> {
               bottom: 14,
               child: _ridesTray(primary, forest),
             ),
-          if (loading) const Center(child: CircularProgressIndicator()),
+          if (loading) Center(child: RideLoadingIndicator(label: 'Scanning radar...', compact: true, color: primary)),
         ],
       ),
     );

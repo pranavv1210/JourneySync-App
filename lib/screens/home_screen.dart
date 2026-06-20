@@ -261,17 +261,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (refreshingHome)
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: EdgeInsets.only(bottom: 10),
-                              child: RideLoadingIndicator(
-                                label: 'Syncing ride data',
-                                compact: true,
-                              ),
-                            ),
-                          ),
+
                         if (loadError.isNotEmpty)
                           Container(
                             margin: const EdgeInsets.only(bottom: 12),

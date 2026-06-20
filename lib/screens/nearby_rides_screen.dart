@@ -8,6 +8,7 @@ import '../models/ride_record.dart';
 import '../widgets/app_toast.dart';
 import '../services/ride_service.dart';
 import '../widgets/empty_state_card.dart';
+import '../widgets/ride_loading_indicator.dart';
 
 class NearbyRidesScreen extends StatefulWidget {
   const NearbyRidesScreen({super.key});
@@ -476,17 +477,22 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
           children: [
             _radarSurface(primary, forest, nearbyRides),
             const SizedBox(height: 18),
-            Text(
-              showFallback
-                  ? 'No riders nearby'
-                  : 'Scanning for nearby rides...',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: forest,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
+            if (showFallback)
+              Text(
+                'No riders nearby',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: forest,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              )
+            else
+              RideLoadingIndicator(
+                label: 'Scanning for nearby rides...',
+                compact: true,
+                color: primary,
               ),
-            ),
             if (showFallback) ...[
               const SizedBox(height: 8),
               Text(

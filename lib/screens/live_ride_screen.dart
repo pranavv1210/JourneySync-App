@@ -17,7 +17,7 @@ import 'ride_summary_screen.dart';
 import '../services/live_tracking_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/empty_state_card.dart';
-import '../widgets/loading_skeleton.dart';
+import '../widgets/ride_loading_indicator.dart';
 
 class LiveRideScreen extends StatefulWidget {
   const LiveRideScreen({super.key, required this.rideId});
@@ -445,22 +445,12 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: _background,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: const [
-                LoadingSkeleton(height: 58, radius: 20),
-                SizedBox(height: 14),
-                Expanded(
-                  child: LoadingSkeleton(height: double.infinity, radius: 28),
-                ),
-                SizedBox(height: 14),
-                LoadingSkeleton(height: 220, radius: 28),
-              ],
-            ),
+        body: Center(
+          child: RideLoadingIndicator(
+            label: 'Starting Live Ride...',
+            color: _primary,
           ),
         ),
       );
