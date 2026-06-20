@@ -157,10 +157,36 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
     return Scaffold(
       backgroundColor: background,
       appBar: AppBar(
-        title: const Text('Ride History'),
+        title: const Text(
+          'Ride History',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            color: forest,
+          ),
+        ),
         backgroundColor: background,
         foregroundColor: forest,
         elevation: 0,
+        leading: Builder(
+          builder: (context) => GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              margin: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: sandDarker.withValues(alpha: 0.5), width: 1.5),
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: forest,
+                size: 16,
+              ),
+            ),
+          ),
+        ),
+        centerTitle: true,
       ),
       body:
           loading
@@ -233,8 +259,10 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                   title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                    color: forest,
                                   ),
                                 ),
                                 const SizedBox(height: 4),

@@ -370,26 +370,46 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.divider.withValues(alpha: 0.6),
+            width: 1,
+          ),
+        ),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: AppTypography.buttonMedium.copyWith(
-                color: AppColors.textSecondary,
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.divider, width: 1.5),
+                boxShadow: AppShadows.sm,
+              ),
+              child: Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: AppColors.forest,
+                size: 18,
               ),
             ),
           ),
-          Text(
-            'New Ride',
-            style: AppTypography.headlineMedium.copyWith(
-              color: AppColors.forest,
+          Expanded(
+            child: Text(
+              'New Ride',
+              textAlign: TextAlign.center,
+              style: AppTypography.headlineMedium.copyWith(
+                color: AppColors.forest,
+              ),
             ),
           ),
-          const SizedBox(width: 64),
+          const SizedBox(width: 40),
         ],
       ),
     );

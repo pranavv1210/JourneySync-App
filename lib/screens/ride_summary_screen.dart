@@ -157,22 +157,71 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
     return Scaffold(
       backgroundColor: background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Column(
-            children: [
-              const SizedBox(height: 8),
-              _header(vibrantTeal),
-              const SizedBox(height: 24),
-              _summaryCard(primary, secondaryBlue),
-              const SizedBox(height: 18),
-              _routeThumbnail(),
-              const SizedBox(height: 18),
-              _participants(),
-              const SizedBox(height: 20),
-              _actions(primary),
-            ],
-          ),
+        child: Column(
+          children: [
+            // Top nav bar with back button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Color(0xFF1F4A33),
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'Ride Summary',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1F4A33),
+                    ),
+                  ),
+                  const Spacer(),
+                  const SizedBox(width: 40),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    _header(vibrantTeal),
+                    const SizedBox(height: 24),
+                    _summaryCard(primary, secondaryBlue),
+                    const SizedBox(height: 18),
+                    _routeThumbnail(),
+                    const SizedBox(height: 18),
+                    _participants(),
+                    const SizedBox(height: 20),
+                    _actions(primary),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

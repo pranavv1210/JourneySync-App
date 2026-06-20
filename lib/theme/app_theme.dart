@@ -86,19 +86,19 @@ class AppTypography {
 
   static TextStyle get headlineSmall => GoogleFonts.plusJakartaSans(
     fontSize: 18,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     height: 1.3,
   );
 
   static TextStyle get titleLarge => GoogleFonts.plusJakartaSans(
     fontSize: 16,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     height: 1.35,
   );
 
   static TextStyle get titleMedium => GoogleFonts.plusJakartaSans(
     fontSize: 14,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     height: 1.4,
   );
 
@@ -111,19 +111,19 @@ class AppTypography {
 
   static TextStyle get bodyLarge => GoogleFonts.plusJakartaSans(
     fontSize: 16,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w500,
     height: 1.5,
   );
 
   static TextStyle get bodyMedium => GoogleFonts.plusJakartaSans(
     fontSize: 14,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w500,
     height: 1.5,
   );
 
   static TextStyle get bodySmall => GoogleFonts.plusJakartaSans(
     fontSize: 12,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w500,
     height: 1.5,
   );
 
@@ -159,6 +159,13 @@ class AppTypography {
     fontSize: 14,
     fontWeight: FontWeight.w700,
     height: 1.2,
+    letterSpacing: 0.2,
+  );
+
+  static TextStyle get inputText => GoogleFonts.plusJakartaSans(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    height: 1.4,
     letterSpacing: 0.2,
   );
 

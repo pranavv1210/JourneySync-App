@@ -207,7 +207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _buildSettingTile(
                         icon: Icons.info_outline_rounded,
                         title: 'About',
-                        subtitle: 'JourneySync v1.0.2',
+                        subtitle: 'JourneySync v1.1.0',
                       ),
                     ]),
 

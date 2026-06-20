@@ -136,7 +136,7 @@ class _PremiumInputState extends State<PremiumInput> {
                   },
                   style: AppTypography.bodyLarge.copyWith(
                     color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
                     hintText: widget.hint,

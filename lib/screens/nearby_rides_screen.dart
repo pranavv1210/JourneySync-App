@@ -344,10 +344,46 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     return Scaffold(
       backgroundColor: background,
       appBar: AppBar(
-        title: const Text('Nearby Rides'),
+        title: const Text(
+          'Nearby Rides',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            color: forest,
+          ),
+        ),
         backgroundColor: background,
         foregroundColor: forest,
         elevation: 0,
+        centerTitle: true,
+        leading: Builder(
+          builder: (context) => GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              margin: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFFD46211).withValues(alpha: 0.2),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: forest,
+                size: 16,
+              ),
+            ),
+          ),
+        ),
         actions: [
           IconButton(
             onPressed: joiningByCode ? null : _showJoinByCodeDialog,
