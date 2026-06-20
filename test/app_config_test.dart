@@ -8,10 +8,8 @@ void main() {
       expect(AppConfig.supabaseUrl.startsWith('https://'), isTrue);
     });
 
-    test('Default Auth0 Config is structured correctly', () {
-      expect(AppConfig.auth0Domain, isNotEmpty);
-      expect(AppConfig.auth0ClientId, isNotEmpty);
-      expect(AppConfig.auth0Scheme, equals('journeysync'));
+    test('Default auth redirect URL is structured correctly', () {
+      expect(AppConfig.authRedirectUrl, equals('journeysync://login-callback'));
     });
   });
 }

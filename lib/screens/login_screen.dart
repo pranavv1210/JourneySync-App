@@ -329,7 +329,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(height: 8),
         Text(
-          'Sign in with your account to access your rides.',
+          'Sign in with Google to access your rides.',
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.textSecondary,
           ),
@@ -371,7 +371,7 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ),
                       Text(
-                        'Tap to sign in instantly',
+                        'Tap to use your saved JourneySync profile',
                         style: AppTypography.caption.copyWith(
                           color: AppColors.textTertiary,
                         ),
@@ -486,7 +486,7 @@ class _LoginScreenState extends State<LoginScreen>
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Register once, then sign in instantly on return.',
+                  'Register once, then sign in with Google on return.',
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
@@ -510,9 +510,9 @@ class _LoginScreenState extends State<LoginScreen>
               isSubmitting
                   ? 'Please wait...'
                   : (requiresDetails
-                      ? 'Create Account & Continue'
-                      : 'Continue'),
-          icon: isSubmitting ? null : Icons.arrow_forward_rounded,
+                      ? 'Create Account with Google'
+                      : 'Sign in with Google'),
+          icon: isSubmitting ? null : Icons.g_mobiledata_rounded,
           trailing:
               isSubmitting
                   ? const SizedBox(
@@ -554,9 +554,9 @@ class _LoginScreenState extends State<LoginScreen>
           (_) => AlertDialog(
             title: Text('Login Help', style: AppTypography.headlineSmall),
             content: Text(
-              '1. Existing Account: Sign in with Auth0 and continue.\n\n'
-              '2. New Account: Fill Name and Bike, then Continue.\n\n'
-              'If login fails, verify Auth0 callback/logout URLs are configured.',
+              '1. Existing Account: Sign in with Google and continue.\n\n'
+              '2. New Account: Fill Name and Bike, then sign in with Google.\n\n'
+              'If login fails, verify the Google provider and redirect URL in Supabase.',
               style: AppTypography.bodyMedium,
             ),
             actions: [
@@ -687,9 +687,9 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  Future<void> _authenticateWithAuth0() async {
+  Future<void> _authenticateWithGoogle() async {
     try {
-      final result = await authService.authenticateWithAuth0();
+      final result = await authService.authenticateWithGoogle();
       if (!mounted) return;
       setState(() {
         verifiedIdentity = result.identity;
@@ -704,14 +704,14 @@ class _LoginScreenState extends State<LoginScreen>
           message.toLowerCase().contains('mismatch')) {
         showPremiumToast(
           context,
-          'Auth0 callback mismatch. Check console for details.',
+          'Google redirect mismatch. Check Supabase redirect URLs.',
           type: PremiumToastType.error,
         );
         return;
       }
       showPremiumToast(
         context,
-        'Auth0 login failed: $error',
+        'Google sign-in failed: $error',
         type: PremiumToastType.error,
       );
     }
@@ -734,7 +734,7 @@ class _LoginScreenState extends State<LoginScreen>
 
     try {
       if (verifiedIdentity == null || verifiedPhone.isEmpty) {
-        await _authenticateWithAuth0();
+        await _authenticateWithGoogle();
       }
       if (verifiedIdentity == null || verifiedPhone.isEmpty) {
         throw Exception('Authentication was not completed.');

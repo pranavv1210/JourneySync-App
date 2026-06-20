@@ -71,13 +71,6 @@ val dartDefineMap = buildMap {
         }
     }
 }
-val auth0DomainValue =
-    (dartDefineMap["AUTH0_DOMAIN"] ?: project.findProperty("AUTH0_DOMAIN")?.toString() ?: "")
-        .trim()
-val auth0SchemeValue =
-    (dartDefineMap["AUTH0_SCHEME"] ?: project.findProperty("AUTH0_SCHEME")?.toString() ?: "journeysync")
-        .trim()
-
 android {
     namespace = "com.example.journeysync"
     compileSdk = 36
@@ -101,10 +94,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders += mapOf(
-            "auth0Domain" to auth0DomainValue,
-            "auth0Scheme" to if (auth0SchemeValue.isNotEmpty()) auth0SchemeValue else "journeysync",
-        )
     }
 
     signingConfigs {

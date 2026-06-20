@@ -1,9 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 
-import 'package:auth0_flutter/auth0_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'app_config.dart';
 import 'supabase_service.dart';
@@ -45,48 +44,52 @@ class SessionUser {
 
 class AuthService {
   AuthService({SupabaseService? supabaseService})
-    : _supabaseService = supabaseService ?? SupabaseService(),
-      _auth0 = Auth0(
-        _requiredDefine('AUTH0_DOMAIN', _auth0Domain),
-        _requiredDefine('AUTH0_CLIENT_ID', _auth0ClientId),
-      );
+    : _supabaseService = supabaseService ?? SupabaseService();
 
   final SupabaseService _supabaseService;
-  final Auth0 _auth0;
-  static const String _auth0Domain = String.fromEnvironment(
-    'AUTH0_DOMAIN',
-    defaultValue: AppConfig.auth0Domain,
-  );
-  static const String _auth0ClientId = String.fromEnvironment(
-    'AUTH0_CLIENT_ID',
-    defaultValue: AppConfig.auth0ClientId,
-  );
-  static const String _auth0Scheme = String.fromEnvironment(
-    'AUTH0_SCHEME',
-    defaultValue: AppConfig.auth0Scheme,
+  static const String _authRedirectUrl = String.fromEnvironment(
+    'AUTH_REDIRECT_URL',
+    defaultValue: AppConfig.authRedirectUrl,
   );
 
   Future<({PhoneIdentity identity, String accessToken, String idToken})>
-  authenticateWithAuth0() async {
-    final webAuth =
-        _auth0Scheme.trim().toLowerCase() == 'https'
-            ? _auth0.webAuthentication()
-            : _auth0.webAuthentication(scheme: _auth0Scheme.trim());
-    final credentials = await webAuth.login(
-      useHTTPS: _auth0Scheme.trim().toLowerCase() == 'https',
-      scopes: {'openid', 'profile', 'email'},
+  authenticateWithGoogle() async {
+    final client = Supabase.instance.client;
+    final existingSession = client.auth.currentSession;
+    if (existingSession != null) {
+      await client.auth.signOut();
+    }
+
+    await client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: _authRedirectUrl,
+      authScreenLaunchMode: LaunchMode.externalApplication,
+      scopes: 'openid email profile',
     );
 
-    final payload = _decodeJwtPayload(credentials.idToken);
-    final subject = (payload['sub'] ?? '').toString().trim();
-    final email = (payload['email'] ?? '').toString().trim();
-    final phoneNumber = (payload['phone_number'] ?? '').toString().trim();
-    final givenName = (payload['given_name'] ?? '').toString().trim();
-    final familyName = (payload['family_name'] ?? '').toString().trim();
-    final fullName = (payload['name'] ?? '').toString().trim();
+    final returnedSession = client.auth.currentSession;
+    if (returnedSession != null) {
+      return _identityFromSession(returnedSession);
+    }
 
-    if (subject.isEmpty) {
-      throw Exception('Auth0 did not return a valid user subject (sub).');
+    final session = await _waitForGoogleSession(client);
+    return _identityFromSession(session);
+  }
+
+  ({PhoneIdentity identity, String accessToken, String idToken})
+  _identityFromSession(Session session) {
+    final user = session.user;
+    final metadata = user.userMetadata ?? const <String, dynamic>{};
+    final email = (user.email ?? metadata['email'] ?? '').toString().trim();
+    final phoneNumber =
+        (user.phone ?? metadata['phone_number'] ?? '').toString().trim();
+    final givenName = (metadata['given_name'] ?? '').toString().trim();
+    final familyName = (metadata['family_name'] ?? '').toString().trim();
+    final fullName =
+        (metadata['full_name'] ?? metadata['name'] ?? '').toString().trim();
+
+    if (user.id.trim().isEmpty) {
+      throw Exception('Google sign-in did not return a valid Supabase user.');
     }
 
     final stableKey =
@@ -94,7 +97,7 @@ class AuthService {
             ? phoneNumber
             : email.isNotEmpty
             ? email.toLowerCase()
-            : 'auth0:$subject';
+            : 'google:${user.id}';
     final firstName =
         givenName.isNotEmpty
             ? givenName
@@ -117,19 +120,31 @@ class AuthService {
         firstName: firstName,
         lastName: lastName,
       ),
-      accessToken: credentials.accessToken,
-      idToken: credentials.idToken,
+      accessToken: session.accessToken,
+      idToken: session.providerToken ?? '',
     );
   }
 
-  Future<void> logoutAuth0() async {
-    final webAuth =
-        _auth0Scheme.trim().toLowerCase() == 'https'
-            ? _auth0.webAuthentication()
-            : _auth0.webAuthentication(scheme: _auth0Scheme.trim());
-    await webAuth.logout(
-      useHTTPS: _auth0Scheme.trim().toLowerCase() == 'https',
+  Future<Session> _waitForGoogleSession(SupabaseClient client) async {
+    final currentSession = client.auth.currentSession;
+    if (currentSession != null) return currentSession;
+
+    final authState = await client.auth.onAuthStateChange.firstWhere((state) {
+      return state.event == AuthChangeEvent.signedIn &&
+          state.session != null &&
+          state.session!.user.appMetadata['provider'] == 'google';
+    }).timeout(
+      const Duration(seconds: 90),
+      onTimeout: () {
+        throw TimeoutException('Google sign-in was not completed.');
+      },
     );
+
+    final session = authState.session;
+    if (session == null) {
+      throw Exception('Google sign-in did not create a session.');
+    }
+    return session;
   }
 
   Future<SessionUser> resolveUser({
@@ -138,7 +153,14 @@ class AuthService {
     required String enteredName,
     required String enteredBike,
   }) async {
-    final existing = await _findExistingUser(identity);
+    final authUser = Supabase.instance.client.auth.currentUser;
+    final authUserId = (authUser?.id ?? '').trim();
+    if (authUserId.isEmpty) {
+      throw Exception('Google sign-in session is missing.');
+    }
+
+    final existingById = await _supabaseService.fetchUserById(authUserId);
+    final existing = existingById ?? await _findExistingUser(identity);
     if (existing != null) {
       if (isNewAccount &&
           enteredName.trim().isNotEmpty &&
@@ -171,7 +193,8 @@ class AuthService {
     final bike = enteredBike.trim().isNotEmpty ? enteredBike : 'No bike added';
 
     try {
-      final inserted = await _supabaseService.createUser(
+      final inserted = await _supabaseService.upsertAuthenticatedUserProfile(
+        userId: authUserId,
         phone: identity.phone,
         name: name,
         bike: bike,
@@ -295,27 +318,4 @@ class AuthService {
     );
   }
 
-  static String _requiredDefine(String key, String value) {
-    final trimmed = value.trim();
-    if (trimmed.isNotEmpty) return trimmed;
-    throw StateError('Missing app configuration value: $key.');
-  }
-
-  Map<String, dynamic> _decodeJwtPayload(String jwt) {
-    final parts = jwt.split('.');
-    if (parts.length < 2) {
-      throw Exception('Invalid ID token format.');
-    }
-    final payload = parts[1];
-    final normalized = base64Url.normalize(payload);
-    final decoded = utf8.decode(base64Url.decode(normalized));
-    final dynamic jsonValue = jsonDecode(decoded);
-    if (jsonValue is Map<String, dynamic>) {
-      return jsonValue;
-    }
-    if (jsonValue is Map) {
-      return Map<String, dynamic>.from(jsonValue);
-    }
-    throw Exception('Invalid ID token payload.');
-  }
 }

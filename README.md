@@ -10,7 +10,6 @@
 [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
-[![Auth0](https://img.shields.io/badge/Auth0-111827?style=for-the-badge&logo=auth0&logoColor=white)](https://auth0.com)
 
 </div>
 
@@ -30,7 +29,7 @@
 - **👑 Active Leader Mode**: Autonomous map centering and navigation focus following the designated group ride leader.
 - **🔄 Auto Route Sync**: Immediate synchronization of the ride path, destination points, and stops directly across all participants' screens.
 - **🔌 Offline Resiliency**: Robust offline location queuing system that caches GPS updates when signal is weak and automatically flushes them on reconnection.
-- **🔐 Phone.Email OTP Auth**: Secure, high-speed one-tap Auth0 passwordless authentication for returning riders.
+- **🔐 Google Sign-In**: Simple Supabase Auth Google sign-in for returning riders.
 
 ---
 
@@ -38,7 +37,7 @@
 
 - **Frontend Core**: [Flutter](https://flutter.dev) (Dart SDK `^3.7.2` stable)
 - **Backend Architecture**: [Supabase](https://supabase.com) (Realtime subscriptions, PostgreSQL DB, and Cloud Storage)
-- **Identity & Authentication**: [Auth0](https://auth0.com) passwordless phone auth
+- **Identity & Authentication**: [Supabase Auth](https://supabase.com/auth) with Google sign-in
 - **Maps Engine**: [Flutter Map](https://github.com/fleaflet/flutter_map) + [Leaflet](https://leafletjs.com/) with open-source OpenStreetMap layers
 - **External Navigation Linkage**: [Google Maps Deep-Link Integration](https://developers.google.com/maps)
 - **Telemetry & Location API**: [Geolocator](https://pub.dev/packages/geolocator)
@@ -53,7 +52,7 @@ lib/
 ├── legal/                   # Terms of Service & Privacy Policy resources
 ├── models/                  # Strong-typed application models (Rider, Route, LiveLocation)
 ├── screens/                 # Premium views (Ride Mode, SOS, Login, Lobby, Summary)
-├── services/                # Backend layers (Supabase, Auth0, Geolocator, Weather)
+├── services/                # Backend layers (Supabase, Geolocator, Weather)
 ├── utils/                   # Shared helpers & navigation transition structures
 ├── widgets/                 # Elegant custom visual widgets (SmoothMarker, AppToast)
 └── main.dart                # Application entry point & service bootstrap
@@ -81,9 +80,7 @@ Create `dart_defines.local.json` in the root of your project using the template 
 {
   "SUPABASE_URL": "https://YOUR_SUPABASE_PROJECT.supabase.co",
   "SUPABASE_ANON_KEY": "YOUR_ANON_KEY",
-  "AUTH0_DOMAIN": "YOUR_TENANT.auth0.com",
-  "AUTH0_CLIENT_ID": "YOUR_CLIENT_ID",
-  "AUTH0_SCHEME": "journeysync",
+  "AUTH_REDIRECT_URL": "journeysync://login-callback",
   "SUPABASE_AVATAR_BUCKET": "avatars"
 }
 ```

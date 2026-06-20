@@ -14,14 +14,6 @@ const String _supabaseAnonKey = String.fromEnvironment(
   'SUPABASE_ANON_KEY',
   defaultValue: AppConfig.supabaseAnonKey,
 );
-const String _auth0Domain = String.fromEnvironment(
-  'AUTH0_DOMAIN',
-  defaultValue: AppConfig.auth0Domain,
-);
-const String _auth0ClientId = String.fromEnvironment(
-  'AUTH0_CLIENT_ID',
-  defaultValue: AppConfig.auth0ClientId,
-);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,8 +40,6 @@ Future<void> _initializeServices() async {
     'SUPABASE_ANON_KEY',
     _supabaseAnonKey,
   );
-  _requiredDefine('AUTH0_DOMAIN', _auth0Domain);
-  _requiredDefine('AUTH0_CLIENT_ID', _auth0ClientId);
 
   await Supabase.initialize(
     url: supabaseUrl,
