@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'app_config.dart';
 import 'supabase_service.dart';
