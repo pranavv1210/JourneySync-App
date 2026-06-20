@@ -242,9 +242,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              const RideLoadingIndicator(label: 'Loading your rides'),
-            ],
+            children: [const RideLoadingIndicator(label: 'Loading your rides')],
           ),
         ),
       );

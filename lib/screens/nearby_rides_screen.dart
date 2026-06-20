@@ -357,32 +357,33 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         elevation: 0,
         centerTitle: true,
         leading: Builder(
-          builder: (context) => GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              margin: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFFD46211).withValues(alpha: 0.2),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+          builder:
+              (context) => GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  margin: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFD46211).withValues(alpha: 0.2),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: forest,
+                    size: 16,
+                  ),
+                ),
               ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: forest,
-                size: 16,
-              ),
-            ),
-          ),
         ),
         actions: [
           IconButton(

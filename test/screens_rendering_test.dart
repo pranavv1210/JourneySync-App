@@ -41,26 +41,25 @@ void main() {
       expect(find.byType(PremiumButton), findsOneWidget);
     });
 
-    testWidgets(
-      'HomeScreen renders with skeleton loading or main HUD elements',
-      (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+    testWidgets('HomeScreen renders with skeleton loading or main HUD elements', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
 
-        // HomeScreen has an initial loading block if Supabase fetch is triggered,
-        // which shows the branded ride loader.
-        // Let's verify either loader or main widgets render safely.
-        await tester.pump();
+      // HomeScreen has an initial loading block if Supabase fetch is triggered,
+      // which shows the branded ride loader.
+      // Let's verify either loader or main widgets render safely.
+      await tester.pump();
 
-        final loaderFinder = find.byType(RideLoadingIndicator);
-        final scaffoldFinder = find.byType(Scaffold);
+      final loaderFinder = find.byType(RideLoadingIndicator);
+      final scaffoldFinder = find.byType(Scaffold);
 
-        expect(scaffoldFinder, findsOneWidget);
-        expect(
-          loaderFinder.evaluate().isNotEmpty ||
-              find.text("Let's ride, Rider").evaluate().isNotEmpty,
-          isTrue,
-        );
-      },
-    );
+      expect(scaffoldFinder, findsOneWidget);
+      expect(
+        loaderFinder.evaluate().isNotEmpty ||
+            find.text("Let's ride, Rider").evaluate().isNotEmpty,
+        isTrue,
+      );
+    });
   });
 }

@@ -129,16 +129,18 @@ class AuthService {
     final currentSession = client.auth.currentSession;
     if (currentSession != null) return currentSession;
 
-    final authState = await client.auth.onAuthStateChange.firstWhere((state) {
-      return state.event == AuthChangeEvent.signedIn &&
-          state.session != null &&
-          state.session!.user.appMetadata['provider'] == 'google';
-    }).timeout(
-      const Duration(seconds: 90),
-      onTimeout: () {
-        throw TimeoutException('Google sign-in was not completed.');
-      },
-    );
+    final authState = await client.auth.onAuthStateChange
+        .firstWhere((state) {
+          return state.event == AuthChangeEvent.signedIn &&
+              state.session != null &&
+              state.session!.user.appMetadata['provider'] == 'google';
+        })
+        .timeout(
+          const Duration(seconds: 90),
+          onTimeout: () {
+            throw TimeoutException('Google sign-in was not completed.');
+          },
+        );
 
     final session = authState.session;
     if (session == null) {

@@ -169,22 +169,26 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
         foregroundColor: forest,
         elevation: 0,
         leading: Builder(
-          builder: (context) => GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              margin: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: sandDarker.withValues(alpha: 0.5), width: 1.5),
+          builder:
+              (context) => GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  margin: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: sandDarker.withValues(alpha: 0.5),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: forest,
+                    size: 16,
+                  ),
+                ),
               ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: forest,
-                size: 16,
-              ),
-            ),
-          ),
         ),
         centerTitle: true,
       ),
