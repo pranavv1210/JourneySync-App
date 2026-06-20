@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_navigation.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ride_loading_indicator.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'setup_error_screen.dart';
@@ -200,7 +201,7 @@ class _SplashScreenState extends State<SplashScreen>
                   bottom: 48,
                   child: Column(
                     children: [
-                      _PremiumLoader(),
+                      const RideLoadingIndicator(label: 'Preparing your ride'),
                       const SizedBox(height: 16),
                       Text(
                         'v1.0.2 Beta',
@@ -217,65 +218,6 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ),
       ),
-    );
-  }
-}
-
-class _PremiumLoader extends StatefulWidget {
-  @override
-  State<_PremiumLoader> createState() => _PremiumLoaderState();
-}
-
-class _PremiumLoaderState extends State<_PremiumLoader>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: Container(
-            width: 80,
-            height: 3,
-            color: AppColors.divider,
-            child: Stack(
-              children: [
-                Transform.translate(
-                  offset: Offset((_controller.value * 160) - 80, 0),
-                  child: Container(
-                    width: 80,
-                    height: 3,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(999),
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, AppColors.forest],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

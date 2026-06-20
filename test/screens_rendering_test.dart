@@ -6,6 +6,7 @@ import 'package:journeysync/services/app_config.dart';
 import 'package:journeysync/screens/login_screen.dart';
 import 'package:journeysync/screens/home_screen.dart';
 import 'package:journeysync/widgets/premium/premium_button.dart';
+import 'package:journeysync/widgets/ride_loading_indicator.dart';
 
 void main() {
   setUpAll(() async {
@@ -45,12 +46,12 @@ void main() {
       (WidgetTester tester) async {
         await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
 
-        // HomeScreen has initial loading block if Supabase fetch is triggered,
-        // which shows a CircularProgressIndicator.
+        // HomeScreen has an initial loading block if Supabase fetch is triggered,
+        // which shows the branded ride loader.
         // Let's verify either loader or main widgets render safely.
         await tester.pump();
 
-        final loaderFinder = find.byType(CircularProgressIndicator);
+        final loaderFinder = find.byType(RideLoadingIndicator);
         final scaffoldFinder = find.byType(Scaffold);
 
         expect(scaffoldFinder, findsOneWidget);

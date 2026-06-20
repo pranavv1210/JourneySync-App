@@ -5,6 +5,7 @@ import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_input.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../widgets/ride_loading_indicator.dart';
 import '../services/app_navigation.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
@@ -380,11 +381,7 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                 ),
                 if (quickLoginLoading)
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                  const RideLoadingIndicator(compact: true)
                 else
                   Icon(
                     Icons.arrow_forward_ios_rounded,

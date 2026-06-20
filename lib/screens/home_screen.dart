@@ -19,6 +19,7 @@ import 'ride_lobby_screen.dart';
 import 'ride_summary_screen.dart';
 import 'ride_mode_screen.dart';
 import '../widgets/empty_state_card.dart';
+import '../widgets/ride_loading_indicator.dart';
 import '../models/ride_record.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -242,21 +243,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 32,
-                height: 32,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Loading your rides...',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
+              const RideLoadingIndicator(label: 'Loading your rides'),
             ],
           ),
         ),
@@ -277,11 +264,14 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (refreshingHome)
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 10),
-                            child: LinearProgressIndicator(
-                              minHeight: 2,
-                              color: AppColors.primary,
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: EdgeInsets.only(bottom: 10),
+                              child: RideLoadingIndicator(
+                                label: 'Syncing ride data',
+                                compact: true,
+                              ),
                             ),
                           ),
                         if (loadError.isNotEmpty)

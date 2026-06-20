@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../ride_loading_indicator.dart';
 
 /// Premium button with scale animation, glass effect, and gradient support.
 /// Never uses default ElevatedButton — always custom.
@@ -315,10 +316,6 @@ class _LoadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 22,
-      height: 22,
-      child: CircularProgressIndicator(strokeWidth: 2.5, color: color),
-    );
+    return RideLoadingIndicator(compact: true, color: color);
   }
 }

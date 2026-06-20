@@ -265,6 +265,13 @@ class AuthService {
   }
 
   Future<void> clearSession() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {
+      // Local app state is still cleared below so logout cannot leave the UI
+      // authenticated.
+    }
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', false);
     await prefs.remove('userId');
@@ -317,5 +324,4 @@ class AuthService {
       avatarUrl: avatarUrl,
     );
   }
-
 }
