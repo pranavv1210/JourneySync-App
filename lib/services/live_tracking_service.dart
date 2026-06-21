@@ -212,7 +212,7 @@ class LiveTrackingService {
   }) async {
     final payload = <String, dynamic>{
       'ride_id': rideId.trim(),
-      'user_id': userId.trim(),
+      'profile_id': userId.trim(),
       'latitude': position.latitude,
       'longitude': position.longitude,
       'heading': position.heading >= 0 ? position.heading : null,
@@ -326,7 +326,7 @@ class LiveTrackingService {
 
     final payload = <String, dynamic>{
       'ride_id': _syncRideId,
-      'user_id': _syncUserId,
+      'profile_id': _syncUserId,
       'user_name': _syncUserName ?? 'Rider',
       'bike_name': _syncBikeName ?? 'No bike added',
       'is_leader': _syncIsLeader,
@@ -398,11 +398,11 @@ class LiveTrackingService {
           .from('live_locations')
           .delete()
           .eq('ride_id', rideId)
-          .eq('user_id', userId);
+          .eq('profile_id', userId);
     } catch (_) {}
     try {
       await _client
-          .from('users')
+          .from('profiles')
           .update({'active_ride_id': null})
           .eq('id', userId);
     } catch (_) {}
@@ -428,7 +428,8 @@ class LiveTrackingService {
   }
 
   RiderLocation? _parseRow(Map<String, dynamic> row) {
-    final userId = (row['user_id'] ?? '').toString().trim();
+    final userId =
+        (row['profile_id'] ?? row['user_id'] ?? '').toString().trim();
     final rideId = (row['ride_id'] ?? '').toString().trim();
     final lat = (row['latitude'] as num?)?.toDouble();
     final lng = (row['longitude'] as num?)?.toDouble();

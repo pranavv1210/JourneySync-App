@@ -245,10 +245,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
 
   Future<void> _hydrateAlertFallbackFromUser(Map<String, dynamic> row) async {
     final fallbackUserId =
-        (row['alert_user_id'] ??
-                row['creator_id'] ??
-                row['user_id'] ??
-                row['leader_id'])
+        (row['alert_profile_id'] ?? row['profile_id'] ?? row['host_id'])
             .toString()
             .trim();
     final targetUserId =
@@ -257,7 +254,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
 
     try {
       final raw = await supabase
-          .from('users')
+          .from('profiles')
           .select(
             'id,name,bike,phone,avatar_url,current_lat,current_lng,current_speed_mps,location_updated_at',
           )

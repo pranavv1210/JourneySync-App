@@ -66,7 +66,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (userId.isNotEmpty) {
         try {
           await Supabase.instance.client
-              .from('users')
+              .from('profiles')
               .update({'name': name, 'bike': bike, 'phone': phone})
               .eq('id', userId);
         } catch (e) {

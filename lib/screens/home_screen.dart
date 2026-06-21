@@ -21,6 +21,7 @@ import 'ride_mode_screen.dart';
 import '../widgets/empty_state_card.dart';
 import '../widgets/ride_loading_indicator.dart';
 import '../models/ride_record.dart';
+import '../coordinators/active_ride_coordinator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -297,6 +298,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                         _buildQuickStatus(),
                         const SizedBox(height: 24),
                         _buildPrimaryActions(),
+                        const SizedBox(height: 16),
+                        _buildResumeRideCard(),
                         const SizedBox(height: 24),
                         _buildRecentJourneys(),
                         const SizedBox(height: 16),
@@ -690,6 +693,72 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildResumeRideCard() {
+    return AnimatedBuilder(
+      animation: ActiveRideCoordinator.instance,
+      builder: (context, _) {
+        final snapshot = ActiveRideCoordinator.instance.snapshot;
+        if (!snapshot.hasActiveRide ||
+            snapshot.status == ActiveRideStatus.completed) {
+          return const SizedBox.shrink();
+        }
+        return PremiumCard(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              buildAppRoute(RideModeScreen(rideId: snapshot.rideId)),
+            );
+            await _loadHomeData();
+          },
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          borderColor: AppColors.primary.withValues(alpha: 0.18),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: const Icon(
+                  Icons.navigation_rounded,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Resume Ride',
+                      style: AppTypography.titleMedium.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      'Your live session is still available.',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: AppColors.textTertiary,
+                size: 16,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

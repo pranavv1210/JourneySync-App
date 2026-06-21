@@ -5,6 +5,7 @@ import 'services/app_navigation.dart';
 import 'services/app_config.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
+import 'coordinators/active_ride_coordinator.dart';
 
 const String _supabaseUrl = String.fromEnvironment(
   'SUPABASE_URL',
@@ -45,6 +46,7 @@ Future<void> _initializeServices() async {
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
   ).timeout(const Duration(seconds: 20));
+  await ActiveRideCoordinator.instance.restore();
 }
 
 String _requiredDefine(String key, String value) {

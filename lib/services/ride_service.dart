@@ -359,13 +359,7 @@ class RideService {
 
   RideRecord _toRideRecord(Map<String, dynamic> row) {
     final creator =
-        (row['host_id'] ??
-                row['creator_id'] ??
-                row['user_id'] ??
-                row['leader_id'] ??
-                '')
-            .toString()
-            .trim();
+        (row['host_id'] ?? row['profile_id'] ?? '').toString().trim();
     final status = (row['status'] ?? '').toString().trim();
     final endedAt = DateTime.tryParse((row['ended_at'] ?? '').toString());
     final archived =
@@ -501,9 +495,7 @@ class RideService {
   }
 
   String _rideHostId(Map<String, dynamic> row) {
-    return (row['creator_id'] ?? row['leader_id'] ?? row['user_id'] ?? '')
-        .toString()
-        .trim();
+    return (row['host_id'] ?? row['profile_id'] ?? '').toString().trim();
   }
 
   bool _isMissingJoinRequestSchema(PostgrestException error) {

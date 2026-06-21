@@ -599,19 +599,17 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
 
     try {
       final rows = await supabase
-          .from('participants')
-          .select('user_id')
-          .eq('ride_id', widget.rideId);
+          .from('ride_members')
+          .select('member_id,status')
+          .eq('ride_id', widget.rideId)
+          .eq('status', 'approved');
       final userIds =
           List<Map<String, dynamic>>.from(rows)
-              .map((row) => (row['user_id'] ?? '').toString().trim())
+              .map((row) => (row['member_id'] ?? '').toString().trim())
               .where((id) => id.isNotEmpty)
               .toSet();
 
-      final creatorId =
-          (rideRow['creator_id'] ?? rideRow['user_id'] ?? rideRow['leader_id'])
-              .toString()
-              .trim();
+      final creatorId = (rideRow['host_id'] ?? '').toString().trim();
       if (creatorId.isNotEmpty) {
         userIds.add(creatorId);
       }
@@ -626,14 +624,14 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
       List<Map<String, dynamic>> userRows;
       try {
         final raw = await supabase
-            .from('users')
+            .from('profiles')
             .select('id,name,bike,avatar_url')
             .inFilter('id', userIds.toList());
         userRows = List<Map<String, dynamic>>.from(raw);
       } on PostgrestException catch (error) {
         if (_isMissingAvatarColumn(error)) {
           final raw = await supabase
-              .from('users')
+              .from('profiles')
               .select('id,name,bike')
               .inFilter('id', userIds.toList());
           userRows = List<Map<String, dynamic>>.from(raw);

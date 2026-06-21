@@ -113,7 +113,7 @@ class RealtimeService {
   }) async {
     await _client.from('ride_alerts').insert({
       'ride_id': rideId,
-      'user_id': userId,
+      'profile_id': userId,
       'user_name': userName,
       'type': 'SOS',
       if (latitude != null) 'latitude': latitude,

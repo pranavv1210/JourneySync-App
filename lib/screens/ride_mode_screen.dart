@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/rider_location.dart';
+import '../coordinators/active_ride_coordinator.dart';
 import '../services/live_tracking_service.dart';
 import '../services/navigation_service.dart';
 import '../services/realtime_service.dart';
@@ -113,10 +114,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       final ride = await _supabaseService.fetchRideById(widget.rideId);
       if (ride == null) throw Exception('Ride not found');
 
-      _leaderId =
-          (ride['ride_leader_id'] ?? ride['host_id'] ?? ride['creator_id'])
-              ?.toString()
-              .trim();
+      _leaderId = (ride['host_id'] ?? '').toString().trim();
       _rideData = ride;
 
       // ── Start timer ──────────────────────────────────────────────────────
@@ -133,6 +131,15 @@ class _RideModeScreenState extends State<RideModeScreen>
         userName: _currentUserName,
         bikeName: _currentBikeName,
         isLeader: _leaderId == _currentUserId,
+      );
+      unawaited(
+        ActiveRideCoordinator.instance.attachRide(
+          rideId: widget.rideId,
+          profileId: _currentUserId,
+          profileName: _currentUserName,
+          bikeName: _currentBikeName,
+          startTracking: false,
+        ),
       );
 
       // ── Subscribe to incoming rider positions ────────────────────────────
@@ -371,6 +378,7 @@ class _RideModeScreenState extends State<RideModeScreen>
         rideId: widget.rideId,
         userId: _currentUserId,
       );
+      await ActiveRideCoordinator.instance.markCompleted();
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {

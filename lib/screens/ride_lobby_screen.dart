@@ -81,11 +81,12 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
 
     try {
       final participantRows = await supabase
-          .from('participants')
-          .select('user_id')
-          .eq('ride_id', widget.rideId);
+          .from('ride_members')
+          .select('member_id,status')
+          .eq('ride_id', widget.rideId)
+          .eq('status', 'approved');
       for (final row in participantRows) {
-        final userId = (row['user_id'] ?? '').toString().trim();
+        final userId = (row['member_id'] ?? '').toString().trim();
         if (userId.isNotEmpty) ids.add(userId);
       }
     } catch (_) {
@@ -129,15 +130,15 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   Future<List<_LobbyRequest>> _fetchPendingJoinRequests() async {
     try {
       final rows = await supabase
-          .from('join_requests')
-          .select('id,user_id,status,created_at')
+          .from('ride_members')
+          .select('id,member_id,status,created_at')
           .eq('ride_id', widget.rideId)
           .eq('status', 'pending')
           .order('created_at');
 
       final userIds =
           rows
-              .map((row) => (row['user_id'] ?? '').toString().trim())
+              .map((row) => (row['member_id'] ?? '').toString().trim())
               .where((id) => id.isNotEmpty)
               .toSet()
               .toList();
@@ -146,7 +147,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       joinRequestFeatureAvailable = true;
       return rows.map((row) {
         final id = (row['id'] ?? '').toString();
-        final userId = (row['user_id'] ?? '').toString().trim();
+        final userId = (row['member_id'] ?? '').toString().trim();
         final profile = profiles[userId];
         return _LobbyRequest(
           id: id,
@@ -174,7 +175,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
 
     try {
       final rows = await supabase
-          .from('users')
+          .from('profiles')
           .select('id,name,bike,avatar_url')
           .inFilter('id', unique);
       return {
@@ -184,7 +185,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     } on PostgrestException catch (error) {
       if (_isMissingAvatarColumn(error)) {
         final rows = await supabase
-            .from('users')
+            .from('profiles')
             .select('id,name,bike')
             .inFilter('id', unique);
         return {
@@ -197,9 +198,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   }
 
   String _hostIdFromRow(Map<String, dynamic> row) {
-    return (row['creator_id'] ?? row['leader_id'] ?? row['user_id'] ?? '')
-        .toString()
-        .trim();
+    return (row['host_id'] ?? row['profile_id'] ?? '').toString().trim();
   }
 
   String _rideCode(String id) {
@@ -331,17 +330,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     }
     try {
       await supabase
-          .from('join_requests')
+          .from('ride_members')
           .update({'status': 'approved'})
           .eq('id', request.id);
-      try {
-        await supabase.from('participants').insert({
-          'ride_id': widget.rideId,
-          'user_id': request.userId,
-        });
-      } on PostgrestException catch (error) {
-        if ((error.code ?? '').trim() != '23505') rethrow;
-      }
       await _reloadLobbyData();
     } catch (error) {
       _showInfo("Could not approve request: $error");
@@ -355,7 +346,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     }
     try {
       await supabase
-          .from('join_requests')
+          .from('ride_members')
           .update({'status': 'rejected'})
           .eq('id', request.id);
       await _reloadLobbyData();
@@ -604,7 +595,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     return code == '42P01' ||
         code == '42703' ||
         code == 'PGRST204' ||
-        error.message.toLowerCase().contains('join_requests');
+        error.message.toLowerCase().contains('ride_members');
   }
 
   bool _isMissingDescriptionColumn(PostgrestException error) {

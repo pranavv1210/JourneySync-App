@@ -37,8 +37,8 @@ void main() {
       expect(find.text('Sign In'), findsOneWidget);
       expect(find.text('Create Account'), findsAtLeastNWidgets(1));
 
-      // Verify primary action button exists (PremiumButton, not ElevatedButton)
-      expect(find.byType(PremiumButton), findsOneWidget);
+      // Welcome now exposes primary Google and secondary Phone CTAs.
+      expect(find.byType(PremiumButton), findsAtLeastNWidgets(2));
     });
 
     testWidgets('HomeScreen renders with skeleton loading or main HUD elements', (
