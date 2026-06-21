@@ -1,138 +1,142 @@
 <div align="center">
 
-<img src="assets/logo.png" alt="JourneySync Logo" width="100" />
+<h1 style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0; line-height: 1.1;">
+  <img src="assets/logo.png" alt="JourneySync Logo" width="40" style="display: block;" />
+  <span style="display: block;">JourneySync - Group Ride & Safety App</span>
+</h1>
 
-# JourneySync
+<p>
+  <a href="./CONTRIBUTING.md">Contributing</a> •
+  <a href="./LICENSE">MIT License</a> •
+  <a href="./SECURITY.md">Security</a>
+</p>
 
-### *The Premium Real-Time Group Ride Coordination & Safety App*
+<img src="assets/banner.png" alt="JourneySync Banner" width="85%" />
 
-[![Flutter CI/CD Quality Pipeline](https://github.com/pranavv1210/JourneySync-App/actions/workflows/flutter-ci.yml/badge.svg)](https://github.com/pranavv1210/JourneySync-App/actions/workflows/flutter-ci.yml)
-[![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
-[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+<br/>
+
+<img alt="Flutter" src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" />
+<img alt="Dart" src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" />
+<img alt="Supabase" src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" />
+<img alt="Auth0" src="https://img.shields.io/badge/Auth0-111827?style=for-the-badge&logo=auth0&logoColor=white" />
+<img alt="OpenStreetMap" src="https://img.shields.io/badge/OpenStreetMap-7EBC6F?style=for-the-badge&logo=openstreetmap&logoColor=white" />
+<img alt="Android" src="https://img.shields.io/badge/Android-34A853?style=for-the-badge&logo=android&logoColor=white" />
+<img alt="iOS" src="https://img.shields.io/badge/iOS-111827?style=for-the-badge&logo=apple&logoColor=white" />
 
 </div>
 
 ---
 
-## 🏍️ Overview
+JourneySync is a production-oriented motorcycle group ride app focused on real-time coordination and rider safety.
 
-**JourneySync** is a premium, real-time group motorcycle ride coordination and safety application designed to deliver seamless synchronization on the open road. Engineered for adventure, JourneySync integrates live rider tracking, real-time location streaming, offline data queueing, automated route sync, and an instantaneous emergency SOS system into an exquisite, smooth, and highly responsive Flutter application.
+## Quick Links
+- [Features](#features)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Setup](#setup)
+- [Environment Values](#environment-values)
+- [iOS Notes](#ios-notes)
 
----
+## Features
+- Auth0-based login flow for new and existing riders
+- Supabase-backed user profile storage (name, bike, avatar)
+- Ride creation, lobby, and nearby active ride discovery
+- Live ride map with participant context
+- SOS alert workflow for emergency response
+- Ride completion summary
+- Weather info on home screen
 
-## ✨ Features
+## Architecture
+- **Client**: Flutter (Dart)
+- **Backend**: Supabase (Postgres + Storage)
+- **Auth**: Auth0 Universal Login
+- **Maps**: `flutter_map` + OpenStreetMap tiles
+- **Location**: `geolocator`
+- **Local state**: `shared_preferences`
 
-- **🏍️ Premium Ride Mode**: Immersive full-screen active riding dashboard with smooth map visualization and a beautiful HUD.
-- **📍 Real-Time Live Rider Tracking**: High-performance rider location sync using Supabase Realtime, with smooth marker transition animations (`SmoothMarker`).
-- **🛡️ SOS Emergency System**: Instant safety trigger mechanism with visual overlays, battery percent tracking, and haptic warnings.
-- **👑 Active Leader Mode**: Autonomous map centering and navigation focus following the designated group ride leader.
-- **🔄 Auto Route Sync**: Immediate synchronization of the ride path, destination points, and stops directly across all participants' screens.
-- **🔌 Offline Resiliency**: Robust offline location queuing system that caches GPS updates when signal is weak and automatically flushes them on reconnection.
-- **🔐 Google Sign-In**: Simple Supabase Auth Google sign-in for returning riders.
-
----
-
-## 🛠️ Technology Stack
-
-- **Frontend Core**: [Flutter](https://flutter.dev) (Dart SDK `^3.7.2` stable)
-- **Backend Architecture**: [Supabase](https://supabase.com) (Realtime subscriptions, PostgreSQL DB, and Cloud Storage)
-- **Identity & Authentication**: [Supabase Auth](https://supabase.com/auth) with Google sign-in
-- **Maps Engine**: [Flutter Map](https://github.com/fleaflet/flutter_map) + [Leaflet](https://leafletjs.com/) with open-source OpenStreetMap layers
-- **External Navigation Linkage**: [Google Maps Deep-Link Integration](https://developers.google.com/maps)
-- **Telemetry & Location API**: [Geolocator](https://pub.dev/packages/geolocator)
-- **Crash Tracking & Logging**: [Sentry SDK](https://sentry.io/)
-
----
-
-## 📦 Directory Structure
-
+## Project Structure
 ```text
 lib/
-├── legal/                   # Terms of Service & Privacy Policy resources
-├── models/                  # Strong-typed application models (Rider, Route, LiveLocation)
-├── screens/                 # Premium views (Ride Mode, SOS, Login, Lobby, Summary)
-├── services/                # Backend layers (Supabase, Geolocator, Weather)
-├── utils/                   # Shared helpers & navigation transition structures
-├── widgets/                 # Elegant custom visual widgets (SmoothMarker, AppToast)
-└── main.dart                # Application entry point & service bootstrap
+  main.dart
+  splash_screen.dart
+  login_screen.dart
+  home_screen.dart
+  create_ride_screen.dart
+  nearby_rides_screen.dart
+  map_screen.dart
+  ride_lobby_screen.dart
+  live_ride_screen.dart
+  sos_alert_screen.dart
+  ride_summary_screen.dart
+  settings_screen.dart
+
+  auth_service.dart
+  ride_service.dart
+  supabase_service.dart
+  weather_service.dart
 ```
 
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Flutter SDK `^3.7.2` or later
-- Android Studio / Xcode configured for Android/iOS builds
-
-### 1. Repository Setup & Dependencies
-Clone the repository and install all packages:
+## Setup
+1. Install dependencies:
 ```bash
-git clone https://github.com/pranavv1210/JourneySync-App.git
-cd JourneySync-App
 flutter pub get
 ```
 
-### 2. Configure Environment Properties
-Create `dart_defines.local.json` in the root of your project using the template `dart_defines.local.json.example`:
-```json
-{
-  "SUPABASE_URL": "https://YOUR_SUPABASE_PROJECT.supabase.co",
-  "SUPABASE_ANON_KEY": "YOUR_ANON_KEY",
-  "AUTH_REDIRECT_URL": "journeysync://login-callback",
-  "SUPABASE_AVATAR_BUCKET": "avatars"
-}
-```
-
-### 3. Run in Debug Mode
-To run JourneySync locally with injected runtime defines:
+2. Run in debug:
 ```bash
 flutter run --dart-define-from-file=dart_defines.local.json
 ```
 
-### 4. Build Android Release APK
-To compile a production debug/release build:
+3. Build Android APK:
 ```bash
-# Debug APK
-flutter build apk --debug
-
-# Release APK
 flutter build apk --release --dart-define-from-file=dart_defines.local.json
 ```
 
----
+4. Create and publish an Android release manually when you are ready:
+```powershell
+.\scripts\release.ps1 -Version 1.0.2
+```
+This command updates the app version, builds the signed Android APK, creates a git tag, pushes the branch and tag, uploads the APK to GitHub Releases, and publishes the release.
 
-## 🧪 CI/CD Quality Checks
+## Environment Values
+This project expects runtime `--dart-define` values:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `AUTH0_DOMAIN`
+- `AUTH0_CLIENT_ID`
+- `AUTH0_SCHEME` (optional, defaults to `journeysync`)
+- `SUPABASE_AVATAR_BUCKET` (optional, defaults to `avatars`)
 
-All commits and pull requests submitted to the protected `main` and `dev` branches are automatically validated using a professional GitHub Actions workflow.
-
-To verify your changes locally before pushing:
+Example:
 ```bash
-# Verify formatting
-dart format --set-exit-if-changed .
-
-# Static analysis
-flutter analyze
-
-# Run unit & widget tests
-flutter test
+flutter run \
+  --dart-define=SUPABASE_URL=YOUR_URL \
+  --dart-define=SUPABASE_ANON_KEY=YOUR_ANON_KEY \
+  --dart-define=AUTH0_DOMAIN=YOUR_TENANT.REGION.auth0.com \
+  --dart-define=AUTH0_CLIENT_ID=YOUR_AUTH0_CLIENT_ID \
+  --dart-define=AUTH0_SCHEME=journeysync
 ```
 
----
+## Android Signing
+For release signing, create `android/key.properties` from `android/key.properties.example` and point it to your keystore file.
 
-## 🗺️ Roadmap & Future Vision
+For automated local releases:
+- Install and log in to GitHub CLI with `gh auth login`
+- Keep `android/key.properties` configured locally
+- Keep `dart_defines.local.json` present locally
 
-- [ ] **Dynamic Offline Maps**: Pre-caching OSM map tiles along the planned route for offline exploration.
-- [ ] **Helmet Intercom Sync**: Live audio link integrations with Bluetooth headsets.
-- [ ] **Telemetry Overlay**: Real-time lean angle, altitude, and acceleration tracking.
-- [ ] **iOS Live Activities**: Premium iOS Lock Screen live distance widget.
+## iOS Notes
+Already configured permission keys in `ios/Runner/Info.plist`:
+- `NSLocationWhenInUseUsageDescription`
+- `NSPhotoLibraryUsageDescription`
+- `NSPhotoLibraryAddUsageDescription`
+- `NSCameraUsageDescription`
 
----
+For distribution, complete signing/provisioning in Xcode.
 
-## 🤝 Contribution Guidelines
+## Security
+- Do not commit secrets (`service_role`, client secrets, keystore passwords).
+- Keep only public client-side keys in app runtime config.
 
-We follow standard engineering workflows. To propose a change:
-1. Review the [Release Process Guide](./RELEASE_PROCESS.md) for branch strategy.
-2. Format your commit messages using the **Conventional Commits** specification.
-3. Submit a Pull Request targeting the `dev` branch for review.
+## License
+MIT. See [LICENSE](./LICENSE).
