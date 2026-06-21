@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../services/app_navigation.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
-import '../widgets/app_input.dart';
 import '../widgets/app_toast_premium.dart';
 import 'home_screen.dart';
 import 'sign_in_screen.dart';
@@ -61,7 +61,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     const SizedBox(height: AppSpacing.md),
                     Text(
                       'Set up your rider profile.',
-                      style: AppTypography.displaySmall,
+                      style: AppTypography.displaySmall.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Text(
@@ -71,18 +73,40 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xl),
-                    PremiumInput(
+                    TextField(
                       controller: _nameController,
-                      label: 'Full Name',
-                      hint: 'Your rider name',
-                      icon: Icons.person_outline_rounded,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'Your rider name',
+                        labelText: 'FULL NAME',
+                        hintStyle: const TextStyle(color: AppColors.textTertiary),
+                        labelStyle: const TextStyle(color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.textSecondary),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    PremiumInput(
+                    TextField(
                       controller: _bikeController,
-                      label: 'Bike',
-                      hint: 'e.g. Himalayan 450',
-                      icon: Icons.two_wheeler_outlined,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Himalayan 450',
+                        labelText: 'BIKE',
+                        hintStyle: const TextStyle(color: AppColors.textTertiary),
+                        labelStyle: const TextStyle(color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.two_wheeler_outlined, color: AppColors.textSecondary),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xxl),
                     AppButton(
@@ -90,7 +114,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           _loading
                               ? 'Creating account...'
                               : 'Create Account with Google',
-                      icon: _loading ? null : Icons.g_mobiledata_rounded,
+                      icon: _loading ? null : null,
+                      customIcon: _loading
+                          ? null
+                          : SvgPicture.asset(
+                              'assets/google_logo.svg',
+                              width: 24,
+                              height: 24,
+                            ),
                       loading: _loading,
                       onPressed: _loading ? null : _createAccount,
                     ),

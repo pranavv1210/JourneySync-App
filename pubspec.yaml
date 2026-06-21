@@ -56,6 +56,7 @@ dependencies:
   flutter_dotenv: ^6.0.1
   shimmer: ^3.0.0
   app_links: ^6.4.1
+  flutter_svg: ^2.2.2
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +84,7 @@ flutter:
     - .env
     - assets/app_icon.png
     - assets/logo.png
+    - assets/google_logo.svg
     - assets/pattern.png
     - assets/profile.png
     - assets/legal/privacy_policy.txt

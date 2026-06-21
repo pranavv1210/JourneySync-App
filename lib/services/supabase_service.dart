@@ -16,9 +16,9 @@ class SupabaseService {
   );
 
   static const String _userColumnsWithAvatar =
-      'id,phone,name,bike,avatar_url,created_at';
+      'id,phone,name,bike,avatar_url';
   static const String _userColumnsWithoutAvatar =
-      'id,phone,name,bike,created_at';
+      'id,phone,name,bike';
   static const String _rideColumnsWithHost =
       'id,host_id,title,start_location,end_location,created_at';
 
@@ -149,7 +149,6 @@ class SupabaseService {
       'phone': phone.trim(),
       'name': name.trim(),
       'bike': bike.trim(),
-      'created_at': DateTime.now().toIso8601String(),
     };
 
     try {

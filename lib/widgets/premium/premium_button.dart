@@ -12,6 +12,7 @@ class PremiumButton extends StatefulWidget {
     required this.label,
     this.onPressed,
     this.icon,
+    this.customIcon,
     this.trailing,
     this.variant = PremiumButtonVariant.primary,
     this.size = PremiumButtonSize.large,
@@ -24,6 +25,7 @@ class PremiumButton extends StatefulWidget {
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
+  final Widget? customIcon;
   final Widget? trailing;
   final PremiumButtonVariant variant;
   final PremiumButtonSize size;
@@ -128,7 +130,10 @@ class _PremiumButtonState extends State<PremiumButton>
               if (widget.loading)
                 _LoadingIndicator(color: colors.textColor)
               else ...[
-                if (widget.icon != null) ...[
+                if (widget.customIcon != null) ...[
+                  widget.customIcon!,
+                  SizedBox(width: sizeConfig.iconGap),
+                ] else if (widget.icon != null) ...[
                   Icon(
                     widget.icon,
                     color: colors.textColor,

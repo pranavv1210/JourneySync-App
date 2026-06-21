@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../services/app_navigation.dart';
 import '../theme/app_theme.dart';
@@ -191,7 +192,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       children: [
         AppButton(
           label: 'Continue with Google',
-          icon: Icons.g_mobiledata_rounded,
+          customIcon: SvgPicture.asset(
+            'assets/google_logo.svg',
+            width: 24,
+            height: 24,
+          ),
           onPressed:
               () => pushAppRoute(context, const SignInScreen(autoStart: true)),
         ),

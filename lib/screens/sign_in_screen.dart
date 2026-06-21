@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../services/app_navigation.dart';
 import '../services/auth_service.dart';
@@ -40,7 +41,14 @@ class _SignInScreenState extends State<SignInScreen> {
           'Continue with your Google account to restore rides, profile, and live sessions.',
       action: AppButton(
         label: _loading ? 'Signing in...' : 'Continue with Google',
-        icon: _loading ? null : Icons.g_mobiledata_rounded,
+        icon: _loading ? null : null,
+        customIcon: _loading
+            ? null
+            : SvgPicture.asset(
+                'assets/google_logo.svg',
+                width: 24,
+                height: 24,
+              ),
         loading: _loading,
         onPressed: _loading ? null : _signIn,
       ),
@@ -160,7 +168,12 @@ class _AuthShell extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    Text(title, style: AppTypography.displaySmall),
+                    Text(
+                      title,
+                      style: AppTypography.displaySmall.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.md),
                     Text(
                       subtitle,

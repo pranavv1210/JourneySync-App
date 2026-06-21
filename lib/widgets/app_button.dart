@@ -12,6 +12,7 @@ class AppButton extends StatelessWidget {
     required this.label,
     this.onPressed,
     this.icon,
+    this.customIcon,
     this.trailing,
     this.variant = AppButtonVariant.primary,
     this.size = AppButtonSize.large,
@@ -23,6 +24,7 @@ class AppButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
+  final Widget? customIcon;
   final Widget? trailing;
   final AppButtonVariant variant;
   final AppButtonSize size;
@@ -36,6 +38,7 @@ class AppButton extends StatelessWidget {
       label: label,
       onPressed: onPressed,
       icon: icon,
+      customIcon: customIcon,
       trailing: trailing,
       variant: switch (variant) {
         AppButtonVariant.primary => PremiumButtonVariant.primary,
