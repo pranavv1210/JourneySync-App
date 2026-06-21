@@ -1,31 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'services/app_navigation.dart';
 import 'services/app_config.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 import 'coordinators/active_ride_coordinator.dart';
-
-const String _supabaseUrl = String.fromEnvironment(
-  'SUPABASE_URL',
-  defaultValue: AppConfig.supabaseUrl,
-);
-const String _supabaseAnonKey = String.fromEnvironment(
-  'SUPABASE_ANON_KEY',
-  defaultValue: AppConfig.supabaseAnonKey,
-);
+import 'utils/app_logger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load .env file
+  await dotenv.load(fileName: ".env");
+
+  // Initialize Firebase and Crashlytics
+  try {
+    await Firebase.initializeApp();
+    FlutterError.onError = (errorDetails) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+    };
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  } catch (e) {
+    AppLogger.error('Failed to initialize Firebase', e);
+  }
+
   final initializationFuture = _initializeServices();
 
   await SentryFlutter.init(
     (options) {
-      options.dsn = const String.fromEnvironment(
-        'SENTRY_DSN',
-        defaultValue: '',
-      );
+      options.dsn = dotenv.env['SENTRY_DSN'] ?? '';
       options.tracesSampleRate = 1.0;
       options.environment = 'production';
     },
@@ -36,23 +48,15 @@ void main() async {
 }
 
 Future<void> _initializeServices() async {
-  final supabaseUrl = _requiredDefine('SUPABASE_URL', _supabaseUrl);
-  final supabaseAnonKey = _requiredDefine(
-    'SUPABASE_ANON_KEY',
-    _supabaseAnonKey,
-  );
+  final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? AppConfig.supabaseUrl;
+  final supabaseAnonKey =
+      dotenv.env['SUPABASE_ANON_KEY'] ?? AppConfig.supabaseAnonKey;
 
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
   ).timeout(const Duration(seconds: 20));
   await ActiveRideCoordinator.instance.restore();
-}
-
-String _requiredDefine(String key, String value) {
-  final trimmed = value.trim();
-  if (trimmed.isNotEmpty) return trimmed;
-  throw StateError('Missing app configuration value: $key.');
 }
 
 class JourneySyncApp extends StatelessWidget {
@@ -65,7 +69,11 @@ class JourneySyncApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'JourneySync',
       theme: AppTheme.light,
-      navigatorObservers: [appRouteObserver],
+      navigatorObservers: [
+        appRouteObserver,
+        if (Firebase.apps.isNotEmpty)
+          FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+      ],
       home: SplashScreen(initializationFuture: initializationFuture),
     );
   }
