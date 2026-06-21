@@ -32,6 +32,9 @@ jobs:
           cache: true
           cache-key: "flutter-:os:-:channel:-:version:-:arch:-:hash:"
 
+      - name: Create Mock .env
+        run: touch .env
+
       - name: Install Dependencies
         run: flutter pub get
 

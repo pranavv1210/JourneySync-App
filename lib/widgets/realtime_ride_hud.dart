@@ -436,7 +436,7 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                     width: 40,
                     child: Switch(
                       value: widget.followingLeader,
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.primary,
                       onChanged: widget.onFollowLeaderToggled,
                     ),
                   ),
