@@ -8,6 +8,8 @@ import 'ride_summary_screen.dart';
 import 'ride_mode_screen.dart';
 import 'package:intl/intl.dart';
 import '../widgets/empty_state_card.dart';
+import '../widgets/premium/glass_card.dart';
+import 'dart:ui' as ui;
 
 class RideHistoryScreen extends StatefulWidget {
   const RideHistoryScreen({super.key});
@@ -147,6 +149,31 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
     );
   }
 
+  void _showReplayDialog(BuildContext context, String title) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Replay',
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (ctx, _, __) {
+        return _ReplayRouteDialog(title: title);
+      },
+      transitionBuilder: (ctx, animation, _, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInOutCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFFF26C0D);
@@ -220,99 +247,165 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                   final statusLabel = _rideStatusLabel(ride);
                   final statusColors = _rideStatusColors(statusLabel);
 
-                  return InkWell(
-                    onTap: () async {
-                      if (statusLabel == 'Live') {
-                        await Navigator.push(
-                          context,
-                          buildAppRoute(RideModeScreen(rideId: ride.id)),
-                        );
-                      } else if (ride.isCompleted) {
-                        await Navigator.push(
-                          context,
-                          buildAppRoute(RideSummaryScreen(rideId: ride.id)),
-                        );
-                      } else {
-                        await Navigator.push(
-                          context,
-                          buildAppRoute(RideLobbyScreen(rideId: ride.id)),
-                        );
-                      }
-                      _loadHistory();
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: sandDarker.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      child: Row(
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: GlassCard(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _ridePreviewTile(primary: primary, forest: forest),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15,
-                                    color: forest,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "$destination - ${ride.participantCount} riders",
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: statusColors.bg,
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    statusLabel,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: statusColors.fg,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                          Row(
                             children: [
-                              Text(
-                                dateLabel,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.w600,
+                              _ridePreviewTile(
+                                primary: primary,
+                                forest: forest,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontFamily: 'Proxima Nova',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: forest,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "$destination • ${ride.participantCount} riders",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontFamily: 'Proxima Nova',
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    dateLabel,
+                                    style: const TextStyle(
+                                      fontFamily: 'Proxima Nova',
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: statusColors.bg,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      statusLabel,
+                                      style: TextStyle(
+                                        fontFamily: 'Proxima Nova',
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: statusColors.fg,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: Colors.black12,
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // View details
+                              TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  foregroundColor: forest,
+                                  textStyle: const TextStyle(
+                                    fontFamily: 'Proxima Nova',
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  if (statusLabel == 'Live') {
+                                    await Navigator.push(
+                                      context,
+                                      buildAppRoute(
+                                        RideModeScreen(rideId: ride.id),
+                                      ),
+                                    );
+                                  } else if (ride.isCompleted) {
+                                    await Navigator.push(
+                                      context,
+                                      buildAppRoute(
+                                        RideSummaryScreen(rideId: ride.id),
+                                      ),
+                                    );
+                                  } else {
+                                    await Navigator.push(
+                                      context,
+                                      buildAppRoute(
+                                        RideLobbyScreen(rideId: ride.id),
+                                      ),
+                                    );
+                                  }
+                                  _loadHistory();
+                                },
+                                icon: const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  statusLabel == 'Live'
+                                      ? 'Join Live Ride'
+                                      : ride.isCompleted
+                                      ? 'View Summary'
+                                      : 'Open Lobby',
+                                ),
+                              ),
+
+                              // Replay Route button (visible if completed)
+                              if (ride.isCompleted)
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: primary),
+                                    foregroundColor: primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontFamily: 'Proxima Nova',
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  onPressed:
+                                      () => _showReplayDialog(context, title),
+                                  icon: const Icon(
+                                    Icons.replay_rounded,
+                                    size: 16,
+                                  ),
+                                  label: const Text('Replay Route'),
+                                ),
                             ],
                           ),
                         ],
@@ -388,5 +481,261 @@ class _RidePreviewPainter extends CustomPainter {
   bool shouldRepaint(covariant _RidePreviewPainter oldDelegate) {
     return oldDelegate.lineColor != lineColor ||
         oldDelegate.accentColor != accentColor;
+  }
+}
+
+class _ReplayRouteDialog extends StatefulWidget {
+  const _ReplayRouteDialog({required this.title});
+  final String title;
+
+  @override
+  State<_ReplayRouteDialog> createState() => _ReplayRouteDialogState();
+}
+
+class _ReplayRouteDialogState extends State<_ReplayRouteDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Material(
+              color: Colors.black.withValues(alpha: 0.85),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Replaying: ${widget.title}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontFamily: 'Proxima Nova',
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Simulated Animated Map Replay Box
+                    Container(
+                      height: 200,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: AnimatedBuilder(
+                        animation: _animController,
+                        builder: (context, _) {
+                          return CustomPaint(
+                            painter: _ReplayRoutePainter(
+                              progress: _animController.value,
+                              lineColor: const Color(0xFFFF6A00),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Replay speed: 10x',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontFamily: 'Proxima Nova',
+                            fontSize: 12,
+                          ),
+                        ),
+                        AnimatedBuilder(
+                          animation: _animController,
+                          builder: (context, _) {
+                            final pct = (_animController.value * 100).toInt();
+                            return Text(
+                              '$pct%',
+                              style: const TextStyle(
+                                color: Color(0xFFFF6A00),
+                                fontFamily: 'Proxima Nova',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white70,
+                            ),
+                            onPressed: () {
+                              _animController.reset();
+                              _animController.forward();
+                            },
+                            child: const Text('Restart'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF6A00),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Close'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReplayRoutePainter extends CustomPainter {
+  const _ReplayRoutePainter({required this.progress, required this.lineColor});
+  final double progress;
+  final Color lineColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Draw background grid lines
+    final gridPaint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.04)
+          ..strokeWidth = 1;
+    for (double dx = 10; dx < size.width; dx += 16) {
+      canvas.drawLine(Offset(dx, 0), Offset(dx, size.height), gridPaint);
+    }
+    for (double dy = 10; dy < size.height; dy += 16) {
+      canvas.drawLine(Offset(0, dy), Offset(size.width, dy), gridPaint);
+    }
+
+    final path =
+        Path()
+          ..moveTo(size.width * 0.15, size.height * 0.3)
+          ..cubicTo(
+            size.width * 0.3,
+            size.height * 0.1,
+            size.width * 0.45,
+            size.height * 0.8,
+            size.width * 0.6,
+            size.height * 0.5,
+          )
+          ..cubicTo(
+            size.width * 0.7,
+            size.height * 0.3,
+            size.width * 0.8,
+            size.height * 0.8,
+            size.width * 0.85,
+            size.height * 0.7,
+          );
+
+    // Compute progress path
+    final pathMetrics = path.computeMetrics();
+    final progressPath = Path();
+    for (final metric in pathMetrics) {
+      final extract = metric.extractPath(0.0, metric.length * progress);
+      progressPath.addPath(extract, Offset.zero);
+    }
+
+    // Draw route path
+    final routePaint =
+        Paint()
+          ..color = lineColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4
+          ..strokeCap = StrokeCap.round;
+    canvas.drawPath(progressPath, routePaint);
+
+    // Draw dots
+    final startPinPaint = Paint()..color = Colors.green;
+    canvas.drawCircle(
+      Offset(size.width * 0.15, size.height * 0.3),
+      5,
+      startPinPaint,
+    );
+
+    if (progress > 0.0) {
+      final currentMetric = path.computeMetrics().firstOrNull;
+      if (currentMetric != null) {
+        final pos =
+            currentMetric
+                .getTangentForOffset(currentMetric.length * progress)
+                ?.position;
+        if (pos != null) {
+          final riderPaint = Paint()..color = const ui.Color(0xFF2196F3);
+          canvas.drawCircle(pos, 6, riderPaint);
+
+          final glowPaint =
+              Paint()
+                ..color = const ui.Color(0xFF2196F3).withValues(alpha: 0.3);
+          canvas.drawCircle(pos, 12 * progress, glowPaint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ReplayRoutePainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.lineColor != lineColor;
   }
 }

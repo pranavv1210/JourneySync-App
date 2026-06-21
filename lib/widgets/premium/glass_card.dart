@@ -16,6 +16,7 @@ class GlassCard extends StatelessWidget {
     this.customColor,
     this.onTap,
     this.elevated = false,
+    this.customBorder,
   });
 
   final Widget child;
@@ -27,6 +28,7 @@ class GlassCard extends StatelessWidget {
   final Color? customColor;
   final VoidCallback? onTap;
   final bool elevated;
+  final BoxBorder? customBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -34,19 +36,24 @@ class GlassCard extends StatelessWidget {
     final bgColor = customColor ?? AppColors.surface;
 
     Widget card = Container(
-      padding: padding ?? const EdgeInsets.all(AppSpacing.lg),
       margin: margin ?? EdgeInsets.zero,
       decoration: BoxDecoration(
-        color: bgColor.withValues(alpha: opacity),
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: AppColors.glassBorder),
         boxShadow: elevated ? AppShadows.glass : AppShadows.sm,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
         child: BackdropFilter(
           filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: child,
+          child: Container(
+            padding: padding ?? const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: bgColor.withValues(alpha: opacity),
+              borderRadius: BorderRadius.circular(radius),
+              border: customBorder ?? Border.all(color: AppColors.glassBorder),
+            ),
+            child: child,
+          ),
         ),
       ),
     );

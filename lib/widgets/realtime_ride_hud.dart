@@ -1,406 +1,1037 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import '../theme/app_theme.dart';
+import '../models/rider_location.dart';
+import '../models/ride_route.dart';
+import '../services/fuel_service.dart';
+import 'haptic_button.dart';
 
-import '../coordinators/active_ride_coordinator.dart';
-import '../coordinators/realtime_coordinator.dart';
-import '../models/presence_info.dart';
+class RealtimeRideHUD extends StatefulWidget {
+  const RealtimeRideHUD({
+    super.key,
+    required this.riderLocations,
+    required this.currentUserId,
+    required this.leaderId,
+    required this.secondsElapsed,
+    required this.distanceTravelled,
+    required this.currentSpeed,
+    required this.avgSpeed,
+    required this.maxSpeed,
+    required this.altitude,
+    required this.gpsQuality,
+    required this.isOffline,
+    required this.followingLeader,
+    required this.onFollowLeaderToggled,
+    required this.onEndRide,
+    required this.currentLatitude,
+    required this.currentLongitude,
+    required this.pitStops,
+    required this.onAddPitStop,
+  });
 
-/// Premium real-time ride heads-up display with glassmorphism cards.
-///
-/// Shows:
-/// - Current Riders count
-/// - Leader name
-/// - Ride Duration
-/// - Connection quality
-/// - Tracking active status
-/// - GPS quality
-/// - Presence indicators
-class RealtimeRideHUD extends StatelessWidget {
-  const RealtimeRideHUD({super.key, this.compact = false});
+  final List<RiderLocation> riderLocations;
+  final String currentUserId;
+  final String? leaderId;
+  final int secondsElapsed;
+  final double distanceTravelled;
+  final double currentSpeed;
+  final double avgSpeed;
+  final double maxSpeed;
+  final double altitude;
+  final String gpsQuality;
+  final bool isOffline;
+  final bool followingLeader;
+  final ValueChanged<bool> onFollowLeaderToggled;
+  final VoidCallback onEndRide;
+  final double? currentLatitude;
+  final double? currentLongitude;
+  final List<RouteStop> pitStops;
+  final Function(String type, String name, double lat, double lng) onAddPitStop;
 
-  final bool compact;
+  @override
+  State<RealtimeRideHUD> createState() => _RealtimeRideHUDState();
+}
+
+class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
+  bool _isExpanded = false;
+  int _selectedTab = 0; // 0 = Dashboard, 1 = Pack, 2 = Stops, 3 = Fuel
+
+  final FuelService _fuelService = FuelService();
+  List<FuelStation> _fuelStations = [];
+  bool _loadingFuel = false;
+
+  String _formatDuration(int s) {
+    final h = s ~/ 3600;
+    final m = (s % 3600) ~/ 60;
+    final sec = s % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
+  }
+
+  double _calculateDistance(RiderLocation rider) {
+    if (widget.leaderId == null || rider.userId == widget.leaderId) return 0.0;
+    try {
+      final leader = widget.riderLocations.firstWhere(
+        (l) => l.userId == widget.leaderId,
+      );
+      return Geolocator.distanceBetween(
+            rider.latitude,
+            rider.longitude,
+            leader.latitude,
+            leader.longitude,
+          ) /
+          1000.0; // in km
+    } catch (_) {
+      return 0.0;
+    }
+  }
+
+  String _getConnectionQuality(RiderLocation rider) {
+    final age = DateTime.now().difference(rider.updatedAt);
+    if (age.inSeconds < 15) return 'Excellent';
+    if (age.inSeconds < 45) return 'Good';
+    if (age.inSeconds < 120) return 'Weak';
+    return 'Offline';
+  }
+
+  Color _getConnectionColor(String quality) {
+    switch (quality) {
+      case 'Excellent':
+        return const Color(0xFF10B981);
+      case 'Good':
+        return const Color(0xFF3B82F6);
+      case 'Weak':
+        return const Color(0xFFF59E0B);
+      default:
+        return const Color(0xFFEF4444);
+    }
+  }
+
+  Color _getBatteryColor(String batteryStr) {
+    try {
+      final value = int.parse(batteryStr.replaceAll('%', '').trim());
+      if (value > 60) return const Color(0xFF10B981);
+      if (value > 20) return const Color(0xFFF59E0B);
+      return const Color(0xFFEF4444);
+    } catch (_) {
+      return AppColors.textSecondary;
+    }
+  }
+
+  Future<void> _fetchFuelStations() async {
+    if (_loadingFuel) return;
+    setState(() => _loadingFuel = true);
+    try {
+      final stations = await _fuelService.fetchNearbyFuelStations(
+        latitude: widget.currentLatitude,
+        longitude: widget.currentLongitude,
+      );
+      if (mounted) {
+        setState(() {
+          _fuelStations = stations;
+          _loadingFuel = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching fuel stations: $e");
+      if (mounted) {
+        setState(() => _loadingFuel = false);
+      }
+    }
+  }
+
+  bool _isCurrentUserHost() {
+    return widget.leaderId != null && widget.leaderId == widget.currentUserId;
+  }
+
+  void _showAddStopDialog() {
+    final nameCtrl = TextEditingController();
+    String selectedType = 'Tea';
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text(
+                'Create Pit Stop',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Select stop category:',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButton<String>(
+                    value: selectedType,
+                    isExpanded: true,
+                    items:
+                        <String>['Tea', 'Fuel', 'Food', 'Rest'].map((
+                          String value,
+                        ) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text('$value Stop'),
+                          );
+                        }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedType = val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Stop Name / Description',
+                      hintText: 'e.g. Starbucks, Highway Shell',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final name = nameCtrl.text.trim();
+                    if (name.isNotEmpty &&
+                        widget.currentLatitude != null &&
+                        widget.currentLongitude != null) {
+                      widget.onAddPitStop(
+                        selectedType,
+                        name,
+                        widget.currentLatitude!,
+                        widget.currentLongitude!,
+                      );
+                    }
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Add & Sync'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) => nameCtrl.dispose());
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([
-        ActiveRideCoordinator.instance,
-        RealtimeCoordinator.instance,
-      ]),
-      builder: (context, _) {
-        final snapshot = ActiveRideCoordinator.instance.snapshot;
-        final realtimeState = RealtimeCoordinator.instance.connectionState;
-        final presenceList = RealtimeCoordinator.instance.presenceList;
+    final double panelHeight = _isExpanded ? 500.0 : 96.0;
+    final String connectionLabel =
+        widget.isOffline
+            ? 'Offline'
+            : widget.riderLocations.isEmpty
+            ? 'Connecting'
+            : 'Excellent';
 
-        if (!snapshot.hasActiveRide) return const SizedBox.shrink();
-
-        final onlineCount =
-            presenceList
-                .where((p) => p.status == RiderPresenceStatus.online)
-                .length;
-        final trackingCount =
-            presenceList
-                .where((p) => p.status == RiderPresenceStatus.tracking)
-                .length;
-        final leaderName =
-            snapshot.members.where((m) => m.isHost).firstOrNull?.name ??
-            'Leader';
-        final totalMembers = snapshot.members.length;
-
-        if (compact) {
-          return _buildCompactHUD(
-            onlineCount: onlineCount,
-            trackingCount: trackingCount,
-            totalMembers: totalMembers,
-            leaderName: leaderName,
-            connectionState: realtimeState,
-          );
-        }
-
-        return _buildFullHUD(
-          onlineCount: onlineCount,
-          trackingCount: trackingCount,
-          totalMembers: totalMembers,
-          leaderName: leaderName,
-          connectionState: realtimeState,
-          snapshot: snapshot,
-        );
-      },
-    );
-  }
-
-  Widget _buildCompactHUD({
-    required int onlineCount,
-    required int trackingCount,
-    required int totalMembers,
-    required String leaderName,
-    required RealtimeConnectionState connectionState,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOutCubic,
+      width: double.infinity,
+      height: panelHeight,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _StatusDot(
-            color: _connectionColor(connectionState),
-            label: _connectionLabel(connectionState),
-          ),
-          const SizedBox(width: 12),
-          _StatItem(
-            icon: Icons.people_rounded,
-            value: '$totalMembers',
-            label: 'riders',
-          ),
-          const SizedBox(width: 12),
-          _StatItem(
-            icon: Icons.track_changes_rounded,
-            value: '$trackingCount',
-            label: 'live',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFullHUD({
-    required int onlineCount,
-    required int trackingCount,
-    required int totalMembers,
-    required String leaderName,
-    required RealtimeConnectionState connectionState,
-    required ActiveRideSnapshot snapshot,
-  }) {
-    final durationText = _formatDuration(snapshot);
-    final isTracking = trackingCount > 0;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.75),
-        borderRadius: BorderRadius.circular(24),
+        color: Colors.white.withValues(alpha: 0.8),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.8),
+          color: Colors.white.withValues(alpha: 0.9),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 24,
-            offset: const Offset(0, 8),
+            offset: const Offset(0, -8),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          // Top row: connection + leader
-          Row(
-            children: [
-              _StatusDot(
-                color: _connectionColor(connectionState),
-                label: _connectionLabel(connectionState),
-              ),
-              const Spacer(),
-              _GlassChip(
-                icon: Icons.star_rounded,
-                label: leaderName,
-                color: const Color(0xFF1E3A2F),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          // Middle row: rider metrics
-          Row(
-            children: [
-              _MetricTile(
-                icon: Icons.people_rounded,
-                value: '$totalMembers',
-                label: 'Riders',
-                color: const Color(0xFF2563EB),
-              ),
-              const SizedBox(width: 12),
-              _MetricTile(
-                icon: Icons.track_changes_rounded,
-                value: '$trackingCount',
-                label: 'Tracking',
-                color: const Color(0xFF16A34A),
-              ),
-              const SizedBox(width: 12),
-              _MetricTile(
-                icon: Icons.wifi_rounded,
-                value: durationText,
-                label: 'Duration',
-                color: const Color(0xFFD46211),
-              ),
-            ],
-          ),
-          if (isTracking) ...[
-            const SizedBox(height: 12),
-            // Bottom row: GPS quality + online
-            Row(
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _GlassChip(
-                  icon: Icons.gps_fixed_rounded,
-                  label: 'GPS Active',
-                  color: const Color(0xFF16A34A),
+                GestureDetector(
+                  onTap: () => setState(() => _isExpanded = !_isExpanded),
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      Center(
+                        child: Container(
+                          width: 48,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: AppColors.textTertiary.withValues(
+                              alpha: 0.5,
+                            ),
+                            borderRadius: BorderRadius.circular(2.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildMiniStat(
+                              icon: Icons.speed_rounded,
+                              value:
+                                  '${widget.currentSpeed.toStringAsFixed(0)} km/h',
+                              label: 'Speed',
+                              color: AppColors.primary,
+                            ),
+                            _buildMiniStat(
+                              icon: Icons.route_outlined,
+                              value:
+                                  '${widget.distanceTravelled.toStringAsFixed(1)} km',
+                              label: 'Distance',
+                              color: const Color(0xFF2563EB),
+                            ),
+                            _buildMiniStat(
+                              icon: Icons.timer_outlined,
+                              value: _formatDuration(widget.secondsElapsed),
+                              label: 'Duration',
+                              color: const Color(0xFF10B981),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 8),
-                _GlassChip(
-                  icon: Icons.circle_rounded,
-                  label: '$onlineCount online',
-                  color: const Color(0xFF16A34A),
+                if (_isExpanded) ...[
+                  const Divider(height: 1, thickness: 1),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 4,
+                    ),
+                    child: _buildTabs(),
+                  ),
+                  Expanded(
+                    child: IndexedStack(
+                      index: _selectedTab,
+                      children: [
+                        _buildDashboardTab(connectionLabel),
+                        _buildPackTab(),
+                        _buildStopsTab(),
+                        _buildFuelTab(),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                    child: HapticButton(
+                      label: 'End Ride Session',
+                      icon: Icons.cancel_rounded,
+                      variant: HapticButtonVariant.danger,
+                      onPressed: widget.onEndRide,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabs() {
+    final tabs = ["Dashboard", "Pack", "Stops", "Fuel"];
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: List.generate(tabs.length, (idx) {
+          final isSelected = _selectedTab == idx;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTab = idx;
+                });
+                if (idx == 3) {
+                  _fetchFuelStations();
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: isSelected ? AppShadows.sm : null,
+                ),
+                child: Text(
+                  tabs[idx],
+                  textAlign: TextAlign.center,
+                  style: AppTypography.labelSmall.copyWith(
+                    color:
+                        isSelected
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildDashboardTab(String connectionLabel) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      children: [
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'GARMIN HUD LIVE',
+              style: AppTypography.labelMedium.copyWith(
+                color: AppColors.primary,
+                letterSpacing: 1.0,
+              ),
+            ),
+            if (widget.leaderId != null &&
+                widget.leaderId != widget.currentUserId)
+              Row(
+                children: [
+                  Text(
+                    'Follow Leader',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    height: 24,
+                    width: 40,
+                    child: Switch(
+                      value: widget.followingLeader,
+                      activeColor: AppColors.primary,
+                      onChanged: widget.onFollowLeaderToggled,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 3,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 1.45,
+          children: [
+            _buildHUDCard(
+              'Avg Speed',
+              '${widget.avgSpeed.toStringAsFixed(1)} km/h',
+              Icons.analytics_rounded,
+            ),
+            _buildHUDCard(
+              'Max Speed',
+              '${widget.maxSpeed.toStringAsFixed(0)} km/h',
+              Icons.bolt_rounded,
+            ),
+            _buildHUDCard(
+              'Altitude',
+              '${widget.altitude.toStringAsFixed(0)} m',
+              Icons.landscape_rounded,
+            ),
+            _buildHUDCard(
+              'GPS Quality',
+              widget.gpsQuality,
+              Icons.gps_fixed_rounded,
+            ),
+            _buildHUDCard(
+              'Network',
+              connectionLabel,
+              Icons.signal_cellular_alt_rounded,
+            ),
+            _buildHUDCard(
+              'Riders Live',
+              '${widget.riderLocations.length}',
+              Icons.group_work_rounded,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPackTab() {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      children: [
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Text(
+              'RIDER PACK LIST',
+              style: AppTypography.labelMedium.copyWith(
+                color: AppColors.primary,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${widget.riderLocations.length} Online',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...widget.riderLocations.map((rider) {
+          final isLeader = rider.userId == widget.leaderId || rider.isLeader;
+          final isMe = rider.userId == widget.currentUserId;
+          final connQuality = _getConnectionQuality(rider);
+          final distance = _calculateDistance(rider);
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color:
+                  isLeader
+                      ? const Color(0xFFFFF7ED).withValues(alpha: 0.9)
+                      : Colors.white.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color:
+                    isLeader
+                        ? const Color(0xFFFFD6A5)
+                        : Colors.white.withValues(alpha: 0.7),
+                width: isLeader ? 1.5 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
-          ],
-        ],
-      ),
+            child: Row(
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor:
+                          isLeader
+                              ? const Color(0xFFFFEDD5)
+                              : const Color(0xFFEFF6FF),
+                      child: Text(
+                        rider.userName.isNotEmpty
+                            ? rider.userName[0].toUpperCase()
+                            : '?',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color:
+                              isLeader
+                                  ? AppColors.primary
+                                  : Colors.blue.shade700,
+                        ),
+                      ),
+                    ),
+                    if (isLeader)
+                      Positioned(
+                        top: -10,
+                        left: -4,
+                        child: Transform.rotate(
+                          angle: -0.2,
+                          child: const Text(
+                            '👑',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            rider.userName,
+                            style: AppTypography.titleMedium.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (isLeader) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'LEADER',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (isMe) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade700,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'YOU',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        rider.bikeName,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      children: [
+                        if (rider.battery != null) ...[
+                          Icon(
+                            Icons.battery_4_bar_rounded,
+                            size: 14,
+                            color: _getBatteryColor(rider.battery!),
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            rider.battery!,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Icon(
+                          Icons.circle_rounded,
+                          size: 10,
+                          color: _getConnectionColor(connQuality),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          connQuality,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: _getConnectionColor(connQuality),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          '${rider.speedKmh?.toStringAsFixed(0) ?? '0'} km/h',
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (!isLeader && distance > 0.0) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '-${distance.toStringAsFixed(1)} km',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: Colors.orange.shade700,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 
-  String _formatDuration(ActiveRideSnapshot snapshot) {
-    // If we don't have a start time, show a placeholder
-    if (snapshot.status == ActiveRideStatus.active) {
-      return 'LIVE';
-    }
-    return '--:--';
+  Widget _buildStopsTab() {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      children: [
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'ACTIVE PIT STOPS',
+              style: AppTypography.labelMedium.copyWith(
+                color: AppColors.primary,
+                letterSpacing: 1.0,
+              ),
+            ),
+            if (_isCurrentUserHost())
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: _showAddStopDialog,
+                icon: const Icon(
+                  Icons.add_circle_outline_rounded,
+                  color: AppColors.primary,
+                ),
+                tooltip: 'Add Pit Stop',
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (widget.pitStops.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text(
+                'No pit stops created yet.',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          )
+        else
+          ...widget.pitStops.map((stop) {
+            IconData icon = Icons.local_cafe_rounded;
+            Color color = Colors.brown;
+            String cleanName = stop.label;
+
+            if (stop.label.contains(':')) {
+              final parts = stop.label.split(':');
+              final type = parts[0].trim().toLowerCase();
+              cleanName = parts.sublist(1).join(':').trim();
+              if (type == 'tea') {
+                icon = Icons.local_cafe_rounded;
+                color = Colors.brown;
+              } else if (type == 'fuel') {
+                icon = Icons.local_gas_station_rounded;
+                color = Colors.amber.shade700;
+              } else if (type == 'food') {
+                icon = Icons.restaurant_rounded;
+                color = Colors.red;
+              } else if (type == 'rest') {
+                icon = Icons.airline_seat_flat_rounded;
+                color = Colors.blue;
+              }
+            }
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: color.withValues(alpha: 0.12),
+                  child: Icon(icon, color: color),
+                ),
+                title: Text(
+                  cleanName,
+                  style: AppTypography.titleMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Text(
+                  'Stop #${stop.order}',
+                  style: AppTypography.caption,
+                ),
+                trailing: IconButton(
+                  icon: const Icon(
+                    Icons.navigation_outlined,
+                    color: AppColors.primary,
+                  ),
+                  onPressed: () {
+                    if (stop.latitude != null && stop.longitude != null) {
+                      _fuelService.navigateTo(stop.latitude!, stop.longitude!);
+                    }
+                  },
+                ),
+              ),
+            );
+          }),
+      ],
+    );
   }
 
-  Color _connectionColor(RealtimeConnectionState state) {
-    return switch (state) {
-      RealtimeConnectionState.connected => const Color(0xFF16A34A),
-      RealtimeConnectionState.syncing => const Color(0xFF2563EB),
-      RealtimeConnectionState.offline => const Color(0xFF6B7280),
-      RealtimeConnectionState.reconnecting => const Color(0xFFF97316),
-      RealtimeConnectionState.connecting => const Color(0xFF2563EB),
-      RealtimeConnectionState.disconnected => const Color(0xFF6B7280),
-    };
+  Widget _buildFuelTab() {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      children: [
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'NEARBY FUEL STATIONS',
+              style: AppTypography.labelMedium.copyWith(
+                color: AppColors.primary,
+                letterSpacing: 1.0,
+              ),
+            ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: _fetchFuelStations,
+              icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
+              tooltip: 'Refresh Fuel Stations',
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_loadingFuel)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 30),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_fuelStations.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text(
+                'No nearby fuel stations found.',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          )
+        else
+          ..._fuelStations.map((station) {
+            return Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.amber.withValues(alpha: 0.12),
+                      child: Icon(
+                        Icons.local_gas_station_rounded,
+                        color: Colors.amber.shade800,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            station.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.titleMedium.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                '${station.distanceKm.toStringAsFixed(1)} km away',
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 14,
+                                color: Colors.orange,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                station.rating.toStringAsFixed(1),
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.navigation_outlined,
+                        color: AppColors.primary,
+                      ),
+                      onPressed:
+                          () => _fuelService.navigateTo(
+                            station.latitude,
+                            station.longitude,
+                          ),
+                      tooltip: 'Navigate',
+                    ),
+                    if (_isCurrentUserHost())
+                      IconButton(
+                        icon: const Icon(
+                          Icons.add_circle_outline_rounded,
+                          color: Colors.green,
+                        ),
+                        onPressed: () {
+                          widget.onAddPitStop(
+                            'Fuel',
+                            station.name,
+                            station.latitude,
+                            station.longitude,
+                          );
+                        },
+                        tooltip: 'Add Stop',
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }),
+      ],
+    );
   }
 
-  String _connectionLabel(RealtimeConnectionState state) {
-    return switch (state) {
-      RealtimeConnectionState.connected => 'Live',
-      RealtimeConnectionState.syncing => 'Syncing',
-      RealtimeConnectionState.offline => 'Offline',
-      RealtimeConnectionState.reconnecting => 'Reconnecting',
-      RealtimeConnectionState.connecting => 'Connecting',
-      RealtimeConnectionState.disconnected => 'Offline',
-    };
-  }
-}
-
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.color, required this.label});
-
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildMiniStat({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color,
+            color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 6),
-            ],
           ),
+          child: Icon(icon, size: 16, color: color),
         ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  const _StatItem({
-    required this.icon,
-    required this.value,
-    required this.label,
-  });
-
-  final IconData icon;
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          size: 14,
-          color: const Color(0xFF1E3A2F).withValues(alpha: 0.5),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 13,
-            color: Color(0xFF1E3A2F),
-          ),
-        ),
-        const SizedBox(width: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 11,
-            color: const Color(0xFF1E3A2F).withValues(alpha: 0.5),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  const _MetricTile({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.1), width: 1),
-        ),
-        child: Column(
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(height: 4),
             Text(
               value,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                color: const Color(0xFF1E3A2F),
+              style: AppTypography.titleMedium.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
               ),
             ),
             Text(
               label,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
-                color: const Color(0xFF1E3A2F).withValues(alpha: 0.5),
+              style: AppTypography.caption.copyWith(
+                color: AppColors.textTertiary,
+                fontSize: 10,
               ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
-}
 
-class _GlassChip extends StatelessWidget {
-  const _GlassChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildHUDCard(String label, String value, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
+        color: Colors.white.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider.withValues(alpha: 0.5)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
+          Row(
+            children: [
+              Icon(icon, size: 14, color: AppColors.primary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 9,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
-              color: color,
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
             ),
           ),
         ],

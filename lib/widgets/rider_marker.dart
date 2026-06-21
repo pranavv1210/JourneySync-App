@@ -119,10 +119,10 @@ class _CurrentUserMarkerState extends State<CurrentUserMarker>
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// LEADER MARKER  — Orange glow + crown icon
+// LEADER MARKER  — Orange glow + crown icon + heading arrow
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// Premium leader marker: orange glow + crown + rider name.
+/// Premium leader marker: orange glow + crown + premium badge + heading arrow + rider name.
 class LeaderMarker extends StatefulWidget {
   const LeaderMarker({
     super.key,
@@ -163,6 +163,7 @@ class _LeaderMarkerState extends State<LeaderMarker>
 
   @override
   Widget build(BuildContext context) {
+    final leaderColor = const Color(0xFFFF6A00);
     return AnimatedBuilder(
       animation: _glowAnim,
       builder: (context, _) {
@@ -170,21 +171,25 @@ class _LeaderMarkerState extends State<LeaderMarker>
           mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
-              alignment: Alignment.topCenter,
+              alignment: Alignment.center,
               clipBehavior: Clip.none,
               children: [
-                // Glow ring
-                Positioned(
-                  top: -4,
-                  child: Container(
-                    width: 60 + (8 * _glowAnim.value),
-                    height: 60 + (8 * _glowAnim.value),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(
-                        0xFFFF6A00,
-                      ).withValues(alpha: 0.2 * _glowAnim.value),
+                // Direction indicator (if heading is available)
+                if (widget.location.heading != null)
+                  Transform.rotate(
+                    angle: widget.location.heading! * math.pi / 180,
+                    child: CustomPaint(
+                      size: const Size(68, 68),
+                      painter: _HeadingArrowPainter(color: leaderColor),
                     ),
+                  ),
+                // Glow ring
+                Container(
+                  width: 58 + (8 * _glowAnim.value),
+                  height: 58 + (8 * _glowAnim.value),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: leaderColor.withValues(alpha: 0.2 * _glowAnim.value),
                   ),
                 ),
                 // Avatar circle
@@ -194,15 +199,12 @@ class _LeaderMarkerState extends State<LeaderMarker>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: const Color(0xFFFFF3E0),
-                    border: Border.all(
-                      color: const Color(0xFFFF6A00),
-                      width: 3,
-                    ),
+                    border: Border.all(color: leaderColor, width: 3),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(
-                          0xFFFF6A00,
-                        ).withValues(alpha: 0.4 * _glowAnim.value),
+                        color: leaderColor.withValues(
+                          alpha: 0.4 * _glowAnim.value,
+                        ),
                         blurRadius: 12,
                         spreadRadius: 2,
                       ),
@@ -213,26 +215,45 @@ class _LeaderMarkerState extends State<LeaderMarker>
                     avatarUrl: widget.location.avatarUrl,
                   ),
                 ),
-                // Crown icon
+                // Crown icon / Premium badge top
                 Positioned(
                   top: -14,
-                  child: Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF6A00),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 4,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
                         ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.workspace_premium_rounded,
-                      color: Colors.white,
-                      size: 14,
-                    ),
+                        decoration: BoxDecoration(
+                          color: leaderColor,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('👑', style: TextStyle(fontSize: 10)),
+                            const SizedBox(width: 2),
+                            Text(
+                              'LEADER',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 // "You" indicator for current user
@@ -258,7 +279,7 @@ class _LeaderMarkerState extends State<LeaderMarker>
                   widget.isCurrentUser
                       ? 'You (Leader)'
                       : widget.location.userName,
-              backgroundColor: const Color(0xFFFF6A00),
+              backgroundColor: leaderColor,
               textColor: Colors.white,
             ),
           ],
@@ -269,10 +290,10 @@ class _LeaderMarkerState extends State<LeaderMarker>
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// RIDER MARKER  — Standard rider with name label
+// RIDER MARKER  — Standard rider with name label + heading indicator
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// Standard rider marker with avatar, name, and stale indicator.
+/// Standard rider marker with avatar, name, heading direction, and stale indicator.
 class RiderMarker extends StatelessWidget {
   const RiderMarker({
     super.key,
@@ -295,8 +316,19 @@ class RiderMarker extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Stack(
-            alignment: Alignment.topRight,
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
             children: [
+              // Direction indicator (if heading is available)
+              if (location.heading != null)
+                Transform.rotate(
+                  angle: location.heading! * math.pi / 180,
+                  child: CustomPaint(
+                    size: const Size(60, 60),
+                    painter: _HeadingArrowPainter(color: borderColor),
+                  ),
+                ),
+              // Avatar base
               Container(
                 width: 46,
                 height: 46,
@@ -319,13 +351,17 @@ class RiderMarker extends StatelessWidget {
               ),
               // Stale indicator dot
               if (location.isStale)
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
                   ),
                 ),
             ],
@@ -484,12 +520,12 @@ class _HeadingArrowPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2;
 
-    // Triangle pointing upward (0° = north)
+    // Triangle pointing upward (0° = north) that wraps around the outer bounds
     final path =
         Path()
-          ..moveTo(cx, cy - size.height * 0.45)
-          ..lineTo(cx + size.width * 0.15, cy - size.height * 0.1)
-          ..lineTo(cx - size.width * 0.15, cy - size.height * 0.1)
+          ..moveTo(cx, cy - size.height * 0.5)
+          ..lineTo(cx + size.width * 0.12, cy - size.height * 0.36)
+          ..lineTo(cx - size.width * 0.12, cy - size.height * 0.36)
           ..close();
 
     canvas.drawPath(path, paint);

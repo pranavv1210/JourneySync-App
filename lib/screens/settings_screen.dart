@@ -4,10 +4,11 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../widgets/app_dialog.dart';
 import '../services/app_navigation.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
-import 'edit_profile_screen.dart';
+import 'profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -38,24 +39,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _logout() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Sign Out?', style: AppTypography.headlineSmall),
-            content: const Text('You can always sign back in.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text('Cancel', style: AppTypography.buttonMedium),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-                child: const Text('Sign Out'),
-              ),
-            ],
-          ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Sign Out?',
+      message: 'You can always sign back in.',
+      confirmLabel: 'Sign Out',
+      cancelLabel: 'Cancel',
+      destructive: true,
     );
 
     if (confirmed != true) return;
@@ -124,7 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         final updated = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const EditProfileScreen(),
+                            builder: (_) => const ProfileScreen(),
                           ),
                         );
                         if (updated == true) {
@@ -385,34 +375,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showDeleteAccountDialog() {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Delete Account', style: AppTypography.headlineSmall),
-            content: const Text(
-              'Are you sure you want to delete your account? This action cannot be undone.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Cancel', style: AppTypography.buttonMedium),
-              ),
-              FilledButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  showPremiumToast(
-                    context,
-                    'Account deletion request submitted.',
-                    type: PremiumToastType.info,
-                  );
-                },
-                style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
+  Future<void> _showDeleteAccountDialog() async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Delete Account',
+      message:
+          'Are you sure you want to delete your account? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      destructive: true,
     );
+
+    if (confirmed == true) {
+      if (mounted) {
+        showPremiumToast(
+          context,
+          'Account deletion request submitted.',
+          type: PremiumToastType.info,
+        );
+      }
+    }
   }
 }

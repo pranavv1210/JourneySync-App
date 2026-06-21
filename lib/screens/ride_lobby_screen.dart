@@ -4,6 +4,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:ui' show ImageFilter;
+import '../theme/app_theme.dart';
+import '../services/weather_service.dart';
 import '../widgets/app_toast.dart';
 import 'ride_mode_screen.dart';
 import '../services/ride_service.dart';
@@ -27,6 +30,9 @@ class RideLobbyScreen extends StatefulWidget {
 class _RideLobbyScreenState extends State<RideLobbyScreen> {
   final supabase = Supabase.instance.client;
   final _rideService = RideService();
+  final _weatherService = WeatherService();
+
+  WeatherSnapshot? _weatherSnapshot;
 
   bool loading = true;
   Map<String, dynamic>? ride;
@@ -72,6 +78,275 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       pendingRequests = loadedRequests;
       loading = false;
     });
+
+    _loadWeather();
+  }
+
+  Future<void> _loadWeather() async {
+    if (!mounted) return;
+    try {
+      final endCoord = _parseLatLng(_destinationLabel());
+      final startCoord = _parseLatLng(_startLocationLabel());
+      final coord = endCoord ?? startCoord;
+      final weather = await _weatherService.fetchCurrentWeather(
+        latitude: coord?.latitude,
+        longitude: coord?.longitude,
+      );
+      if (mounted) {
+        setState(() {
+          _weatherSnapshot = weather;
+        });
+      }
+    } catch (e) {
+      debugPrint("Lobby weather fetch failed: $e");
+    }
+  }
+
+  void _showWeatherDetailsBottomSheet() {
+    if (_weatherSnapshot == null) return;
+    final w = _weatherSnapshot!;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: AppShadows.lg,
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "WEATHER INTELLIGENCE",
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "Destination Conditions",
+                                style: AppTypography.headlineMedium.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Icon(
+                            Icons.wb_sunny_rounded,
+                            size: 36,
+                            color: Colors.amber[700],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _weatherTelemetryItem(
+                              icon: Icons.thermostat_rounded,
+                              value: "${w.temperature.round()}°F",
+                              label: "Temperature",
+                              color: Colors.redAccent,
+                            ),
+                            _weatherTelemetryItem(
+                              icon: Icons.umbrella_rounded,
+                              value: "${w.rainChance}%",
+                              label: "Rain Chance",
+                              color: Colors.blueAccent,
+                            ),
+                            _weatherTelemetryItem(
+                              icon: Icons.air_rounded,
+                              value: "${w.windSpeed.round()} mph",
+                              label: "Wind Speed",
+                              color: Colors.teal,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _weatherMiniCard(
+                              icon: Icons.wb_twilight_rounded,
+                              title: "Sunrise & Sunset",
+                              subtitle: "Rise: ${w.sunrise}\nSet: ${w.sunset}",
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _weatherMiniCard(
+                              icon: Icons.visibility_rounded,
+                              title: "Visibility",
+                              subtitle: "${w.visibility.toStringAsFixed(1)} km",
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (w.alerts.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        Text(
+                          "SAFETY ALERTS",
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.error,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...w.alerts.map(
+                          (alert) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: AppColors.error.withValues(alpha: 0.15),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: AppColors.error,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    alert,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: AppColors.error,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _weatherTelemetryItem({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: AppTypography.headlineSmall.copyWith(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+
+  Widget _weatherMiniCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.primary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.titleSmall.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<List<_LobbyMember>> _fetchCrew(Map<String, dynamic> rideRow) async {
@@ -751,9 +1026,20 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               Positioned(
                 top: 12,
                 left: 12,
+                right: 12,
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _badge(Icons.calendar_today, _dateLabel(), primary),
+                    if (_weatherSnapshot != null)
+                      GestureDetector(
+                        onTap: _showWeatherDetailsBottomSheet,
+                        child: _badge(
+                          Icons.cloud_rounded,
+                          _weatherSnapshot!.displayText,
+                          Colors.blue.shade700,
+                        ),
+                      ),
                   ],
                 ),
               ),

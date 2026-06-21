@@ -7,9 +7,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../coordinators/realtime_coordinator.dart';
 import '../models/ride_record.dart';
 import '../widgets/app_toast.dart';
+import '../widgets/app_dialog.dart';
+import '../widgets/premium/glass_card.dart';
+import '../widgets/haptic_button.dart';
 import '../services/ride_service.dart';
 import '../widgets/empty_state_card.dart';
 import '../widgets/ride_loading_indicator.dart';
+import 'dart:ui' show ImageFilter;
+import '../theme/app_theme.dart';
+import '../services/weather_service.dart';
 
 class NearbyRidesScreen extends StatefulWidget {
   const NearbyRidesScreen({super.key});
@@ -24,6 +30,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
 
   final RideService _rideService = RideService();
   final RealtimeCoordinator _realtimeCoordinator = RealtimeCoordinator.instance;
+  final WeatherService _weatherService = WeatherService();
   late final AnimationController _radarController;
 
   Timer? _emptyStateTimer;
@@ -38,6 +45,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   String currentUserAvatarUrl = '';
   String joiningRideId = '';
   List<NearbyRide> nearbyRides = <NearbyRide>[];
+  WeatherSnapshot? _weatherSnapshot;
 
   @override
   void initState() {
@@ -48,6 +56,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     )..repeat();
     _realtimeCoordinator.addListener(_onRadarChanged);
     _loadNearbyRides();
+    _loadWeather();
   }
 
   @override
@@ -246,71 +255,18 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   }
 
   Future<void> _showJoinByCodeDialog() async {
-    final codeController = TextEditingController();
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Join With Access Code'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Enter the code shared by your ride host (example: JS-0370).',
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: codeController,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(
-                  hintText: 'JS-0370',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) {
-                  final normalized = value.toUpperCase();
-                  if (normalized != value) {
-                    codeController.value = TextEditingValue(
-                      text: normalized,
-                      selection: TextSelection.collapsed(
-                        offset: normalized.length,
-                      ),
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed:
-                  joiningByCode ? null : () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed:
-                  joiningByCode
-                      ? null
-                      : () async {
-                        await _joinRideByCode(codeController.text);
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext);
-                        }
-                      },
-              child:
-                  joiningByCode
-                      ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : const Text('Join'),
-            ),
-          ],
-        );
-      },
+    final code = await showAppInputDialog(
+      context,
+      title: 'Join With Access Code',
+      message: 'Enter the code shared by your ride host (example: JS-0370).',
+      hintText: 'JS-0370',
+      confirmLabel: 'Join',
+      cancelLabel: 'Cancel',
+      textCapitalization: TextCapitalization.characters,
     );
-    codeController.dispose();
+    if (code != null && code.trim().isNotEmpty) {
+      await _joinRideByCode(code.trim().toUpperCase());
+    }
   }
 
   Future<void> _joinRideByCode(String rawCode) async {
@@ -454,16 +410,122 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       );
     }
 
+    final weatherWidget =
+        _weatherSnapshot != null
+            ? Padding(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
+              child: GlassCard(
+                onTap: _showWeatherDetailsBottomSheet,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                borderRadius: 16,
+                opacity: 0.85,
+                customColor: Colors.white,
+                child: Row(
+                  children: [
+                    Icon(
+                      _weatherIcon(_weatherSnapshot!.displayText),
+                      color: primary,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                _weatherSnapshot!.displayText,
+                                style: TextStyle(
+                                  fontFamily: 'Proxima Nova',
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: forest,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                "WEATHER INTEL",
+                                style: TextStyle(
+                                  fontFamily: 'Proxima Nova',
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 9,
+                                  color: primary,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          if (_weatherSnapshot!.alerts.isNotEmpty)
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Colors.redAccent,
+                                  size: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    _weatherSnapshot!.alerts.first,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'Proxima Nova',
+                                      fontSize: 11,
+                                      color: Colors.redAccent,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Text(
+                              "Temp: ${_weatherSnapshot!.temperature.round()}°F  •  Rain: ${_weatherSnapshot!.rainChance}%  •  Wind: ${_weatherSnapshot!.windSpeed.round()} mph",
+                              style: TextStyle(
+                                fontFamily: 'Proxima Nova',
+                                fontSize: 11,
+                                color: forest.withValues(alpha: 0.6),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.keyboard_arrow_right_rounded,
+                      color: forest.withValues(alpha: 0.5),
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            )
+            : const SizedBox.shrink();
+
     if (searching || nearbyRides.isEmpty) {
-      return _radarExperience(
-        primary,
-        forest,
-        showFallback: _showNoRidesFallback,
+      return Column(
+        children: [
+          weatherWidget,
+          Expanded(
+            child: _radarExperience(
+              primary,
+              forest,
+              showFallback: _showNoRidesFallback,
+            ),
+          ),
+        ],
       );
     }
 
     return Column(
       children: [
+        weatherWidget,
         const SizedBox(height: 4),
         _radarSurface(primary, forest, nearbyRides),
         const SizedBox(height: 10),
@@ -644,161 +706,162 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     return nodes;
   }
 
+  String _estimateDuration(double? distanceKm) {
+    if (distanceKm == null) return "35m";
+    final mins = (distanceKm / 50.0 * 60).round();
+    if (mins < 5) return "5m";
+    if (mins < 60) return "${mins}m";
+    final h = mins ~/ 60;
+    final m = mins % 60;
+    return m == 0 ? "${h}h" : "${h}h ${m}m";
+  }
+
   Widget _rideList(Color primary, Color forest) {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
       itemCount: nearbyRides.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final ride = nearbyRides[index];
         final joining = joiningRideId == ride.ride.id;
         final distance = _distanceFor(ride.ride.id);
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: primary.withValues(alpha: 0.18)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
+        final durationStr = _estimateDuration(distance);
+
+        return GlassCard(
+          padding: const EdgeInsets.all(18),
+          elevated: true,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Title and status badge
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Text(
                       ride.ride.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: forest,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '${ride.ride.participantCount} joined',
-                      style: TextStyle(
-                        color: primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Icon(Icons.place_rounded, size: 15, color: primary),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: Text(
-                      distance == null
-                          ? 'Distance calculating'
-                          : '${distance.toStringAsFixed(distance < 10 ? 1 : 0)} km away',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: forest.withValues(alpha: 0.74),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                      style: AppTypography.headlineMedium.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    ride.ride.status.trim().isEmpty
-                        ? 'OPEN'
-                        : ride.ride.status.toUpperCase(),
-                    style: TextStyle(
-                      color: primary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${ride.ride.startLocation} -> ${ride.ride.endLocation}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: forest.withValues(alpha: 0.7),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _RadarAvatar(
-                    avatarUrl: ride.hostAvatarUrl,
-                    label: ride.hostName,
-                    radius: 16,
-                    borderColor: primary.withValues(alpha: 0.22),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: AppColors.success.withValues(alpha: 0.2),
+                      ),
+                    ),
                     child: Text(
-                      'Host: ${ride.hostName} | ${ride.hostBike}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: forest.withValues(alpha: 0.75),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                      'LIVE',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed:
-                      (ride.joined || joining) ? null : () => _joinRide(ride),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        ride.joined ? Colors.grey.shade300 : primary,
-                    foregroundColor:
-                        ride.joined ? Colors.black54 : Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              // Route: Start -> End
+              Row(
+                children: [
+                  const Icon(
+                    Icons.navigation_outlined,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${ride.ride.startLocation} ➔ ${ride.ride.endLocation}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                  child:
-                      joining
-                          ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                          : Text(
-                            ride.joined ? 'Joined Ride' : 'Join Ride',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Info grid (Distance, Members, Duration)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _infoChip(
+                    Icons.location_on_outlined,
+                    distance == null
+                        ? '--'
+                        : '${distance.toStringAsFixed(1)} km',
+                    'Distance',
+                  ),
+                  _infoChip(
+                    Icons.people_outline_rounded,
+                    '${ride.ride.participantCount}',
+                    'Riders',
+                  ),
+                  _infoChip(Icons.speed_outlined, durationStr, 'Est. Time'),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Divider
+              Container(height: 1, color: AppColors.divider),
+              const SizedBox(height: 16),
+              // Host and Bike details
+              Row(
+                children: [
+                  _RadarAvatar(
+                    avatarUrl: ride.hostAvatarUrl,
+                    label: ride.hostName,
+                    radius: 18,
+                    borderColor: AppColors.primary.withValues(alpha: 0.2),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ride.hostName,
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.bold,
                           ),
-                ),
+                        ),
+                        Text(
+                          ride.hostBike,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              // Join Button (Haptic)
+              HapticButton(
+                label: ride.joined ? 'Joined' : 'Join Ride',
+                icon: ride.joined ? Icons.check_rounded : Icons.add_rounded,
+                loading: joining,
+                disabled: ride.joined,
+                variant:
+                    ride.joined
+                        ? HapticButtonVariant.outline
+                        : HapticButtonVariant.primary,
+                onPressed: ride.joined ? null : () => _joinRide(ride),
               ),
             ],
           ),
@@ -807,11 +870,320 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     );
   }
 
+  Widget _infoChip(IconData icon, String value, String label) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: AppColors.textTertiary),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: AppTypography.titleMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: AppTypography.caption.copyWith(
+            color: AppColors.textSecondary,
+            fontSize: 9,
+          ),
+        ),
+      ],
+    );
+  }
+
   double? _distanceFor(String rideId) {
     for (final ride in _realtimeCoordinator.radarRides) {
       if (ride.nearbyRide.ride.id == rideId) return ride.distanceKm;
     }
     return null;
+  }
+
+  Future<void> _loadWeather() async {
+    if (!mounted) return;
+    try {
+      final weather = await _weatherService.fetchCurrentWeather();
+      if (mounted) {
+        setState(() {
+          _weatherSnapshot = weather;
+        });
+      }
+    } catch (e) {
+      debugPrint("Radar weather fetch failed: $e");
+    }
+  }
+
+  void _showWeatherDetailsBottomSheet() {
+    if (_weatherSnapshot == null) return;
+    final w = _weatherSnapshot!;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: AppShadows.lg,
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "WEATHER INTELLIGENCE",
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "Current Conditions",
+                                style: AppTypography.headlineMedium.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Icon(
+                            _weatherIcon(w.displayText),
+                            size: 36,
+                            color: Colors.amber[700],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _weatherTelemetryItem(
+                              icon: Icons.thermostat_rounded,
+                              value: "${w.temperature.round()}°F",
+                              label: "Temperature",
+                              color: Colors.redAccent,
+                            ),
+                            _weatherTelemetryItem(
+                              icon: Icons.umbrella_rounded,
+                              value: "${w.rainChance}%",
+                              label: "Rain Chance",
+                              color: Colors.blueAccent,
+                            ),
+                            _weatherTelemetryItem(
+                              icon: Icons.air_rounded,
+                              value: "${w.windSpeed.round()} mph",
+                              label: "Wind Speed",
+                              color: Colors.teal,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _weatherMiniCard(
+                              icon: Icons.wb_twilight_rounded,
+                              title: "Sunrise & Sunset",
+                              subtitle: "Rise: ${w.sunrise}\nSet: ${w.sunset}",
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _weatherMiniCard(
+                              icon: Icons.visibility_rounded,
+                              title: "Visibility",
+                              subtitle: "${w.visibility.toStringAsFixed(1)} km",
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (w.alerts.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        Text(
+                          "SAFETY ALERTS",
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.error,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...w.alerts.map(
+                          (alert) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: AppColors.error.withValues(alpha: 0.15),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: AppColors.error,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    alert,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: AppColors.error,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _weatherTelemetryItem({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: AppTypography.headlineSmall.copyWith(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+
+  Widget _weatherMiniCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.primary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.titleSmall.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _weatherIcon(String label) {
+    final lower = label.toLowerCase();
+    if (lower.contains('rain') || lower.contains('shower')) {
+      return Icons.umbrella_rounded;
+    }
+    if (lower.contains('snow') || lower.contains('ice')) {
+      return Icons.ac_unit_rounded;
+    }
+    if (lower.contains('cloud') || lower.contains('overcast')) {
+      return Icons.cloud_rounded;
+    }
+    if (lower.contains('storm') || lower.contains('thunder')) {
+      return Icons.thunderstorm_rounded;
+    }
+    if (lower.contains('fog') || lower.contains('mist')) {
+      return Icons.visibility_rounded;
+    }
+    return Icons.wb_sunny_rounded;
   }
 }
 
