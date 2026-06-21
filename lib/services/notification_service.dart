@@ -155,7 +155,7 @@ class NotificationService {
       title,
       body,
       const NotificationDetails(android: androidDetails, iOS: iosDetails),
-      payload: data != null ? data.toString() : null,
+      payload: data?.toString(),
     );
   }
 

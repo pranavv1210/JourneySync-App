@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../coordinators/realtime_coordinator.dart';
 import '../models/ride_record.dart';
 import '../widgets/app_toast.dart';
 import '../services/ride_service.dart';
@@ -22,6 +23,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   static const Duration _emptyStateDelay = Duration(seconds: 12);
 
   final RideService _rideService = RideService();
+  final RealtimeCoordinator _realtimeCoordinator = RealtimeCoordinator.instance;
   late final AnimationController _radarController;
 
   Timer? _emptyStateTimer;
@@ -44,14 +46,36 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
+    _realtimeCoordinator.addListener(_onRadarChanged);
     _loadNearbyRides();
   }
 
   @override
   void dispose() {
     _emptyStateTimer?.cancel();
+    _realtimeCoordinator.removeListener(_onRadarChanged);
+    _realtimeCoordinator.stopRideRadar();
     _radarController.dispose();
     super.dispose();
+  }
+
+  void _onRadarChanged() {
+    if (!mounted) return;
+    final rides =
+        _realtimeCoordinator.radarRides.map((ride) => ride.nearbyRide).toList();
+    setState(() {
+      nearbyRides = rides;
+      searching = _realtimeCoordinator.radarLoading && rides.isEmpty;
+      errorText = rides.isEmpty ? _realtimeCoordinator.radarError : '';
+      if (rides.isNotEmpty) {
+        _showNoRidesFallback = false;
+      }
+    });
+    if (rides.isEmpty &&
+        !_realtimeCoordinator.radarLoading &&
+        _realtimeCoordinator.radarError.isEmpty) {
+      _startEmptyStateCountdown();
+    }
   }
 
   Future<void> _loadNearbyRides() async {
@@ -76,10 +100,15 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       final userName = (prefs.getString('userName') ?? 'You').trim();
       final userAvatarUrl = (prefs.getString('userAvatarUrl') ?? '').trim();
 
-      final rides = await _rideService.searchNearbyRides(
-        userId,
+      await _realtimeCoordinator.startRideRadar(
+        profileId: userId,
+        radiusKm: 25,
         requestPermissionIfNeeded: true,
       );
+      final rides =
+          _realtimeCoordinator.radarRides
+              .map((ride) => ride.nearbyRide)
+              .toList();
       if (!mounted) return;
 
       if (rides.isNotEmpty) {
@@ -392,11 +421,6 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
             tooltip: 'Join with access code',
             icon: const Icon(Icons.key_rounded),
           ),
-          IconButton(
-            onPressed: searching ? null : _loadNearbyRides,
-            tooltip: 'Refresh nearby rides',
-            icon: const Icon(Icons.refresh_rounded),
-          ),
         ],
       ),
       body: _content(primary, forest),
@@ -496,7 +520,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
             if (showFallback) ...[
               const SizedBox(height: 8),
               Text(
-                'Ask a host to create a ride and keep it live, then refresh the radar.',
+                'Ask a host to create a ride and keep it live. Radar updates automatically.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: forest.withValues(alpha: 0.68),
@@ -506,12 +530,6 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
               ),
             ],
             if (showFallback) ...[
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _loadNearbyRides,
-                style: ElevatedButton.styleFrom(backgroundColor: primary),
-                child: const Text('Scan Again'),
-              ),
               const SizedBox(height: 16),
               EmptyStateCard(
                 title: 'No active rides yet',
@@ -634,6 +652,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       itemBuilder: (context, index) {
         final ride = nearbyRides[index];
         final joining = joiningRideId == ride.ride.id;
+        final distance = _distanceFor(ride.ride.id);
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -681,6 +700,38 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.place_rounded, size: 15, color: primary),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      distance == null
+                          ? 'Distance calculating'
+                          : '${distance.toStringAsFixed(distance < 10 ? 1 : 0)} km away',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: forest.withValues(alpha: 0.74),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    ride.ride.status.trim().isEmpty
+                        ? 'OPEN'
+                        : ride.ride.status.toUpperCase(),
+                    style: TextStyle(
+                      color: primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ],
@@ -754,6 +805,13 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         );
       },
     );
+  }
+
+  double? _distanceFor(String rideId) {
+    for (final ride in _realtimeCoordinator.radarRides) {
+      if (ride.nearbyRide.ride.id == rideId) return ride.distanceKm;
+    }
+    return null;
   }
 }
 

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// Represents a rider's real-time presence status.
 ///
 /// This model powers the presence system, showing:

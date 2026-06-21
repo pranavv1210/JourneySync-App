@@ -4,10 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../coordinators/notification_coordinator.dart';
 import '../models/app_notification.dart';
 import '../widgets/app_button.dart';
-import '../widgets/app_card.dart';
-import '../widgets/empty_state_card.dart';
 import '../widgets/ride_loading_indicator.dart';
-import '../theme/app_theme.dart';
 
 /// Premium notification center with glassmorphism design.
 ///

@@ -75,6 +75,8 @@ class LiveTrackingService {
   static const _kFgChannel = MethodChannel(
     'com.example.journeysync/foreground_service',
   );
+  // Wake lock channel — reserved for Android background persistence.
+  // ignore: unused_field
   static const _kWakeLockChannel = MethodChannel(
     'com.example.journeysync/wake_lock',
   );

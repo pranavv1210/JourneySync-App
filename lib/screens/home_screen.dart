@@ -22,6 +22,8 @@ import '../widgets/empty_state_card.dart';
 import '../widgets/ride_loading_indicator.dart';
 import '../models/ride_record.dart';
 import '../coordinators/active_ride_coordinator.dart';
+import '../coordinators/notification_coordinator.dart';
+import 'notification_center_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -128,6 +130,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
       if (resolvedId.isNotEmpty) {
         await prefs.setString('userId', resolvedId);
+        unawaited(NotificationCoordinator.instance.start(resolvedId));
       }
       if (resolvedPhone.isNotEmpty) {
         await prefs.setString('userPhone', resolvedPhone);
@@ -356,17 +359,81 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   Widget _buildHeader() {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'WELCOME BACK',
-          style: AppTypography.labelMedium.copyWith(color: AppColors.primary),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'WELCOME BACK',
+                style: AppTypography.labelMedium.copyWith(
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Let's ride, $name",
+                style: AppTypography.headlineLarge.copyWith(
+                  color: AppColors.forest,
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          "Let's ride, $name",
-          style: AppTypography.headlineLarge.copyWith(color: AppColors.forest),
+        const SizedBox(width: 12),
+        AnimatedBuilder(
+          animation: NotificationCoordinator.instance,
+          builder: (context, _) {
+            final unread = NotificationCoordinator.instance.unreadCount;
+            return GestureDetector(
+              onTap:
+                  () => Navigator.push(
+                    context,
+                    buildAppRoute(const NotificationCenterScreen()),
+                  ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.82),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.glassBorder),
+                      boxShadow: AppShadows.sm,
+                    ),
+                    child: const Icon(Icons.notifications_none_rounded),
+                  ),
+                  if (unread > 0)
+                    Positioned(
+                      right: -4,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          unread > 9 ? '9+' : unread.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         ),
       ],
     );

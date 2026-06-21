@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 
 /**
@@ -26,6 +27,7 @@ import androidx.core.app.NotificationCompat
  * The notification is minimal and non-intrusive.
  */
 class LocationForegroundService : Service() {
+    private var wakeLock: PowerManager.WakeLock? = null
 
     companion object {
         const val CHANNEL_ID = "journeysync_location"
@@ -62,12 +64,14 @@ class LocationForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                releaseWakeLock()
                 stopForeground(true)
                 stopSelf()
                 return START_NOT_STICKY
             }
             else -> {
                 // Default: start foreground with location notification
+                acquireWakeLock()
                 startForeground(NOTIFICATION_ID, buildNotification())
             }
         }
@@ -76,6 +80,11 @@ class LocationForegroundService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        releaseWakeLock()
+        super.onDestroy()
+    }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         // App was swiped away — restart the service to keep tracking alive.
@@ -95,6 +104,29 @@ class LocationForegroundService : Service() {
     }
 
     // ── Notification ──────────────────────────────────────────────────────────
+
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "JourneySync:LiveRideWakeLock"
+        ).apply {
+            setReferenceCounted(false)
+            acquire(30 * 60 * 1000L)
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+        } catch (_: RuntimeException) {
+        } finally {
+            wakeLock = null
+        }
+    }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

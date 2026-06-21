@@ -581,7 +581,7 @@ class RealtimeCoordinator extends ChangeNotifier {
           }
         }
 
-        for (final leftId in left) {
+        for (final _ in left) {
           unawaited(
             _notificationCoordinator.persist(
               profileId: _activeProfileId,

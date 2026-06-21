@@ -10,12 +10,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/rider_location.dart';
 import '../coordinators/active_ride_coordinator.dart';
+import '../coordinators/realtime_coordinator.dart';
 import '../services/live_tracking_service.dart';
 import '../services/navigation_service.dart';
-import '../services/realtime_service.dart';
 import '../services/ride_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/app_toast.dart';
+import '../widgets/connection_status_bar.dart';
 import '../widgets/rider_marker.dart';
 import '../widgets/ride_loading_indicator.dart';
 import '../widgets/smooth_marker.dart';
@@ -37,8 +38,9 @@ class _RideModeScreenState extends State<RideModeScreen>
   // ── Services ───────────────────────────────────────────────────────────────
   final RideService _rideService = RideService();
   final SupabaseService _supabaseService = SupabaseService();
-  final LiveTrackingService _trackingService = LiveTrackingService();
-  final RealtimeService _realtimeService = RealtimeService();
+  final LiveTrackingService _trackingService =
+      ActiveRideCoordinator.instance.trackingService;
+  final RealtimeCoordinator _realtimeCoordinator = RealtimeCoordinator.instance;
   final MapController _mapController = MapController();
   final Battery _battery = Battery();
 
@@ -66,6 +68,7 @@ class _RideModeScreenState extends State<RideModeScreen>
 
   // ── SOS ───────────────────────────────────────────────────────────────────
   Map<String, dynamic>? _activeAlert;
+  String _lastAlertKey = '';
   Timer? _alertDismissTimer;
 
   // ── Ride timer ─────────────────────────────────────────────────────────────
@@ -98,6 +101,8 @@ class _RideModeScreenState extends State<RideModeScreen>
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
 
+    ActiveRideCoordinator.instance.addListener(_onActiveRideSnapshotChanged);
+    _realtimeCoordinator.addListener(_onRealtimeChanged);
     _initRideMode();
   }
 
@@ -132,27 +137,18 @@ class _RideModeScreenState extends State<RideModeScreen>
         bikeName: _currentBikeName,
         isLeader: _leaderId == _currentUserId,
       );
-      unawaited(
-        ActiveRideCoordinator.instance.attachRide(
-          rideId: widget.rideId,
-          profileId: _currentUserId,
-          profileName: _currentUserName,
-          bikeName: _currentBikeName,
-          startTracking: false,
-        ),
+      await ActiveRideCoordinator.instance.attachRide(
+        rideId: widget.rideId,
+        profileId: _currentUserId,
+        profileName: _currentUserName,
+        bikeName: _currentBikeName,
+        startTracking: false,
       );
 
       // ── Subscribe to incoming rider positions ────────────────────────────
       _locationStreamSub = _trackingService
           .watchRideLocations(widget.rideId)
           .listen(_onRiderLocationsUpdate);
-
-      // ── Subscribe to SOS + route via RealtimeService ─────────────────────
-      _realtimeService.startListening(
-        rideId: widget.rideId,
-        onAlert: _onSosAlert,
-        onRoute: _onRouteUpdate,
-      );
 
       // ── Fetch initial route ───────────────────────────────────────────────
       try {
@@ -206,6 +202,52 @@ class _RideModeScreenState extends State<RideModeScreen>
     });
 
     _handleFollowLeader(locations);
+  }
+
+  void _onRealtimeChanged() {
+    if (!mounted) return;
+    final state = _realtimeCoordinator.connectionState;
+    setState(() {
+      _isOffline =
+          _trackingService.isOffline ||
+          state == RealtimeConnectionState.offline ||
+          state == RealtimeConnectionState.reconnecting;
+    });
+  }
+
+  void _onActiveRideSnapshotChanged() {
+    if (!mounted) return;
+    final snapshot = ActiveRideCoordinator.instance.snapshot;
+    if (snapshot.locations.isNotEmpty) {
+      _onRiderLocationsUpdate(snapshot.locations);
+    }
+
+    final alert = snapshot.lastAlert;
+    if (alert != null) {
+      final key = '${alert['id'] ?? ''}:${alert['created_at'] ?? ''}';
+      if (key != _lastAlertKey) {
+        _lastAlertKey = key;
+        _onSosAlert(alert);
+      }
+    }
+
+    final route = snapshot.route;
+    if (route != null) {
+      final stopsWithCoords =
+          route.stops
+              .where((stop) => stop.latitude != null && stop.longitude != null)
+              .toList();
+      final destination =
+          stopsWithCoords.isNotEmpty ? stopsWithCoords.last : null;
+      _onRouteUpdate({
+        'destination_lat': destination?.latitude,
+        'destination_lng': destination?.longitude,
+        'route_points':
+            stopsWithCoords
+                .map((stop) => {'lat': stop.latitude, 'lng': stop.longitude})
+                .toList(),
+      });
+    }
   }
 
   void _handleFollowLeader(List<RiderLocation> locations) {
@@ -285,10 +327,10 @@ class _RideModeScreenState extends State<RideModeScreen>
   Future<void> _triggerSOS() async {
     HapticFeedback.heavyImpact();
     try {
-      await _realtimeService.triggerSOS(
+      await _realtimeCoordinator.triggerSOS(
         rideId: widget.rideId,
-        userId: _currentUserId,
-        userName: _currentUserName,
+        profileId: _currentUserId,
+        profileName: _currentUserName,
         latitude: _currentPosition?.latitude,
         longitude: _currentPosition?.longitude,
       );
@@ -398,7 +440,8 @@ class _RideModeScreenState extends State<RideModeScreen>
     _trackingPulse.dispose();
     _locationStreamSub?.cancel();
     _gpsStreamSub?.cancel();
-    _realtimeService.stopListening();
+    ActiveRideCoordinator.instance.removeListener(_onActiveRideSnapshotChanged);
+    _realtimeCoordinator.removeListener(_onRealtimeChanged);
     // Note: _trackingService.dispose() is NOT called here because the user
     // might minimize the app and come back. Call stopSyncing() + clearLiveLocation()
     // only on intentional ride end. The service auto-reconnects.
@@ -435,7 +478,19 @@ class _RideModeScreenState extends State<RideModeScreen>
           // ── TOP HUD ──────────────────────────────────────────────────────
           SafeArea(
             child: Column(
-              children: [_buildTopHUD(), if (_isOffline) _buildOfflineBar()],
+              children: [
+                _buildTopHUD(),
+                AnimatedBuilder(
+                  animation: _realtimeCoordinator,
+                  builder:
+                      (context, _) => ConnectionStatusBar(
+                        state:
+                            _isOffline
+                                ? RealtimeConnectionState.reconnecting
+                                : _realtimeCoordinator.connectionState,
+                      ),
+                ),
+              ],
             ),
           ),
 
@@ -679,6 +734,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildOfflineBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
