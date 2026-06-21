@@ -3,13 +3,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/presence_info.dart';
 import '../models/ride_member.dart';
 import '../models/ride_route.dart';
 import '../models/rider_location.dart';
 import '../services/live_tracking_service.dart';
-import '../services/realtime_service.dart';
 import '../services/ride_service.dart';
 import '../services/supabase_service.dart';
+import 'realtime_coordinator.dart' show RealtimeCoordinator;
 
 enum ActiveRideStatus { idle, scheduled, active, completed, unknown }
 
@@ -76,7 +77,7 @@ class ActiveRideCoordinator extends ChangeNotifier {
   final RideService _rideService = RideService();
   final SupabaseService _supabaseService = SupabaseService();
   final LiveTrackingService _trackingService = LiveTrackingService();
-  final RealtimeService _realtimeService = RealtimeService();
+  final RealtimeCoordinator _realtimeCoordinator = RealtimeCoordinator.instance;
 
   static const String _activeRideKey = 'activeRideId';
   static const String _activeRideStatusKey = 'activeRideStatus';
@@ -145,6 +146,15 @@ class ActiveRideCoordinator extends ChangeNotifier {
     );
     notifyListeners();
 
+    // Update presence for active ride
+    unawaited(
+      _realtimeCoordinator.updateMyPresence(
+        profileId: normalizedProfileId,
+        status: RiderPresenceStatus.tracking,
+        currentRideId: normalizedRideId,
+      ),
+    );
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_activeRideKey, normalizedRideId);
     await prefs.setString(_activeRideStatusKey, status.name);
@@ -157,13 +167,18 @@ class ActiveRideCoordinator extends ChangeNotifier {
           notifyListeners();
         });
 
-    _realtimeService.startListening(
+    await _realtimeCoordinator.startRideSession(
       rideId: normalizedRideId,
+      profileId: normalizedProfileId,
       onAlert: (alert) {
         _snapshot = _snapshot.copyWith(lastAlert: alert);
         notifyListeners();
       },
-      onRoute: (_) => refreshRoute(),
+      onRouteChanged: refreshRoute,
+      onMembersChanged: (members) {
+        _snapshot = _snapshot.copyWith(members: members);
+        notifyListeners();
+      },
     );
 
     if (startTracking) {
@@ -200,7 +215,7 @@ class ActiveRideCoordinator extends ChangeNotifier {
   Future<void> clear() async {
     await _locationSubscription?.cancel();
     _locationSubscription = null;
-    _realtimeService.stopListening();
+    await _realtimeCoordinator.stopRideSession();
     await _trackingService.stopSyncing();
     _snapshot = ActiveRideSnapshot.empty;
     notifyListeners();

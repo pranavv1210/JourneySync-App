@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/rider_location.dart';
@@ -69,30 +71,60 @@ class LiveTrackingService {
   /// Battery level accessor (injected so tests can override).
   Future<int?> Function()? batteryLevelProvider;
 
-  // ── Android foreground service channel ──────────────────────────────────────
+  // ── Android channels ────────────────────────────────────────────────────────
   static const _kFgChannel = MethodChannel(
     'com.example.journeysync/foreground_service',
+  );
+  static const _kWakeLockChannel = MethodChannel(
+    'com.example.journeysync/wake_lock',
   );
 
   // ── Offline queue ────────────────────────────────────────────────────────────
   final List<Map<String, dynamic>> _offlineQueue = [];
   static const int _maxQueueSize = 50;
+  static const String _offlineQueuePrefix = 'liveTrackingOfflineQueue';
 
   /// Whether the last sync attempt failed (offline state).
   bool _isOffline = false;
 
   bool get isOffline => _isOffline;
 
+  Future<bool> isIgnoringBatteryOptimizations() async {
+    if (!Platform.isAndroid) return true;
+    try {
+      return await _kFgChannel.invokeMethod<bool>(
+            'isIgnoringBatteryOptimizations',
+          ) ??
+          false;
+    } catch (error) {
+      debugPrint('[LiveTracking] Battery optimization check failed: $error');
+      return false;
+    }
+  }
+
+  Future<void> openBatteryOptimizationSettings() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _kFgChannel.invokeMethod<bool>('openBatteryOptimizationSettings');
+    } catch (error) {
+      debugPrint('[LiveTracking] Battery optimization settings failed: $error');
+    }
+  }
+
   // ── Adaptive interval ─────────────────────────────────────────────────────
   static const Duration _movingInterval = Duration(seconds: 4);
-  static const Duration _stationaryInterval = Duration(seconds: 10);
+  static const Duration _stationaryInterval = Duration(seconds: 15);
+  static const Duration _idleInterval = Duration(seconds: 30);
   static const double _stationaryThresholdMps = 1.0; // < 1 m/s = stationary
 
   int _stationaryCount = 0;
   static const int _stationaryCountToSwitch = 2;
+  static const int _idleCountToSwitch = 6;
 
   Duration get _currentSyncInterval =>
-      _stationaryCount >= _stationaryCountToSwitch
+      _stationaryCount >= _idleCountToSwitch
+          ? _idleInterval
+          : _stationaryCount >= _stationaryCountToSwitch
           ? _stationaryInterval
           : _movingInterval;
 
@@ -244,6 +276,7 @@ class LiveTrackingService {
     _syncUserName = userName;
     _syncBikeName = bikeName;
     _syncIsLeader = isLeader;
+    await _restoreOfflineQueue();
 
     // Ensure permission before starting.
     final ok = await _ensureLocationPermission();
@@ -291,10 +324,7 @@ class LiveTrackingService {
   void _updateStationaryCounter(Position pos) {
     final speed = pos.speed >= 0 ? pos.speed : 0.0;
     if (speed < _stationaryThresholdMps) {
-      _stationaryCount = math.min(
-        _stationaryCount + 1,
-        _stationaryCountToSwitch + 1,
-      );
+      _stationaryCount = math.min(_stationaryCount + 1, _idleCountToSwitch + 1);
     } else {
       _stationaryCount = 0; // reset immediately on movement
     }
@@ -359,17 +389,20 @@ class LiveTrackingService {
       // Keep only the most recent entries
       _offlineQueue.removeRange(0, _offlineQueue.length - _maxQueueSize);
     }
+    unawaited(_persistOfflineQueue());
   }
 
   Future<void> _flushOfflineQueue() async {
     if (_offlineQueue.isEmpty) return;
     final batch = List<Map<String, dynamic>>.from(_offlineQueue);
     _offlineQueue.clear();
+    await _persistOfflineQueue();
 
     for (final payload in batch) {
       try {
         // Only send the latest payload for each rider to avoid spamming.
         await _client.from('live_locations').upsert(payload);
+        await _persistOfflineQueue();
       } catch (e) {
         debugPrint('[LiveTracking] Flush failed: $e');
         _enqueueOffline(payload); // put back
@@ -379,6 +412,52 @@ class LiveTrackingService {
   }
 
   // ── Leader update ──────────────────────────────────────────────────────────
+
+  Future<void> _restoreOfflineQueue() async {
+    final key = _offlineQueueKey;
+    if (key == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(key);
+      if (raw == null || raw.trim().isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return;
+      _offlineQueue
+        ..clear()
+        ..addAll(
+          decoded
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .take(_maxQueueSize),
+        );
+    } catch (error) {
+      debugPrint('[LiveTracking] Queue restore failed: $error');
+    }
+  }
+
+  Future<void> _persistOfflineQueue() async {
+    final key = _offlineQueueKey;
+    if (key == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_offlineQueue.isEmpty) {
+        await prefs.remove(key);
+      } else {
+        await prefs.setString(key, jsonEncode(_offlineQueue));
+      }
+    } catch (error) {
+      debugPrint('[LiveTracking] Queue persist failed: $error');
+    }
+  }
+
+  String? get _offlineQueueKey {
+    final rideId = _syncRideId?.trim();
+    final userId = _syncUserId?.trim();
+    if (rideId == null || rideId.isEmpty || userId == null || userId.isEmpty) {
+      return null;
+    }
+    return '$_offlineQueuePrefix:$rideId:$userId';
+  }
 
   /// Call this when the user's leader status changes (e.g. leader handed off).
   void updateLeaderStatus(bool isLeader) {
