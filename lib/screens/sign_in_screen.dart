@@ -42,13 +42,14 @@ class _SignInScreenState extends State<SignInScreen> {
       action: AppButton(
         label: _loading ? 'Signing in...' : 'Continue with Google',
         icon: _loading ? null : null,
-        customIcon: _loading
-            ? null
-            : SvgPicture.asset(
-                'assets/google_logo.svg',
-                width: 24,
-                height: 24,
-              ),
+        customIcon:
+            _loading
+                ? null
+                : SvgPicture.asset(
+                  'assets/google_logo.svg',
+                  width: 24,
+                  height: 24,
+                ),
         loading: _loading,
         onPressed: _loading ? null : _signIn,
       ),

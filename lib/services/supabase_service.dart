@@ -15,10 +15,8 @@ class SupabaseService {
     defaultValue: AppConfig.supabaseAvatarBucket,
   );
 
-  static const String _userColumnsWithAvatar =
-      'id,phone,name,bike,avatar_url';
-  static const String _userColumnsWithoutAvatar =
-      'id,phone,name,bike';
+  static const String _userColumnsWithAvatar = 'id,phone,name,bike,avatar_url';
+  static const String _userColumnsWithoutAvatar = 'id,phone,name,bike';
   static const String _rideColumnsWithHost =
       'id,host_id,title,start_location,end_location,created_at';
 

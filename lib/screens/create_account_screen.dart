@@ -79,9 +79,16 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       decoration: InputDecoration(
                         hintText: 'Your rider name',
                         labelText: 'FULL NAME',
-                        hintStyle: const TextStyle(color: AppColors.textTertiary),
-                        labelStyle: const TextStyle(color: AppColors.textSecondary),
-                        prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.textSecondary),
+                        hintStyle: const TextStyle(
+                          color: AppColors.textTertiary,
+                        ),
+                        labelStyle: const TextStyle(
+                          color: AppColors.textSecondary,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.person_outline_rounded,
+                          color: AppColors.textSecondary,
+                        ),
                         filled: true,
                         fillColor: AppColors.surface,
                         border: OutlineInputBorder(
@@ -97,9 +104,16 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       decoration: InputDecoration(
                         hintText: 'e.g. Himalayan 450',
                         labelText: 'BIKE',
-                        hintStyle: const TextStyle(color: AppColors.textTertiary),
-                        labelStyle: const TextStyle(color: AppColors.textSecondary),
-                        prefixIcon: const Icon(Icons.two_wheeler_outlined, color: AppColors.textSecondary),
+                        hintStyle: const TextStyle(
+                          color: AppColors.textTertiary,
+                        ),
+                        labelStyle: const TextStyle(
+                          color: AppColors.textSecondary,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.two_wheeler_outlined,
+                          color: AppColors.textSecondary,
+                        ),
                         filled: true,
                         fillColor: AppColors.surface,
                         border: OutlineInputBorder(
@@ -115,13 +129,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                               ? 'Creating account...'
                               : 'Create Account with Google',
                       icon: _loading ? null : null,
-                      customIcon: _loading
-                          ? null
-                          : SvgPicture.asset(
-                              'assets/google_logo.svg',
-                              width: 24,
-                              height: 24,
-                            ),
+                      customIcon:
+                          _loading
+                              ? null
+                              : SvgPicture.asset(
+                                'assets/google_logo.svg',
+                                width: 24,
+                                height: 24,
+                              ),
                       loading: _loading,
                       onPressed: _loading ? null : _createAccount,
                     ),
