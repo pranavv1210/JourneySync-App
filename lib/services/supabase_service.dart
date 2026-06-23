@@ -15,8 +15,6 @@ class SupabaseService {
     defaultValue: AppConfig.supabaseAvatarBucket,
   );
 
-  static String get _userColumnsWithAvatar => 'id,phone,name,bike,avatar_url';
-  static String get _userColumnsWithoutAvatar => 'id,phone,name,bike';
   static const String _rideColumnsWithHost =
       'id,host_id,title,start_location,end_location,created_at';
 
@@ -775,12 +773,6 @@ class SupabaseService {
       }
       rethrow;
     }
-  }
-
-  bool _isMissingAvatarColumn(PostgrestException error) {
-    return (error.code ?? '').trim() == '42703' ||
-        (error.code ?? '').trim() == 'PGRST204' ||
-        error.message.toLowerCase().contains('avatar_url');
   }
 
   bool _isMissingRideOptionalColumns(PostgrestException error) {
