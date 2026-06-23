@@ -182,6 +182,11 @@ class _AuthShell extends StatelessWidget {
                         color: AppColors.textSecondary,
                       ),
                     ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'v2.0.2',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
                     const SizedBox(height: AppSpacing.xxl),
                     action,
                   ],

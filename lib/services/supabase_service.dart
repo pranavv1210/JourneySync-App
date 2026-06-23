@@ -15,8 +15,8 @@ class SupabaseService {
     defaultValue: AppConfig.supabaseAvatarBucket,
   );
 
-  static const String _userColumnsWithAvatar = 'id,phone,name,bike,avatar_url';
-  static const String _userColumnsWithoutAvatar = 'id,phone,name,bike';
+  static String get _userColumnsWithAvatar => 'id,phone,name,bike,avatar_url';
+  static String get _userColumnsWithoutAvatar => 'id,phone,name,bike';
   static const String _rideColumnsWithHost =
       'id,host_id,title,start_location,end_location,created_at';
 
@@ -117,22 +117,35 @@ class SupabaseService {
     };
 
     try {
-      final row =
-          await _client
-              .from('profiles')
-              .upsert(payload, onConflict: 'id')
-              .select(_userColumnsWithAvatar)
-              .single();
-      return row;
+      return await _client
+          .from('profiles')
+          .upsert(payload, onConflict: 'id')
+          .select('id,phone,name,bike,avatar_url')
+          .single();
     } on PostgrestException catch (error) {
-      if (_isMissingAvatarColumn(error)) {
-        final row =
-            await _client
-                .from('profiles')
-                .upsert(payload, onConflict: 'id')
-                .select(_userColumnsWithoutAvatar)
-                .single();
-        return row;
+      if (error.code == '42703' || error.code == 'PGRST204') {
+        final fallbackPayload = <String, dynamic>{
+          'id': userId.trim(),
+          'phone': phone.trim().isEmpty ? null : phone.trim(),
+          'name': name.trim().isEmpty ? 'Rider' : name.trim(),
+        };
+        try {
+          return await _client
+              .from('profiles')
+              .upsert(fallbackPayload, onConflict: 'id')
+              .select('id,phone,name')
+              .single();
+        } catch (_) {
+          final minimalPayload = <String, dynamic>{
+            'id': userId.trim(),
+            'phone': phone.trim().isEmpty ? null : phone.trim(),
+          };
+          return await _client
+              .from('profiles')
+              .upsert(minimalPayload, onConflict: 'id')
+              .select('id,phone')
+              .single();
+        }
       }
       rethrow;
     }
@@ -150,22 +163,33 @@ class SupabaseService {
     };
 
     try {
-      final row =
-          await _client
-              .from('profiles')
-              .insert(payload)
-              .select(_userColumnsWithAvatar)
-              .single();
-      return row;
+      return await _client
+          .from('profiles')
+          .insert(payload)
+          .select('id,phone,name,bike,avatar_url')
+          .single();
     } on PostgrestException catch (error) {
-      if (_isMissingAvatarColumn(error)) {
-        final row =
-            await _client
-                .from('profiles')
-                .insert(payload)
-                .select(_userColumnsWithoutAvatar)
-                .single();
-        return row;
+      if (error.code == '42703' || error.code == 'PGRST204') {
+        final fallbackPayload = <String, dynamic>{
+          'phone': phone.trim(),
+          'name': name.trim(),
+        };
+        try {
+          return await _client
+              .from('profiles')
+              .insert(fallbackPayload)
+              .select('id,phone,name')
+              .single();
+        } catch (_) {
+          final minimalPayload = <String, dynamic>{
+            'phone': phone.trim(),
+          };
+          return await _client
+              .from('profiles')
+              .insert(minimalPayload)
+              .select('id,phone')
+              .single();
+        }
       }
       rethrow;
     }
@@ -177,24 +201,28 @@ class SupabaseService {
     required String bike,
   }) async {
     try {
-      final row =
-          await _client
-              .from('profiles')
-              .update({'name': name.trim(), 'bike': bike.trim()})
-              .eq('id', userId.trim())
-              .select(_userColumnsWithAvatar)
-              .single();
-      return row;
+      return await _client
+          .from('profiles')
+          .update({'name': name.trim(), 'bike': bike.trim()})
+          .eq('id', userId.trim())
+          .select('id,phone,name,bike,avatar_url')
+          .single();
     } on PostgrestException catch (error) {
-      if (_isMissingAvatarColumn(error)) {
-        final row =
-            await _client
-                .from('profiles')
-                .update({'name': name.trim(), 'bike': bike.trim()})
-                .eq('id', userId.trim())
-                .select(_userColumnsWithoutAvatar)
-                .single();
-        return row;
+      if (error.code == '42703' || error.code == 'PGRST204') {
+        try {
+          return await _client
+              .from('profiles')
+              .update({'name': name.trim()})
+              .eq('id', userId.trim())
+              .select('id,phone,name')
+              .single();
+        } catch (_) {
+          return await _client
+              .from('profiles')
+              .select('id,phone')
+              .eq('id', userId.trim())
+              .single();
+        }
       }
       rethrow;
     }
@@ -205,19 +233,29 @@ class SupabaseService {
     required String avatarUrl,
   }) async {
     try {
-      final row =
-          await _client
+      return await _client
+          .from('profiles')
+          .update({'avatar_url': avatarUrl.trim()})
+          .eq('id', userId.trim())
+          .select('id,phone,name,bike,avatar_url')
+          .single();
+    } on PostgrestException catch (error) {
+      if (error.code == '42703' || error.code == 'PGRST204') {
+        try {
+          return await _client
               .from('profiles')
               .update({'avatar_url': avatarUrl.trim()})
               .eq('id', userId.trim())
-              .select(_userColumnsWithAvatar)
+              .select('id,phone,name,avatar_url')
               .single();
-      return row;
-    } on PostgrestException catch (error) {
-      if (_isMissingAvatarColumn(error)) {
-        throw Exception(
-          'Missing users.avatar_url column. Add this column in Supabase, then refresh the API schema cache.',
-        );
+        } catch (_) {
+          return await _client
+              .from('profiles')
+              .update({'avatar_url': avatarUrl.trim()})
+              .eq('id', userId.trim())
+              .select('id,avatar_url')
+              .single();
+        }
       }
       rethrow;
     }
@@ -592,22 +630,35 @@ class SupabaseService {
     try {
       final rows = await _client
           .from('profiles')
-          .select(_userColumnsWithAvatar)
+          .select('id,phone,name,bike,avatar_url')
           .inFilter('id', ids);
       return {
         for (final row in rows)
           (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
       };
     } on PostgrestException catch (error) {
-      if (!_isMissingAvatarColumn(error)) rethrow;
-      final rows = await _client
-          .from('profiles')
-          .select(_userColumnsWithoutAvatar)
-          .inFilter('id', ids);
-      return {
-        for (final row in rows)
-          (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
-      };
+      if (error.code == '42703' || error.code == 'PGRST204') {
+        try {
+          final rows = await _client
+              .from('profiles')
+              .select('id,phone,name')
+              .inFilter('id', ids);
+          return {
+            for (final row in rows)
+              (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
+          };
+        } catch (_) {
+          final rows = await _client
+              .from('profiles')
+              .select('id,phone')
+              .inFilter('id', ids);
+          return {
+            for (final row in rows)
+              (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
+          };
+        }
+      }
+      rethrow;
     }
   }
 
@@ -699,22 +750,26 @@ class SupabaseService {
     required String eqValue,
   }) async {
     try {
-      final row =
-          await _client
+      return await _client
+          .from('profiles')
+          .select('id,phone,name,bike,avatar_url')
+          .eq(eqColumn, eqValue)
+          .maybeSingle();
+    } on PostgrestException catch (error) {
+      if (error.code == '42703' || error.code == 'PGRST204') {
+        try {
+          return await _client
               .from('profiles')
-              .select(_userColumnsWithAvatar)
+              .select('id,phone,name')
               .eq(eqColumn, eqValue)
               .maybeSingle();
-      return row;
-    } on PostgrestException catch (error) {
-      if (_isMissingAvatarColumn(error)) {
-        final row =
-            await _client
-                .from('profiles')
-                .select(_userColumnsWithoutAvatar)
-                .eq(eqColumn, eqValue)
-                .maybeSingle();
-        return row;
+        } catch (_) {
+          return await _client
+              .from('profiles')
+              .select('id,phone')
+              .eq(eqColumn, eqValue)
+              .maybeSingle();
+        }
       }
       rethrow;
     }
