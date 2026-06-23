@@ -181,9 +181,7 @@ class SupabaseService {
               .select('id,phone,name')
               .single();
         } catch (_) {
-          final minimalPayload = <String, dynamic>{
-            'phone': phone.trim(),
-          };
+          final minimalPayload = <String, dynamic>{'phone': phone.trim()};
           return await _client
               .from('profiles')
               .insert(minimalPayload)
@@ -645,7 +643,9 @@ class SupabaseService {
               .inFilter('id', ids);
           return {
             for (final row in rows)
-              (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
+              (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(
+                row,
+              ),
           };
         } catch (_) {
           final rows = await _client
@@ -654,7 +654,9 @@ class SupabaseService {
               .inFilter('id', ids);
           return {
             for (final row in rows)
-              (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
+              (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(
+                row,
+              ),
           };
         }
       }
