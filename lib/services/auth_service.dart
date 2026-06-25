@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -46,10 +47,12 @@ class AuthService {
     : _supabaseService = supabaseService ?? SupabaseService();
 
   final SupabaseService _supabaseService;
-  static const String _authRedirectUrl = String.fromEnvironment(
-    'AUTH_REDIRECT_URL',
-    defaultValue: AppConfig.authRedirectUrl,
-  );
+
+  /// Resolves the auth redirect URL from dotenv (runtime) or fallback.
+  String get _authRedirectUrl {
+    final env = dotenv.env['AUTH_REDIRECT_URL'] ?? AppConfig.authRedirectUrl;
+    return env.trim();
+  }
 
   Future<({PhoneIdentity identity, String accessToken, String idToken})>
   authenticateWithGoogle() async {
@@ -59,9 +62,11 @@ class AuthService {
       await client.auth.signOut();
     }
 
+    final redirectUrl = _authRedirectUrl;
+
     await client.auth.signInWithOAuth(
       OAuthProvider.google,
-      redirectTo: _authRedirectUrl,
+      redirectTo: redirectUrl.isNotEmpty ? redirectUrl : null,
       authScreenLaunchMode: LaunchMode.externalApplication,
       scopes: 'openid email profile',
     );
@@ -135,7 +140,7 @@ class AuthService {
               state.session!.user.appMetadata['provider'] == 'google';
         })
         .timeout(
-          const Duration(seconds: 90),
+          const Duration(seconds: 120),
           onTimeout: () {
             throw TimeoutException('Google sign-in was not completed.');
           },
@@ -176,9 +181,7 @@ class AuthService {
             );
             return _toSessionUser(updated, fallbackPhone: identity.phone);
           }
-        } catch (_) {
-          // If update fails, continue with existing profile to keep login flowing.
-        }
+        } catch (_) {}
       }
       return _toSessionUser(existing, fallbackPhone: identity.phone);
     }
@@ -218,9 +221,7 @@ class AuthService {
     final variants = _phoneVariants(identity);
     for (final candidate in variants) {
       final row = await _supabaseService.fetchUserByPhone(candidate);
-      if (row != null) {
-        return row;
-      }
+      if (row != null) return row;
     }
     return null;
   }
@@ -268,10 +269,7 @@ class AuthService {
   Future<void> clearSession() async {
     try {
       await Supabase.instance.client.auth.signOut();
-    } catch (_) {
-      // Local app state is still cleared below so logout cannot leave the UI
-      // authenticated.
-    }
+    } catch (_) {}
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', false);

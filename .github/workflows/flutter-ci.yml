@@ -33,7 +33,11 @@ jobs:
           cache-key: "flutter-:os:-:channel:-:version:-:arch:-:hash:"
 
       - name: Create Mock .env
-        run: touch .env
+        run: |
+          echo "SUPABASE_URL=https://placeholder.supabase.co" > .env
+          echo "SUPABASE_ANON_KEY=placeholder" >> .env
+          echo "AUTH_REDIRECT_URL=journeysync://login-callback" >> .env
+          echo "SENTRY_DSN=" >> .env
 
       - name: Install Dependencies
         run: flutter pub get
@@ -48,4 +52,4 @@ jobs:
         run: flutter test
 
       - name: Build Android Debug APK
-        run: flutter build apk --debug
+        run: flutter build apk --debug --dart-define-from-file=.env

@@ -107,46 +107,13 @@ class SupabaseService {
     required String name,
     required String bike,
   }) async {
-    final payload = <String, dynamic>{
+    final desired = <String, dynamic>{
       'id': userId.trim(),
       'phone': phone.trim().isEmpty ? null : phone.trim(),
       'name': name.trim().isEmpty ? 'Rider' : name.trim(),
       'bike': bike.trim().isEmpty ? 'No bike added' : bike.trim(),
     };
-
-    try {
-      return await _client
-          .from('profiles')
-          .upsert(payload, onConflict: 'id')
-          .select('id,phone,name,bike,avatar_url')
-          .single();
-    } on PostgrestException catch (error) {
-      if (error.code == '42703' || error.code == 'PGRST204') {
-        final fallbackPayload = <String, dynamic>{
-          'id': userId.trim(),
-          'phone': phone.trim().isEmpty ? null : phone.trim(),
-          'name': name.trim().isEmpty ? 'Rider' : name.trim(),
-        };
-        try {
-          return await _client
-              .from('profiles')
-              .upsert(fallbackPayload, onConflict: 'id')
-              .select('id,phone,name')
-              .single();
-        } catch (_) {
-          final minimalPayload = <String, dynamic>{
-            'id': userId.trim(),
-            'phone': phone.trim().isEmpty ? null : phone.trim(),
-          };
-          return await _client
-              .from('profiles')
-              .upsert(minimalPayload, onConflict: 'id')
-              .select('id,phone')
-              .single();
-        }
-      }
-      rethrow;
-    }
+    return _upsertProfileWithFallbacks(desired);
   }
 
   Future<Map<String, dynamic>> createUser({
@@ -160,35 +127,7 @@ class SupabaseService {
       'bike': bike.trim(),
     };
 
-    try {
-      return await _client
-          .from('profiles')
-          .insert(payload)
-          .select('id,phone,name,bike,avatar_url')
-          .single();
-    } on PostgrestException catch (error) {
-      if (error.code == '42703' || error.code == 'PGRST204') {
-        final fallbackPayload = <String, dynamic>{
-          'phone': phone.trim(),
-          'name': name.trim(),
-        };
-        try {
-          return await _client
-              .from('profiles')
-              .insert(fallbackPayload)
-              .select('id,phone,name')
-              .single();
-        } catch (_) {
-          final minimalPayload = <String, dynamic>{'phone': phone.trim()};
-          return await _client
-              .from('profiles')
-              .insert(minimalPayload)
-              .select('id,phone')
-              .single();
-        }
-      }
-      rethrow;
-    }
+    return _insertProfileWithFallbacks(payload);
   }
 
   Future<Map<String, dynamic>> updateUserProfile({
@@ -196,32 +135,12 @@ class SupabaseService {
     required String name,
     required String bike,
   }) async {
-    try {
-      return await _client
-          .from('profiles')
-          .update({'name': name.trim(), 'bike': bike.trim()})
-          .eq('id', userId.trim())
-          .select('id,phone,name,bike,avatar_url')
-          .single();
-    } on PostgrestException catch (error) {
-      if (error.code == '42703' || error.code == 'PGRST204') {
-        try {
-          return await _client
-              .from('profiles')
-              .update({'name': name.trim()})
-              .eq('id', userId.trim())
-              .select('id,phone,name')
-              .single();
-        } catch (_) {
-          return await _client
-              .from('profiles')
-              .select('id,phone')
-              .eq('id', userId.trim())
-              .single();
-        }
-      }
-      rethrow;
-    }
+    final desired = <String, dynamic>{
+      'id': userId.trim(),
+      'name': name.trim().isEmpty ? 'Rider' : name.trim(),
+      'bike': bike.trim().isEmpty ? 'No bike added' : bike.trim(),
+    };
+    return _updateProfileWithFallbacks(userId.trim(), desired);
   }
 
   Future<Map<String, dynamic>> updateUserAvatar({
@@ -236,7 +155,7 @@ class SupabaseService {
           .select('id,phone,name,bike,avatar_url')
           .single();
     } on PostgrestException catch (error) {
-      if (error.code == '42703' || error.code == 'PGRST204') {
+      if (_isMissingColumnError(error)) {
         try {
           return await _client
               .from('profiles')
@@ -633,7 +552,7 @@ class SupabaseService {
           (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
       };
     } on PostgrestException catch (error) {
-      if (error.code == '42703' || error.code == 'PGRST204') {
+      if (_isMissingColumnError(error)) {
         try {
           final rows = await _client
               .from('profiles')
@@ -749,6 +668,10 @@ class SupabaseService {
     required String eqColumn,
     required String eqValue,
   }) async {
+    if (eqColumn == 'phone') {
+      final hasPhone = await _profileColumnExists('phone');
+      if (!hasPhone) return null;
+    }
     try {
       return await _client
           .from('profiles')
@@ -756,7 +679,7 @@ class SupabaseService {
           .eq(eqColumn, eqValue)
           .maybeSingle();
     } on PostgrestException catch (error) {
-      if (error.code == '42703' || error.code == 'PGRST204') {
+      if (_isMissingColumnError(error)) {
         try {
           return await _client
               .from('profiles')
@@ -773,6 +696,217 @@ class SupabaseService {
       }
       rethrow;
     }
+  }
+
+  Future<Map<String, dynamic>> _insertProfileWithFallbacks(
+    Map<String, dynamic> desired,
+  ) async {
+    final attempts = <({Map<String, dynamic> payload, String select})>[
+      (
+        payload: _pickExistingValues(desired, const ['phone', 'name', 'bike']),
+        select: 'id,phone,name,bike,avatar_url',
+      ),
+      (
+        payload: _pickExistingValues(desired, const ['phone', 'name', 'bike']),
+        select: 'id,phone,name,bike',
+      ),
+      (
+        payload: _pickExistingValues(desired, const ['name', 'bike']),
+        select: 'id,name,bike,avatar_url',
+      ),
+      (
+        payload: _pickExistingValues(desired, const ['name', 'bike']),
+        select: 'id,name,bike',
+      ),
+      (
+        payload: _pickExistingValues(desired, const ['name']),
+        select: 'id,name',
+      ),
+    ];
+
+    Object? lastError;
+    for (final attempt in attempts) {
+      if (attempt.payload.isEmpty) continue;
+      try {
+        final row =
+            await _client
+                .from('profiles')
+                .insert(attempt.payload)
+                .select(attempt.select)
+                .single();
+        return _mergeProfileFallbacks(Map<String, dynamic>.from(row), desired);
+      } on PostgrestException catch (error) {
+        lastError = error;
+        if (!_isRecoverableProfileSchemaError(error)) rethrow;
+      }
+    }
+    throw lastError ?? Exception('Could not create profile.');
+  }
+
+  Future<Map<String, dynamic>> _upsertProfileWithFallbacks(
+    Map<String, dynamic> desired,
+  ) async {
+    final attempts = <({Map<String, dynamic> payload, String select})>[
+      (
+        payload: _pickExistingValues(desired, const [
+          'id',
+          'phone',
+          'name',
+          'bike',
+        ]),
+        select: 'id,phone,name,bike,avatar_url',
+      ),
+      (
+        payload: _pickExistingValues(desired, const [
+          'id',
+          'phone',
+          'name',
+          'bike',
+        ]),
+        select: 'id,phone,name,bike',
+      ),
+      (
+        payload: _pickExistingValues(desired, const ['id', 'name', 'bike']),
+        select: 'id,name,bike,avatar_url',
+      ),
+      (
+        payload: _pickExistingValues(desired, const ['id', 'name', 'bike']),
+        select: 'id,name,bike',
+      ),
+      (
+        payload: _pickExistingValues(desired, const ['id', 'name']),
+        select: 'id,name,avatar_url',
+      ),
+      (
+        payload: _pickExistingValues(desired, const ['id', 'name']),
+        select: 'id,name',
+      ),
+      (payload: _pickExistingValues(desired, const ['id']), select: 'id'),
+    ];
+
+    Object? lastError;
+    for (final attempt in attempts) {
+      if (!attempt.payload.containsKey('id')) continue;
+      try {
+        final row =
+            await _client
+                .from('profiles')
+                .upsert(attempt.payload, onConflict: 'id')
+                .select(attempt.select)
+                .single();
+        return _mergeProfileFallbacks(Map<String, dynamic>.from(row), desired);
+      } on PostgrestException catch (error) {
+        lastError = error;
+        if (!_isRecoverableProfileSchemaError(error)) rethrow;
+      }
+    }
+    throw lastError ?? Exception('Could not save profile.');
+  }
+
+  Future<Map<String, dynamic>> _updateProfileWithFallbacks(
+    String userId,
+    Map<String, dynamic> desired,
+  ) async {
+    final attempts = <({Map<String, dynamic> payload, String select})>[
+      (
+        payload: _pickExistingValues(desired, const ['name', 'bike']),
+        select: 'id,phone,name,bike,avatar_url',
+      ),
+      (
+        payload: _pickExistingValues(desired, const ['name', 'bike']),
+        select: 'id,name,bike',
+      ),
+      (
+        payload: _pickExistingValues(desired, const ['name']),
+        select: 'id,name,avatar_url',
+      ),
+      (
+        payload: _pickExistingValues(desired, const ['name']),
+        select: 'id,name',
+      ),
+    ];
+
+    Object? lastError;
+    for (final attempt in attempts) {
+      if (attempt.payload.isEmpty) continue;
+      try {
+        final row =
+            await _client
+                .from('profiles')
+                .update(attempt.payload)
+                .eq('id', userId)
+                .select(attempt.select)
+                .single();
+        return _mergeProfileFallbacks(Map<String, dynamic>.from(row), desired);
+      } on PostgrestException catch (error) {
+        lastError = error;
+        if (!_isRecoverableProfileSchemaError(error)) rethrow;
+      }
+    }
+
+    final existing = await fetchUserById(userId);
+    if (existing != null) return _mergeProfileFallbacks(existing, desired);
+    throw lastError ?? Exception('Could not update profile.');
+  }
+
+  Map<String, dynamic> _pickExistingValues(
+    Map<String, dynamic> source,
+    List<String> keys,
+  ) {
+    final result = <String, dynamic>{};
+    for (final key in keys) {
+      if (source.containsKey(key)) {
+        result[key] = source[key];
+      }
+    }
+    return result;
+  }
+
+  Map<String, dynamic> _mergeProfileFallbacks(
+    Map<String, dynamic> row,
+    Map<String, dynamic> desired,
+  ) {
+    return <String, dynamic>{
+      ...desired,
+      ...row,
+      'id': (row['id'] ?? desired['id'] ?? '').toString(),
+      'phone': (row['phone'] ?? desired['phone'] ?? '').toString(),
+      'name': (row['name'] ?? desired['name'] ?? 'Rider').toString(),
+      'bike': (row['bike'] ?? desired['bike'] ?? 'No bike added').toString(),
+      'avatar_url': (row['avatar_url'] ?? '').toString(),
+    };
+  }
+
+  Future<bool> _profileColumnExists(String column) async {
+    try {
+      await _client.from('profiles').select(column).limit(1);
+      return true;
+    } on PostgrestException catch (error) {
+      if (_isMissingColumnError(error)) return false;
+      rethrow;
+    }
+  }
+
+  bool _isMissingColumnError(dynamic error) {
+    if (error is! PostgrestException) return false;
+    final code = (error.code ?? '').trim();
+    if (code == '42703' || code == 'PGRST204') return true;
+    final message = error.message.toLowerCase();
+    final text = error.toString().toLowerCase();
+    return message.contains('"code":"42703"') ||
+        message.contains('"code":"pgrst204"') ||
+        text.contains('"code":"42703"') ||
+        text.contains('"code":"pgrst204"') ||
+        text.contains('column') && text.contains('does not exist');
+  }
+
+  bool _isRecoverableProfileSchemaError(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    final text = '${error.message} $error'.toLowerCase();
+    return _isMissingColumnError(error) ||
+        code == 'PGRST116' ||
+        text.contains('schema cache') ||
+        text.contains('profiles');
   }
 
   bool _isMissingRideOptionalColumns(PostgrestException error) {

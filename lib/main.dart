@@ -13,11 +13,19 @@ import 'theme/app_theme.dart';
 import 'coordinators/active_ride_coordinator.dart';
 import 'utils/app_logger.dart';
 
+/// Whether the .env file was loaded successfully.
+bool _envLoaded = false;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load .env file
-  await dotenv.load(fileName: ".env");
+  // Load .env file (fail silently so app works without it)
+  try {
+    await dotenv.load(fileName: ".env");
+    _envLoaded = true;
+  } catch (_) {
+    // .env file not found - fallback to AppConfig defaults
+  }
 
   // Initialize Firebase and Crashlytics
   try {
@@ -37,7 +45,7 @@ void main() async {
 
   await SentryFlutter.init(
     (options) {
-      options.dsn = dotenv.env['SENTRY_DSN'] ?? '';
+      options.dsn = _envLoaded ? (dotenv.env['SENTRY_DSN'] ?? '') : '';
       options.tracesSampleRate = 1.0;
       options.environment = 'production';
     },
@@ -48,9 +56,15 @@ void main() async {
 }
 
 Future<void> _initializeServices() async {
-  final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? AppConfig.supabaseUrl;
+  // Use dotenv values if available, otherwise fall back to compile-time defaults
+  final supabaseUrl =
+      _envLoaded
+          ? (dotenv.env['SUPABASE_URL'] ?? AppConfig.supabaseUrl)
+          : AppConfig.supabaseUrl;
   final supabaseAnonKey =
-      dotenv.env['SUPABASE_ANON_KEY'] ?? AppConfig.supabaseAnonKey;
+      _envLoaded
+          ? (dotenv.env['SUPABASE_ANON_KEY'] ?? AppConfig.supabaseAnonKey)
+          : AppConfig.supabaseAnonKey;
 
   await Supabase.initialize(
     url: supabaseUrl,
