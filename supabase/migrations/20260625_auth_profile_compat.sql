@@ -30,6 +30,19 @@ create unique index if not exists profiles_auth_user_id_unique_idx
   on public.profiles (auth_user_id)
   where auth_user_id is not null;
 
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'profiles_auth_user_id_key'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_auth_user_id_key unique (auth_user_id);
+  end if;
+end $$;
+
 create unique index if not exists profiles_phone_unique_idx
   on public.profiles (phone)
   where phone is not null and phone <> '';

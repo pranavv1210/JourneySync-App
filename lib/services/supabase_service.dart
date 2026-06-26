@@ -774,69 +774,50 @@ class SupabaseService {
     Map<String, dynamic> desired,
   ) async {
     final idIsUuid = await _profileIdLooksUuid();
+    if (!idIsUuid) {
+      final authUserId = (desired['auth_user_id'] ?? '').toString().trim();
+      if (authUserId.isEmpty) {
+        throw Exception('Could not save profile: missing auth user id.');
+      }
+      final existing = await _fetchUserSingle(
+        eqColumn: 'auth_user_id',
+        eqValue: authUserId,
+      );
+      if (existing != null) {
+        return _updateProfileWithFallbacks(authUserId, desired);
+      }
+      return _insertProfileWithFallbacks(desired);
+    }
+
     final attempts =
-        idIsUuid
-            ? <
-              ({Map<String, dynamic> payload, String select, String conflict})
-            >[
-              (
-                payload: _pickExistingValues(desired, const [
-                  'id',
-                  'auth_user_id',
-                  'phone',
-                  'name',
-                  'bike',
-                ]),
-                select: 'id,auth_user_id,phone,name,bike,avatar_url',
-                conflict: 'id',
-              ),
-              (
-                payload: _pickExistingValues(desired, const [
-                  'id',
-                  'phone',
-                  'name',
-                  'bike',
-                ]),
-                select: 'id,phone,name,bike',
-                conflict: 'id',
-              ),
-              (
-                payload: _pickExistingValues(desired, const ['id', 'name']),
-                select: 'id,name',
-                conflict: 'id',
-              ),
-            ]
-            : <
-              ({Map<String, dynamic> payload, String select, String conflict})
-            >[
-              (
-                payload: _pickExistingValues(desired, const [
-                  'auth_user_id',
-                  'phone',
-                  'name',
-                  'bike',
-                ]),
-                select: 'id,auth_user_id,phone,name,bike,avatar_url',
-                conflict: 'auth_user_id',
-              ),
-              (
-                payload: _pickExistingValues(desired, const [
-                  'auth_user_id',
-                  'name',
-                  'bike',
-                ]),
-                select: 'id,auth_user_id,name,bike',
-                conflict: 'auth_user_id',
-              ),
-              (
-                payload: _pickExistingValues(desired, const [
-                  'auth_user_id',
-                  'name',
-                ]),
-                select: 'id,auth_user_id,name',
-                conflict: 'auth_user_id',
-              ),
-            ];
+        <({Map<String, dynamic> payload, String select, String conflict})>[
+          (
+            payload: _pickExistingValues(desired, const [
+              'id',
+              'auth_user_id',
+              'phone',
+              'name',
+              'bike',
+            ]),
+            select: 'id,auth_user_id,phone,name,bike,avatar_url',
+            conflict: 'id',
+          ),
+          (
+            payload: _pickExistingValues(desired, const [
+              'id',
+              'phone',
+              'name',
+              'bike',
+            ]),
+            select: 'id,phone,name,bike',
+            conflict: 'id',
+          ),
+          (
+            payload: _pickExistingValues(desired, const ['id', 'name']),
+            select: 'id,name',
+            conflict: 'id',
+          ),
+        ];
 
     Object? lastError;
     for (final attempt in attempts) {
