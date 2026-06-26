@@ -97,7 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Settings',
+                    'Profile',
                     style: AppTypography.headlineMedium.copyWith(
                       color: AppColors.textPrimary,
                     ),
@@ -198,6 +198,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     // Settings Sections
                     _buildSection('Account', [
+                      _buildSettingTile(
+                        icon: Icons.two_wheeler_outlined,
+                        title: 'Garage & Achievements',
+                        subtitle: 'Manage vehicles, badges, and rider stats',
+                        onTap: () async {
+                          final updated = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ProfileScreen(),
+                            ),
+                          );
+                          if (updated == true) {
+                            _loadProfile();
+                          }
+                        },
+                      ),
                       _buildSettingTile(
                         icon: Icons.person_outline_rounded,
                         title: 'Emergency Contacts',

@@ -8,7 +8,8 @@ import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
 import 'create_ride_screen.dart';
-import 'map_screen.dart';
+import 'explore_screen.dart';
+import 'my_rides_screen.dart';
 import 'nearby_rides_screen.dart';
 import '../services/ride_service.dart';
 import 'settings_screen.dart';
@@ -1262,20 +1263,20 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         children: [
           _navItem(icon: Icons.home_rounded, label: 'Home', active: true),
           _navItem(
-            icon: Icons.route_outlined,
-            label: 'Rides',
+            icon: Icons.explore_outlined,
+            label: 'Explore',
             active: false,
             onTap: () {
-              Navigator.push(context, buildAppRoute(const NearbyRidesScreen()));
+              Navigator.push(context, buildAppRoute(const ExploreScreen()));
             },
           ),
           const SizedBox(width: 46),
           _navItem(
-            icon: Icons.map_outlined,
-            label: 'Map',
+            icon: Icons.two_wheeler_rounded,
+            label: 'My Rides',
             active: false,
             onTap: () {
-              Navigator.push(context, buildAppRoute(const MapScreen()));
+              Navigator.push(context, buildAppRoute(const MyRidesScreen()));
             },
           ),
           _navItem(
@@ -1324,12 +1325,118 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     return FloatingActionButton(
       backgroundColor: AppColors.primary,
       elevation: 8,
-      onPressed: () async {
-        await Navigator.push(context, buildAppRoute(const CreateRideScreen()));
-        await _loadHomeData();
-      },
+      onPressed: _showCreateRideSheet,
       shape: const CircleBorder(),
       child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
+    );
+  }
+
+  Future<void> _showCreateRideSheet() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Material(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Create Ride',
+                  style: AppTypography.headlineSmall.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _createOption(
+                  context,
+                  value: 'instant',
+                  icon: Icons.flash_on_rounded,
+                  title: 'Instant Ride',
+                  subtitle: 'Go live now and invite riders.',
+                ),
+                _createOption(
+                  context,
+                  value: 'scheduled',
+                  icon: Icons.event_rounded,
+                  title: 'Scheduled Ride',
+                  subtitle: 'Plan route details before going live.',
+                ),
+                _createOption(
+                  context,
+                  value: 'private',
+                  icon: Icons.lock_outline_rounded,
+                  title: 'Private Ride',
+                  subtitle: 'Create a ride and share the access code.',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (selected == null || !mounted) return;
+    await Navigator.push(context, buildAppRoute(const CreateRideScreen()));
+    await _loadHomeData();
+  }
+
+  Widget _createOption(
+    BuildContext context, {
+    required String value,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      onTap: () => Navigator.pop(context, value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(icon, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.titleMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textTertiary,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

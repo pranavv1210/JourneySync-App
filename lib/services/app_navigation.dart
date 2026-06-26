@@ -11,8 +11,8 @@ Route<T> buildAppRoute<T>(Widget page) {
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       final fade = CurvedAnimation(
         parent: animation,
-        curve: Curves.easeOutCubic,
-        reverseCurve: Curves.easeInCubic,
+        curve: Curves.easeInOutCubic,
+        reverseCurve: Curves.easeInOutCubic,
       );
       final slide = Tween<Offset>(
         begin: const Offset(0.03, 0.02),
