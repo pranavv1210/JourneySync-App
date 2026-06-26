@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -20,17 +22,16 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   // Profile data
   String userName = 'Rider';
-  String bio = 'Passionate touring rider | Mountain explorer | JourneySync fan';
-  String experienceLevel = 'Pro Tourer';
+  String bio = 'Ready for the first synced ride.';
+  String experienceLevel = 'New Rider';
   String avatarUrl = '';
 
   // Stats
-  int totalRides = 14;
-  double totalDistance = 1240.5; // in km
-  double longestRide = 320.0; // in km
-  double hoursRidden = 42.5;
-  int countriesVisited = 1;
-  String favoriteRoute = 'Manali to Leh Highway';
+  int totalRides = 0;
+  double totalDistance = 0; // in km
+  double longestRide = 0; // in km
+  double hoursRidden = 0;
+  String favoriteRoute = 'No favorite route yet';
 
   // Garage
   List<Map<String, String>> bikes = [];
@@ -55,30 +56,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Setup initial mock bikes if none exist
     final savedBikesRaw = prefs.getStringList('garageBikes');
     List<Map<String, String>> loadedBikes = [];
-    if (savedBikesRaw == null || savedBikesRaw.isEmpty) {
-      loadedBikes = [
-        {
-          'id': 'bike_1',
-          'brand': 'Royal Enfield',
-          'model': 'Himalayan 450',
-          'cc': '452',
-          'nickname': 'Mountain Goat',
-          'fuelType': 'Petrol',
-        },
-        {
-          'id': 'bike_2',
-          'brand': 'BMW Motorrad',
-          'model': 'R 1250 GS',
-          'cc': '1254',
-          'nickname': 'The Beast',
-          'fuelType': 'Petrol',
-        },
-      ];
-      _saveBikesToPrefs(loadedBikes);
-    } else {
+    if (savedBikesRaw != null && savedBikesRaw.isNotEmpty) {
       loadedBikes =
           savedBikesRaw.map((b) {
             final parts = b.split('|');
@@ -93,27 +73,28 @@ class _ProfileScreenState extends State<ProfileScreen>
           }).toList();
     }
 
-    final activeBike = prefs.getString('userActiveBikeId') ?? 'bike_1';
+    final activeBike = prefs.getString('userActiveBikeId') ?? '';
 
     setState(() {
       userName = prefs.getString('userName') ?? 'Rider';
-      bio =
-          prefs.getString('userBio') ??
-          'Passionate touring rider | Mountain explorer | JourneySync fan';
-      experienceLevel = prefs.getString('userExperienceLevel') ?? 'Pro Tourer';
-      avatarUrl = prefs.getString('userAvatarUrl') ?? '';
+      bio = prefs.getString('userBio') ?? 'Ready for the first synced ride.';
+      experienceLevel = prefs.getString('userExperienceLevel') ?? 'New Rider';
+      avatarUrl = prefs.getString('localAvatarPath') ?? '';
 
-      // Load stats
-      totalRides = prefs.getInt('statTotalRides') ?? 14;
-      totalDistance = prefs.getDouble('statTotalDistance') ?? 1240.5;
-      longestRide = prefs.getDouble('statLongestRide') ?? 320.0;
-      hoursRidden = prefs.getDouble('statHoursRidden') ?? 42.5;
-      countriesVisited = prefs.getInt('statCountriesVisited') ?? 1;
+      totalRides = prefs.getInt('statTotalRides') ?? 0;
+      totalDistance = prefs.getDouble('statTotalDistance') ?? 0;
+      longestRide = prefs.getDouble('statLongestRide') ?? 0;
+      hoursRidden = prefs.getDouble('statHoursRidden') ?? 0;
       favoriteRoute =
-          prefs.getString('statFavoriteRoute') ?? 'Manali to Leh Highway';
+          prefs.getString('statFavoriteRoute') ?? 'No favorite route yet';
 
       bikes = loadedBikes;
-      activeBikeId = activeBike;
+      activeBikeId =
+          loadedBikes.any((bike) => bike['id'] == activeBike)
+              ? activeBike
+              : loadedBikes.isNotEmpty
+              ? loadedBikes.first['id']!
+              : '';
       _loading = false;
     });
   }
@@ -128,54 +109,19 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _addBike() async {
-    final brand = await showAppInputDialog(
-      context,
-      title: 'Bike Brand',
-      message: 'Enter the motorcycle brand (e.g. Triumph, Honda)',
-      hintText: 'Brand name',
-    );
-    if (brand == null || brand.trim().isEmpty) return;
-    if (!mounted) return;
+    final newBike = await _showVehicleForm();
+    if (newBike == null) return;
 
-    final model = await showAppInputDialog(
-      context,
-      title: 'Bike Model',
-      message: 'Enter the model (e.g. Tiger 900, Africa Twin)',
-      hintText: 'Model name',
-    );
-    if (model == null || model.trim().isEmpty) return;
-    if (!mounted) return;
-
-    final cc = await showAppInputDialog(
-      context,
-      title: 'Engine Displacement (CC)',
-      message: 'Enter engine capacity in CC',
-      hintText: 'E.g. 900',
-    );
-    if (cc == null || cc.trim().isEmpty) return;
-    if (!mounted) return;
-
-    final nickname = await showAppInputDialog(
-      context,
-      title: 'Nickname',
-      message: 'Give your ride a nickname',
-      hintText: 'Nickname',
-    );
-    if (nickname == null || nickname.trim().isEmpty) return;
-
-    final newBike = {
-      'id': 'bike_${DateTime.now().millisecondsSinceEpoch}',
-      'brand': brand.trim(),
-      'model': model.trim(),
-      'cc': cc.trim(),
-      'nickname': nickname.trim(),
-      'fuelType': 'Petrol',
-    };
+    final shouldSetActive = bikes.isEmpty || activeBikeId.isEmpty;
 
     setState(() {
       bikes.add(newBike);
+      if (shouldSetActive) activeBikeId = newBike['id']!;
     });
     await _saveBikesToPrefs(bikes);
+    if (shouldSetActive) {
+      await _selectActiveBike(newBike['id']!, showToast: false);
+    }
 
     if (mounted) {
       showPremiumToast(
@@ -186,7 +132,130 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  Future<void> _selectActiveBike(String id) async {
+  Future<Map<String, String>?> _showVehicleForm() async {
+    final brandController = TextEditingController();
+    final modelController = TextEditingController();
+    final ccController = TextEditingController();
+    final nicknameController = TextEditingController();
+
+    final result = await showModalBottomSheet<Map<String, String>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacing.xl,
+            right: AppSpacing.xl,
+            bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
+          ),
+          child: Material(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.xxl),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Add vehicle',
+                    style: AppTypography.headlineSmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Save the motorcycle you use for group rides.',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _VehicleField(
+                    controller: brandController,
+                    label: 'Brand',
+                    hint: 'Royal Enfield',
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _VehicleField(
+                    controller: modelController,
+                    label: 'Model',
+                    hint: 'Continental GT 650',
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _VehicleField(
+                    controller: ccController,
+                    label: 'Engine CC',
+                    hint: '650',
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _VehicleField(
+                    controller: nicknameController,
+                    label: 'Nickname',
+                    hint: 'Weekend machine',
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final brand = brandController.text.trim();
+                            final model = modelController.text.trim();
+                            final cc = ccController.text.trim();
+                            final nickname =
+                                nicknameController.text.trim().isEmpty
+                                    ? model
+                                    : nicknameController.text.trim();
+                            if (brand.isEmpty || model.isEmpty || cc.isEmpty) {
+                              showPremiumToast(
+                                context,
+                                'Add brand, model, and CC.',
+                                type: PremiumToastType.error,
+                              );
+                              return;
+                            }
+                            Navigator.pop(context, {
+                              'id':
+                                  'bike_${DateTime.now().millisecondsSinceEpoch}',
+                              'brand': brand,
+                              'model': model,
+                              'cc': cc,
+                              'nickname': nickname,
+                              'fuelType': 'Petrol',
+                            });
+                          },
+                          child: const Text('Save'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    brandController.dispose();
+    modelController.dispose();
+    ccController.dispose();
+    nicknameController.dispose();
+    return result;
+  }
+
+  Future<void> _selectActiveBike(String id, {bool showToast = true}) async {
     final prefs = await SharedPreferences.getInstance();
     final selectedBike = bikes.firstWhere((b) => b['id'] == id);
     final bikeNameString = '${selectedBike['brand']} ${selectedBike['model']}';
@@ -201,7 +270,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         await Supabase.instance.client
             .from('profiles')
             .update({'bike': bikeNameString})
-            .eq('id', userId);
+            .eq('auth_user_id', userId);
       } catch (_) {}
     }
 
@@ -209,7 +278,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       activeBikeId = id;
     });
 
-    if (mounted) {
+    if (mounted && showToast) {
       showPremiumToast(
         context,
         'Active ride vehicle set to: $bikeNameString',
@@ -219,15 +288,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _deleteBike(String id) async {
-    if (bikes.length <= 1) {
-      showPremiumToast(
-        context,
-        'You must keep at least one vehicle in your garage.',
-        type: PremiumToastType.error,
-      );
-      return;
-    }
-
     final confirmed = await showAppConfirmDialog(
       context,
       title: 'Remove Vehicle?',
@@ -242,7 +302,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     setState(() {
       bikes.removeWhere((b) => b['id'] == id);
       if (activeBikeId == id) {
-        activeBikeId = bikes.first['id']!;
+        activeBikeId = bikes.isNotEmpty ? bikes.first['id']! : '';
       }
     });
 
@@ -250,10 +310,15 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     // Update active bike name in prefs
     final prefs = await SharedPreferences.getInstance();
-    final selectedBike = bikes.firstWhere((b) => b['id'] == activeBikeId);
-    final bikeNameString = '${selectedBike['brand']} ${selectedBike['model']}';
     await prefs.setString('userActiveBikeId', activeBikeId);
-    await prefs.setString('userBike', bikeNameString);
+    if (activeBikeId.isEmpty) {
+      await prefs.setString('userBike', 'No bike added');
+    } else {
+      final selectedBike = bikes.firstWhere((b) => b['id'] == activeBikeId);
+      final bikeNameString =
+          '${selectedBike['brand']} ${selectedBike['model']}';
+      await prefs.setString('userBike', bikeNameString);
+    }
   }
 
   @override
@@ -328,14 +393,23 @@ class _ProfileScreenState extends State<ProfileScreen>
                       backgroundColor: AppColors.primary.withValues(
                         alpha: 0.15,
                       ),
-                      child: Text(
-                        userName.isNotEmpty ? userName[0].toUpperCase() : 'R',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
+                      backgroundImage:
+                          avatarUrl.isNotEmpty && File(avatarUrl).existsSync()
+                              ? FileImage(File(avatarUrl))
+                              : null,
+                      child:
+                          avatarUrl.isNotEmpty && File(avatarUrl).existsSync()
+                              ? null
+                              : Text(
+                                userName.isNotEmpty
+                                    ? userName[0].toUpperCase()
+                                    : 'R',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
+                              ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -348,7 +422,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 userName,
                                 style: AppTypography.headlineSmall.copyWith(
                                   fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(width: 6),
                               Container(
@@ -484,12 +560,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           child: Column(
             children: [
               _buildPreferenceRow(
-                'Countries Visited',
-                '$countriesVisited',
-                Icons.public_rounded,
-              ),
-              const Divider(height: 24),
-              _buildPreferenceRow(
                 'Favorite Route',
                 favoriteRoute,
                 Icons.star_rounded,
@@ -515,7 +585,11 @@ class _ProfileScreenState extends State<ProfileScreen>
         const Spacer(),
         Text(
           value,
-          style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold),
+          style: AppTypography.titleSmall.copyWith(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+          textAlign: TextAlign.right,
         ),
       ],
     );
@@ -562,6 +636,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             style: AppTypography.headlineSmall.copyWith(
               fontWeight: FontWeight.bold,
               fontSize: 20,
+              color: AppColors.textPrimary,
             ),
           ),
         ],
@@ -593,6 +668,35 @@ class _ProfileScreenState extends State<ProfileScreen>
           ],
         ),
         const SizedBox(height: 8),
+        if (bikes.isEmpty)
+          GlassCard(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.two_wheeler_outlined,
+                  color: AppColors.primary,
+                  size: 42,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'No vehicle added',
+                  style: AppTypography.titleLarge.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Add your motorcycle to make it available for rides.',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ...bikes.map((bike) {
           final isSelected = bike['id'] == activeBikeId;
           return Container(
@@ -634,7 +738,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                               bike['nickname']!,
                               style: AppTypography.titleMedium.copyWith(
                                 fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                             if (isSelected) ...[
                               const SizedBox(width: 8),
@@ -711,7 +817,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         'title': 'First Ride',
         'desc': 'Complete your first Sync journey',
         'icon': '🏆',
-        'unlocked': true,
+        'unlocked': totalRides > 0,
       },
       {
         'title': '100 km Club',
@@ -729,13 +835,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         'title': 'Night Rider',
         'desc': 'Complete a ride session after 8 PM',
         'icon': '🌙',
-        'unlocked': true,
+        'unlocked': false,
       },
       {
         'title': 'Weekend Warrior',
         'desc': 'Complete a ride on a weekend',
         'icon': '⚔️',
-        'unlocked': true,
+        'unlocked': false,
       },
       {
         'title': 'Mountain Explorer',
@@ -848,6 +954,52 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         );
       },
+    );
+  }
+}
+
+class _VehicleField extends StatelessWidget {
+  const _VehicleField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    this.keyboardType,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final TextInputType? keyboardType;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: AppTypography.bodyLarge.copyWith(
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.w600,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: AppTypography.labelMedium.copyWith(
+          color: AppColors.textSecondary,
+        ),
+        hintStyle: AppTypography.bodyMedium.copyWith(
+          color: AppColors.textTertiary,
+        ),
+        filled: true,
+        fillColor: AppColors.surfaceAlt.withValues(alpha: 0.45),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.divider),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+        ),
+      ),
     );
   }
 }

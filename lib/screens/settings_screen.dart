@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
@@ -21,6 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String userName = 'Rider';
   String userBike = 'No bike added';
   String userPhone = '';
+  String localAvatarPath = '';
 
   @override
   void initState() {
@@ -35,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       userName = prefs.getString('userName') ?? 'Rider';
       userBike = prefs.getString('userBike') ?? 'No bike added';
       userPhone = prefs.getString('userPhone') ?? '';
+      localAvatarPath = prefs.getString('localAvatarPath') ?? '';
     });
   }
 
@@ -134,12 +138,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 borderRadius: BorderRadius.circular(
                                   AppRadius.lg,
                                 ),
+                                image:
+                                    localAvatarPath.isNotEmpty &&
+                                            File(localAvatarPath).existsSync()
+                                        ? DecorationImage(
+                                          image: FileImage(
+                                            File(localAvatarPath),
+                                          ),
+                                          fit: BoxFit.cover,
+                                        )
+                                        : null,
                               ),
-                              child: Icon(
-                                Icons.person_rounded,
-                                color: AppColors.forest,
-                                size: 28,
-                              ),
+                              child:
+                                  localAvatarPath.isNotEmpty &&
+                                          File(localAvatarPath).existsSync()
+                                      ? null
+                                      : Icon(
+                                        Icons.person_rounded,
+                                        color: AppColors.forest,
+                                        size: 28,
+                                      ),
                             ),
                             const SizedBox(width: AppSpacing.lg),
                             Expanded(
@@ -180,9 +198,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: 'Emergency Contacts',
                         subtitle: 'Manage your emergency contacts',
                         onTap:
-                            () => _showComingSoonDialog(
+                            () => _showInfoDialog(
                               'Emergency Contacts',
-                              'You will be able to add up to 3 emergency contacts who will be notified if a crash is detected.',
+                              'Emergency contacts will be notified when you trigger SOS during a ride. This version stores contacts locally until cloud sync is enabled.',
                             ),
                       ),
                       _buildSettingTile(
@@ -190,9 +208,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: 'Privacy',
                         subtitle: 'Control your data and visibility',
                         onTap:
-                            () => _showComingSoonDialog(
+                            () => _showInfoDialog(
                               'Privacy Settings',
-                              'Manage who can see your live location and ride history.',
+                              'Your live location is shared only while Ride Mode is active. Profile photos are stored locally on this phone and are not uploaded.',
                             ),
                       ),
                       _buildSettingTile(
@@ -200,9 +218,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: 'Theme',
                         subtitle: 'Customize your experience',
                         onTap:
-                            () => _showComingSoonDialog(
+                            () => _showInfoDialog(
                               'Theme Customization',
-                              'Switch between Light, Dark, and System Default themes.',
+                              'JourneySync currently uses the premium light theme. Dark/system theme support will be added after core ride flows are stable.',
                             ),
                       ),
                     ]),
@@ -227,9 +245,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: 'Notifications',
                         subtitle: 'Ride alerts and updates',
                         onTap:
-                            () => _showComingSoonDialog(
+                            () => _showInfoDialog(
                               'Notifications',
-                              'Configure push notifications for nearby rides and group messages.',
+                              'Ride alerts, SOS messages, and route updates are enabled in-app. Push notifications require Firebase configuration on production builds.',
                             ),
                       ),
                       _buildSettingTile(
@@ -237,9 +255,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: 'About',
                         subtitle: 'JourneySync v1.1.0',
                         onTap:
-                            () => _showComingSoonDialog(
+                            () => _showInfoDialog(
                               'About JourneySync',
-                              'JourneySync is designed for riders to sync their journeys securely. Version 1.1.0.',
+                              'JourneySync v2.0.2\nBuilt for group rides, live tracking, SOS alerts, and ride coordination.',
                             ),
                       ),
                     ]),
@@ -358,17 +376,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showComingSoonDialog(String title, String message) {
+  void _showInfoDialog(String title, String message) {
     showDialog(
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text(title, style: AppTypography.headlineSmall),
-            content: Text(message),
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+            ),
+            title: Text(
+              title,
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            content: Text(
+              message,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Close', style: AppTypography.buttonMedium),
+                child: Text(
+                  'Close',
+                  style: AppTypography.buttonMedium.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
             ],
           ),

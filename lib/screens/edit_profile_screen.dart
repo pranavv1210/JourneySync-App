@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
@@ -20,6 +24,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   bool _loading = true;
   bool _saving = false;
+  String _localAvatarPath = '';
 
   @override
   void initState() {
@@ -34,8 +39,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _nameController.text = prefs.getString('userName') ?? '';
       _bikeController.text = prefs.getString('userBike') ?? '';
       _phoneController.text = prefs.getString('userPhone') ?? '';
+      _localAvatarPath = prefs.getString('localAvatarPath') ?? '';
       _loading = false;
     });
+  }
+
+  Future<void> _pickProfilePhoto() async {
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1200,
+      );
+      if (image == null) return;
+
+      final directory = await getApplicationDocumentsDirectory();
+      final profileDir = Directory('${directory.path}/profile');
+      if (!profileDir.existsSync()) {
+        profileDir.createSync(recursive: true);
+      }
+      final extension = image.path.split('.').last;
+      final savedPath =
+          '${profileDir.path}/avatar_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      await File(image.path).copy(savedPath);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('localAvatarPath', savedPath);
+      await prefs.setString('userAvatarUrl', '');
+
+      if (!mounted) return;
+      setState(() => _localAvatarPath = savedPath);
+    } catch (error) {
+      if (!mounted) return;
+      showPremiumToast(
+        context,
+        'Could not select photo.',
+        type: PremiumToastType.error,
+      );
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -68,7 +110,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           await Supabase.instance.client
               .from('profiles')
               .update({'name': name, 'bike': bike, 'phone': phone})
-              .eq('id', userId);
+              .eq('auth_user_id', userId);
         } catch (e) {
           debugPrint('Error updating profile in Supabase: $e');
           // Non-blocking if offline
@@ -154,6 +196,59 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  Center(
+                                    child: GestureDetector(
+                                      onTap: _pickProfilePhoto,
+                                      child: Stack(
+                                        alignment: Alignment.bottomRight,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 46,
+                                            backgroundColor: AppColors.primary
+                                                .withValues(alpha: 0.12),
+                                            backgroundImage:
+                                                _localAvatarPath.isNotEmpty &&
+                                                        File(
+                                                          _localAvatarPath,
+                                                        ).existsSync()
+                                                    ? FileImage(
+                                                      File(_localAvatarPath),
+                                                    )
+                                                    : null,
+                                            child:
+                                                _localAvatarPath.isNotEmpty &&
+                                                        File(
+                                                          _localAvatarPath,
+                                                        ).existsSync()
+                                                    ? null
+                                                    : Icon(
+                                                      Icons.person_rounded,
+                                                      color: AppColors.primary,
+                                                      size: 38,
+                                                    ),
+                                          ),
+                                          Container(
+                                            width: 30,
+                                            height: 30,
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primary,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: AppColors.surface,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.camera_alt_rounded,
+                                              color: Colors.white,
+                                              size: 16,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppSpacing.xl),
                                   Text(
                                     'Name',
                                     style: AppTypography.labelMedium.copyWith(
@@ -163,18 +258,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   const SizedBox(height: 8),
                                   TextField(
                                     controller: _nameController,
-                                    decoration: InputDecoration(
-                                      hintText: 'Enter your name',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadius.md,
-                                        ),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
+                                    style: _inputTextStyle(),
+                                    decoration: _inputDecoration(
+                                      'Enter your name',
                                     ),
                                   ),
                                   const SizedBox(height: 20),
@@ -188,19 +274,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   const SizedBox(height: 8),
                                   TextField(
                                     controller: _bikeController,
-                                    decoration: InputDecoration(
-                                      hintText:
-                                          'E.g. Royal Enfield Classic 350',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadius.md,
-                                        ),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
+                                    style: _inputTextStyle(),
+                                    decoration: _inputDecoration(
+                                      'E.g. Royal Enfield Classic 350',
                                     ),
                                   ),
                                   const SizedBox(height: 20),
@@ -215,18 +291,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   TextField(
                                     controller: _phoneController,
                                     keyboardType: TextInputType.phone,
-                                    decoration: InputDecoration(
-                                      hintText: 'Enter your mobile number',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadius.md,
-                                        ),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
+                                    style: _inputTextStyle(),
+                                    decoration: _inputDecoration(
+                                      'Enter your mobile number',
                                     ),
                                   ),
                                 ],
@@ -245,6 +312,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  TextStyle _inputTextStyle() {
+    return AppTypography.bodyLarge.copyWith(
+      color: AppColors.textPrimary,
+      fontWeight: FontWeight.w600,
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: AppTypography.bodyMedium.copyWith(
+        color: AppColors.textTertiary,
+      ),
+      filled: true,
+      fillColor: AppColors.surface,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: const BorderSide(color: AppColors.divider),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 }

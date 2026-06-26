@@ -52,7 +52,13 @@ class GlassCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(radius),
               border: customBorder ?? Border.all(color: AppColors.glassBorder),
             ),
-            child: child,
+            child: DefaultTextStyle.merge(
+              style: const TextStyle(color: AppColors.textPrimary),
+              child: IconTheme.merge(
+                data: const IconThemeData(color: AppColors.textPrimary),
+                child: child,
+              ),
+            ),
           ),
         ),
       ),
