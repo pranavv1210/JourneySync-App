@@ -9,7 +9,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../widgets/premium/premium_button.dart';
-import '../widgets/premium/premium_input.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
 import '../models/ride_route.dart';
@@ -342,12 +341,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        PremiumInput(
-                          controller: rideNameController,
-                          label: 'Ride Name',
-                          hint: 'Name your adventure',
-                          icon: Icons.route_outlined,
-                        ),
+                        _buildRideNameField(),
                         const SizedBox(height: 24),
                         _buildDestinationSection(),
                         const SizedBox(height: 20),
@@ -412,6 +406,54 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           const SizedBox(width: 40),
         ],
       ),
+    );
+  }
+
+  Widget _buildRideNameField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'RIDE NAME',
+          style: AppTypography.labelMedium.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.divider),
+            boxShadow: AppShadows.sm,
+          ),
+          child: TextField(
+            controller: rideNameController,
+            textInputAction: TextInputAction.next,
+            style: AppTypography.titleLarge.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Sunday breakfast ride',
+              hintStyle: AppTypography.titleMedium.copyWith(
+                color: AppColors.textTertiary,
+                fontWeight: FontWeight.w600,
+              ),
+              prefixIcon: const Icon(
+                Icons.route_outlined,
+                color: AppColors.primary,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 18,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

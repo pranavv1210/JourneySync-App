@@ -88,6 +88,7 @@ class _RideModeScreenState extends State<RideModeScreen>
   String _lastAlertKey = '';
   Timer? _alertDismissTimer;
   late AnimationController _sosPulseController;
+  List<Map<String, String>> _emergencyContacts = const <Map<String, String>>[];
 
   // ── Ride timer ─────────────────────────────────────────────────────────────
   int _secondsElapsed = 0;
@@ -138,6 +139,9 @@ class _RideModeScreenState extends State<RideModeScreen>
       _currentUserName = (prefs.getString('userName') ?? 'Rider').trim();
       _currentBikeName =
           (prefs.getString('userBike') ?? 'No bike added').trim();
+      _emergencyContacts = _decodeEmergencyContacts(
+        prefs.getStringList('emergencyContacts') ?? const <String>[],
+      );
 
       // ── Fetch ride data ──────────────────────────────────────────────────
       final ride = await _supabaseService.fetchRideById(widget.rideId);
@@ -1143,6 +1147,35 @@ class _RideModeScreenState extends State<RideModeScreen>
     }
   }
 
+  List<Map<String, String>> _decodeEmergencyContacts(List<String> rows) {
+    return rows
+        .map((row) {
+          final parts = row.split('|');
+          return {
+            'name': parts.isNotEmpty ? parts[0] : '',
+            'phone': parts.length > 1 ? parts[1] : '',
+            'relation': parts.length > 2 ? parts[2] : 'Emergency',
+          };
+        })
+        .where((contact) => (contact['phone'] ?? '').trim().isNotEmpty)
+        .toList(growable: false);
+  }
+
+  Future<void> _callNumber(String phone) async {
+    final normalized = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (normalized.isEmpty) return;
+    final url = Uri(scheme: 'tel', path: normalized);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else if (mounted) {
+      showAppToast(
+        context,
+        'Cannot launch phone dialer.',
+        type: AppToastType.error,
+      );
+    }
+  }
+
   Widget _buildSOSOverlay() {
     final riderName = (_activeAlert!['user_name'] ?? 'Rider').toString();
     final lat = (_activeAlert!['latitude'] as num?)?.toDouble();
@@ -1265,26 +1298,83 @@ class _RideModeScreenState extends State<RideModeScreen>
                         ),
                       ),
                       const SizedBox(height: 24),
+                      if (_emergencyContacts.isNotEmpty) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Emergency contacts',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.86),
+                              fontFamily: 'Proxima Nova',
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ..._emergencyContacts.take(2).map((contact) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        contact['name'] ?? 'Emergency contact',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontFamily: 'Proxima Nova',
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${contact['relation'] ?? 'Emergency'}  ${contact['phone'] ?? ''}',
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.62,
+                                          ),
+                                          fontFamily: 'Proxima Nova',
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed:
+                                      () => _callNumber(contact['phone'] ?? ''),
+                                  icon: const Icon(Icons.call_rounded),
+                                  color: Colors.greenAccent,
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 8),
+                      ],
                       Row(
                         children: [
                           Expanded(
                             child: _SOSActionButton(
-                              label: 'Call Rider',
+                              label: 'Emergency',
                               icon: Icons.phone_rounded,
                               color: Colors.blue,
-                              onTap: () async {
-                                final url = Uri.parse('tel:112');
-                                if (await canLaunchUrl(url)) {
-                                  await launchUrl(url);
-                                } else {
-                                  if (!context.mounted) return;
-                                  showAppToast(
-                                    context,
-                                    'Cannot launch phone dialer.',
-                                    type: AppToastType.error,
-                                  );
-                                }
-                              },
+                              onTap: () => _callNumber('112'),
                             ),
                           ),
                           const SizedBox(width: 10),

@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../coordinators/realtime_coordinator.dart';
 import '../models/ride_record.dart';
 import '../widgets/app_toast.dart';
-import '../widgets/app_dialog.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/haptic_button.dart';
 import '../services/ride_service.dart';
@@ -75,7 +74,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     setState(() {
       nearbyRides = rides;
       searching = _realtimeCoordinator.radarLoading && rides.isEmpty;
-      errorText = rides.isEmpty ? _realtimeCoordinator.radarError : '';
+      errorText = '';
       if (rides.isNotEmpty) {
         _showNoRidesFallback = false;
       }
@@ -255,15 +254,107 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   }
 
   Future<void> _showJoinByCodeDialog() async {
-    final code = await showAppInputDialog(
-      context,
-      title: 'Join With Access Code',
-      message: 'Enter the code shared by your ride host (example: JS-0370).',
-      hintText: 'JS-0370',
-      confirmLabel: 'Join',
-      cancelLabel: 'Cancel',
-      textCapitalization: TextCapitalization.characters,
+    final controller = TextEditingController();
+    final code = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.only(
+            left: 18,
+            right: 18,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 18,
+          ),
+          child: Material(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(28),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Join with access code',
+                    style: AppTypography.headlineSmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Enter the code shared by your ride host.',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.characters,
+                    style: AppTypography.titleLarge.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Access code',
+                      hintText: 'JS-0370',
+                      prefixIcon: const Icon(Icons.key_rounded),
+                      filled: true,
+                      fillColor: AppColors.background,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 18,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide(color: AppColors.divider),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    onSubmitted:
+                        (value) => Navigator.pop(context, value.trim()),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed:
+                              () => Navigator.pop(
+                                context,
+                                controller.text.trim(),
+                              ),
+                          child: const Text('Join'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
+    controller.dispose();
     if (code != null && code.trim().isNotEmpty) {
       await _joinRideByCode(code.trim().toUpperCase());
     }
@@ -384,32 +475,6 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   }
 
   Widget _content(Color primary, Color forest) {
-    if (errorText.isNotEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, color: primary, size: 32),
-              const SizedBox(height: 8),
-              Text(
-                errorText,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: forest, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 14),
-              ElevatedButton(
-                onPressed: _loadNearbyRides,
-                style: ElevatedButton.styleFrom(backgroundColor: primary),
-                child: const Text('Try Again'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     final weatherWidget =
         _weatherSnapshot != null
             ? Padding(
@@ -563,6 +628,8 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
           children: [
             _radarSurface(primary, forest, nearbyRides),
             const SizedBox(height: 18),
+            _radarStatusChip(primary, forest),
+            const SizedBox(height: 12),
             if (showFallback)
               Text(
                 'No riders nearby',
@@ -636,7 +703,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                           size: Size.square(size),
                           painter: _RadarPainter(
                             sweepAngle: sweepAngle,
-                            primary: Colors.white,
+                            primary: primary,
                           ),
                         );
                       },
@@ -678,6 +745,52 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _radarStatusChip(Color primary, Color forest) {
+    final connection = _realtimeCoordinator.connectionState;
+    final message =
+        _realtimeCoordinator.radarError.isNotEmpty
+            ? _realtimeCoordinator.radarError
+            : switch (connection) {
+              RealtimeConnectionState.connected => 'Realtime radar active',
+              RealtimeConnectionState.connecting => 'Connecting radar...',
+              RealtimeConnectionState.syncing => 'Syncing radar...',
+              RealtimeConnectionState.offline =>
+                'Offline. Waiting for network.',
+              RealtimeConnectionState.reconnecting =>
+                'Reconnecting realtime radar...',
+              RealtimeConnectionState.disconnected => 'Starting radar...',
+            };
+    final icon =
+        connection == RealtimeConnectionState.connected
+            ? Icons.radar_rounded
+            : Icons.sync_rounded;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: primary.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: primary, size: 16),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTypography.labelMedium.copyWith(
+                color: forest,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ],
       ),
     );

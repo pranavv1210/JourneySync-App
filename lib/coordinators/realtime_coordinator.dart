@@ -103,6 +103,7 @@ class RealtimeCoordinator extends ChangeNotifier {
 
   // ── Ride lifecycle tracking ────────────────────────────────────────────────
   final Set<String> _seenRideIds = <String>{};
+  final Set<String> _notifiedNearbyRideIds = <String>{};
 
   // =============================================================================
   // PUBLIC API
@@ -383,7 +384,6 @@ class RealtimeCoordinator extends ChangeNotifier {
     if (_radarProfileId.isEmpty) return;
 
     _radarLoading = true;
-    _radarError = '';
     notifyListeners();
 
     try {
@@ -393,12 +393,17 @@ class RealtimeCoordinator extends ChangeNotifier {
         currentLng: _originLng,
         maxDistanceKm: _radarRadiusKm,
       );
+      final previousIds =
+          _radarRides.map((ride) => ride.nearbyRide.ride.id).toSet();
       _radarRides
         ..clear()
         ..addAll(nearby.map(_toRadarRide));
+      _radarError = '';
+      _notifyNewNearbyRides(previousIds);
       _setConnectionState(RealtimeConnectionState.connected);
     } catch (error) {
-      _radarError = 'Radar is reconnecting.';
+      _radarError =
+          'Realtime radar is reconnecting. Scanning will continue automatically.';
       _setConnectionState(RealtimeConnectionState.reconnecting);
       debugPrint('[Realtime] radar refresh failed: $error');
     } finally {
@@ -420,6 +425,40 @@ class RealtimeCoordinator extends ChangeNotifier {
                 ) /
                 1000;
     return RadarRide(nearbyRide: ride, distanceKm: distance);
+  }
+
+  void _notifyNewNearbyRides(Set<String> previousIds) {
+    if (_radarProfileId.isEmpty || _radarRides.isEmpty) return;
+    for (final ride in _radarRides) {
+      final rideId = ride.nearbyRide.ride.id;
+      if (previousIds.contains(rideId) ||
+          _notifiedNearbyRideIds.contains(rideId) ||
+          ride.nearbyRide.joined ||
+          ride.nearbyRide.ride.creatorId == _radarProfileId) {
+        continue;
+      }
+      _notifiedNearbyRideIds.add(rideId);
+      final distance = ride.distanceKm;
+      final distanceLabel =
+          distance == null
+              ? 'near you'
+              : '${distance.toStringAsFixed(1)} km away';
+      unawaited(
+        _notificationCoordinator.persist(
+          profileId: _radarProfileId,
+          title: 'Nearby ride discovered',
+          body: '${ride.nearbyRide.ride.title} is $distanceLabel.',
+          category: AppNotificationCategory.nearbyRide,
+          rideId: rideId,
+        ),
+      );
+      unawaited(
+        _notificationService.showLocal(
+          title: 'Nearby ride discovered',
+          body: '${ride.nearbyRide.ride.title} is $distanceLabel.',
+        ),
+      );
+    }
   }
 
   ({double lat, double lng})? _parseLatLng(String value) {

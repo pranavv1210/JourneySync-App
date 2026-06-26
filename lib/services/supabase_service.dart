@@ -281,12 +281,12 @@ class SupabaseService {
         excludeCreatorId.trim().isEmpty
             ? await _client
                 .from('rides')
-                .select(_rideColumnsWithHost)
+                .select()
                 .order('created_at', ascending: false)
                 .limit(limit)
             : await _client
                 .from('rides')
-                .select(_rideColumnsWithHost)
+                .select()
                 .not('host_id', 'eq', excludeCreatorId.trim())
                 .order('created_at', ascending: false)
                 .limit(limit);

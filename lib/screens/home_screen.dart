@@ -261,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               children: [
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 120),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -297,6 +297,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                             ),
                           ),
                         _buildHeader(),
+                        const SizedBox(height: 14),
+                        _buildRideCockpitHeader(),
                         const SizedBox(height: 20),
                         _buildQuickStatus(),
                         const SizedBox(height: 24),
@@ -436,6 +438,49 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildRideCockpitHeader() {
+    return PremiumCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.forest.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(Icons.radar_rounded, color: AppColors.forest, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ride cockpit',
+                  style: AppTypography.titleMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Create, discover, and resume synced rides from here.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
@@ -63,12 +65,13 @@ class _ProfileScreenState extends State<ProfileScreen>
           savedBikesRaw.map((b) {
             final parts = b.split('|');
             return {
-              'id': parts[0],
-              'brand': parts[1],
-              'model': parts[2],
-              'cc': parts[3],
-              'nickname': parts[4],
-              'fuelType': parts[5],
+              'id': parts.isNotEmpty ? parts[0] : '',
+              'brand': parts.length > 1 ? parts[1] : '',
+              'model': parts.length > 2 ? parts[2] : '',
+              'cc': parts.length > 3 ? parts[3] : '',
+              'nickname': parts.length > 4 ? parts[4] : 'Motorcycle',
+              'fuelType': parts.length > 5 ? parts[5] : 'Petrol',
+              'imagePath': parts.length > 6 ? parts[6] : '',
             };
           }).toList();
     }
@@ -103,7 +106,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     final prefs = await SharedPreferences.getInstance();
     final stringList =
         list.map((b) {
-          return '${b['id']}|${b['brand']}|${b['model']}|${b['cc']}|${b['nickname']}|${b['fuelType']}';
+          String clean(String? value) => (value ?? '').replaceAll('|', ' ');
+          return '${clean(b['id'])}|${clean(b['brand'])}|${clean(b['model'])}|${clean(b['cc'])}|${clean(b['nickname'])}|${clean(b['fuelType'])}|${clean(b['imagePath'])}';
         }).toList();
     await prefs.setStringList('garageBikes', stringList);
   }
@@ -137,113 +141,216 @@ class _ProfileScreenState extends State<ProfileScreen>
     final modelController = TextEditingController();
     final ccController = TextEditingController();
     final nicknameController = TextEditingController();
+    var imagePath = '';
+
+    Future<String> saveBikeImage(XFile picked) async {
+      final directory = await getApplicationDocumentsDirectory();
+      final garageDir = Directory('${directory.path}/garage');
+      if (!garageDir.existsSync()) {
+        await garageDir.create(recursive: true);
+      }
+      final extension =
+          picked.path.contains('.') ? picked.path.split('.').last : 'jpg';
+      final target =
+          '${garageDir.path}/bike_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      return File(picked.path).copy(target).then((file) => file.path);
+    }
 
     final result = await showModalBottomSheet<Map<String, String>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: AppSpacing.xl,
-            right: AppSpacing.xl,
-            bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
-          ),
-          child: Material(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.xxl),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Add vehicle',
-                    style: AppTypography.headlineSmall.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Save the motorcycle you use for group rides.',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  _VehicleField(
-                    controller: brandController,
-                    label: 'Brand',
-                    hint: 'Royal Enfield',
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _VehicleField(
-                    controller: modelController,
-                    label: 'Model',
-                    hint: 'Continental GT 650',
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _VehicleField(
-                    controller: ccController,
-                    label: 'Engine CC',
-                    hint: '650',
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _VehicleField(
-                    controller: nicknameController,
-                    label: 'Nickname',
-                    hint: 'Weekend machine',
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            final brand = brandController.text.trim();
-                            final model = modelController.text.trim();
-                            final cc = ccController.text.trim();
-                            final nickname =
-                                nicknameController.text.trim().isEmpty
-                                    ? model
-                                    : nicknameController.text.trim();
-                            if (brand.isEmpty || model.isEmpty || cc.isEmpty) {
-                              showPremiumToast(
-                                context,
-                                'Add brand, model, and CC.',
-                                type: PremiumToastType.error,
-                              );
-                              return;
-                            }
-                            Navigator.pop(context, {
-                              'id':
-                                  'bike_${DateTime.now().millisecondsSinceEpoch}',
-                              'brand': brand,
-                              'model': model,
-                              'cc': cc,
-                              'nickname': nickname,
-                              'fuelType': 'Petrol',
-                            });
-                          },
-                          child: const Text('Save'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: AppSpacing.xl,
+                right: AppSpacing.xl,
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
               ),
-            ),
-          ),
+              child: Material(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.xxl),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add vehicle',
+                          style: AppTypography.headlineSmall.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Save the motorcycle you use for group rides.',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          onTap: () async {
+                            final picked = await ImagePicker().pickImage(
+                              source: ImageSource.gallery,
+                              imageQuality: 82,
+                            );
+                            if (picked == null) return;
+                            final saved = await saveBikeImage(picked);
+                            imagePath = saved;
+                            setSheetState(() {});
+                          },
+                          child: Container(
+                            height: 132,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                              border: Border.all(color: AppColors.divider),
+                              image:
+                                  imagePath.isNotEmpty &&
+                                          File(imagePath).existsSync()
+                                      ? DecorationImage(
+                                        image: FileImage(File(imagePath)),
+                                        fit: BoxFit.cover,
+                                      )
+                                      : null,
+                            ),
+                            child:
+                                imagePath.isNotEmpty &&
+                                        File(imagePath).existsSync()
+                                    ? Align(
+                                      alignment: Alignment.bottomRight,
+                                      child: Container(
+                                        margin: const EdgeInsets.all(10),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.55,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Change photo',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    : Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add_photo_alternate_outlined,
+                                          color: AppColors.primary,
+                                          size: 34,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Add bike photo',
+                                          style: AppTypography.titleMedium
+                                              .copyWith(
+                                                color: AppColors.textPrimary,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        _VehicleField(
+                          controller: brandController,
+                          label: 'Brand',
+                          hint: 'Royal Enfield',
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _VehicleField(
+                          controller: modelController,
+                          label: 'Model',
+                          hint: 'Continental GT 650',
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _VehicleField(
+                          controller: ccController,
+                          label: 'Engine CC',
+                          hint: '650',
+                          keyboardType: TextInputType.number,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _VehicleField(
+                          controller: nicknameController,
+                          label: 'Nickname',
+                          hint: 'Weekend machine',
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Cancel'),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  final brand = brandController.text.trim();
+                                  final model = modelController.text.trim();
+                                  final cc = ccController.text.trim();
+                                  final nickname =
+                                      nicknameController.text.trim().isEmpty
+                                          ? model
+                                          : nicknameController.text.trim();
+                                  if (brand.isEmpty ||
+                                      model.isEmpty ||
+                                      cc.isEmpty) {
+                                    showPremiumToast(
+                                      context,
+                                      'Add brand, model, and CC.',
+                                      type: PremiumToastType.error,
+                                    );
+                                    return;
+                                  }
+                                  Navigator.pop(context, {
+                                    'id':
+                                        'bike_${DateTime.now().millisecondsSinceEpoch}',
+                                    'brand': brand,
+                                    'model': model,
+                                    'cc': cc,
+                                    'nickname': nickname,
+                                    'fuelType': 'Petrol',
+                                    'imagePath': imagePath,
+                                  });
+                                },
+                                child: const Text('Save'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -699,6 +806,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ...bikes.map((bike) {
           final isSelected = bike['id'] == activeBikeId;
+          final imagePath = bike['imagePath'] ?? '';
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
             child: GlassCard(
@@ -713,19 +821,31 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    width: 58,
+                    height: 58,
                     decoration: BoxDecoration(
                       color:
                           isSelected
                               ? AppColors.primary.withValues(alpha: 0.1)
                               : Colors.grey.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
+                      image:
+                          imagePath.isNotEmpty && File(imagePath).existsSync()
+                              ? DecorationImage(
+                                image: FileImage(File(imagePath)),
+                                fit: BoxFit.cover,
+                              )
+                              : null,
                     ),
-                    child: Icon(
-                      Icons.motorcycle_rounded,
-                      color: isSelected ? AppColors.primary : Colors.grey,
-                      size: 32,
-                    ),
+                    child:
+                        imagePath.isNotEmpty && File(imagePath).existsSync()
+                            ? null
+                            : Icon(
+                              Icons.motorcycle_rounded,
+                              color:
+                                  isSelected ? AppColors.primary : Colors.grey,
+                              size: 32,
+                            ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
