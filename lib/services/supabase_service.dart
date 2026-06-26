@@ -33,6 +33,14 @@ class SupabaseService {
       return null;
     }
 
+    if (_looksLikeUuid(normalized)) {
+      final byAuthUserId = await _fetchUserSingle(
+        eqColumn: 'auth_user_id',
+        eqValue: normalized,
+      );
+      if (byAuthUserId != null) return byAuthUserId;
+    }
+
     return _fetchUserSingle(eqColumn: 'id', eqValue: normalized);
   }
 
@@ -109,6 +117,7 @@ class SupabaseService {
   }) async {
     final desired = <String, dynamic>{
       'id': userId.trim(),
+      'auth_user_id': userId.trim(),
       'phone': phone.trim().isEmpty ? null : phone.trim(),
       'name': name.trim().isEmpty ? 'Rider' : name.trim(),
       'bike': bike.trim().isEmpty ? 'No bike added' : bike.trim(),
@@ -137,6 +146,7 @@ class SupabaseService {
   }) async {
     final desired = <String, dynamic>{
       'id': userId.trim(),
+      'auth_user_id': userId.trim(),
       'name': name.trim().isEmpty ? 'Rider' : name.trim(),
       'bike': bike.trim().isEmpty ? 'No bike added' : bike.trim(),
     };
@@ -672,10 +682,18 @@ class SupabaseService {
       final hasPhone = await _profileColumnExists('phone');
       if (!hasPhone) return null;
     }
+    if (eqColumn == 'auth_user_id') {
+      final hasAuthUserId = await _profileColumnExists('auth_user_id');
+      if (!hasAuthUserId) return null;
+    }
+    if (eqColumn == 'id' && _looksLikeUuid(eqValue)) {
+      final idIsUuid = await _profileIdLooksUuid();
+      if (!idIsUuid) return null;
+    }
     try {
       return await _client
           .from('profiles')
-          .select('id,phone,name,bike,avatar_url')
+          .select('id,auth_user_id,phone,name,bike,avatar_url')
           .eq(eqColumn, eqValue)
           .maybeSingle();
     } on PostgrestException catch (error) {
@@ -683,7 +701,7 @@ class SupabaseService {
         try {
           return await _client
               .from('profiles')
-              .select('id,phone,name')
+              .select('id,auth_user_id,phone,name')
               .eq(eqColumn, eqValue)
               .maybeSingle();
         } catch (_) {
@@ -702,6 +720,15 @@ class SupabaseService {
     Map<String, dynamic> desired,
   ) async {
     final attempts = <({Map<String, dynamic> payload, String select})>[
+      (
+        payload: _pickExistingValues(desired, const [
+          'auth_user_id',
+          'phone',
+          'name',
+          'bike',
+        ]),
+        select: 'id,auth_user_id,phone,name,bike,avatar_url',
+      ),
       (
         payload: _pickExistingValues(desired, const ['phone', 'name', 'bike']),
         select: 'id,phone,name,bike,avatar_url',
@@ -746,52 +773,79 @@ class SupabaseService {
   Future<Map<String, dynamic>> _upsertProfileWithFallbacks(
     Map<String, dynamic> desired,
   ) async {
-    final attempts = <({Map<String, dynamic> payload, String select})>[
-      (
-        payload: _pickExistingValues(desired, const [
-          'id',
-          'phone',
-          'name',
-          'bike',
-        ]),
-        select: 'id,phone,name,bike,avatar_url',
-      ),
-      (
-        payload: _pickExistingValues(desired, const [
-          'id',
-          'phone',
-          'name',
-          'bike',
-        ]),
-        select: 'id,phone,name,bike',
-      ),
-      (
-        payload: _pickExistingValues(desired, const ['id', 'name', 'bike']),
-        select: 'id,name,bike,avatar_url',
-      ),
-      (
-        payload: _pickExistingValues(desired, const ['id', 'name', 'bike']),
-        select: 'id,name,bike',
-      ),
-      (
-        payload: _pickExistingValues(desired, const ['id', 'name']),
-        select: 'id,name,avatar_url',
-      ),
-      (
-        payload: _pickExistingValues(desired, const ['id', 'name']),
-        select: 'id,name',
-      ),
-      (payload: _pickExistingValues(desired, const ['id']), select: 'id'),
-    ];
+    final idIsUuid = await _profileIdLooksUuid();
+    final attempts =
+        idIsUuid
+            ? <
+              ({Map<String, dynamic> payload, String select, String conflict})
+            >[
+              (
+                payload: _pickExistingValues(desired, const [
+                  'id',
+                  'auth_user_id',
+                  'phone',
+                  'name',
+                  'bike',
+                ]),
+                select: 'id,auth_user_id,phone,name,bike,avatar_url',
+                conflict: 'id',
+              ),
+              (
+                payload: _pickExistingValues(desired, const [
+                  'id',
+                  'phone',
+                  'name',
+                  'bike',
+                ]),
+                select: 'id,phone,name,bike',
+                conflict: 'id',
+              ),
+              (
+                payload: _pickExistingValues(desired, const ['id', 'name']),
+                select: 'id,name',
+                conflict: 'id',
+              ),
+            ]
+            : <
+              ({Map<String, dynamic> payload, String select, String conflict})
+            >[
+              (
+                payload: _pickExistingValues(desired, const [
+                  'auth_user_id',
+                  'phone',
+                  'name',
+                  'bike',
+                ]),
+                select: 'id,auth_user_id,phone,name,bike,avatar_url',
+                conflict: 'auth_user_id',
+              ),
+              (
+                payload: _pickExistingValues(desired, const [
+                  'auth_user_id',
+                  'name',
+                  'bike',
+                ]),
+                select: 'id,auth_user_id,name,bike',
+                conflict: 'auth_user_id',
+              ),
+              (
+                payload: _pickExistingValues(desired, const [
+                  'auth_user_id',
+                  'name',
+                ]),
+                select: 'id,auth_user_id,name',
+                conflict: 'auth_user_id',
+              ),
+            ];
 
     Object? lastError;
     for (final attempt in attempts) {
-      if (!attempt.payload.containsKey('id')) continue;
+      if (!attempt.payload.containsKey(attempt.conflict)) continue;
       try {
         final row =
             await _client
                 .from('profiles')
-                .upsert(attempt.payload, onConflict: 'id')
+                .upsert(attempt.payload, onConflict: attempt.conflict)
                 .select(attempt.select)
                 .single();
         return _mergeProfileFallbacks(Map<String, dynamic>.from(row), desired);
@@ -810,7 +864,7 @@ class SupabaseService {
     final attempts = <({Map<String, dynamic> payload, String select})>[
       (
         payload: _pickExistingValues(desired, const ['name', 'bike']),
-        select: 'id,phone,name,bike,avatar_url',
+        select: 'id,auth_user_id,phone,name,bike,avatar_url',
       ),
       (
         payload: _pickExistingValues(desired, const ['name', 'bike']),
@@ -830,13 +884,12 @@ class SupabaseService {
     for (final attempt in attempts) {
       if (attempt.payload.isEmpty) continue;
       try {
-        final row =
-            await _client
-                .from('profiles')
-                .update(attempt.payload)
-                .eq('id', userId)
-                .select(attempt.select)
-                .single();
+        final query = _client.from('profiles').update(attempt.payload);
+        final filteredQuery =
+            _looksLikeUuid(userId)
+                ? query.eq('auth_user_id', userId)
+                : query.eq('id', userId);
+        final row = await filteredQuery.select(attempt.select).single();
         return _mergeProfileFallbacks(Map<String, dynamic>.from(row), desired);
       } on PostgrestException catch (error) {
         lastError = error;
@@ -866,10 +919,15 @@ class SupabaseService {
     Map<String, dynamic> row,
     Map<String, dynamic> desired,
   ) {
+    final authUserId =
+        (row['auth_user_id'] ?? desired['auth_user_id'] ?? desired['id'] ?? '')
+            .toString();
     return <String, dynamic>{
       ...desired,
       ...row,
-      'id': (row['id'] ?? desired['id'] ?? '').toString(),
+      'id': authUserId.isNotEmpty ? authUserId : (row['id'] ?? '').toString(),
+      'profile_row_id': (row['id'] ?? '').toString(),
+      'auth_user_id': authUserId,
       'phone': (row['phone'] ?? desired['phone'] ?? '').toString(),
       'name': (row['name'] ?? desired['name'] ?? 'Rider').toString(),
       'bike': (row['bike'] ?? desired['bike'] ?? 'No bike added').toString(),
@@ -885,6 +943,28 @@ class SupabaseService {
       if (_isMissingColumnError(error)) return false;
       rethrow;
     }
+  }
+
+  Future<bool> _profileIdLooksUuid() async {
+    try {
+      await _client
+          .from('profiles')
+          .select('id')
+          .eq('id', '00000000-0000-0000-0000-000000000000')
+          .limit(1);
+      return true;
+    } on PostgrestException catch (error) {
+      final text = '${error.message} $error'.toLowerCase();
+      if (text.contains('uuid') || text.contains('bigint')) return false;
+      if ((error.code ?? '').trim() == '22P02') return false;
+      return true;
+    }
+  }
+
+  bool _looksLikeUuid(String value) {
+    return RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    ).hasMatch(value.trim());
   }
 
   bool _isMissingColumnError(dynamic error) {
@@ -904,8 +984,13 @@ class SupabaseService {
     final code = (error.code ?? '').trim();
     final text = '${error.message} $error'.toLowerCase();
     return _isMissingColumnError(error) ||
+        code == '22P02' ||
+        code == '42804' ||
+        code == '42883' ||
         code == 'PGRST116' ||
         text.contains('schema cache') ||
+        text.contains('uuid = bigint') ||
+        text.contains('invalid input syntax') ||
         text.contains('profiles');
   }
 
