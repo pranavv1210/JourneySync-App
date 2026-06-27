@@ -26,7 +26,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       subtitle: 'Sunrise bends and breakfast runs',
       distance: '61 km',
       image:
-          'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80',
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Sunrise_at_Nandi_Hills.jpg/960px-Sunrise_at_Nandi_Hills.jpg',
       description:
           'A classic early-morning ride with flowing roads, hill views, and fast breakfast stops near the top.',
       mapQuery: 'Nandi Hills Karnataka',
@@ -36,7 +36,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       subtitle: 'Fast highway touring',
       distance: '145 km',
       image:
-          'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=900&q=80',
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Mysore_Palace_Morning.jpg/960px-Mysore_Palace_Morning.jpg',
       description:
           'A smooth day ride with wide highways, food stops, and a relaxed city finish.',
       mapQuery: 'Mysore Karnataka',
@@ -46,7 +46,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       subtitle: 'Compact hill escape',
       distance: '62 km',
       image:
-          'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Skandagiri.jpg/960px-Skandagiri.jpg',
       description:
           'Short, scenic, and best for early starts when the weather is clear.',
       mapQuery: 'Skandagiri Karnataka',
@@ -56,7 +56,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       subtitle: 'Coffee estate touring',
       distance: '243 km',
       image:
-          'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=900&q=80',
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Chikmagalur%2C_India._%287793316622%29.jpg/960px-Chikmagalur%2C_India._%287793316622%29.jpg',
       description:
           'A weekend-grade route with estates, mountain air, and winding sections.',
       mapQuery: 'Chikkamagaluru Karnataka',
@@ -66,7 +66,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       subtitle: 'Hairpins and cold air',
       distance: '270 km',
       image:
-          'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=900&q=80',
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Ooty_lake.jpg/960px-Ooty_lake.jpg',
       description:
           'A longer hill ride with cool weather, elevation changes, and technical climbs.',
       mapQuery: 'Ooty Tamil Nadu',
