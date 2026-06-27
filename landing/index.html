@@ -1797,6 +1797,114 @@ journeysync.app@gmail.com</pre>
     qrImage.src = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=' + encodeURIComponent(apkUrl);
   })();
 </script>
+<script>
+  // Interactive Motion Engine
+  document.addEventListener('DOMContentLoaded', () => {
+    
+    // 1. Scroll Reveal Observer (Framer Motion-style)
+    const revealElements = document.querySelectorAll('.scroll-reveal, .scroll-reveal-left, .scroll-reveal-right, .scroll-reveal-scale, .stagger-1, .stagger-2, .stagger-3');
+    
+    const revealOptions = {
+      root: null,
+      rootMargin: '0px',
+      threshold: 0.15
+    };
+    
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in-view');
+          observer.unobserve(entry.target); // Run once
+        }
+      });
+    }, revealOptions);
+    
+    revealElements.forEach(el => revealObserver.observe(el));
+    
+    // 2. Animated Stats Counters
+    const statCounters = document.querySelectorAll('.stat-counter');
+    const statObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const target = parseInt(entry.target.getAttribute('data-target') || 0);
+          const duration = 2000;
+          const step = Math.max(target / (duration / 16), 1);
+          let current = 0;
+          
+          const updateCounter = () => {
+            current += step;
+            if (current < target) {
+              entry.target.innerText = Math.ceil(current);
+              requestAnimationFrame(updateCounter);
+            } else {
+              entry.target.innerText = target;
+            }
+          };
+          updateCounter();
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.5 });
+    
+    statCounters.forEach(counter => statObserver.observe(counter));
+    
+    // 3. Dynamic Timeline Scroll
+    const timelineProgress = document.getElementById('timeline-progress');
+    if (timelineProgress) {
+      window.addEventListener('scroll', () => {
+        const docHeight = document.body.scrollHeight - window.innerHeight;
+        const scrollPercent = (window.scrollY / docHeight) * 100;
+        // Map to timeline's max height
+        timelineProgress.style.height = Math.min(scrollPercent * 1.5, 100) + '%';
+      });
+    }
+    
+    // 4. Hero Particle Canvas Background
+    const canvas = document.getElementById('hero-particles');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      const resize = () => {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+      };
+      window.addEventListener('resize', resize);
+      resize();
+      
+      class Particle {
+        constructor() {
+          this.x = Math.random() * canvas.width;
+          this.y = Math.random() * canvas.height;
+          this.size = Math.random() * 2;
+          this.speedX = Math.random() * 0.5 - 0.25;
+          this.speedY = Math.random() * 0.5 - 0.25;
+          this.opacity = Math.random() * 0.5;
+        }
+        update() {
+          this.x += this.speedX;
+          this.y += this.speedY;
+          if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+          if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+        }
+        draw() {
+          ctx.fillStyle = `rgba(219, 119, 6, ${this.opacity})`;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      for (let i = 0; i < 50; i++) particles.push(new Particle());
+      
+      const animate = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => { p.update(); p.draw(); });
+        requestAnimationFrame(animate);
+      };
+      animate();
+    }
+  });
+</script>
 
 </body>
 </html>
