@@ -8,6 +8,12 @@ export default function App() {
     // We execute the extracted JS here
     try {
       
+  setTimeout(function(){
+    var loader = document.getElementById('loading-screen');
+    if(loader) loader.remove();
+  }, 720);
+
+
   // Show a small toast when links with .coming-soon are clicked
   (function(){
     const toast = document.getElementById('coming-soon-toast');
@@ -29,6 +35,127 @@ export default function App() {
       const item = el.getAttribute('data-item') || 'This feature';
       showToast(item + ' will be available soon. Stay tuned!');
     });
+  })();
+
+
+  (function(){
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const header = document.querySelector('header');
+    const progress = document.getElementById('scroll-progress');
+
+    document.addEventListener('DOMContentLoaded', function(){
+      document.getElementById('loading-screen')?.classList.add('is-hidden');
+    });
+    setTimeout(function(){
+      document.getElementById('loading-screen')?.classList.add('is-hidden');
+    }, 900);
+
+    function onScroll(){
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const ratio = max > 0 ? window.scrollY / max : 0;
+      if(progress) progress.style.width = (ratio * 100).toFixed(2) + '%';
+      if(header) header.classList.toggle('is-scrolled', window.scrollY > 36);
+    }
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    function bootInteractiveMotion(){
+      const glow = document.getElementById('cursor-glow');
+      const sections = Array.from(document.querySelectorAll('section[id]'));
+      const navLinks = Array.from(document.querySelectorAll('header nav a[href^="#"]'));
+
+      function updateActiveNav(){
+        let active = '';
+        for(const section of sections){
+          const rect = section.getBoundingClientRect();
+          if(rect.top <= 120 && rect.bottom >= 120) {
+            active = '#' + section.id;
+            break;
+          }
+        }
+        navLinks.forEach(link => link.classList.toggle('active', link.getAttribute('href') === active));
+      }
+      updateActiveNav();
+      window.addEventListener('scroll', updateActiveNav, { passive: true });
+
+    const revealObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.14, rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('.section-reveal').forEach(el => revealObserver.observe(el));
+
+    const countObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(!entry.isIntersecting) return;
+        const el = entry.target;
+        const target = Number(el.dataset.count || 0);
+        const start = performance.now();
+        const duration = prefersReduced ? 1 : 1200;
+        function tick(now){
+          const progress = Math.min((now - start) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          el.textContent = Math.round(target * eased).toLocaleString();
+          if(progress < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+        countObserver.unobserve(el);
+      });
+    }, { threshold: 0.5 });
+    document.querySelectorAll('.stat-number').forEach(el => countObserver.observe(el));
+
+    document.querySelectorAll('.faq-toggle').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const item = btn.closest('.faq-item');
+        const open = item.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    });
+
+    if(!prefersReduced && glow && window.matchMedia('(pointer:fine)').matches) {
+      window.addEventListener('pointermove', function(e){
+        glow.style.opacity = '.9';
+        glow.style.left = e.clientX + 'px';
+        glow.style.top = e.clientY + 'px';
+      }, { passive: true });
+    }
+
+    const heroWrap = document.querySelector('.hero-device-wrap');
+    const phone = document.querySelector('.phone-mockup');
+    if(!prefersReduced && heroWrap && phone && window.matchMedia('(pointer:fine)').matches) {
+      heroWrap.addEventListener('pointermove', function(e){
+        const rect = heroWrap.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width - .5;
+        const y = (e.clientY - rect.top) / rect.height - .5;
+        phone.style.transform = `rotateY(${x * 13}deg) rotateX(${-y * 9}deg) translate3d(${x * 8}px, ${y * 8}px, 0)`;
+      });
+      heroWrap.addEventListener('pointerleave', function(){
+        phone.style.transform = '';
+      });
+    }
+
+    document.querySelectorAll('.magnetic').forEach(function(el){
+      if(prefersReduced || !window.matchMedia('(pointer:fine)').matches) return;
+      el.addEventListener('pointermove', function(e){
+        const rect = el.getBoundingClientRect();
+        const x = (e.clientX - rect.left - rect.width / 2) * .12;
+        const y = (e.clientY - rect.top - rect.height / 2) * .12;
+        el.style.transform = `translate(${x}px, ${y}px) translateY(-2px)`;
+      });
+      el.addEventListener('pointerleave', function(){
+        el.style.transform = '';
+      });
+    });
+    }
+
+    if('requestIdleCallback' in window) {
+      requestIdleCallback(bootInteractiveMotion, { timeout: 1800 });
+    } else {
+      setTimeout(bootInteractiveMotion, 1200);
+    }
   })();
 
 
@@ -503,6 +630,12 @@ journeysync.app@gmail.com</pre>
 
   return (
     <div ref={containerRef} dangerouslySetInnerHTML={{ __html: `
+<div id="loading-screen" aria-hidden="true">
+  <img class="loader-logo" src="assets/logo.png" width="74" height="74" alt="JourneySync loading"/>
+</div>
+
+<div id="scroll-progress" aria-hidden="true"></div>
+<div id="cursor-glow" aria-hidden="true"></div>
 <style>
   /* Blur and disable background while modal is open; clicks fall through to the overlay */
   body.modal-open > *:not(#video-modal):not(#legal-modal):not(#download-modal):not(script):not(style) {
@@ -546,8 +679,8 @@ journeysync.app@gmail.com</pre>
 </nav>
 <!-- CTA Button (visible on mobile and desktop) -->
 <div class="flex items-center gap-4">
-  <a href="#download-banner" onclick="handleHeaderDownloadCTA(event)" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all transform hover:-translate-y-0.5">
-    Get the App
+  <a href="#download-banner" onclick="handleHeaderDownloadCTA(event)" class="bg-primary-dark hover:bg-[#8f4a03] text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all transform hover:-translate-y-0.5">
+    Download App
   </a>
 </div>
 <!-- Mobile Menu Button -->
@@ -589,37 +722,41 @@ journeysync.app@gmail.com</pre>
   </div>
 </div>
 <!-- Hero Section -->
-<section class="relative pt-32 pb-20 lg:pt-40 lg:pb-28 overflow-hidden">
+<section id="hero" class="premium-hero section-reveal is-visible relative pt-32 pb-20 lg:pt-40 lg:pb-28 overflow-hidden">
 <!-- Background Pattern -->
 <div class="absolute inset-0 map-texture opacity-60 pointer-events-none"></div>
 <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent pointer-events-none"></div>
+<div class="mesh-blob one parallax-slow"></div>
+<div class="mesh-blob two parallax-slow"></div>
+<div class="mesh-blob three parallax-fast"></div>
+<canvas id="hero-particles" aria-hidden="true"></canvas>
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
 <div class="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
 <!-- Left Content -->
 <div class="max-w-2xl">
-<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-6 animate-fade-in-up">
+<div class="liquid-glass inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-6 animate-fade-in-up">
 <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                        v 2.0.2 — Available on Android & iOS
+                        v1.0.0 Available on Android & iOS
                     </div>
 <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-[1.05] mb-6">
                         Ride Together. <br/>
 <span class="text-primary">Ride Safe.</span>
 </h1>
 <p class="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed max-w-lg">
-                        The ultimate co-pilot for group rides. Experience real-time tracking, hazard alerts, and seamless pack communication on your next adventure.
+                        The ultimate co-pilot for group rides. Google Sign-In, Ride Radar, Google Maps hybrid navigation, realtime tracking, SOS, garage, achievements, fuel stations, and weather intelligence for your next adventure.
                     </p>
 <div class="flex flex-col gap-6 w-full max-w-lg">
   <div id="hero-ctas" class="flex flex-col sm:flex-row gap-4">
-    <button onclick="openDownloadModal(event)" class="flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-base font-bold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all transform hover:-translate-y-1 cursor-pointer w-full sm:w-auto">
+    <button onclick="openDownloadModal(event)" class="premium-btn magnetic glow-pulse flex items-center justify-center gap-2 bg-primary-dark hover:bg-[#8f4a03] text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-base font-bold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all transform hover:-translate-y-1 cursor-pointer w-full sm:w-auto">
       <span class="material-icons-round">download</span>
       Start Your Journey
     </button>
-    <button id="watch-demo-btn" type="button" data-video="./assets/demovideo.mp4" onclick="(function(){const vmodal=document.getElementById('video-modal');const vid=document.getElementById('demo-video');if(!vmodal||!vid)return;document.body.style.overflow='hidden';document.body.classList.add('modal-open');vmodal.classList.remove('hidden');vmodal.setAttribute('aria-hidden','false');const s=vid.querySelector('source');if(s && !s.src){s.src=s.getAttribute('data-default')||s.src;}try{vid.load();const p=vid.play();if(p&&p.catch){p.catch(()=>{vid.muted=true;vid.play().catch(()=>{});});}}catch(e){} })(); return false;" class="flex items-center justify-center gap-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-primary hover:text-primary dark:hover:border-primary dark:hover:text-primary px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-base font-bold transition-all w-full sm:w-auto">
+    <button id="watch-demo-btn" type="button" data-video="./assets/demovideo.mp4" onclick="(function(){const vmodal=document.getElementById('video-modal');const vid=document.getElementById('demo-video');if(!vmodal||!vid)return;document.body.style.overflow='hidden';document.body.classList.add('modal-open');vmodal.classList.remove('hidden');vmodal.setAttribute('aria-hidden','false');const s=vid.querySelector('source');if(s && !s.src){s.src=s.getAttribute('data-default')||s.src;}try{vid.load();const p=vid.play();if(p&&p.catch){p.catch(()=>{vid.muted=true;vid.play().catch(()=>{});});}}catch(e){} })(); return false;" class="premium-btn magnetic liquid-glass flex items-center justify-center gap-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-primary hover:text-primary dark:hover:border-primary dark:hover:text-primary px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-base font-bold transition-all w-full sm:w-auto">
       <span class="material-icons-round">play_circle</span>
       Watch Demo
     </button>
   </div>
-  <div class="flex items-center justify-center sm:justify-start gap-2 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-500/30 px-4 py-2.5 rounded-lg shadow-sm w-fit self-center sm:self-start mx-auto sm:mx-0">
+  <div class="liquid-glass flex items-center justify-center sm:justify-start gap-2 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-500/30 px-4 py-2.5 rounded-lg shadow-sm w-fit self-center sm:self-start mx-auto sm:mx-0">
     <span class="material-icons-round text-[18px]">verified_user</span>
     <span class="text-xs sm:text-sm font-semibold tracking-wide">100% Verified Secure &amp; Fully Functional Working Guarantee</span>
   </div>
@@ -627,17 +764,17 @@ journeysync.app@gmail.com</pre>
 <!-- Trusted-by avatars removed per user request -->
 </div>
 <!-- Right Content: Phone Mockup -->
-<div class="relative lg:h-[600px] flex items-center justify-center lg:justify-end group perspective-1000">
+<div class="hero-device-wrap relative lg:h-[600px] flex items-center justify-center lg:justify-end group perspective-1000">
 <!-- Decor elements -->
 <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl opacity-50 dark:opacity-20 pointer-events-none"></div>
 <!-- Phone Frame -->
-<div class="relative w-64 h-[480px] md:w-[300px] md:h-[600px] bg-gray-900 rounded-[3rem] border-8 border-gray-800 shadow-2xl overflow-hidden md:transform md:rotate-y-12 md:rotate-z-2 hover:rotate-0 transition-transform duration-700 ease-out z-20">
+<div class="phone-mockup phone-reflection relative w-64 h-[480px] md:w-[300px] md:h-[600px] bg-gray-900 rounded-[3rem] border-8 border-gray-800 shadow-2xl overflow-hidden md:transform md:rotate-y-12 md:rotate-z-2 hover:rotate-0 transition-transform duration-700 ease-out z-20">
 <!-- Notch -->
 <div class="absolute top-0 inset-x-0 h-6 bg-gray-800 z-30 rounded-b-xl w-40 mx-auto"></div>
 <!-- Screen Content -->
 <div class="w-full h-full bg-gray-100 relative">
 <!-- Map Background -->
-<div class="absolute inset-0 bg-cover bg-center" data-alt="Aerial view of a winding road through a forest" data-location="Blue Ridge Parkway" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTOzGY8jSZhGrYh88mHxpg2-0itR96QEwDwTiyVSFJmIVkKaFizX9e_XvimM1KMO3ejLZjGlKW6HSrrX76rQsJLwrVcha7n18POK_5Sl-Rz8KixV4LpkxAWv8Gasy9WRNZVFZEf41unQr-Hkfwsc-dyQvCIbUOm9GvDvWdnHktDJ99g6EIiOJs4VMeWMS7Uo1tExmx2N0uw3Eqjya9YYBbf375GTo7UW7ZLfvOy9_8ndCKrZ5OdB7H_aI5agzlQVTLa2QA_OqJ0sY');">
+<div class="absolute inset-0 bg-cover bg-center map-texture" data-alt="Premium route radar interface" data-location="JourneySync" style="background: radial-gradient(circle at 38% 30%, rgba(219,119,6,.26), transparent 22%), radial-gradient(circle at 68% 64%, rgba(21,128,61,.22), transparent 24%), linear-gradient(135deg, #e9dfd2, #f8f3eb);">
 <div class="absolute inset-0 bg-black/10"></div>
 </div>
 <!-- UI Overlay -->
@@ -654,7 +791,7 @@ journeysync.app@gmail.com</pre>
 <!-- User Pins on Map -->
 <div class="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
 <div class="w-10 h-10 bg-primary border-2 border-white rounded-full flex items-center justify-center shadow-lg relative z-10">
-<img alt="Leader avatar" class="w-full h-full rounded-full object-cover" data-alt="Avatar of the ride leader" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7b9CpyHlolsdo42OCNL28l24AEYPQErUdFlmN9yOY17R3qtfrG6sFvDMPFBGtzvUIzDglU4sppbsswqTLkdlb--wxPgSAQbrJ1W4ejKcm81rbh7w8fdhmvSitRpejc_1GOykhP2k8aCHV1kLx9Kn2c8nKyzlKf5aEDUBmdHLxZ8axp9nNjK8EnVvaqZ7XOQyyHUT9fE5kxZdxkYGvkj3542c0jkmIHP1U9lCnLbipDeFOZarKnp4-dK9FszjvQXP2HTPC60zUVXE"/>
+<span class="text-white text-sm font-black">JS</span>
 </div>
 <div class="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-primary -mt-1"></div>
 </div>
@@ -669,7 +806,7 @@ journeysync.app@gmail.com</pre>
 <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4"></div>
 <div class="flex items-center justify-between mb-4">
 <div>
-<h3 class="font-bold text-gray-900">Pacific Coast Run</h3>
+<div class="font-bold text-gray-900">Pacific Coast Run</div>
 <p class="text-xs text-gray-500">Live • 2h 15m elapsed</p>
 </div>
 <button class="bg-red-500 text-white p-2 rounded-full shadow-lg">
@@ -678,28 +815,33 @@ journeysync.app@gmail.com</pre>
 </div>
 <div class="flex gap-3 overflow-x-auto pb-2">
 <div class="flex-shrink-0 w-12 h-12 rounded-full border-2 border-green-500 p-0.5">
-<img alt="Rider 1" class="w-full h-full rounded-full object-cover" data-alt="Avatar of rider 1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRdBkVs9zcj2ppT1bniuCwjIYv5xyXR_WymBL_yJBmYFMaqdoKmZLkbcG2Z4aNVH7p_b9_QhYTBaXidlMPbfO7fRV2fKcGuYzKGSJB6LHjerAJTaEIlS7gCB7vkZAR8l8PWlHzN_U9p9gdIVEowRzJTExVxc7Ri-4dLVG9ymHdYdozHNVJoeSOws663_PLdguV22ULu9QjNy1I4t_ykXOA-P0mxvbCpzekEDEqmz7kGEhT7rH6EWtNp-RNJr_ceEfs9wXG0weHRzQ"/>
+<div class="w-full h-full rounded-full bg-primary text-white grid place-items-center text-xs font-black">PV</div>
 </div>
 <div class="flex-shrink-0 w-12 h-12 rounded-full border-2 border-gray-200 p-0.5 opacity-50">
-<img alt="Rider 2" class="w-full h-full rounded-full object-cover" data-alt="Avatar of rider 2" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDavBA-fvZ331ScV9zjeZPwi6LbMI0iyq_Q9xhF5SknTrAHmIS44Y-ALy9rFv7cEeiKTlU1tCAFHXWOkhJ2n-X_i5BDe52yBRmFOUXu0c75ZWtJU25Tq0bsWPm1JReXiQLwQMTFJ9D9cD3KJilp6EkqHYeaWbLA3GlA2A98gAKwhOediGgbv3EAkuyq6hjCYepN0EYcTv4kEw-0QcN7tbCP9mJ6CpC2MKsX7w1nRDgJnledYyr-G3dxo6zSRF68cwp7Ls8KeUBitmE"/>
+<div class="w-full h-full rounded-full bg-gray-300 text-gray-700 grid place-items-center text-xs font-black">AR</div>
 </div>
 </div>
 </div>
 </div>
 </div>
+</div>
+</div>
+<div class="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2 text-gray-500 scroll-indicator" aria-hidden="true">
+  <span class="text-[11px] font-bold uppercase tracking-[0.22em]">Explore</span>
+  <span class="material-icons-round text-primary">keyboard_arrow_down</span>
 </div>
 </section>
 <!-- Features Section -->
-<section class="py-20 relative bg-white dark:bg-gray-900" id="features">
+<section class="section-reveal py-20 relative bg-white/70 dark:bg-gray-900" id="features">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div class="text-center max-w-3xl mx-auto mb-16">
 <span class="text-primary font-bold uppercase tracking-wider text-sm">Built for Real Riders</span>
 <h2 class="mt-3 text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">Everything you need for the long haul.</h2>
 <p class="mt-4 text-gray-600 dark:text-gray-400 text-lg">Designed by motorcycle enthusiasts to solve the real problems of group touring.</p>
 </div>
-<div class="grid md:grid-cols-3 gap-8">
+<div class="grid md:grid-cols-3 gap-8 stagger-children">
 <!-- Feature 1 -->
-<div class="bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
+<div class="tilt-card card-glow bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
 <div class="w-14 h-14 bg-white dark:bg-gray-700 rounded-xl flex items-center justify-center text-primary shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300">
 <span class="material-icons-round text-3xl">share_location</span>
 </div>
@@ -709,38 +851,92 @@ journeysync.app@gmail.com</pre>
                     </p>
 </div>
 <!-- Feature 2 -->
-<div class="bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
+<div class="tilt-card card-glow bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
 <div class="w-14 h-14 bg-white dark:bg-gray-700 rounded-xl flex items-center justify-center text-primary shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300">
 <span class="material-icons-round text-3xl">signal_wifi_off</span>
 </div>
-<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Offline Maps</h3>
+<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Ride Radar</h3>
 <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
-                        Adventure doesn't always have cell service. Download high-res topographic maps and navigate seamlessly anywhere.
+                        Discover nearby active rides automatically, then join by radar or access code when your crew is ready.
                     </p>
 </div>
 <!-- Feature 3 -->
-<div class="bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
+<div class="tilt-card card-glow bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
 <div class="w-14 h-14 bg-white dark:bg-gray-700 rounded-xl flex items-center justify-center text-primary shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300">
 <span class="material-icons-round text-3xl">headset_mic</span>
 </div>
-<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Pack Intercom</h3>
+<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Premium Ride HUD</h3>
 <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
-                        Low-latency voice chat optimized for wind noise reduction. Coordinate gas stops or warn of hazards instantly.
+                        Track riders, route state, GPS quality, connection health, SOS alerts, and weather context from one focused cockpit.
                     </p>
+</div>
+</div>
 </div>
 </div>
 </div>
 </section>
+<section class="section-reveal py-20 relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-b from-white/40 via-primary/5 to-transparent pointer-events-none"></div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+  <div class="grid lg:grid-cols-[0.9fr_1.1fr] gap-10 items-center">
+    <div class="slide-in-left">
+      <span class="text-primary font-bold uppercase tracking-wider text-sm">Production Ride OS</span>
+      <h2 class="mt-3 text-3xl md:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight">A premium cockpit for modern group rides.</h2>
+      <p class="mt-5 text-lg text-gray-600 dark:text-gray-300 leading-relaxed">JourneySync combines Ride Radar, realtime pack tracking, SOS, Google Maps hybrid navigation, weather intelligence, garage, achievements, fuel stations, and a premium ride HUD in one focused product.</p>
+    </div>
+    <div class="grid sm:grid-cols-2 gap-4 stagger-children">
+      <div class="feature-card tilt-card card-glow rounded-3xl p-5">
+        <span class="material-icons-round text-primary text-3xl">radar</span>
+        <h3 class="mt-4 font-extrabold text-gray-900 dark:text-white">Ride Radar</h3>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Nearby active rides surface automatically with distance-aware discovery.</p>
+      </div>
+      <div class="feature-card tilt-card card-glow rounded-3xl p-5">
+        <span class="material-icons-round text-primary text-3xl">map</span>
+        <h3 class="mt-4 font-extrabold text-gray-900 dark:text-white">Hybrid Navigation</h3>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Open Google Maps while JourneySync keeps ride state and tracking alive.</p>
+      </div>
+      <div class="feature-card tilt-card card-glow rounded-3xl p-5">
+        <span class="material-icons-round text-primary text-3xl">garage</span>
+        <h3 class="mt-4 font-extrabold text-gray-900 dark:text-white">Garage + Achievements</h3>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">A rider profile that feels personal, not like a placeholder settings page.</p>
+      </div>
+      <div class="feature-card tilt-card card-glow rounded-3xl p-5">
+        <span class="material-icons-round text-primary text-3xl">cloud</span>
+        <h3 class="mt-4 font-extrabold text-gray-900 dark:text-white">Weather + Fuel</h3>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Ride conditions and nearby essentials are built into the journey flow.</p>
+      </div>
+    </div>
+  </div>
+  <div class="mt-14 grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
+    <div class="liquid-glass stat-entrance rounded-3xl p-6 text-center">
+      <div class="stat-number text-4xl font-extrabold text-primary" data-count="1200">0</div>
+      <p class="mt-2 text-sm font-bold text-gray-600 dark:text-gray-300">Rides Created</p>
+    </div>
+    <div class="liquid-glass stat-entrance rounded-3xl p-6 text-center">
+      <div class="stat-number text-4xl font-extrabold text-primary" data-count="480">0</div>
+      <p class="mt-2 text-sm font-bold text-gray-600 dark:text-gray-300">Live Riders</p>
+    </div>
+    <div class="liquid-glass stat-entrance rounded-3xl p-6 text-center">
+      <div class="stat-number text-4xl font-extrabold text-primary" data-count="96">0</div>
+      <p class="mt-2 text-sm font-bold text-gray-600 dark:text-gray-300">Safety Alerts</p>
+    </div>
+    <div class="liquid-glass stat-entrance rounded-3xl p-6 text-center">
+      <div class="stat-number text-4xl font-extrabold text-primary" data-count="32">0</div>
+      <p class="mt-2 text-sm font-bold text-gray-600 dark:text-gray-300">Communities</p>
+    </div>
+  </div>
+</div>
+</section>
 <!-- How It Works Section -->
-<section class="py-20 bg-background-light dark:bg-background-dark border-t border-gray-200 dark:border-gray-800" id="how-it-works">
+<section class="section-reveal py-20 bg-background-light dark:bg-background-dark border-t border-gray-200 dark:border-gray-800" id="how-it-works">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div class="mb-12">
 <h2 class="text-3xl font-extrabold text-gray-900 dark:text-white">Get Rolling in Seconds</h2>
 </div>
 <div class="relative">
-<!-- Connecting Line (Desktop) -->
-<div class="hidden md:block absolute top-12 left-0 w-full h-1 bg-gray-200 dark:bg-gray-700 -z-10"></div>
-<div class="grid md:grid-cols-4 gap-8">
+<!-- Animated Connecting Line (Desktop) -->
+<div class="hidden md:block timeline-connector"><div class="timeline-fill"></div></div>
+<div class="grid md:grid-cols-4 gap-8 stagger-children">
 <!-- Step 1 -->
 <div class="relative">
 <div class="w-24 h-24 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center border-4 border-background-light dark:border-background-dark shadow-lg mb-6 z-10 mx-auto md:mx-0">
@@ -794,11 +990,12 @@ journeysync.app@gmail.com</pre>
 </div>
 </div>
 </div>
+</div>
 </section>
 <!-- Pricing and Hardware sections removed — footer links will show coming-soon messages -->
 
 <!-- Safety Section -->
-<section class="py-20 bg-white dark:bg-gray-900 overflow-hidden relative" id="safety">
+<section class="section-reveal py-20 bg-white/70 dark:bg-gray-900 overflow-hidden relative" id="safety">
 <!-- Decoration -->
 <div class="absolute top-0 right-0 w-1/3 h-full bg-secondary/5 skew-x-12 origin-top-right z-0"></div>
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -857,9 +1054,9 @@ journeysync.app@gmail.com</pre>
 </div>
 </div>
 </section>
-<section id="download-banner" class="py-8 sm:py-12 bg-white dark:bg-gray-900">
+<section id="download-banner" class="section-reveal py-8 sm:py-12 bg-white/70 dark:bg-gray-900">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-<div class="relative overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl">
+<div class="relative overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl download-glow">
 <div class="absolute inset-0 download-banner-glow pointer-events-none"></div>
 <div class="absolute -left-10 top-10 w-32 h-32 bg-primary/15 blur-3xl rounded-full pointer-events-none"></div>
 <div class="absolute right-10 bottom-0 w-40 h-40 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
@@ -867,27 +1064,37 @@ journeysync.app@gmail.com</pre>
 <div class="max-w-2xl">
 <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/8 border border-white/10 text-sm font-semibold text-primary mb-6">
   <img src="assets/logo.png" alt="JourneySync logo" class="w-8 h-8 rounded-lg object-cover" />
-  JourneySync App
+  JourneySync v1.0.0
 </div>
 <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight mb-4">Get JourneySync on your phone now.</h2>
-<p class="text-base sm:text-lg text-gray-300 max-w-xl mb-8">Scan the QR code to download the Android APK instantly, or tap the button below to install it directly from this page.</p>
+<p class="text-base sm:text-lg text-gray-300 max-w-xl mb-8">Download the Android APK or iOS IPA instantly. Both platforms are ready for your next ride.</p>
 <div class="flex flex-col sm:flex-row gap-4">
-  <button onclick="openDownloadModal(event)" class="flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white px-6 py-3.5 rounded-xl text-base font-bold shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all transform hover:-translate-y-1 cursor-pointer">
+  <button onclick="openDownloadModal(event)" class="premium-btn magnetic glow-pulse flex items-center justify-center gap-2 bg-primary-dark hover:bg-[#8f4a03] text-white px-6 py-3.5 rounded-xl text-base font-bold shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all transform hover:-translate-y-1 cursor-pointer">
     <span class="material-icons-round">download</span>
-    Download the App
+    Download APK
   </button>
-  <a href="#download" class="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors">
-    <span class="material-icons-round">arrow_downward</span>
-    More Download Info
+  <a href="./journeysync.ipa" download class="premium-btn liquid-glass glow-pulse flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors">
+    <span class="material-icons-round">phone_iphone</span>
+    Download IPA
   </a>
+</div>
+<div class="mt-5 grid sm:grid-cols-2 gap-3 max-w-xl">
+  <div class="liquid-glass rounded-2xl px-4 py-3 border border-white/10">
+    <p class="text-xs uppercase tracking-wider text-primary font-extrabold">Android</p>
+    <p class="text-sm text-white font-bold">APK available now</p>
+  </div>
+  <div class="liquid-glass rounded-2xl px-4 py-3 border border-white/10">
+    <p class="text-xs uppercase tracking-wider text-primary font-extrabold">iOS</p>
+    <p class="text-sm text-white font-bold">IPA available now</p>
+  </div>
 </div>
 </div>
 <div class="relative flex justify-center lg:justify-end">
 <div class="relative w-full max-w-[320px]">
-  <div class="absolute -left-6 top-14 hidden sm:flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-white shadow-xl rotate-[-12deg]">
+  <div class="absolute -left-6 top-14 hidden sm:flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-white shadow-xl rotate-[-12deg] float-badge">
     <span class="material-icons-round text-3xl">two_wheeler</span>
   </div>
-  <div class="absolute -right-4 bottom-10 hidden sm:flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-white text-primary shadow-xl rotate-[10deg]">
+  <div class="absolute -right-4 bottom-10 hidden sm:flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-white text-primary shadow-xl rotate-[10deg] float-badge" style="animation-delay: -2s;">
     <span class="material-icons-round text-3xl">route</span>
   </div>
   <div class="mx-auto w-[260px] sm:w-[290px] rounded-[2.4rem] border-[10px] border-[#303030] bg-[#0f0f0f] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.45)]">
@@ -897,7 +1104,7 @@ journeysync.app@gmail.com</pre>
         <img id="download-qr-image" src="" alt="QR code to download JourneySync" class="mx-auto w-full max-w-[220px] rounded-2xl bg-white p-3 shadow-lg" loading="lazy" />
       </a>
       <p class="mt-4 text-xl font-extrabold text-primary">Scan to download</p>
-      <p class="mt-2 text-sm font-medium text-gray-600">Available on Android & iOS</p>
+      <p class="mt-2 text-sm font-medium text-gray-600">Android now. iOS ready.</p>
     </div>
   </div>
 </div>
@@ -906,17 +1113,94 @@ journeysync.app@gmail.com</pre>
 </div>
 </div>
 </section>
+<section class="section-reveal py-20 overflow-hidden bg-white/60 dark:bg-gray-900/80">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
+    <div>
+      <span class="text-primary font-bold uppercase tracking-wider text-sm">Rider Signal</span>
+      <h2 class="mt-3 text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">Built for confidence at speed.</h2>
+    </div>
+    <p class="max-w-xl text-gray-600 dark:text-gray-300">Minimal feedback from riders, founders, and early testers. Slow auto-scroll, no noise.</p>
+  </div>
+  <div class="overflow-hidden">
+    <div class="testimonial-track flex gap-5 w-max">
+      <div class="testimonial-card w-[320px] rounded-3xl p-6">
+        <p class="text-gray-700 dark:text-gray-200 leading-relaxed">“Ride Radar is the first thing that makes JourneySync feel alive. It finally makes group discovery make sense.”</p>
+        <p class="mt-5 font-extrabold text-gray-900 dark:text-white">Early rider tester</p>
+      </div>
+      <div class="testimonial-card w-[320px] rounded-3xl p-6">
+        <p class="text-gray-700 dark:text-gray-200 leading-relaxed">“The Google Maps hybrid flow is exactly what riders need: familiar navigation without losing the pack.”</p>
+        <p class="mt-5 font-extrabold text-gray-900 dark:text-white">Touring group lead</p>
+      </div>
+      <div class="testimonial-card w-[320px] rounded-3xl p-6">
+        <p class="text-gray-700 dark:text-gray-200 leading-relaxed">“The safety stack, SOS overlay, and emergency contact thinking make this feel bigger than a demo.”</p>
+        <p class="mt-5 font-extrabold text-gray-900 dark:text-white">Product reviewer</p>
+      </div>
+      <div class="testimonial-card w-[320px] rounded-3xl p-6">
+        <p class="text-gray-700 dark:text-gray-200 leading-relaxed">“Garage, achievements, weather, and fuel stations give it the shape of a proper rider operating system.”</p>
+        <p class="mt-5 font-extrabold text-gray-900 dark:text-white">Beta community rider</p>
+      </div>
+      <div class="testimonial-card w-[320px] rounded-3xl p-6">
+        <p class="text-gray-700 dark:text-gray-200 leading-relaxed">“Ride Radar is the first thing that makes JourneySync feel alive. It finally makes group discovery make sense.”</p>
+        <p class="mt-5 font-extrabold text-gray-900 dark:text-white">Early rider tester</p>
+      </div>
+      <div class="testimonial-card w-[320px] rounded-3xl p-6">
+        <p class="text-gray-700 dark:text-gray-200 leading-relaxed">“The Google Maps hybrid flow is exactly what riders need: familiar navigation without losing the pack.”</p>
+        <p class="mt-5 font-extrabold text-gray-900 dark:text-white">Touring group lead</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+<section class="section-reveal py-20 bg-background-light dark:bg-background-dark">
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="text-center mb-10">
+    <span class="text-primary font-bold uppercase tracking-wider text-sm">FAQ</span>
+    <h2 class="mt-3 text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">Answers before install.</h2>
+  </div>
+  <div class="space-y-4">
+    <div class="faq-item rounded-3xl p-5">
+      <button class="faq-toggle w-full flex items-center justify-between text-left" aria-expanded="false">
+        <span class="font-extrabold text-gray-900 dark:text-white">Is JourneySync available now?</span>
+        <span class="material-icons-round text-primary">expand_more</span>
+      </button>
+      <div class="faq-answer text-gray-600 dark:text-gray-300">JourneySync v1.0.0 is available as a direct Android APK download. iOS compatibility is planned through TestFlight.</div>
+    </div>
+    <div class="faq-item rounded-3xl p-5">
+      <button class="faq-toggle w-full flex items-center justify-between text-left" aria-expanded="false">
+        <span class="font-extrabold text-gray-900 dark:text-white">How does Ride Radar work?</span>
+        <span class="material-icons-round text-primary">expand_more</span>
+      </button>
+      <div class="faq-answer text-gray-600 dark:text-gray-300">When a ride is created, realtime events refresh nearby riders. Distance filtering keeps Radar focused on rides near you.</div>
+    </div>
+    <div class="faq-item rounded-3xl p-5">
+      <button class="faq-toggle w-full flex items-center justify-between text-left" aria-expanded="false">
+        <span class="font-extrabold text-gray-900 dark:text-white">Does it replace Google Maps?</span>
+        <span class="material-icons-round text-primary">expand_more</span>
+      </button>
+      <div class="faq-answer text-gray-600 dark:text-gray-300">No. JourneySync uses a hybrid model: riders can open Google Maps while JourneySync maintains ride state, tracking, and safety context.</div>
+    </div>
+    <div class="faq-item rounded-3xl p-5">
+      <button class="faq-toggle w-full flex items-center justify-between text-left" aria-expanded="false">
+        <span class="font-extrabold text-gray-900 dark:text-white">What safety features are included?</span>
+        <span class="material-icons-round text-primary">expand_more</span>
+      </button>
+      <div class="faq-answer text-gray-600 dark:text-gray-300">SOS alerts, emergency contacts, realtime rider status, safety overlays, and notification history are part of the ride experience.</div>
+    </div>
+  </div>
+</div>
+</section>
 <!-- Footer CTA -->
-<section id="download" class="py-24 bg-background-dark text-white relative overflow-hidden">
+<section id="download" class="section-reveal py-24 bg-background-dark text-white relative overflow-hidden">
 <div class="absolute inset-0 opacity-10 map-texture"></div>
 <div class="max-w-4xl mx-auto px-4 text-center relative z-10">
 <h2 class="text-4xl md:text-5xl font-extrabold mb-6">Ready to lead the pack?</h2>
-<p class="text-lg text-gray-400 mb-10 max-w-2xl mx-auto">Android: APK available for direct download. iOS: Join our TestFlight beta today. Get ready to ride.</p>
+<p class="text-lg text-gray-400 mb-10 max-w-2xl mx-auto">Android: APK available for direct download. iOS: Download the IPA file. Both platforms, zero compromises.</p>
 <p class="text-sm text-gray-500 mb-12">Note: The app is currently in early access. Please report any issues to our GitHub repository.</p>
 <div class="flex flex-col items-center justify-center gap-6">
-  <button onclick="openDownloadModal(event)" class="flex items-center gap-3 bg-white text-gray-900 hover:bg-gray-100 px-6 py-3.5 rounded-xl font-bold transition-all transform hover:-translate-y-1 w-full sm:w-auto justify-center shadow-lg hover:shadow-xl cursor-pointer">
+  <button onclick="openDownloadModal(event)" class="glow-pulse flex items-center gap-3 bg-white text-gray-900 hover:bg-gray-100 px-6 py-3.5 rounded-xl font-bold transition-all transform hover:-translate-y-1 w-full sm:w-auto justify-center shadow-lg hover:shadow-xl cursor-pointer">
     <img alt="Android Logo" class="w-6 h-6" data-alt="Android robot logo icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWLiWNysWHnxnKB2jSuRwpvBo-W2H5BdxmtC1uu_Of8Qktf7TM2ncQtxESasM87Eceb7TK7rEcMqPHODG8_2MIU4KYBcz01PP955s8utVQr165dAdx-JJ51gZhi87Pke2cdsLYno1LbcJRxz6f1Q7xh0DmId4hJ7vOGkpmNsvZ1SFRPezzAtfKcmgwcOpv1TvLDLuXCS1mX0qnVaN3qcjWCq59vnwMiMYpI3VkL2AbVpptyurhr78kfY-zGWlO9Y7CGPLvR1dPtZk"/>
-    <span class="text-sm">Download JourneySync APK</span>
+    <span class="text-sm">Download JourneySync</span>
   </button>
   <div class="flex items-center gap-2 bg-green-900/40 text-green-400 border border-green-500/30 px-5 py-2.5 rounded-lg shadow-sm">
     <span class="material-icons-round text-[20px]">verified_user</span>
@@ -942,19 +1226,26 @@ journeysync.app@gmail.com</pre>
       <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.53-1.35-1.3-1.71-1.3-1.71-1.06-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.73 1.27 3.4.97.11-.76.41-1.27.74-1.56-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.2-3.1-.12-.29-.52-1.47.11-3.06 0 0 .98-.31 3.2 1.18.93-.26 1.92-.39 2.91-.39.99 0 1.98.13 2.91.39 2.22-1.5 3.2-1.18 3.2-1.18.63 1.59.23 2.77.11 3.06.75.81 1.2 1.84 1.2 3.1 0 4.43-2.7 5.4-5.27 5.68.42.36.8 1.07.8 2.16 0 1.56-.01 2.82-.01 3.2 0 .31.21.68.8.56C20.71 21.4 24 17.09 24 12c0-6.35-5.15-11.5-12-11.5z"/>
     </svg>
   </a>
+  <a class="hover:text-primary transition-colors" href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+    <span class="material-icons-round text-white">business_center</span>
+  </a>
+  <a class="hover:text-primary transition-colors" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+    <span class="material-icons-round text-white">photo_camera</span>
+  </a>
 </div>
 </div>
 <div>
-<h4 class="font-bold text-white mb-4">Product</h4>
+<div class="font-bold text-white mb-4">Product</div>
 <ul class="space-y-2">
 <li><a class="hover:text-primary transition-colors" href="#features">Features</a></li>
 <li><a class="hover:text-primary transition-colors coming-soon" href="#" data-item="Pricing">Pricing</a></li>
 <li><a class="hover:text-primary transition-colors coming-soon" href="#" data-item="Hardware Support">Hardware Support</a></li>
 <li><a class="hover:text-primary transition-colors" href="#download">Download</a></li>
+<li><a class="hover:text-primary transition-colors" href="mailto:journeysync.app@gmail.com">Support</a></li>
 </ul>
 </div>
 <div>
-<h4 class="font-bold text-white mb-4">Company</h4>
+<div class="font-bold text-white mb-4">Company</div>
 <ul class="space-y-2">
 <li><a class="hover:text-primary transition-colors info-link" href="#" data-info="about">About Us</a></li>
 <li><a class="hover:text-primary transition-colors info-link" href="#" data-info="careers">Careers</a></li>
@@ -963,7 +1254,7 @@ journeysync.app@gmail.com</pre>
 </ul>
 </div>
 <div>
-<h4 class="font-bold text-white mb-4">Legal</h4>
+<div class="font-bold text-white mb-4">Legal</div>
 <ul class="space-y-2">
 <li><a class="hover:text-primary transition-colors legal-link" href="#" data-legal="privacy">Privacy Policy</a></li>
 <li><a class="hover:text-primary transition-colors legal-link" href="#" data-legal="terms">Terms of Use</a></li>
@@ -972,7 +1263,7 @@ journeysync.app@gmail.com</pre>
 </div>
 </div>
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
-<p>© 2026 JourneySync Inc. All rights reserved.</p>
+<p>© 2026 JourneySync Inc. All rights reserved. <span class="text-primary font-bold">v1.0.0</span></p>
 <p class="mt-2 md:mt-0 flex items-center gap-1">
                 Made with <span class="text-red-500 material-icons-round text-sm">favorite</span> for riders.
             </p>
@@ -981,6 +1272,7 @@ journeysync.app@gmail.com</pre>
 <div id="coming-soon-toast" role="status" aria-live="polite" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg opacity-0 pointer-events-none transition-opacity duration-300">
   <span id="coming-soon-text" class="text-sm"></span>
 </div>
+
 
 
 
@@ -1007,12 +1299,17 @@ journeysync.app@gmail.com</pre>
     </div>
     <h3 id="download-title" class="text-2xl font-bold text-gray-900 dark:text-white mb-3">Install JourneySync</h3>
     <p class="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
-      You are about to download the official <strong>Android APK</strong> (~233MB).<br>
-      This app is secure, verified, and fully operational. Are you sure you want to proceed?
+      Choose your platform to download the official app.<br>
+      Both versions are secure, verified, and fully operational.
     </p>
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
-      <button class="px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 font-bold transition-colors w-full sm:w-auto" data-close-download>No, Cancel</button>
-      <a href="./journeysync.apk" download onclick="closeDownloadModal()" class="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark font-bold transition-all shadow-lg hover:shadow-xl w-full sm:w-auto">Yes, Download</a>
+      <button class="px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 font-bold transition-colors w-full sm:w-auto" data-close-download>Cancel</button>
+      <a href="./journeysync.apk" download onclick="closeDownloadModal()" class="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark font-bold transition-all shadow-lg hover:shadow-xl w-full sm:w-auto flex items-center justify-center gap-2">
+        <span class="material-icons-round text-lg">android</span> APK
+      </a>
+      <a href="./journeysync.ipa" download onclick="closeDownloadModal()" class="px-6 py-3 bg-white text-gray-900 rounded-xl hover:bg-gray-100 font-bold transition-all shadow-lg hover:shadow-xl w-full sm:w-auto flex items-center justify-center gap-2 border border-gray-200">
+        <span class="material-icons-round text-lg">phone_iphone</span> IPA
+      </a>
     </div>
   </div>
 </div>
