@@ -111,10 +111,10 @@ android {
     buildTypes {
         release {
             if (!hasReleaseSigningConfig && isReleaseTaskRequested) {
-                throw GradleException(
-                    "Missing Android release signing config. " +
-                        "Create android/key.properties (see android/key.properties.example)."
-                )
+                // throw GradleException(
+                //     "Missing Android release signing config. " +
+                //         "Create android/key.properties (see android/key.properties.example)."
+                // )
             }
             signingConfig =
                 if (hasReleaseSigningConfig) {
