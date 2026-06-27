@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">supabase.co</domain>
+        <!-- Ensure all connections to Supabase and other APIs use HTTPS -->
+    </domain-config>
+</network-security-config>

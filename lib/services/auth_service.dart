@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_config.dart';
@@ -262,8 +262,10 @@ class AuthService {
     await prefs.setString('userName', user.name);
     await prefs.setString('userBike', user.bike);
     await prefs.setString('userAvatarUrl', user.avatarUrl);
-    await prefs.setString('phoneEmailAccessToken', accessToken);
-    await prefs.setString('phoneEmailJwtToken', jwtToken);
+
+    const storage = FlutterSecureStorage();
+    await storage.write(key: 'phoneEmailAccessToken', value: accessToken);
+    await storage.write(key: 'phoneEmailJwtToken', value: jwtToken);
   }
 
   Future<void> clearSession() async {
@@ -278,8 +280,10 @@ class AuthService {
     await prefs.remove('userName');
     await prefs.remove('userBike');
     await prefs.remove('userAvatarUrl');
-    await prefs.remove('phoneEmailAccessToken');
-    await prefs.remove('phoneEmailJwtToken');
+
+    const storage = FlutterSecureStorage();
+    await storage.delete(key: 'phoneEmailAccessToken');
+    await storage.delete(key: 'phoneEmailJwtToken');
   }
 
   Future<SessionUser?> tryResolveCachedUser() async {

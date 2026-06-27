@@ -14,7 +14,7 @@
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="JourneySync v1.0.0"/>
 <meta name="twitter:description" content="A premium ride coordination app for safer group rides."/>
-<title>JourneySync v1.0.0 - Premium Group Ride Coordination</title>
+<title>JourneySync App</title>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -34,6 +34,7 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <link href="./assets/site.css" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"/>
@@ -42,7 +43,7 @@
 <link rel="apple-touch-icon" href="assets/logo.png" />
 <style>
         body {
-            font-family: "Proxima Nova", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: 'Inter', "Proxima Nova", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
   html { scroll-behavior: smooth; }
   /* Force-hide scrollbars on root elements (most browsers) while preserving scroll behavior. */
@@ -202,17 +203,183 @@
           transform: scaleX(1);
           transform-origin: left;
         }
+        /* ── Framer Motion-style scroll animation system ── */
         .section-reveal {
           opacity: 0;
-          transform: translateY(28px) scale(.985);
-          filter: blur(10px);
-          transition: opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1), filter .8s cubic-bezier(.16,1,.3,1);
+          transform: translateY(48px) scale(.96);
+          filter: blur(12px);
+          transition: opacity .9s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.22,1,.36,1), filter .9s cubic-bezier(.22,1,.36,1);
         }
         .section-reveal.is-visible {
           opacity: 1;
           transform: translateY(0) scale(1);
           filter: blur(0);
         }
+        /* Staggered child animation */
+        .stagger-children > * {
+          opacity: 0;
+          transform: translateY(36px) scale(.94);
+          transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1);
+        }
+        .stagger-children.is-visible > *:nth-child(1) { transition-delay: 0ms; opacity: 1; transform: translateY(0) scale(1); }
+        .stagger-children.is-visible > *:nth-child(2) { transition-delay: 100ms; opacity: 1; transform: translateY(0) scale(1); }
+        .stagger-children.is-visible > *:nth-child(3) { transition-delay: 200ms; opacity: 1; transform: translateY(0) scale(1); }
+        .stagger-children.is-visible > *:nth-child(4) { transition-delay: 300ms; opacity: 1; transform: translateY(0) scale(1); }
+        .stagger-children.is-visible > *:nth-child(5) { transition-delay: 400ms; opacity: 1; transform: translateY(0) scale(1); }
+        .stagger-children.is-visible > *:nth-child(6) { transition-delay: 500ms; opacity: 1; transform: translateY(0) scale(1); }
+
+        /* 3D tilt card effect */
+        .tilt-card {
+          transform-style: preserve-3d;
+          perspective: 800px;
+          transition: transform .5s cubic-bezier(.22,1,.36,1), box-shadow .5s ease;
+        }
+        .tilt-card:hover {
+          box-shadow: 0 40px 90px rgba(219,119,6,.18), inset 0 1px 0 rgba(255,255,255,.7) !important;
+        }
+        .tilt-card .tilt-inner {
+          transform: translateZ(30px);
+          transition: transform .4s cubic-bezier(.22,1,.36,1);
+        }
+
+        /* Animated timeline connector */
+        .timeline-connector {
+          position: absolute;
+          top: 48px;
+          left: 0;
+          width: 100%;
+          height: 4px;
+          background: linear-gradient(90deg, rgba(229,231,235,.5), rgba(229,231,235,.5));
+          border-radius: 4px;
+          overflow: hidden;
+          z-index: -1;
+        }
+        .timeline-fill {
+          height: 100%;
+          width: 0;
+          background: linear-gradient(90deg, #db7706, #b45f04, #15803d);
+          border-radius: 4px;
+          transition: width 1.8s cubic-bezier(.22,1,.36,1);
+          box-shadow: 0 0 20px rgba(219,119,6,.4);
+        }
+        .timeline-connector.is-visible .timeline-fill {
+          width: 100%;
+        }
+
+        /* Pulsing glow CTA */
+        .glow-pulse {
+          position: relative;
+          overflow: visible;
+        }
+        .glow-pulse::before {
+          content: '';
+          position: absolute;
+          inset: -4px;
+          border-radius: inherit;
+          background: linear-gradient(135deg, rgba(219,119,6,.5), rgba(219,119,6,.1), rgba(21,128,61,.3));
+          z-index: -1;
+          opacity: 0;
+          filter: blur(16px);
+          animation: glowPulseAnim 3s ease-in-out infinite;
+        }
+        @keyframes glowPulseAnim {
+          0%, 100% { opacity: 0; transform: scale(.95); }
+          50% { opacity: .8; transform: scale(1.08); }
+        }
+
+        /* Hero particle canvas */
+        #hero-particles {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        /* Scroll-driven parallax depth */
+        .parallax-slow { will-change: transform; }
+        .parallax-fast { will-change: transform; }
+
+        /* Enhanced card glow on hover */
+        .card-glow {
+          position: relative;
+          overflow: hidden;
+        }
+        .card-glow::after {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: radial-gradient(circle, rgba(219,119,6,.08) 0%, transparent 60%);
+          opacity: 0;
+          transition: opacity .5s ease;
+          pointer-events: none;
+        }
+        .card-glow:hover::after {
+          opacity: 1;
+        }
+
+        /* Scale-up entrance for stats */
+        .stat-entrance {
+          opacity: 0;
+          transform: scale(.5) translateY(20px);
+          transition: opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1);
+        }
+        .stat-entrance.is-visible {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+
+        /* Slide-in from left/right */
+        .slide-in-left {
+          opacity: 0;
+          transform: translateX(-60px);
+          transition: opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1);
+        }
+        .slide-in-left.is-visible {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        .slide-in-right {
+          opacity: 0;
+          transform: translateX(60px);
+          transition: opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1);
+        }
+        .slide-in-right.is-visible {
+          opacity: 1;
+          transform: translateX(0);
+        }
+
+        /* Rotate entrance for step circles */
+        .rotate-in {
+          opacity: 0;
+          transform: rotate(-180deg) scale(.3);
+          transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.22,1,.36,1);
+        }
+        .rotate-in.is-visible {
+          opacity: 1;
+          transform: rotate(0deg) scale(1);
+        }
+
+        /* Floating badge animation */
+        .float-badge {
+          animation: floatBadge 4s ease-in-out infinite;
+        }
+        @keyframes floatBadge {
+          0%, 100% { transform: translateY(0) rotate(-2deg); }
+          50% { transform: translateY(-8px) rotate(2deg); }
+        }
+
+        /* Download section dramatic glow */
+        .download-glow {
+          animation: downloadGlow 4s ease-in-out infinite;
+        }
+        @keyframes downloadGlow {
+          0%, 100% { box-shadow: 0 0 40px rgba(219,119,6,.15); }
+          50% { box-shadow: 0 0 80px rgba(219,119,6,.3), 0 0 120px rgba(219,119,6,.1); }
+        }
+
         .premium-hero {
           min-height: 92vh;
           background:
@@ -265,6 +432,7 @@
           backdrop-filter: blur(20px) saturate(1.22);
           -webkit-backdrop-filter: blur(20px) saturate(1.22);
           box-shadow: 0 18px 50px rgba(31,25,18,.08), inset 0 1px 0 rgba(255,255,255,.58);
+          transition: transform .5s cubic-bezier(.22,1,.36,1), box-shadow .5s ease;
         }
         #features .grid > div:hover, .feature-card:hover, .testimonial-card:hover {
           transform: translateY(-8px) scale(1.02);
@@ -275,12 +443,18 @@
           max-height: 0;
           overflow: hidden;
           opacity: 0;
-          transition: max-height .34s ease, opacity .24s ease, padding-top .24s ease;
+          transition: max-height .5s cubic-bezier(.22,1,.36,1), opacity .4s ease, padding-top .4s ease;
         }
         .faq-item.open .faq-answer {
-          max-height: 180px;
+          max-height: 220px;
           opacity: 1;
           padding-top: .75rem;
+        }
+        .faq-item .faq-toggle span:last-child {
+          transition: transform .4s cubic-bezier(.22,1,.36,1);
+        }
+        .faq-item.open .faq-toggle span:last-child {
+          transform: rotate(180deg);
         }
         .scroll-indicator {
           animation: scrollBounce 1.8s ease-in-out infinite;
@@ -313,6 +487,8 @@
           .premium-hero { min-height: auto; }
           #cursor-glow { display: none; }
           .testimonial-track { animation: none; }
+          .slide-in-left, .slide-in-right { transform: translateY(40px) !important; }
+          .slide-in-left.is-visible, .slide-in-right.is-visible { transform: translateY(0) !important; }
         }
         @media (prefers-reduced-motion: reduce) {
           *, *::before, *::after {
@@ -321,7 +497,7 @@
             scroll-behavior: auto !important;
             transition-duration: .01ms !important;
           }
-          .section-reveal { opacity: 1; transform: none; filter: none; }
+          .section-reveal, .stagger-children > *, .stat-entrance, .slide-in-left, .slide-in-right, .rotate-in { opacity: 1; transform: none; filter: none; }
         }
     </style>
 </head>
@@ -427,9 +603,10 @@
 <!-- Background Pattern -->
 <div class="absolute inset-0 map-texture opacity-60 pointer-events-none"></div>
 <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/5 to-transparent pointer-events-none"></div>
-<div class="mesh-blob one"></div>
-<div class="mesh-blob two"></div>
-<div class="mesh-blob three"></div>
+<div class="mesh-blob one parallax-slow"></div>
+<div class="mesh-blob two parallax-slow"></div>
+<div class="mesh-blob three parallax-fast"></div>
+<canvas id="hero-particles" aria-hidden="true"></canvas>
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
 <div class="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
 <!-- Left Content -->
@@ -447,7 +624,7 @@
                     </p>
 <div class="flex flex-col gap-6 w-full max-w-lg">
   <div id="hero-ctas" class="flex flex-col sm:flex-row gap-4">
-    <button onclick="openDownloadModal(event)" class="premium-btn magnetic flex items-center justify-center gap-2 bg-primary-dark hover:bg-[#8f4a03] text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-base font-bold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all transform hover:-translate-y-1 cursor-pointer w-full sm:w-auto">
+    <button onclick="openDownloadModal(event)" class="premium-btn magnetic glow-pulse flex items-center justify-center gap-2 bg-primary-dark hover:bg-[#8f4a03] text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-base font-bold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all transform hover:-translate-y-1 cursor-pointer w-full sm:w-auto">
       <span class="material-icons-round">download</span>
       Start Your Journey
     </button>
@@ -539,9 +716,9 @@
 <h2 class="mt-3 text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">Everything you need for the long haul.</h2>
 <p class="mt-4 text-gray-600 dark:text-gray-400 text-lg">Designed by motorcycle enthusiasts to solve the real problems of group touring.</p>
 </div>
-<div class="grid md:grid-cols-3 gap-8">
+<div class="grid md:grid-cols-3 gap-8 stagger-children">
 <!-- Feature 1 -->
-<div class="bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
+<div class="tilt-card card-glow bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
 <div class="w-14 h-14 bg-white dark:bg-gray-700 rounded-xl flex items-center justify-center text-primary shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300">
 <span class="material-icons-round text-3xl">share_location</span>
 </div>
@@ -551,7 +728,7 @@
                     </p>
 </div>
 <!-- Feature 2 -->
-<div class="bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
+<div class="tilt-card card-glow bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
 <div class="w-14 h-14 bg-white dark:bg-gray-700 rounded-xl flex items-center justify-center text-primary shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300">
 <span class="material-icons-round text-3xl">signal_wifi_off</span>
 </div>
@@ -561,7 +738,7 @@
                     </p>
 </div>
 <!-- Feature 3 -->
-<div class="bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
+<div class="tilt-card card-glow bg-background-light dark:bg-gray-800 rounded-2xl p-8 transition-all hover:-translate-y-1 hover:shadow-xl border border-transparent hover:border-primary/20 group">
 <div class="w-14 h-14 bg-white dark:bg-gray-700 rounded-xl flex items-center justify-center text-primary shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300">
 <span class="material-icons-round text-3xl">headset_mic</span>
 </div>
@@ -579,48 +756,48 @@
 <div class="absolute inset-0 bg-gradient-to-b from-white/40 via-primary/5 to-transparent pointer-events-none"></div>
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
   <div class="grid lg:grid-cols-[0.9fr_1.1fr] gap-10 items-center">
-    <div>
+    <div class="slide-in-left">
       <span class="text-primary font-bold uppercase tracking-wider text-sm">Production Ride OS</span>
       <h2 class="mt-3 text-3xl md:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight">A premium cockpit for modern group rides.</h2>
       <p class="mt-5 text-lg text-gray-600 dark:text-gray-300 leading-relaxed">JourneySync combines Ride Radar, realtime pack tracking, SOS, Google Maps hybrid navigation, weather intelligence, garage, achievements, fuel stations, and a premium ride HUD in one focused product.</p>
     </div>
-    <div class="grid sm:grid-cols-2 gap-4">
-      <div class="feature-card rounded-3xl p-5">
+    <div class="grid sm:grid-cols-2 gap-4 stagger-children">
+      <div class="feature-card tilt-card card-glow rounded-3xl p-5">
         <span class="material-icons-round text-primary text-3xl">radar</span>
         <h3 class="mt-4 font-extrabold text-gray-900 dark:text-white">Ride Radar</h3>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Nearby active rides surface automatically with distance-aware discovery.</p>
       </div>
-      <div class="feature-card rounded-3xl p-5">
+      <div class="feature-card tilt-card card-glow rounded-3xl p-5">
         <span class="material-icons-round text-primary text-3xl">map</span>
         <h3 class="mt-4 font-extrabold text-gray-900 dark:text-white">Hybrid Navigation</h3>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Open Google Maps while JourneySync keeps ride state and tracking alive.</p>
       </div>
-      <div class="feature-card rounded-3xl p-5">
+      <div class="feature-card tilt-card card-glow rounded-3xl p-5">
         <span class="material-icons-round text-primary text-3xl">garage</span>
         <h3 class="mt-4 font-extrabold text-gray-900 dark:text-white">Garage + Achievements</h3>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">A rider profile that feels personal, not like a placeholder settings page.</p>
       </div>
-      <div class="feature-card rounded-3xl p-5">
+      <div class="feature-card tilt-card card-glow rounded-3xl p-5">
         <span class="material-icons-round text-primary text-3xl">cloud</span>
         <h3 class="mt-4 font-extrabold text-gray-900 dark:text-white">Weather + Fuel</h3>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Ride conditions and nearby essentials are built into the journey flow.</p>
       </div>
     </div>
   </div>
-  <div class="mt-14 grid grid-cols-2 lg:grid-cols-4 gap-4">
-    <div class="liquid-glass rounded-3xl p-6 text-center">
+  <div class="mt-14 grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
+    <div class="liquid-glass stat-entrance rounded-3xl p-6 text-center">
       <div class="stat-number text-4xl font-extrabold text-primary" data-count="1200">0</div>
       <p class="mt-2 text-sm font-bold text-gray-600 dark:text-gray-300">Rides Created</p>
     </div>
-    <div class="liquid-glass rounded-3xl p-6 text-center">
+    <div class="liquid-glass stat-entrance rounded-3xl p-6 text-center">
       <div class="stat-number text-4xl font-extrabold text-primary" data-count="480">0</div>
       <p class="mt-2 text-sm font-bold text-gray-600 dark:text-gray-300">Live Riders</p>
     </div>
-    <div class="liquid-glass rounded-3xl p-6 text-center">
+    <div class="liquid-glass stat-entrance rounded-3xl p-6 text-center">
       <div class="stat-number text-4xl font-extrabold text-primary" data-count="96">0</div>
       <p class="mt-2 text-sm font-bold text-gray-600 dark:text-gray-300">Safety Alerts</p>
     </div>
-    <div class="liquid-glass rounded-3xl p-6 text-center">
+    <div class="liquid-glass stat-entrance rounded-3xl p-6 text-center">
       <div class="stat-number text-4xl font-extrabold text-primary" data-count="32">0</div>
       <p class="mt-2 text-sm font-bold text-gray-600 dark:text-gray-300">Communities</p>
     </div>
@@ -634,9 +811,9 @@
 <h2 class="text-3xl font-extrabold text-gray-900 dark:text-white">Get Rolling in Seconds</h2>
 </div>
 <div class="relative">
-<!-- Connecting Line (Desktop) -->
-<div class="hidden md:block absolute top-12 left-0 w-full h-1 bg-gray-200 dark:bg-gray-700 -z-10"></div>
-<div class="grid md:grid-cols-4 gap-8">
+<!-- Animated Connecting Line (Desktop) -->
+<div class="hidden md:block timeline-connector"><div class="timeline-fill"></div></div>
+<div class="grid md:grid-cols-4 gap-8 stagger-children">
 <!-- Step 1 -->
 <div class="relative">
 <div class="w-24 h-24 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center border-4 border-background-light dark:border-background-dark shadow-lg mb-6 z-10 mx-auto md:mx-0">
@@ -756,7 +933,7 @@
 </section>
 <section id="download-banner" class="section-reveal py-8 sm:py-12 bg-white/70 dark:bg-gray-900">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-<div class="relative overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl">
+<div class="relative overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl download-glow">
 <div class="absolute inset-0 download-banner-glow pointer-events-none"></div>
 <div class="absolute -left-10 top-10 w-32 h-32 bg-primary/15 blur-3xl rounded-full pointer-events-none"></div>
 <div class="absolute right-10 bottom-0 w-40 h-40 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
@@ -767,15 +944,15 @@
   JourneySync v1.0.0
 </div>
 <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight mb-4">Get JourneySync on your phone now.</h2>
-<p class="text-base sm:text-lg text-gray-300 max-w-xl mb-8">Download the Android APK instantly. iOS is ready for compatibility testing with TestFlight distribution coming soon.</p>
+<p class="text-base sm:text-lg text-gray-300 max-w-xl mb-8">Download the Android APK or iOS IPA instantly. Both platforms are ready for your next ride.</p>
 <div class="flex flex-col sm:flex-row gap-4">
-  <button onclick="openDownloadModal(event)" class="premium-btn magnetic flex items-center justify-center gap-2 bg-primary-dark hover:bg-[#8f4a03] text-white px-6 py-3.5 rounded-xl text-base font-bold shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all transform hover:-translate-y-1 cursor-pointer">
+  <button onclick="openDownloadModal(event)" class="premium-btn magnetic glow-pulse flex items-center justify-center gap-2 bg-primary-dark hover:bg-[#8f4a03] text-white px-6 py-3.5 rounded-xl text-base font-bold shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all transform hover:-translate-y-1 cursor-pointer">
     <span class="material-icons-round">download</span>
     Download APK
   </button>
-  <a href="#download" class="premium-btn liquid-glass flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors">
+  <a href="./journeysync.ipa" download class="premium-btn liquid-glass glow-pulse flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors">
     <span class="material-icons-round">phone_iphone</span>
-    TestFlight Soon
+    Download IPA
   </a>
 </div>
 <div class="mt-5 grid sm:grid-cols-2 gap-3 max-w-xl">
@@ -785,16 +962,16 @@
   </div>
   <div class="liquid-glass rounded-2xl px-4 py-3 border border-white/10">
     <p class="text-xs uppercase tracking-wider text-primary font-extrabold">iOS</p>
-    <p class="text-sm text-white font-bold">Ready / TestFlight coming soon</p>
+    <p class="text-sm text-white font-bold">IPA available now</p>
   </div>
 </div>
 </div>
 <div class="relative flex justify-center lg:justify-end">
 <div class="relative w-full max-w-[320px]">
-  <div class="absolute -left-6 top-14 hidden sm:flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-white shadow-xl rotate-[-12deg]">
+  <div class="absolute -left-6 top-14 hidden sm:flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-white shadow-xl rotate-[-12deg] float-badge">
     <span class="material-icons-round text-3xl">two_wheeler</span>
   </div>
-  <div class="absolute -right-4 bottom-10 hidden sm:flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-white text-primary shadow-xl rotate-[10deg]">
+  <div class="absolute -right-4 bottom-10 hidden sm:flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-white text-primary shadow-xl rotate-[10deg] float-badge" style="animation-delay: -2s;">
     <span class="material-icons-round text-3xl">route</span>
   </div>
   <div class="mx-auto w-[260px] sm:w-[290px] rounded-[2.4rem] border-[10px] border-[#303030] bg-[#0f0f0f] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.45)]">
@@ -895,12 +1072,12 @@
 <div class="absolute inset-0 opacity-10 map-texture"></div>
 <div class="max-w-4xl mx-auto px-4 text-center relative z-10">
 <h2 class="text-4xl md:text-5xl font-extrabold mb-6">Ready to lead the pack?</h2>
-<p class="text-lg text-gray-400 mb-10 max-w-2xl mx-auto">Android: APK available for direct download. iOS: Join our TestFlight beta today. Get ready to ride.</p>
+<p class="text-lg text-gray-400 mb-10 max-w-2xl mx-auto">Android: APK available for direct download. iOS: Download the IPA file. Both platforms, zero compromises.</p>
 <p class="text-sm text-gray-500 mb-12">Note: The app is currently in early access. Please report any issues to our GitHub repository.</p>
 <div class="flex flex-col items-center justify-center gap-6">
-  <button onclick="openDownloadModal(event)" class="flex items-center gap-3 bg-white text-gray-900 hover:bg-gray-100 px-6 py-3.5 rounded-xl font-bold transition-all transform hover:-translate-y-1 w-full sm:w-auto justify-center shadow-lg hover:shadow-xl cursor-pointer">
+  <button onclick="openDownloadModal(event)" class="glow-pulse flex items-center gap-3 bg-white text-gray-900 hover:bg-gray-100 px-6 py-3.5 rounded-xl font-bold transition-all transform hover:-translate-y-1 w-full sm:w-auto justify-center shadow-lg hover:shadow-xl cursor-pointer">
     <img alt="Android Logo" class="w-6 h-6" data-alt="Android robot logo icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWLiWNysWHnxnKB2jSuRwpvBo-W2H5BdxmtC1uu_Of8Qktf7TM2ncQtxESasM87Eceb7TK7rEcMqPHODG8_2MIU4KYBcz01PP955s8utVQr165dAdx-JJ51gZhi87Pke2cdsLYno1LbcJRxz6f1Q7xh0DmId4hJ7vOGkpmNsvZ1SFRPezzAtfKcmgwcOpv1TvLDLuXCS1mX0qnVaN3qcjWCq59vnwMiMYpI3VkL2AbVpptyurhr78kfY-zGWlO9Y7CGPLvR1dPtZk"/>
-    <span class="text-sm">Download JourneySync APK</span>
+    <span class="text-sm">Download JourneySync</span>
   </button>
   <div class="flex items-center gap-2 bg-green-900/40 text-green-400 border border-green-500/30 px-5 py-2.5 rounded-lg shadow-sm">
     <span class="material-icons-round text-[20px]">verified_user</span>
@@ -1543,12 +1720,17 @@ journeysync.app@gmail.com</pre>
     </div>
     <h3 id="download-title" class="text-2xl font-bold text-gray-900 dark:text-white mb-3">Install JourneySync</h3>
     <p class="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
-      You are about to download the official <strong>Android APK</strong> (~233MB).<br>
-      This app is secure, verified, and fully operational. Are you sure you want to proceed?
+      Choose your platform to download the official app.<br>
+      Both versions are secure, verified, and fully operational.
     </p>
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
-      <button class="px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 font-bold transition-colors w-full sm:w-auto" data-close-download>No, Cancel</button>
-      <a href="./journeysync.apk" download onclick="closeDownloadModal()" class="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark font-bold transition-all shadow-lg hover:shadow-xl w-full sm:w-auto">Yes, Download</a>
+      <button class="px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 font-bold transition-colors w-full sm:w-auto" data-close-download>Cancel</button>
+      <a href="./journeysync.apk" download onclick="closeDownloadModal()" class="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark font-bold transition-all shadow-lg hover:shadow-xl w-full sm:w-auto flex items-center justify-center gap-2">
+        <span class="material-icons-round text-lg">android</span> APK
+      </a>
+      <a href="./journeysync.ipa" download onclick="closeDownloadModal()" class="px-6 py-3 bg-white text-gray-900 rounded-xl hover:bg-gray-100 font-bold transition-all shadow-lg hover:shadow-xl w-full sm:w-auto flex items-center justify-center gap-2 border border-gray-200">
+        <span class="material-icons-round text-lg">phone_iphone</span> IPA
+      </a>
     </div>
   </div>
 </div>
