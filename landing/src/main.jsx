@@ -1,5 +1,10 @@
-import './index.css';
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
 
-// The landing page is pre-rendered in index.html. Do not mount React here:
-// hydration can duplicate static sections when CDN/browser caches mix old HTML
-// with new chunks. Runtime interactions are handled by the inline/static page JS.
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
