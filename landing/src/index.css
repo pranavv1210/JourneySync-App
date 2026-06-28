@@ -1,3 +1,50 @@
 .react-static-chunk {
   display: contents;
 }
+
+body section:not(#hero) {
+  content-visibility: visible !important;
+  contain-intrinsic-size: auto !important;
+}
+
+.react-static-chunk .stagger-children.is-visible > *,
+.react-static-chunk .section-reveal.is-visible .stagger-children > * {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.react-static-chunk .feature-card,
+.react-static-chunk .tilt-card,
+.react-static-chunk .testimonial-card,
+.react-static-chunk .faq-item,
+.react-static-chunk .liquid-glass {
+  will-change: transform, opacity, filter;
+}
+
+.react-static-chunk .card-glow,
+.react-static-chunk .feature-card,
+.react-static-chunk .testimonial-card,
+.react-static-chunk .faq-item {
+  position: relative;
+}
+
+.react-static-chunk .card-glow::before,
+.react-static-chunk .feature-card::before,
+.react-static-chunk .testimonial-card::before,
+.react-static-chunk .faq-item::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,.38), transparent 36%, rgba(219,119,6,.08));
+  opacity: 0;
+  transition: opacity .45s cubic-bezier(.22,1,.36,1);
+}
+
+.react-static-chunk .card-glow:hover::before,
+.react-static-chunk .feature-card:hover::before,
+.react-static-chunk .testimonial-card:hover::before,
+.react-static-chunk .faq-item:hover::before {
+  opacity: 1;
+}

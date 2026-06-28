@@ -56,6 +56,48 @@ export function useLandingRuntime() {
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
 
+    const revealTargets = [
+      '.section-reveal',
+      '.stagger-children',
+      '.slide-in-left',
+      '.slide-in-right',
+      '.rotate-in',
+      '.timeline-connector',
+      '.stat-entrance',
+    ].join(',');
+
+    function bootRevealMotion(){
+      const targets = Array.from(document.querySelectorAll(revealTargets));
+
+      if (!('IntersectionObserver' in window)) {
+        targets.forEach(function(target){
+          target.classList.add('is-visible');
+        });
+        return;
+      }
+
+      const revealObserver = new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+          if(entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.08, rootMargin: '0px 0px 12% 0px' });
+
+      targets.forEach(function(target){
+        revealObserver.observe(target);
+      });
+
+      setTimeout(function(){
+        targets.forEach(function(target){
+          target.classList.add('is-visible');
+        });
+      }, 1800);
+    }
+
+    bootRevealMotion();
+
     function bootInteractiveMotion(){
       const glow = document.getElementById('cursor-glow');
       const sections = Array.from(document.querySelectorAll('section[id]'));
@@ -74,16 +116,6 @@ export function useLandingRuntime() {
       }
       updateActiveNav();
       window.addEventListener('scroll', updateActiveNav, { passive: true });
-
-    const revealObserver = new IntersectionObserver(function(entries){
-      entries.forEach(function(entry){
-        if(entry.isIntersecting) {
-          entry.target.classList.add('is-visible');
-          revealObserver.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.14, rootMargin: '0px 0px -8% 0px' });
-    document.querySelectorAll('.section-reveal').forEach(el => revealObserver.observe(el));
 
     const countObserver = new IntersectionObserver(function(entries){
       entries.forEach(function(entry){
