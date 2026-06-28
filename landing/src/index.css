@@ -13,9 +13,9 @@ body section:not(#hero) {
 }
 
 .react-static-chunk .section-reveal {
-  opacity: 0;
-  transform: translate3d(0, 40px, 0);
-  filter: blur(12px);
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  filter: blur(0);
   transition:
     opacity .6s ease-out,
     transform .6s ease-out,

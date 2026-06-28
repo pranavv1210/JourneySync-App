@@ -205,9 +205,9 @@
         }
         /* ── Framer Motion-style scroll animation system ── */
         .section-reveal {
-          opacity: 0;
-          transform: translateY(48px) scale(.96);
-          filter: blur(12px);
+          opacity: 1;
+          transform: translateY(0) scale(1);
+          filter: blur(0);
           transition: opacity .9s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.22,1,.36,1), filter .9s cubic-bezier(.22,1,.36,1);
         }
         .section-reveal.is-visible {
@@ -217,8 +217,8 @@
         }
         /* Staggered child animation */
         .stagger-children > * {
-          opacity: 0;
-          transform: translateY(36px) scale(.94);
+          opacity: 1;
+          transform: translateY(0) scale(1);
           transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1);
         }
         .stagger-children.is-visible > *:nth-child(1) { transition-delay: 0ms; opacity: 1; transform: translateY(0) scale(1); }
@@ -322,8 +322,8 @@
 
         /* Scale-up entrance for stats */
         .stat-entrance {
-          opacity: 0;
-          transform: scale(.5) translateY(20px);
+          opacity: 1;
+          transform: scale(1) translateY(0);
           transition: opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1);
         }
         .stat-entrance.is-visible {
@@ -333,8 +333,8 @@
 
         /* Slide-in from left/right */
         .slide-in-left {
-          opacity: 0;
-          transform: translateX(-60px);
+          opacity: 1;
+          transform: translateX(0);
           transition: opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1);
         }
         .slide-in-left.is-visible {
@@ -342,8 +342,8 @@
           transform: translateX(0);
         }
         .slide-in-right {
-          opacity: 0;
-          transform: translateX(60px);
+          opacity: 1;
+          transform: translateX(0);
           transition: opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1);
         }
         .slide-in-right.is-visible {
@@ -353,8 +353,8 @@
 
         /* Rotate entrance for step circles */
         .rotate-in {
-          opacity: 0;
-          transform: rotate(-180deg) scale(.3);
+          opacity: 1;
+          transform: rotate(0deg) scale(1);
           transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.22,1,.36,1);
         }
         .rotate-in.is-visible {
