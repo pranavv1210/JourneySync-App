@@ -361,3 +361,18 @@ body section:not(#hero) {
     filter: none !important;
   }
 }
+
+.process-step-card {
+  border-radius: 28px;
+  background: rgba(255, 255, 255, .76);
+  border: 1px solid rgba(255, 255, 255, .74);
+  box-shadow: 0 24px 70px rgba(35, 26, 15, .08);
+  padding: 1.5rem;
+  overflow: hidden;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.dark .process-step-card {
+  background: rgba(31, 41, 55, .74);
+  border-color: rgba(255, 255, 255, .10);
+}

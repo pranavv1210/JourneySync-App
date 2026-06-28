@@ -234,6 +234,20 @@
           perspective: 800px;
           transition: transform .5s cubic-bezier(.22,1,.36,1), box-shadow .5s ease;
         }
+        .process-step-card {
+          border-radius: 28px;
+          background: rgba(255, 255, 255, .76);
+          border: 1px solid rgba(255, 255, 255, .74);
+          box-shadow: 0 24px 70px rgba(35, 26, 15, .08);
+          padding: 1.5rem;
+          overflow: hidden;
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+        }
+        .dark .process-step-card {
+          background: rgba(31, 41, 55, .74);
+          border-color: rgba(255, 255, 255, .10);
+        }
         .tilt-card:hover {
           box-shadow: 0 40px 90px rgba(219,119,6,.18), inset 0 1px 0 rgba(255,255,255,.7) !important;
         }
@@ -817,7 +831,7 @@
 <div class="hidden md:block timeline-connector"><div class="timeline-fill"></div></div>
 <div class="grid md:grid-cols-4 gap-8 stagger-children">
 <!-- Step 1 -->
-<div class="relative">
+<div class="relative process-step-card">
 <div class="w-24 h-24 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center border-4 border-background-light dark:border-background-dark shadow-lg mb-6 z-10 mx-auto md:mx-0">
 <span class="text-3xl font-extrabold text-primary">1</span>
 </div>
@@ -825,7 +839,7 @@
 <p class="text-sm text-gray-600 dark:text-gray-400 text-center md:text-left">Start a private ride lobby and set your destination.</p>
 </div>
 <!-- Step 2 -->
-<div class="relative">
+<div class="relative process-step-card">
 <div class="w-24 h-24 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center border-4 border-background-light dark:border-background-dark shadow-lg mb-6 z-10 mx-auto md:mx-0">
 <span class="text-3xl font-extrabold text-primary">2</span>
 </div>
@@ -833,7 +847,7 @@
 <p class="text-sm text-gray-600 dark:text-gray-400 text-center md:text-left">Share a simple link or QR code to add your friends.</p>
 </div>
 <!-- Step 3 -->
-<div class="relative">
+<div class="relative process-step-card">
 <div class="w-24 h-24 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center border-4 border-background-light dark:border-background-dark shadow-lg mb-6 z-10 mx-auto md:mx-0">
 <span class="text-3xl font-extrabold text-primary">3</span>
 </div>
@@ -841,7 +855,7 @@
 <p class="text-sm text-gray-600 dark:text-gray-400 text-center md:text-left">Everyone gets the same GPS route instantly.</p>
 </div>
 <!-- Step 4 -->
-<div class="relative">
+<div class="relative process-step-card">
 <div class="w-24 h-24 bg-primary text-white rounded-full flex items-center justify-center border-4 border-background-light dark:border-background-dark shadow-lg shadow-primary/30 mb-6 z-10 mx-auto md:mx-0">
 <span class="material-icons-round text-4xl">motorcycle</span>
 </div>
