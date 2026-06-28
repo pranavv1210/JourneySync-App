@@ -555,7 +555,7 @@
   body.modal-open #mobile-nav { z-index: 20 !important; }
 </style>
 <!-- Sticky Glassmorphism Header -->
-<header class="fixed top-6 sm:top-8 left-0 right-0 mx-auto w-[95%] max-w-7xl z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300">
+<header class="fixed top-6 sm:top-8 left-0 right-0 mx-auto w-[95%] max-w-7xl z-50 bg-white/40 dark:bg-black/40 backdrop-blur-2xl border-2 border-white/70 dark:border-white/20 rounded-full shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] transition-all duration-300">
 <div class="px-4 sm:px-6 lg:px-8">
 <div class="flex justify-between items-center h-20">
 <!-- Logo -->
@@ -1164,5 +1164,37 @@
 </div>
 </div>
   <script type="module" src="/src/main.jsx"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // Create the bike element
+      const bikeContainer = document.createElement('div');
+      bikeContainer.id = 'scroll-bike';
+      bikeContainer.className = 'fixed z-[100] pointer-events-none text-primary drop-shadow-2xl transition-transform ease-out duration-75 hidden md:flex flex-col items-center justify-center';
+      bikeContainer.innerHTML = '<span class="material-icons-round text-6xl transform scale-x-[-1]">two_wheeler</span><div class="w-12 h-1 bg-primary/40 blur-sm absolute -bottom-1 rounded-full"></div>';
+      bikeContainer.style.bottom = '40px';
+      bikeContainer.style.left = '-80px'; 
+      document.body.appendChild(bikeContainer);
+
+      // Add scroll listener for animation
+      window.addEventListener('scroll', () => {
+        const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+        // Avoid division by zero on very short pages
+        if(scrollHeight <= 0) return; 
+        
+        const scrollPercent = Math.max(0, Math.min(1, window.scrollY / scrollHeight));
+        
+        // Move horizontally across the screen (add buffer so it fully enters and exits)
+        const xPos = scrollPercent * (window.innerWidth + 160);
+        
+        // Add a slight bounce effect simulating riding over small bumps
+        const bounce = Math.abs(Math.sin(scrollPercent * Math.PI * 25)) * -8;
+        
+        // Add slight rotation based on acceleration/bounce
+        const rotation = Math.cos(scrollPercent * Math.PI * 25) * 5;
+
+        bikeContainer.style.transform = `translateX(${xPos}px) translateY(${bounce}px) rotate(${rotation}deg)`;
+      });
+    });
+  </script>
 </body>
 </html>
