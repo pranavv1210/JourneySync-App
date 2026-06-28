@@ -994,7 +994,7 @@
     <div class="mx-auto mb-3 h-7 w-28 rounded-full bg-[#232323]"></div>
     <div class="rounded-[2rem] bg-[#f7f2ec] p-5 text-center">
       <a id="download-qr-link" href="./journeysync.apk" class="block" aria-label="Scan to download JourneySync APK">
-        <img id="download-qr-image" src="" alt="QR code to download JourneySync" class="mx-auto w-full max-w-[220px] rounded-2xl bg-white p-3 shadow-lg" loading="lazy" />
+        <img id="download-qr-image" src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&color=db7706&data=https://journeysync.app/download" alt="QR code to download JourneySync" class="mx-auto w-full max-w-[220px] rounded-2xl bg-white p-3 shadow-lg" loading="lazy" />
       </a>
       <p class="mt-4 text-xl font-extrabold text-primary">Scan to download</p>
       <p class="mt-2 text-sm font-medium text-gray-600">Android now. iOS ready.</p>
@@ -1052,34 +1052,34 @@
     <h2 class="mt-3 text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">Answers before install.</h2>
   </div>
   <div class="space-y-4">
-    <div class="faq-item rounded-3xl p-5 bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 transition-colors">
-      <button class="faq-toggle w-full flex items-center justify-between text-left" aria-expanded="false" onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('.material-icons-round').classList.toggle('rotate-180')">
+    <details class="group bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-3xl p-5 transition-colors [&_summary::-webkit-details-marker]:hidden cursor-pointer">
+      <summary class="faq-toggle w-full flex items-center justify-between text-left outline-none list-none">
         <span class="font-extrabold text-gray-900 dark:text-white">Is JourneySync available now?</span>
-        <span class="material-icons-round text-primary transition-transform duration-300">expand_more</span>
-      </button>
-      <div class="faq-answer text-gray-600 dark:text-gray-300 mt-4 hidden">JourneySync v1.0.0 is available as a direct Android APK download. iOS compatibility is planned through TestFlight.</div>
-    </div>
-    <div class="faq-item rounded-3xl p-5 bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 transition-colors">
-      <button class="faq-toggle w-full flex items-center justify-between text-left" aria-expanded="false" onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('.material-icons-round').classList.toggle('rotate-180')">
+        <span class="material-icons-round text-primary transition-transform duration-300 group-open:rotate-180">expand_more</span>
+      </summary>
+      <div class="faq-answer text-gray-600 dark:text-gray-300 mt-4">JourneySync v1.0.0 is available as a direct Android APK download. iOS compatibility is planned through TestFlight.</div>
+    </details>
+    <details class="group bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-3xl p-5 transition-colors [&_summary::-webkit-details-marker]:hidden cursor-pointer">
+      <summary class="faq-toggle w-full flex items-center justify-between text-left outline-none list-none">
         <span class="font-extrabold text-gray-900 dark:text-white">How does Ride Radar work?</span>
-        <span class="material-icons-round text-primary transition-transform duration-300">expand_more</span>
-      </button>
-      <div class="faq-answer text-gray-600 dark:text-gray-300 mt-4 hidden">When a ride is created, realtime events refresh nearby riders. Distance filtering keeps Radar focused on rides near you.</div>
-    </div>
-    <div class="faq-item rounded-3xl p-5 bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 transition-colors">
-      <button class="faq-toggle w-full flex items-center justify-between text-left" aria-expanded="false" onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('.material-icons-round').classList.toggle('rotate-180')">
+        <span class="material-icons-round text-primary transition-transform duration-300 group-open:rotate-180">expand_more</span>
+      </summary>
+      <div class="faq-answer text-gray-600 dark:text-gray-300 mt-4">When a ride is created, realtime events refresh nearby riders. Distance filtering keeps Radar focused on rides near you.</div>
+    </details>
+    <details class="group bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-3xl p-5 transition-colors [&_summary::-webkit-details-marker]:hidden cursor-pointer">
+      <summary class="faq-toggle w-full flex items-center justify-between text-left outline-none list-none">
         <span class="font-extrabold text-gray-900 dark:text-white">Does it replace Google Maps?</span>
-        <span class="material-icons-round text-primary transition-transform duration-300">expand_more</span>
-      </button>
-      <div class="faq-answer text-gray-600 dark:text-gray-300 mt-4 hidden">No. JourneySync uses a hybrid model: riders can open Google Maps while JourneySync maintains ride state, tracking, and safety context.</div>
-    </div>
-    <div class="faq-item rounded-3xl p-5 bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 transition-colors">
-      <button class="faq-toggle w-full flex items-center justify-between text-left" aria-expanded="false" onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('.material-icons-round').classList.toggle('rotate-180')">
+        <span class="material-icons-round text-primary transition-transform duration-300 group-open:rotate-180">expand_more</span>
+      </summary>
+      <div class="faq-answer text-gray-600 dark:text-gray-300 mt-4">No. JourneySync uses a hybrid model: riders can open Google Maps while JourneySync maintains ride state, tracking, and safety context.</div>
+    </details>
+    <details class="group bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-3xl p-5 transition-colors [&_summary::-webkit-details-marker]:hidden cursor-pointer">
+      <summary class="faq-toggle w-full flex items-center justify-between text-left outline-none list-none">
         <span class="font-extrabold text-gray-900 dark:text-white">What safety features are included?</span>
-        <span class="material-icons-round text-primary transition-transform duration-300">expand_more</span>
-      </button>
-      <div class="faq-answer text-gray-600 dark:text-gray-300 mt-4 hidden">SOS alerts, emergency contacts, realtime rider status, safety overlays, and notification history are part of the ride experience.</div>
-    </div>
+        <span class="material-icons-round text-primary transition-transform duration-300 group-open:rotate-180">expand_more</span>
+      </summary>
+      <div class="faq-answer text-gray-600 dark:text-gray-300 mt-4">SOS alerts, emergency contacts, realtime rider status, safety overlays, and notification history are part of the ride experience.</div>
+    </details>
   </div>
 </div>
 </section>
