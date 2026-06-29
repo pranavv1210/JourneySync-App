@@ -10,11 +10,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/rider_location.dart';
+import 'ride_engine_core.dart';
 
 /// Service responsible for:
 ///  - Syncing the current user's GPS position to Supabase (live_locations)
 ///  - Receiving all riders' live positions via Supabase Realtime
-///  - Adaptive update frequency (4 s moving, 10 s stationary)
+///  - Adaptive update frequency based on live speed and emergency state
 ///  - Auto-reconnect on channel drop
 ///  - Offline queue with automatic flush on reconnect
 ///
@@ -67,6 +68,8 @@ class LiveTrackingService {
   String? _syncUserName;
   String? _syncBikeName;
   bool _syncIsLeader = false;
+  bool _emergencySync = false;
+  Position? _lastSyncedPosition;
 
   /// Battery level accessor (injected so tests can override).
   Future<int?> Function()? batteryLevelProvider;
@@ -83,7 +86,7 @@ class LiveTrackingService {
 
   // ── Offline queue ────────────────────────────────────────────────────────────
   final List<Map<String, dynamic>> _offlineQueue = [];
-  static const int _maxQueueSize = 50;
+  static const int _maxQueueSize = 200;
   static const String _offlineQueuePrefix = 'liveTrackingOfflineQueue';
 
   /// Whether the last sync attempt failed (offline state).
@@ -114,21 +117,19 @@ class LiveTrackingService {
   }
 
   // ── Adaptive interval ─────────────────────────────────────────────────────
-  static const Duration _movingInterval = Duration(seconds: 4);
-  static const Duration _stationaryInterval = Duration(seconds: 15);
-  static const Duration _idleInterval = Duration(seconds: 30);
   static const double _stationaryThresholdMps = 1.0; // < 1 m/s = stationary
 
   int _stationaryCount = 0;
-  static const int _stationaryCountToSwitch = 2;
   static const int _idleCountToSwitch = 6;
 
-  Duration get _currentSyncInterval =>
-      _stationaryCount >= _idleCountToSwitch
-          ? _idleInterval
-          : _stationaryCount >= _stationaryCountToSwitch
-          ? _stationaryInterval
-          : _movingInterval;
+  Duration get _currentSyncInterval {
+    final latestSpeed = _latestPosition?.speed;
+    return RideEngineCore.syncIntervalFor(
+      speedMps: latestSpeed != null && latestSpeed >= 0 ? latestSpeed : 0,
+      emergency: _emergencySync,
+      stationarySamples: _stationaryCount,
+    );
+  }
 
   // ── Watch ─────────────────────────────────────────────────────────────────
 
@@ -244,6 +245,13 @@ class LiveTrackingService {
     String? battery,
     String? signal,
   }) async {
+    if (!RideEngineCore.shouldSyncLocation(
+      current: position,
+      previous: _lastSyncedPosition,
+      emergency: _emergencySync,
+    )) {
+      return;
+    }
     final payload = <String, dynamic>{
       'ride_id': rideId.trim(),
       'profile_id': userId.trim(),
@@ -260,6 +268,7 @@ class LiveTrackingService {
       'updated_at': DateTime.now().toIso8601String(),
     };
     await _client.from('live_locations').upsert(payload);
+    _lastSyncedPosition = position;
   }
 
   /// Starts continuous GPS capture + periodic Supabase sync.
@@ -306,7 +315,7 @@ class LiveTrackingService {
     _positionSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 5, // don't fire unless moved 5 m
+        distanceFilter: 3,
       ),
     ).listen(
       (position) {
@@ -354,6 +363,14 @@ class LiveTrackingService {
     }
 
     final pos = _latestPosition!;
+    if (!RideEngineCore.shouldSyncLocation(
+      current: pos,
+      previous: _lastSyncedPosition,
+      emergency: _emergencySync,
+    )) {
+      return;
+    }
+
     final battery = await _getBatteryLevel();
 
     final payload = <String, dynamic>{
@@ -373,6 +390,7 @@ class LiveTrackingService {
 
     try {
       await _client.from('live_locations').upsert(payload);
+      _lastSyncedPosition = pos;
       if (_isOffline) {
         _isOffline = false;
         debugPrint('[LiveTracking] Back online — flushing offline queue');
@@ -386,23 +404,56 @@ class LiveTrackingService {
   }
 
   void _enqueueOffline(Map<String, dynamic> payload) {
-    _offlineQueue.add(payload);
+    _mergeQueuedPayload(payload);
     if (_offlineQueue.length > _maxQueueSize) {
-      // Keep only the most recent entries
       _offlineQueue.removeRange(0, _offlineQueue.length - _maxQueueSize);
     }
     unawaited(_persistOfflineQueue());
   }
 
+  void _mergeQueuedPayload(Map<String, dynamic> payload) {
+    final profileId = (payload['profile_id'] ?? '').toString();
+    final timestamp = DateTime.tryParse(
+      (payload['updated_at'] ?? '').toString(),
+    );
+
+    if (_emergencySync || profileId.isEmpty || timestamp == null) {
+      _offlineQueue.add(payload);
+      return;
+    }
+
+    for (var i = _offlineQueue.length - 1; i >= 0; i--) {
+      final queued = _offlineQueue[i];
+      if ((queued['profile_id'] ?? '').toString() != profileId) continue;
+      final queuedTime = DateTime.tryParse(
+        (queued['updated_at'] ?? '').toString(),
+      );
+      if (queuedTime == null ||
+          timestamp.difference(queuedTime).abs() < const Duration(seconds: 2)) {
+        _offlineQueue[i] = payload;
+        return;
+      }
+      break;
+    }
+    _offlineQueue.add(payload);
+  }
+
   Future<void> _flushOfflineQueue() async {
     if (_offlineQueue.isEmpty) return;
-    final batch = List<Map<String, dynamic>>.from(_offlineQueue);
+    final batch = List<Map<String, dynamic>>.from(_offlineQueue)..sort((a, b) {
+      final at =
+          DateTime.tryParse((a['updated_at'] ?? '').toString()) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final bt =
+          DateTime.tryParse((b['updated_at'] ?? '').toString()) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      return at.compareTo(bt);
+    });
     _offlineQueue.clear();
     await _persistOfflineQueue();
 
     for (final payload in batch) {
       try {
-        // Only send the latest payload for each rider to avoid spamming.
         await _client.from('live_locations').upsert(payload);
         await _persistOfflineQueue();
       } catch (e) {
@@ -464,6 +515,15 @@ class LiveTrackingService {
   /// Call this when the user's leader status changes (e.g. leader handed off).
   void updateLeaderStatus(bool isLeader) {
     _syncIsLeader = isLeader;
+  }
+
+  void setEmergencySync(bool enabled) {
+    if (_emergencySync == enabled) return;
+    _emergencySync = enabled;
+    if (_syncRideId != null) {
+      _scheduleSyncTimer();
+      unawaited(_uploadPosition());
+    }
   }
 
   // ── Clear on ride end ──────────────────────────────────────────────────────
@@ -559,9 +619,11 @@ class LiveTrackingService {
     await _positionSubscription?.cancel();
     _positionSubscription = null;
     _latestPosition = null;
+    _lastSyncedPosition = null;
     _syncRideId = null;
     _syncUserId = null;
     _stationaryCount = 0;
+    _emergencySync = false;
 
     // Stop Android foreground service when ride ends.
     if (Platform.isAndroid) {

@@ -1,8 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../models/rider_location.dart';
+import '../services/ride_engine_core.dart';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // CURRENT USER MARKER  — Pulsing blue dot with heading indicator
@@ -15,6 +14,7 @@ class CurrentUserMarker extends StatefulWidget {
     super.key,
     required this.heading,
     this.isOffline = false,
+    this.status,
   });
 
   /// GPS heading in degrees (0 = north). Null = no heading data.
@@ -22,6 +22,7 @@ class CurrentUserMarker extends StatefulWidget {
 
   /// True when the sync connection is lost.
   final bool isOffline;
+  final RiderLiveStatus? status;
 
   @override
   State<CurrentUserMarker> createState() => _CurrentUserMarkerState();
@@ -53,8 +54,11 @@ class _CurrentUserMarkerState extends State<CurrentUserMarker>
 
   @override
   Widget build(BuildContext context) {
-    final dotColor =
-        widget.isOffline ? const Color(0xFFFF6A00) : const Color(0xFF2196F3);
+    final dotColor = _statusColor(
+      widget.status ??
+          (widget.isOffline ? RiderLiveStatus.offline : RiderLiveStatus.moving),
+      fallback: const Color(0xFF2196F3),
+    );
     final glowColor = dotColor.withValues(alpha: 0.35);
 
     return AnimatedBuilder(
@@ -104,8 +108,8 @@ class _CurrentUserMarkerState extends State<CurrentUserMarker>
             ),
             // Heading arrow (if available)
             if (widget.heading != null)
-              Transform.rotate(
-                angle: widget.heading! * math.pi / 180,
+              _SmoothHeadingRotation(
+                heading: widget.heading!,
                 child: CustomPaint(
                   size: const Size(52, 52),
                   painter: _HeadingArrowPainter(color: dotColor),
@@ -128,10 +132,12 @@ class LeaderMarker extends StatefulWidget {
     super.key,
     required this.location,
     this.isCurrentUser = false,
+    this.status = RiderLiveStatus.leader,
   });
 
   final RiderLocation location;
   final bool isCurrentUser;
+  final RiderLiveStatus status;
 
   @override
   State<LeaderMarker> createState() => _LeaderMarkerState();
@@ -163,7 +169,10 @@ class _LeaderMarkerState extends State<LeaderMarker>
 
   @override
   Widget build(BuildContext context) {
-    final leaderColor = const Color(0xFFFF6A00);
+    final leaderColor = _statusColor(
+      widget.status,
+      fallback: const Color(0xFFFF6A00),
+    );
     return AnimatedBuilder(
       animation: _glowAnim,
       builder: (context, _) {
@@ -176,8 +185,8 @@ class _LeaderMarkerState extends State<LeaderMarker>
               children: [
                 // Direction indicator (if heading is available)
                 if (widget.location.heading != null)
-                  Transform.rotate(
-                    angle: widget.location.heading! * math.pi / 180,
+                  _SmoothHeadingRotation(
+                    heading: widget.location.heading!,
                     child: CustomPaint(
                       size: const Size(68, 68),
                       painter: _HeadingArrowPainter(color: leaderColor),
@@ -299,16 +308,22 @@ class RiderMarker extends StatelessWidget {
     super.key,
     required this.location,
     this.isCurrentUser = false,
+    this.status = RiderLiveStatus.moving,
   });
 
   final RiderLocation location;
   final bool isCurrentUser;
+  final RiderLiveStatus status;
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        isCurrentUser ? const Color(0xFFFF6A00) : const Color(0xFF2196F3);
-    final opacity = location.isStale ? 0.5 : 1.0;
+    final borderColor = _statusColor(
+      status,
+      fallback:
+          isCurrentUser ? const Color(0xFFFF6A00) : const Color(0xFF2196F3),
+    );
+    final opacity =
+        status == RiderLiveStatus.offline || location.isStale ? 0.45 : 1.0;
 
     return Opacity(
       opacity: opacity,
@@ -321,8 +336,8 @@ class RiderMarker extends StatelessWidget {
             children: [
               // Direction indicator (if heading is available)
               if (location.heading != null)
-                Transform.rotate(
-                  angle: location.heading! * math.pi / 180,
+                _SmoothHeadingRotation(
+                  heading: location.heading!,
                   child: CustomPaint(
                     size: const Size(60, 60),
                     painter: _HeadingArrowPainter(color: borderColor),
@@ -350,7 +365,9 @@ class RiderMarker extends StatelessWidget {
                 ),
               ),
               // Stale indicator dot
-              if (location.isStale)
+              if (status == RiderLiveStatus.offline ||
+                  status == RiderLiveStatus.background ||
+                  location.isStale)
                 Positioned(
                   top: 0,
                   right: 0,
@@ -358,7 +375,10 @@ class RiderMarker extends StatelessWidget {
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade400,
+                      color:
+                          status == RiderLiveStatus.background
+                              ? Colors.amber.shade600
+                              : Colors.grey.shade400,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 1.5),
                     ),
@@ -441,6 +461,56 @@ class DestinationMarker extends StatelessWidget {
 // ──────────────────────────────────────────────────────────────────────────────
 // SHARED HELPERS
 // ──────────────────────────────────────────────────────────────────────────────
+
+Color _statusColor(RiderLiveStatus status, {required Color fallback}) {
+  return switch (status) {
+    RiderLiveStatus.sos => Colors.red,
+    RiderLiveStatus.offline => Colors.grey.shade500,
+    RiderLiveStatus.background => Colors.amber.shade700,
+    RiderLiveStatus.waiting => Colors.purple.shade400,
+    RiderLiveStatus.stopped => Colors.blueGrey.shade500,
+    RiderLiveStatus.leader => const Color(0xFFFF6A00),
+    RiderLiveStatus.moving => fallback,
+  };
+}
+
+class _SmoothHeadingRotation extends StatefulWidget {
+  const _SmoothHeadingRotation({required this.heading, required this.child});
+
+  final double heading;
+  final Widget child;
+
+  @override
+  State<_SmoothHeadingRotation> createState() => _SmoothHeadingRotationState();
+}
+
+class _SmoothHeadingRotationState extends State<_SmoothHeadingRotation> {
+  late double _turns;
+
+  @override
+  void initState() {
+    super.initState();
+    _turns = widget.heading / 360;
+  }
+
+  @override
+  void didUpdateWidget(_SmoothHeadingRotation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final currentDegrees = _turns * 360;
+    final delta = RideEngineCore.headingDelta(currentDegrees, widget.heading);
+    _turns = (currentDegrees + delta) / 360;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedRotation(
+      turns: _turns,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+      child: widget.child,
+    );
+  }
+}
 
 class _RiderAvatar extends StatelessWidget {
   const _RiderAvatar({required this.name, this.avatarUrl});

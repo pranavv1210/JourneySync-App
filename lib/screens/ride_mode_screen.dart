@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:battery_plus/battery_plus.dart';
@@ -15,6 +16,7 @@ import '../coordinators/active_ride_coordinator.dart';
 import '../coordinators/realtime_coordinator.dart';
 import '../services/live_tracking_service.dart';
 import '../services/navigation_service.dart';
+import '../services/ride_engine_core.dart';
 import '../services/ride_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/app_toast.dart';
@@ -72,6 +74,10 @@ class _RideModeScreenState extends State<RideModeScreen>
 
   // ── Follow leader mode ─────────────────────────────────────────────────────
   bool _followingLeader = false;
+  bool _followMe = true;
+  bool _fitGroupMode = false;
+  bool _programmaticCameraMove = false;
+  DateTime _autoFollowResumeAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   // ── Telemetry V2 (Garmin-Level metrics) ────────────────────────────────────
   double _distanceTravelled = 0.0;
@@ -107,6 +113,10 @@ class _RideModeScreenState extends State<RideModeScreen>
   /// Maps userId → current smoothly-interpolated LatLng.
   /// Updated by SmoothMarker builders and used to track the animated position.
   final Map<String, LatLng> _interpolatedPositions = {};
+  final RiderDistanceCache _distanceCache = RiderDistanceCache();
+  late AnimationController _markerFrameController;
+  late AnimationController _cameraController;
+  VoidCallback? _cameraTickListener;
 
   // ─────────────────────────────────────────────────────────────────────────
   // LIFECYCLE
@@ -120,6 +130,16 @@ class _RideModeScreenState extends State<RideModeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
+
+    _markerFrameController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat();
+
+    _cameraController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 850),
+    );
 
     _sosPulseController = AnimationController(
       vsync: this,
@@ -257,48 +277,16 @@ class _RideModeScreenState extends State<RideModeScreen>
     // Check our own offline status from the service.
     final nowOffline = _trackingService.isOffline;
 
+    final leaderDistances =
+        _leaderId == null
+            ? const <String, double>{}
+            : _distanceCache.update(locations: locations, leaderId: _leaderId!);
+
     // Calculate falling behind status (>2 km from leader)
     bool isFallingBehind = false;
     if (_leaderId != null && _leaderId != _currentUserId) {
-      RiderLocation? leader;
-      for (final loc in locations) {
-        if (loc.userId == _leaderId) {
-          leader = loc;
-          break;
-        }
-      }
-      if (leader != null) {
-        double dist = 0.0;
-        if (_currentPosition != null) {
-          dist =
-              Geolocator.distanceBetween(
-                _currentPosition!.latitude,
-                _currentPosition!.longitude,
-                leader.latitude,
-                leader.longitude,
-              ) /
-              1000.0;
-        } else {
-          RiderLocation? me;
-          for (final loc in locations) {
-            if (loc.userId == _currentUserId) {
-              me = loc;
-              break;
-            }
-          }
-          if (me != null) {
-            dist =
-                Geolocator.distanceBetween(
-                  me.latitude,
-                  me.longitude,
-                  leader.latitude,
-                  leader.longitude,
-                ) /
-                1000.0;
-          }
-        }
-        isFallingBehind = dist > 2.0;
-      }
+      final cachedDistance = leaderDistances[_currentUserId];
+      isFallingBehind = cachedDistance != null && cachedDistance > 2000;
     }
 
     setState(() {
@@ -307,7 +295,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       _isFallingBehind = isFallingBehind;
     });
 
-    _handleFollowLeader(locations);
+    _driveCamera(locations);
   }
 
   void _onRealtimeChanged() {
@@ -370,15 +358,101 @@ class _RideModeScreenState extends State<RideModeScreen>
     }
   }
 
-  void _handleFollowLeader(List<RiderLocation> locations) {
-    if (!_followingLeader || _leaderId == null) return;
-    try {
-      final leader = locations.firstWhere((l) => l.userId == _leaderId);
-      _mapController.move(
-        LatLng(leader.latitude, leader.longitude),
-        _mapController.camera.zoom,
+  void _driveCamera(List<RiderLocation> locations) {
+    if (DateTime.now().isBefore(_autoFollowResumeAt)) return;
+    if (_fitGroupMode && locations.length > 1) {
+      _fitRiders(locations);
+      return;
+    }
+    if (_followingLeader && _leaderId != null) {
+      final leader = locations.where((l) => l.userId == _leaderId).firstOrNull;
+      if (leader != null) {
+        _animateCamera(
+          center: LatLng(leader.latitude, leader.longitude),
+          zoom: math.max(_mapController.camera.zoom, 15),
+          bearing: leader.heading,
+        );
+      }
+      return;
+    }
+    if (_followMe && _currentPosition != null) {
+      _animateCamera(
+        center: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        zoom: math.max(_mapController.camera.zoom, 15),
+        bearing:
+            _currentPosition!.heading >= 0 ? _currentPosition!.heading : null,
       );
-    } catch (_) {}
+    }
+  }
+
+  void _fitRiders(List<RiderLocation> locations) {
+    final points = locations
+        .map((loc) => LatLng(loc.latitude, loc.longitude))
+        .toList(growable: false);
+    if (points.length < 2) return;
+
+    final fitted = CameraFit.coordinates(
+      coordinates: points,
+      padding: const EdgeInsets.fromLTRB(64, 120, 64, 260),
+      maxZoom: 15.5,
+      minZoom: 5,
+    ).fit(_mapController.camera);
+    _animateCamera(center: fitted.center, zoom: fitted.zoom);
+  }
+
+  void _animateCamera({
+    required LatLng center,
+    required double zoom,
+    double? bearing,
+  }) {
+    final camera = _mapController.camera;
+    final startCenter = camera.center;
+    final startZoom = camera.zoom;
+    final startBearing = camera.rotation;
+    final targetBearing =
+        bearing == null
+            ? startBearing
+            : startBearing + RideEngineCore.headingDelta(startBearing, bearing);
+    final distance = const Distance().as(LengthUnit.Meter, startCenter, center);
+    if (distance < 2 &&
+        (startZoom - zoom).abs() < 0.02 &&
+        (startBearing - targetBearing).abs() < 0.5) {
+      return;
+    }
+
+    final oldListener = _cameraTickListener;
+    if (oldListener != null) {
+      _cameraController.removeListener(oldListener);
+      _cameraTickListener = null;
+    }
+    _cameraController.stop();
+    _cameraController.reset();
+    void tick() {
+      final t = Curves.easeOutCubic.transform(_cameraController.value);
+      final nextCenter = LatLng(
+        ui.lerpDouble(startCenter.latitude, center.latitude, t)!,
+        ui.lerpDouble(startCenter.longitude, center.longitude, t)!,
+      );
+      final nextZoom = ui.lerpDouble(startZoom, zoom, t)!;
+      final nextBearing = ui.lerpDouble(startBearing, targetBearing, t)!;
+      _programmaticCameraMove = true;
+      _mapController.moveAndRotate(
+        nextCenter,
+        nextZoom.clamp(4.0, 18.0),
+        nextBearing % 360,
+      );
+      _programmaticCameraMove = false;
+    }
+
+    _cameraTickListener = tick;
+    _cameraController
+      ..addListener(tick)
+      ..forward().whenCompleteOrCancel(() {
+        _cameraController.removeListener(tick);
+        if (_cameraTickListener == tick) {
+          _cameraTickListener = null;
+        }
+      });
   }
 
   void _onSosAlert(Map<String, dynamic> alert) {
@@ -455,6 +529,7 @@ class _RideModeScreenState extends State<RideModeScreen>
   Future<void> _triggerSOS() async {
     HapticFeedback.heavyImpact();
     try {
+      _trackingService.setEmergencySync(true);
       await _realtimeCoordinator.triggerSOS(
         rideId: widget.rideId,
         profileId: _currentUserId,
@@ -608,11 +683,14 @@ class _RideModeScreenState extends State<RideModeScreen>
     _rideTimer?.cancel();
     _alertDismissTimer?.cancel();
     _trackingPulse.dispose();
+    _markerFrameController.dispose();
+    _cameraController.dispose();
     _sosPulseController.dispose();
     _locationStreamSub?.cancel();
     _gpsStreamSub?.cancel();
     ActiveRideCoordinator.instance.removeListener(_onActiveRideSnapshotChanged);
     _realtimeCoordinator.removeListener(_onRealtimeChanged);
+    _distanceCache.clear();
     // Note: _trackingService.dispose() is NOT called here because the user
     // might minimize the app and come back. Call stopSyncing() + clearLiveLocation()
     // only on intentional ride end. The service auto-reconnects.
@@ -749,16 +827,43 @@ class _RideModeScreenState extends State<RideModeScreen>
                   color: Colors.blue,
                   onTap: () {
                     if (_currentPosition != null) {
-                      _mapController.move(
-                        LatLng(
+                      _animateCamera(
+                        center: LatLng(
                           _currentPosition!.latitude,
                           _currentPosition!.longitude,
                         ),
-                        15,
+                        zoom: 15,
+                        bearing:
+                            _currentPosition!.heading >= 0
+                                ? _currentPosition!.heading
+                                : null,
                       );
                     }
-                    setState(() => _followingLeader = false);
+                    setState(() {
+                      _followMe = true;
+                      _followingLeader = false;
+                      _fitGroupMode = false;
+                    });
                   },
+                ),
+                const SizedBox(height: 12),
+                _CircleButton(
+                  icon: Icons.groups_rounded,
+                  color:
+                      _riderLocations.length > 1
+                          ? const Color(0xFF6D28D9)
+                          : Colors.grey,
+                  onTap:
+                      _riderLocations.length > 1
+                          ? () {
+                            setState(() {
+                              _fitGroupMode = true;
+                              _followMe = false;
+                              _followingLeader = false;
+                            });
+                            _fitRiders(_riderLocations);
+                          }
+                          : null,
                 ),
                 const SizedBox(height: 12),
                 _CircleButton(
@@ -801,7 +906,11 @@ class _RideModeScreenState extends State<RideModeScreen>
               isOffline: _isOffline,
               followingLeader: _followingLeader,
               onFollowLeaderToggled: (val) {
-                setState(() => _followingLeader = val);
+                setState(() {
+                  _followingLeader = val;
+                  _followMe = !val;
+                  _fitGroupMode = false;
+                });
               },
               onEndRide: _endRide,
               currentLatitude: _currentPosition?.latitude,
@@ -827,7 +936,21 @@ class _RideModeScreenState extends State<RideModeScreen>
 
     return FlutterMap(
       mapController: _mapController,
-      options: MapOptions(initialCenter: initialCenter, initialZoom: 15.0),
+      options: MapOptions(
+        initialCenter: initialCenter,
+        initialZoom: 15.0,
+        onPositionChanged: (_, hasGesture) {
+          if (!hasGesture || _programmaticCameraMove) return;
+          _autoFollowResumeAt = DateTime.now().add(const Duration(seconds: 20));
+          if (_followMe || _followingLeader || _fitGroupMode) {
+            setState(() {
+              _followMe = false;
+              _followingLeader = false;
+              _fitGroupMode = false;
+            });
+          }
+        },
+      ),
       children: [
         // Tile layer
         TileLayer(
@@ -837,7 +960,10 @@ class _RideModeScreenState extends State<RideModeScreen>
         // Route polyline
         PolylineLayer(polylines: _buildPolylines()),
         // Markers
-        _buildMarkerLayer(),
+        AnimatedBuilder(
+          animation: _markerFrameController,
+          builder: (context, _) => _buildMarkerLayer(),
+        ),
       ],
     );
   }
@@ -846,15 +972,31 @@ class _RideModeScreenState extends State<RideModeScreen>
     final polylines = <Polyline>[];
 
     if (_routePoints.isNotEmpty) {
-      polylines.add(
-        Polyline(
-          points: _routePoints,
-          strokeWidth: 5.0,
-          color: const Color(0xFFD97706),
-          borderColor: const Color(0xFFFF6A00).withValues(alpha: 0.3),
-          borderStrokeWidth: 2,
-        ),
-      );
+      final splitIndex = _nearestRoutePointIndex();
+      final completed =
+          splitIndex > 0 ? _routePoints.take(splitIndex + 1).toList() : null;
+      final upcoming = _routePoints.skip(math.max(0, splitIndex)).toList();
+
+      if (completed != null && completed.length > 1) {
+        polylines.add(
+          Polyline(
+            points: completed,
+            strokeWidth: 4.0,
+            color: const Color(0xFF64748B).withValues(alpha: 0.36),
+          ),
+        );
+      }
+      if (upcoming.length > 1) {
+        polylines.add(
+          Polyline(
+            points: upcoming,
+            strokeWidth: 5.0,
+            color: const Color(0xFFD97706),
+            borderColor: const Color(0xFFFF6A00).withValues(alpha: 0.28),
+            borderStrokeWidth: 2,
+          ),
+        );
+      }
     } else if (_destinationLat != null &&
         _destinationLng != null &&
         _currentPosition != null) {
@@ -872,6 +1014,28 @@ class _RideModeScreenState extends State<RideModeScreen>
     }
 
     return polylines;
+  }
+
+  int _nearestRoutePointIndex() {
+    if (_routePoints.isEmpty || _currentPosition == null) return 0;
+    var nearestIndex = 0;
+    var nearestDistance = double.infinity;
+    final current = LatLng(
+      _currentPosition!.latitude,
+      _currentPosition!.longitude,
+    );
+    for (var i = 0; i < _routePoints.length; i++) {
+      final distance = const Distance().as(
+        LengthUnit.Meter,
+        current,
+        _routePoints[i],
+      );
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = i;
+      }
+    }
+    return nearestIndex;
   }
 
   Widget _buildMarkerLayer() {
@@ -977,6 +1141,12 @@ class _RideModeScreenState extends State<RideModeScreen>
                       ? _currentPosition!.heading
                       : null,
               isOffline: _isOffline,
+              status:
+                  _isOffline
+                      ? RiderLiveStatus.offline
+                      : _currentSpeed > 1
+                      ? RiderLiveStatus.moving
+                      : RiderLiveStatus.stopped,
             ),
           ),
         );
@@ -987,12 +1157,18 @@ class _RideModeScreenState extends State<RideModeScreen>
     for (final loc in _riderLocations) {
       final isCurrentUser = loc.userId == _currentUserId;
       final isLeader = loc.userId == _leaderId || loc.isLeader;
+      final status = RideEngineCore.statusFor(
+        loc,
+        isLeader: isLeader,
+        hasSos: _isSosRider(loc.userId),
+      );
 
       markers.add(
         _buildAnimatedRiderMarker(
           location: loc,
           isCurrentUser: isCurrentUser,
           isLeader: isLeader,
+          status: status,
         ),
       );
     }
@@ -1012,6 +1188,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     required RiderLocation location,
     required bool isCurrentUser,
     required bool isLeader,
+    required RiderLiveStatus status,
   }) {
     // Use the latest known interpolated position for the marker's point,
     // falling back to the raw GPS position for new riders.
@@ -1028,12 +1205,21 @@ class _RideModeScreenState extends State<RideModeScreen>
         location: location,
         isCurrentUser: isCurrentUser,
         isLeader: isLeader,
+        status: status,
         onPositionUpdate: (interpolated) {
           // Store the interpolated position so future [Marker.point] is correct.
           _interpolatedPositions[location.userId] = interpolated;
         },
       ),
     );
+  }
+
+  bool _isSosRider(String userId) {
+    final alertProfileId =
+        (_activeAlert?['profile_id'] ?? _activeAlert?['user_id'] ?? '')
+            .toString()
+            .trim();
+    return alertProfileId.isNotEmpty && alertProfileId == userId;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1498,12 +1684,14 @@ class _AnimatedRiderMarkerWidget extends StatefulWidget {
     required this.location,
     required this.isCurrentUser,
     required this.isLeader,
+    required this.status,
     required this.onPositionUpdate,
   });
 
   final RiderLocation location;
   final bool isCurrentUser;
   final bool isLeader;
+  final RiderLiveStatus status;
   final void Function(LatLng interpolated) onPositionUpdate;
 
   @override
@@ -1522,6 +1710,9 @@ class _AnimatedRiderMarkerWidgetState
 
     return SmoothMarker(
       position: targetPos,
+      heading: widget.location.heading,
+      speed: widget.location.speed,
+      updatedAt: widget.location.updatedAt,
       builder: (context, interpolated) {
         // Notify parent of new animated position so Marker.point stays in sync.
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1532,15 +1723,18 @@ class _AnimatedRiderMarkerWidgetState
             ? LeaderMarker(
               location: widget.location,
               isCurrentUser: widget.isCurrentUser,
+              status: widget.status,
             )
             : widget.isCurrentUser
             ? CurrentUserMarker(
               heading: widget.location.heading,
               isOffline: false,
+              status: widget.status,
             )
             : RiderMarker(
               location: widget.location,
               isCurrentUser: widget.isCurrentUser,
+              status: widget.status,
             );
       },
     );

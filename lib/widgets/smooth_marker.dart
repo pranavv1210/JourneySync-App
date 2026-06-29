@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 
+import '../services/ride_engine_core.dart';
+
 // ──────────────────────────────────────────────────────────────────────────────
 // SMOOTH MARKER — Animated lat/lng interpolation
 // ──────────────────────────────────────────────────────────────────────────────
@@ -17,10 +19,16 @@ class SmoothMarker extends StatefulWidget {
     super.key,
     required this.position,
     required this.builder,
+    this.heading,
+    this.speed,
+    this.updatedAt,
   });
 
   /// Current target GPS position (updated when rider moves).
   final LatLng position;
+  final double? heading;
+  final double? speed;
+  final DateTime? updatedAt;
 
   /// Builder receives the interpolated [LatLng] for every animation frame.
   /// Use this to set [Marker.point] on the flutter_map Marker.
@@ -47,7 +55,7 @@ class _SmoothMarkerState extends State<SmoothMarker>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: _animationDuration(widget.speed),
     );
 
     _setupAnimations(_fromPos, _toPos);
@@ -57,11 +65,11 @@ class _SmoothMarkerState extends State<SmoothMarker>
     _latAnim = Tween<double>(
       begin: from.latitude,
       end: to.latitude,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _lngAnim = Tween<double>(
       begin: from.longitude,
       end: to.longitude,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -69,11 +77,45 @@ class _SmoothMarkerState extends State<SmoothMarker>
     super.didUpdateWidget(old);
     if (old.position != widget.position) {
       // Capture the current animated position as the new starting point.
-      _fromPos = LatLng(_latAnim.value, _lngAnim.value);
+      final current = _currentDisplayPosition();
+      final drift = const Distance().as(
+        LengthUnit.Meter,
+        current,
+        widget.position,
+      );
+      _fromPos =
+          drift > RideEngineCore.driftTeleportThresholdMeters
+              ? widget.position
+              : current;
       _toPos = widget.position;
+      _controller.duration = _animationDuration(widget.speed);
       _setupAnimations(_fromPos, _toPos);
       _controller.forward(from: 0);
     }
+  }
+
+  static Duration _animationDuration(double? speed) {
+    final speedMps = speed ?? 0;
+    if (speedMps > 8) return const Duration(milliseconds: 900);
+    if (speedMps > 2) return const Duration(milliseconds: 1100);
+    return const Duration(milliseconds: 700);
+  }
+
+  LatLng _currentDisplayPosition() {
+    final base = LatLng(_latAnim.value, _lngAnim.value);
+    final speed = widget.speed ?? 0;
+    final heading = widget.heading;
+    final updatedAt = widget.updatedAt;
+    if (!_controller.isCompleted ||
+        speed <= 0.2 ||
+        heading == null ||
+        updatedAt == null) {
+      return base;
+    }
+    final elapsedSeconds =
+        DateTime.now().difference(updatedAt).inMilliseconds / 1000.0;
+    final predictionSeconds = elapsedSeconds.clamp(0.0, 5.0);
+    return RideEngineCore.offset(base, speed * predictionSeconds, heading);
   }
 
   @override
@@ -87,7 +129,7 @@ class _SmoothMarkerState extends State<SmoothMarker>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
-        final interpolated = LatLng(_latAnim.value, _lngAnim.value);
+        final interpolated = _currentDisplayPosition();
         return widget.builder(context, interpolated);
       },
     );
