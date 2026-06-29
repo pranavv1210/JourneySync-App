@@ -133,11 +133,13 @@ class LeaderMarker extends StatefulWidget {
     required this.location,
     this.isCurrentUser = false,
     this.status = RiderLiveStatus.leader,
+    this.detailLabel,
   });
 
   final RiderLocation location;
   final bool isCurrentUser;
   final RiderLiveStatus status;
+  final String? detailLabel;
 
   @override
   State<LeaderMarker> createState() => _LeaderMarkerState();
@@ -285,9 +287,10 @@ class _LeaderMarkerState extends State<LeaderMarker>
             const SizedBox(height: 6),
             _NameLabel(
               name:
-                  widget.isCurrentUser
+                  widget.detailLabel ??
+                  (widget.isCurrentUser
                       ? 'You (Leader)'
-                      : widget.location.userName,
+                      : widget.location.userName),
               backgroundColor: leaderColor,
               textColor: Colors.white,
             ),
@@ -309,11 +312,13 @@ class RiderMarker extends StatelessWidget {
     required this.location,
     this.isCurrentUser = false,
     this.status = RiderLiveStatus.moving,
+    this.detailLabel,
   });
 
   final RiderLocation location;
   final bool isCurrentUser;
   final RiderLiveStatus status;
+  final String? detailLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -388,7 +393,7 @@ class RiderMarker extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           _NameLabel(
-            name: isCurrentUser ? 'You' : location.userName,
+            name: detailLabel ?? (isCurrentUser ? 'You' : location.userName),
             backgroundColor: Colors.white,
             textColor: Colors.black87,
           ),

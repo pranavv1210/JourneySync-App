@@ -1,16 +1,17 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import '../theme/app_theme.dart';
 import '../models/rider_location.dart';
 import '../models/ride_route.dart';
 import '../services/fuel_service.dart';
+import '../services/group_ride_intelligence.dart';
 import 'haptic_button.dart';
 
 class RealtimeRideHUD extends StatefulWidget {
   const RealtimeRideHUD({
     super.key,
     required this.riderLocations,
+    required this.groupSnapshot,
     required this.currentUserId,
     required this.leaderId,
     required this.secondsElapsed,
@@ -31,6 +32,7 @@ class RealtimeRideHUD extends StatefulWidget {
   });
 
   final List<RiderLocation> riderLocations;
+  final GroupRideSnapshot groupSnapshot;
   final String currentUserId;
   final String? leaderId;
   final int secondsElapsed;
@@ -66,32 +68,6 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
     final m = (s % 3600) ~/ 60;
     final sec = s % 60;
     return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
-  }
-
-  double _calculateDistance(RiderLocation rider) {
-    if (widget.leaderId == null || rider.userId == widget.leaderId) return 0.0;
-    try {
-      final leader = widget.riderLocations.firstWhere(
-        (l) => l.userId == widget.leaderId,
-      );
-      return Geolocator.distanceBetween(
-            rider.latitude,
-            rider.longitude,
-            leader.latitude,
-            leader.longitude,
-          ) /
-          1000.0; // in km
-    } catch (_) {
-      return 0.0;
-    }
-  }
-
-  String _getConnectionQuality(RiderLocation rider) {
-    final age = DateTime.now().difference(rider.updatedAt);
-    if (age.inSeconds < 15) return 'Excellent';
-    if (age.inSeconds < 45) return 'Good';
-    if (age.inSeconds < 120) return 'Weak';
-    return 'Offline';
   }
 
   Color _getConnectionColor(String quality) {
@@ -234,9 +210,11 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
     final String connectionLabel =
         widget.isOffline
             ? 'Offline'
-            : widget.riderLocations.isEmpty
+            : widget.groupSnapshot.totalRiders == 0
             ? 'Connecting'
-            : 'Excellent';
+            : GroupRideIntelligence.healthLabel(
+              widget.groupSnapshot.healthRating,
+            );
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -454,32 +432,34 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
           children: [
             _buildHUDCard(
               'Avg Speed',
-              '${widget.avgSpeed.toStringAsFixed(1)} km/h',
+              '${widget.groupSnapshot.averageSpeedKmh.toStringAsFixed(1)} km/h',
               Icons.analytics_rounded,
             ),
             _buildHUDCard(
-              'Max Speed',
-              '${widget.maxSpeed.toStringAsFixed(0)} km/h',
+              'Group Spread',
+              GroupRideIntelligence.formatDistance(
+                widget.groupSnapshot.groupSpreadMeters,
+              ),
+              Icons.open_in_full_rounded,
+            ),
+            _buildHUDCard(
+              'Slowest',
+              widget.groupSnapshot.slowestRider?.location.userName ?? '--',
+              Icons.trending_down_rounded,
+            ),
+            _buildHUDCard(
+              'Fastest',
+              widget.groupSnapshot.fastestRider?.location.userName ?? '--',
               Icons.bolt_rounded,
             ),
             _buildHUDCard(
-              'Altitude',
-              '${widget.altitude.toStringAsFixed(0)} m',
-              Icons.landscape_rounded,
-            ),
-            _buildHUDCard(
-              'GPS Quality',
-              widget.gpsQuality,
-              Icons.gps_fixed_rounded,
-            ),
-            _buildHUDCard(
-              'Network',
+              'Health',
               connectionLabel,
               Icons.signal_cellular_alt_rounded,
             ),
             _buildHUDCard(
-              'Riders Live',
-              '${widget.riderLocations.length}',
+              'Tracking',
+              '${widget.groupSnapshot.trackingRiders}/${widget.groupSnapshot.totalRiders}',
               Icons.group_work_rounded,
             ),
           ],
@@ -504,7 +484,7 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
             ),
             const Spacer(),
             Text(
-              '${widget.riderLocations.length} Online',
+              '${widget.groupSnapshot.trackingRiders} Tracking',
               style: AppTypography.caption.copyWith(
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.bold,
@@ -513,11 +493,14 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
           ],
         ),
         const SizedBox(height: 12),
-        ...widget.riderLocations.map((rider) {
+        ...widget.groupSnapshot.riders.map((snapshot) {
+          final rider = snapshot.location;
           final isLeader = rider.userId == widget.leaderId || rider.isLeader;
           final isMe = rider.userId == widget.currentUserId;
-          final connQuality = _getConnectionQuality(rider);
-          final distance = _calculateDistance(rider);
+          final connQuality = GroupRideIntelligence.qualityLabel(
+            snapshot.connectionQuality,
+          );
+          final distance = snapshot.distanceFromLeaderMeters;
 
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
@@ -645,6 +628,19 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                           color: AppColors.textSecondary,
                         ),
                       ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isLeader
+                            ? 'Leading pack'
+                            : '${snapshot.leaderRelation} • ETA ${GroupRideIntelligence.formatDuration(snapshot.etaToLeader)}',
+                        style: AppTypography.caption.copyWith(
+                          color:
+                              snapshot.leaderRelation == 'off-route'
+                                  ? Colors.red.shade700
+                                  : AppColors.textSecondary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -695,9 +691,12 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                         if (!isLeader && distance > 0.0) ...[
                           const SizedBox(width: 8),
                           Text(
-                            '-${distance.toStringAsFixed(1)} km',
+                            GroupRideIntelligence.formatDistance(distance),
                             style: AppTypography.labelSmall.copyWith(
-                              color: Colors.orange.shade700,
+                              color:
+                                  snapshot.leaderRelation == 'ahead'
+                                      ? Colors.green.shade700
+                                      : Colors.orange.shade700,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

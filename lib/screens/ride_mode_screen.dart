@@ -15,6 +15,7 @@ import '../models/rider_location.dart';
 import '../coordinators/active_ride_coordinator.dart';
 import '../coordinators/realtime_coordinator.dart';
 import '../services/live_tracking_service.dart';
+import '../services/group_ride_intelligence.dart';
 import '../services/navigation_service.dart';
 import '../services/ride_engine_core.dart';
 import '../services/ride_service.dart';
@@ -76,6 +77,7 @@ class _RideModeScreenState extends State<RideModeScreen>
   bool _followingLeader = false;
   bool _followMe = true;
   bool _fitGroupMode = false;
+  bool _smartAutoMode = true;
   bool _programmaticCameraMove = false;
   DateTime _autoFollowResumeAt = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -114,6 +116,17 @@ class _RideModeScreenState extends State<RideModeScreen>
   /// Updated by SmoothMarker builders and used to track the animated position.
   final Map<String, LatLng> _interpolatedPositions = {};
   final RiderDistanceCache _distanceCache = RiderDistanceCache();
+  final GroupRideIntelligence _groupIntelligence = GroupRideIntelligence();
+  GroupRideSnapshot _groupSnapshot = const GroupRideSnapshot(
+    riders: <GroupRiderSnapshot>[],
+    leaderId: null,
+    totalRiders: 0,
+    trackingRiders: 0,
+    averageSpeedKmh: 0,
+    groupSpreadMeters: 0,
+    healthRating: GroupHealthRating.needsAttention,
+    healthScore: 0,
+  );
   late AnimationController _markerFrameController;
   late AnimationController _cameraController;
   VoidCallback? _cameraTickListener;
@@ -277,6 +290,13 @@ class _RideModeScreenState extends State<RideModeScreen>
     // Check our own offline status from the service.
     final nowOffline = _trackingService.isOffline;
 
+    final snapshot = _groupIntelligence.update(
+      locations: locations,
+      leaderId: _leaderId,
+      currentUserId: _currentUserId,
+      destination: _getDestinationCoords(),
+      sosRiderId: _activeSosRiderId(),
+    );
     final leaderDistances =
         _leaderId == null
             ? const <String, double>{}
@@ -293,8 +313,10 @@ class _RideModeScreenState extends State<RideModeScreen>
       _riderLocations = locations;
       _isOffline = nowOffline;
       _isFallingBehind = isFallingBehind;
+      _groupSnapshot = snapshot;
     });
 
+    _handleGroupAlerts(snapshot);
     _driveCamera(locations);
   }
 
@@ -360,6 +382,21 @@ class _RideModeScreenState extends State<RideModeScreen>
 
   void _driveCamera(List<RiderLocation> locations) {
     if (DateTime.now().isBefore(_autoFollowResumeAt)) return;
+    if (_smartAutoMode) {
+      if (_groupSnapshot.groupSpreadMeters > 1200 && locations.length > 1) {
+        _fitRiders(locations);
+        return;
+      }
+      final leader = _groupSnapshot.leader;
+      if (leader != null && leader.speedKmh > 20) {
+        _animateCamera(
+          center: LatLng(leader.location.latitude, leader.location.longitude),
+          zoom: math.max(_mapController.camera.zoom, 15),
+          bearing: leader.location.heading,
+        );
+        return;
+      }
+    }
     if (_fitGroupMode && locations.length > 1) {
       _fitRiders(locations);
       return;
@@ -381,6 +418,22 @@ class _RideModeScreenState extends State<RideModeScreen>
         zoom: math.max(_mapController.camera.zoom, 15),
         bearing:
             _currentPosition!.heading >= 0 ? _currentPosition!.heading : null,
+      );
+    }
+  }
+
+  void _handleGroupAlerts(GroupRideSnapshot snapshot) {
+    if (_leaderId != _currentUserId) return;
+    final alerts = _groupIntelligence.detectAlerts(snapshot);
+    for (final alert in alerts.take(2)) {
+      showAppToast(
+        context,
+        alert.message,
+        type:
+            alert.type == GroupAlertType.reconnected ||
+                    alert.type == GroupAlertType.resumed
+                ? AppToastType.success
+                : AppToastType.info,
       );
     }
   }
@@ -691,6 +744,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     ActiveRideCoordinator.instance.removeListener(_onActiveRideSnapshotChanged);
     _realtimeCoordinator.removeListener(_onRealtimeChanged);
     _distanceCache.clear();
+    _groupIntelligence.clear();
     // Note: _trackingService.dispose() is NOT called here because the user
     // might minimize the app and come back. Call stopSyncing() + clearLiveLocation()
     // only on intentional ride end. The service auto-reconnects.
@@ -843,8 +897,29 @@ class _RideModeScreenState extends State<RideModeScreen>
                       _followMe = true;
                       _followingLeader = false;
                       _fitGroupMode = false;
+                      _smartAutoMode = false;
                     });
                   },
+                ),
+                const SizedBox(height: 12),
+                _CircleButton(
+                  icon: Icons.auto_awesome_rounded,
+                  color:
+                      _riderLocations.isNotEmpty
+                          ? const Color(0xFF0F766E)
+                          : Colors.grey,
+                  onTap:
+                      _riderLocations.isNotEmpty
+                          ? () {
+                            setState(() {
+                              _smartAutoMode = true;
+                              _followMe = false;
+                              _followingLeader = false;
+                              _fitGroupMode = false;
+                            });
+                            _driveCamera(_riderLocations);
+                          }
+                          : null,
                 ),
                 const SizedBox(height: 12),
                 _CircleButton(
@@ -860,6 +935,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                               _fitGroupMode = true;
                               _followMe = false;
                               _followingLeader = false;
+                              _smartAutoMode = false;
                             });
                             _fitRiders(_riderLocations);
                           }
@@ -894,6 +970,7 @@ class _RideModeScreenState extends State<RideModeScreen>
             bottom: 0,
             child: RealtimeRideHUD(
               riderLocations: _riderLocations,
+              groupSnapshot: _groupSnapshot,
               currentUserId: _currentUserId,
               leaderId: _leaderId,
               secondsElapsed: _secondsElapsed,
@@ -910,6 +987,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                   _followingLeader = val;
                   _followMe = !val;
                   _fitGroupMode = false;
+                  _smartAutoMode = false;
                 });
               },
               onEndRide: _endRide,
@@ -942,11 +1020,15 @@ class _RideModeScreenState extends State<RideModeScreen>
         onPositionChanged: (_, hasGesture) {
           if (!hasGesture || _programmaticCameraMove) return;
           _autoFollowResumeAt = DateTime.now().add(const Duration(seconds: 20));
-          if (_followMe || _followingLeader || _fitGroupMode) {
+          if (_followMe ||
+              _followingLeader ||
+              _fitGroupMode ||
+              _smartAutoMode) {
             setState(() {
               _followMe = false;
               _followingLeader = false;
               _fitGroupMode = false;
+              _smartAutoMode = false;
             });
           }
         },
@@ -959,6 +1041,7 @@ class _RideModeScreenState extends State<RideModeScreen>
         ),
         // Route polyline
         PolylineLayer(polylines: _buildPolylines()),
+        PolylineLayer(polylines: _buildTrailPolylines()),
         // Markers
         AnimatedBuilder(
           animation: _markerFrameController,
@@ -1013,6 +1096,25 @@ class _RideModeScreenState extends State<RideModeScreen>
       );
     }
 
+    return polylines;
+  }
+
+  List<Polyline> _buildTrailPolylines() {
+    final polylines = <Polyline>[];
+    for (final rider in _groupSnapshot.riders) {
+      final trail = rider.trail;
+      if (trail.length < 2) continue;
+      final isLeader =
+          rider.location.userId == _leaderId || rider.location.isLeader;
+      polylines.add(
+        Polyline(
+          points: trail,
+          strokeWidth: isLeader ? 4 : 3,
+          color: (isLeader ? const Color(0xFFFF6A00) : const Color(0xFF2563EB))
+              .withValues(alpha: 0.28),
+        ),
+      );
+    }
     return polylines;
   }
 
@@ -1206,6 +1308,7 @@ class _RideModeScreenState extends State<RideModeScreen>
         isCurrentUser: isCurrentUser,
         isLeader: isLeader,
         status: status,
+        detailLabel: _markerLabelFor(location.userId),
         onPositionUpdate: (interpolated) {
           // Store the interpolated position so future [Marker.point] is correct.
           _interpolatedPositions[location.userId] = interpolated;
@@ -1215,11 +1318,32 @@ class _RideModeScreenState extends State<RideModeScreen>
   }
 
   bool _isSosRider(String userId) {
-    final alertProfileId =
-        (_activeAlert?['profile_id'] ?? _activeAlert?['user_id'] ?? '')
-            .toString()
-            .trim();
+    final alertProfileId = _activeSosRiderId();
     return alertProfileId.isNotEmpty && alertProfileId == userId;
+  }
+
+  String _activeSosRiderId() {
+    return (_activeAlert?['profile_id'] ?? _activeAlert?['user_id'] ?? '')
+        .toString()
+        .trim();
+  }
+
+  String? _markerLabelFor(String userId) {
+    final rider = _groupSnapshot.riderFor(userId);
+    if (rider == null) return null;
+    final name =
+        userId == _currentUserId ? 'You' : rider.location.userName.trim();
+    if (rider.location.userId == _leaderId || rider.location.isLeader) {
+      return '$name • Leader';
+    }
+    final distance = GroupRideIntelligence.formatDistance(
+      rider.distanceFromLeaderMeters,
+    );
+    final relation =
+        rider.leaderRelation == 'with group'
+            ? 'with group'
+            : '${rider.leaderRelation} $distance';
+    return '$name • $relation';
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1685,6 +1809,7 @@ class _AnimatedRiderMarkerWidget extends StatefulWidget {
     required this.isCurrentUser,
     required this.isLeader,
     required this.status,
+    required this.detailLabel,
     required this.onPositionUpdate,
   });
 
@@ -1692,6 +1817,7 @@ class _AnimatedRiderMarkerWidget extends StatefulWidget {
   final bool isCurrentUser;
   final bool isLeader;
   final RiderLiveStatus status;
+  final String? detailLabel;
   final void Function(LatLng interpolated) onPositionUpdate;
 
   @override
@@ -1724,6 +1850,7 @@ class _AnimatedRiderMarkerWidgetState
               location: widget.location,
               isCurrentUser: widget.isCurrentUser,
               status: widget.status,
+              detailLabel: widget.detailLabel,
             )
             : widget.isCurrentUser
             ? CurrentUserMarker(
@@ -1735,6 +1862,7 @@ class _AnimatedRiderMarkerWidgetState
               location: widget.location,
               isCurrentUser: widget.isCurrentUser,
               status: widget.status,
+              detailLabel: widget.detailLabel,
             );
       },
     );
