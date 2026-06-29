@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_navigation.dart';
 import '../services/ride_service.dart';
@@ -495,14 +496,19 @@ class _ReplayRouteDialog extends StatefulWidget {
 class _ReplayRouteDialogState extends State<_ReplayRouteDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
+  bool _playing = true;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..forward();
+    _animController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 4))
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed && mounted) {
+              setState(() => _playing = false);
+            }
+          })
+          ..forward();
   }
 
   @override
@@ -607,6 +613,20 @@ class _ReplayRouteDialogState extends State<_ReplayRouteDialog>
                         ),
                       ],
                     ),
+                    AnimatedBuilder(
+                      animation: _animController,
+                      builder: (context, _) {
+                        return Slider(
+                          value: _animController.value.clamp(0.0, 1.0),
+                          activeColor: const Color(0xFFFF6A00),
+                          inactiveColor: Colors.white24,
+                          onChanged: (value) {
+                            _animController.value = value;
+                            if (_playing) _animController.forward();
+                          },
+                        );
+                      },
+                    ),
                     const SizedBox(height: 20),
                     Row(
                       children: [
@@ -618,8 +638,36 @@ class _ReplayRouteDialogState extends State<_ReplayRouteDialog>
                             onPressed: () {
                               _animController.reset();
                               _animController.forward();
+                              setState(() => _playing = true);
                             },
                             child: const Text('Restart'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.white54),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () {
+                              setState(() => _playing = !_playing);
+                              if (_playing) {
+                                _animController.forward();
+                              } else {
+                                _animController.stop();
+                              }
+                            },
+                            icon: Icon(
+                              _playing
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              size: 16,
+                            ),
+                            label: Text(_playing ? 'Pause' : 'Resume'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -731,6 +779,29 @@ class _ReplayRoutePainter extends CustomPainter {
         }
       }
     }
+
+    final speedPaint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.34)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round;
+    final speedPath = Path()..moveTo(size.width * 0.12, size.height * 0.88);
+    for (var i = 1; i <= 12; i++) {
+      final x = size.width * (0.12 + i * 0.065);
+      final wave = math.sin(i * 0.9) * 10;
+      final y = size.height * 0.88 - wave - (i / 12) * 12;
+      speedPath.lineTo(x, y);
+    }
+    final metrics = speedPath.computeMetrics();
+    final drawn = Path();
+    for (final metric in metrics) {
+      drawn.addPath(
+        metric.extractPath(0, metric.length * progress),
+        Offset.zero,
+      );
+    }
+    canvas.drawPath(drawn, speedPaint);
   }
 
   @override

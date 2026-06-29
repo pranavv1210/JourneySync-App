@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 
 import '../widgets/app_toast.dart';
 import '../widgets/premium/glass_card.dart';
+import '../services/ride_analytics_engine.dart';
 
 class RideSummaryScreen extends StatefulWidget {
   const RideSummaryScreen({super.key, required this.rideId});
@@ -26,6 +27,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
   String userBike = 'No bike added';
   String userId = '';
   List<_SummaryParticipant> participants = <_SummaryParticipant>[];
+  RideAnalyticsSnapshot? analytics;
 
   @override
   void initState() {
@@ -57,10 +59,12 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
       }
 
       final fetchedParticipants = await _fetchParticipants(data);
+      final fetchedAnalytics = await RideAnalyticsEngine.load(widget.rideId);
       if (!mounted) return;
       setState(() {
         ride = data;
         participants = fetchedParticipants;
+        analytics = fetchedAnalytics;
         loadError = '';
         loading = false;
       });
@@ -217,6 +221,12 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                     _header(vibrantTeal),
                     const SizedBox(height: 24),
                     _summaryCard(primary, secondaryBlue),
+                    if (analytics != null) ...[
+                      const SizedBox(height: 18),
+                      _scoreCard(primary),
+                      const SizedBox(height: 18),
+                      _insightsCard(),
+                    ],
                     const SizedBox(height: 18),
                     _routeThumbnail(),
                     const SizedBox(height: 18),
@@ -284,6 +294,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
   }
 
   Widget _summaryCard(Color primary, Color secondaryBlue) {
+    final data = analytics;
     return GlassCard(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -294,7 +305,12 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                 child: _metricBlock(
                   icon: Icons.timer,
                   label: 'Duration',
-                  value: _durationText(),
+                  value:
+                      data == null
+                          ? _durationText()
+                          : RideAnalyticsEngine.durationText(
+                            data.durationSeconds,
+                          ),
                   color: secondaryBlue,
                 ),
               ),
@@ -303,7 +319,10 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                 child: _metricBlock(
                   icon: Icons.add_location_alt,
                   label: 'Distance',
-                  value: _metric(const ['distance_km', 'distance'], 'km'),
+                  value:
+                      data == null
+                          ? _metric(const ['distance_km', 'distance'], 'km')
+                          : '${data.distanceKm.toStringAsFixed(1)} km',
                   color: primary,
                 ),
               ),
@@ -317,19 +336,25 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
               Expanded(
                 child: _miniMetric(
                   'Avg Speed',
-                  _metric(const ['avg_speed_kmh', 'avg_speed'], 'km/h'),
+                  data == null
+                      ? _metric(const ['avg_speed_kmh', 'avg_speed'], 'km/h')
+                      : '${data.averageSpeedKmh.toStringAsFixed(1)} km/h',
                 ),
               ),
               Expanded(
                 child: _miniMetric(
                   'Top Speed',
-                  _metric(const ['top_speed_kmh', 'top_speed'], 'km/h'),
+                  data == null
+                      ? _metric(const ['top_speed_kmh', 'top_speed'], 'km/h')
+                      : '${data.maxSpeedKmh.toStringAsFixed(0)} km/h',
                 ),
               ),
               Expanded(
                 child: _miniMetric(
                   'Elevation',
-                  _metric(const ['elevation_m', 'elevation'], 'm'),
+                  data == null
+                      ? _metric(const ['elevation_m', 'elevation'], 'm')
+                      : '+${data.elevationGainM.toStringAsFixed(0)} m',
                 ),
               ),
             ],
@@ -395,6 +420,167 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _scoreCard(Color primary) {
+    final data = analytics!;
+    return GlassCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: primary.withValues(alpha: 0.12),
+                  border: Border.all(color: primary.withValues(alpha: 0.35)),
+                ),
+                child: Center(
+                  child: Text(
+                    '${data.rideScore}',
+                    style: TextStyle(
+                      color: primary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      RideAnalyticsEngine.scoreLabelText(data.scoreLabel),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'Proxima Nova',
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Ride Health: ${RideAnalyticsEngine.healthLabelText(data.healthState)}',
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _miniMetric(
+                  'Moving',
+                  RideAnalyticsEngine.durationText(data.movingSeconds),
+                ),
+              ),
+              Expanded(child: _miniMetric('Stops', '${data.numberOfStops}')),
+              Expanded(child: _miniMetric('Fuel', '${data.fuelStops}')),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _miniMetric('Weather', data.weatherSummary ?? '--'),
+              ),
+              Expanded(child: _miniMetric('Members', '${data.memberCount}')),
+              Expanded(child: _miniMetric('SOS', '${data.sosEvents}')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _insightsCard() {
+    final data = analytics!;
+    return GlassCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'RIDE INSIGHTS',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: Colors.grey,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...data.insights.map(
+            (insight) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 16,
+                    color: Color(0xFFFF6A00),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      insight,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (data.achievements.isNotEmpty) ...[
+            const Divider(height: 18),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children:
+                  data.achievements
+                      .map(
+                        (achievement) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF00C2CB,
+                            ).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            achievement,
+                            style: const TextStyle(
+                              color: Color(0xFF00A8B0),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -1017,6 +1203,11 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
     final topSpeed = _metric(const ['top_speed_kmh', 'top_speed'], 'km/h');
     final elevation = _metric(const ['elevation_m', 'elevation'], 'm');
     final riders = participants.isEmpty ? 1 : participants.length;
+    final data = analytics;
+    final score =
+        data == null
+            ? ''
+            : '\nRide Score: ${data.rideScore} ${RideAnalyticsEngine.scoreLabelText(data.scoreLabel)}\nRide Health: ${RideAnalyticsEngine.healthLabelText(data.healthState)}';
 
     return '''
 Ride Completed: $rideName
@@ -1029,6 +1220,7 @@ Avg Speed: $avgSpeed
 Top Speed: $topSpeed
 Elevation: $elevation
 Rode With: $riders rider(s)
+$score
 
 Tracked on JourneySync.
 #JourneySync #RideSummary #RideLife

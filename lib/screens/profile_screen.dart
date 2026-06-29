@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
+import '../services/ride_analytics_engine.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../widgets/app_dialog.dart';
@@ -34,6 +35,11 @@ class _ProfileScreenState extends State<ProfileScreen>
   double longestRide = 0; // in km
   double hoursRidden = 0;
   String favoriteRoute = 'No favorite route yet';
+  double fastestRide = 0;
+  double averageRideScore = 0;
+  int groupRidesCompleted = 0;
+  String frequentRidingDay = '--';
+  List<String> unlockedAchievements = <String>[];
 
   // Garage
   List<Map<String, String>> bikes = [];
@@ -77,6 +83,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     final activeBike = prefs.getString('userActiveBikeId') ?? '';
+    final analyticsStats = await RideAnalyticsEngine.aggregateProfileStats();
+    final achievements = await RideAnalyticsEngine.unlockedAchievements();
 
     setState(() {
       userName = prefs.getString('userName') ?? 'Rider';
@@ -84,12 +92,40 @@ class _ProfileScreenState extends State<ProfileScreen>
       experienceLevel = prefs.getString('userExperienceLevel') ?? 'New Rider';
       avatarUrl = prefs.getString('localAvatarPath') ?? '';
 
-      totalRides = prefs.getInt('statTotalRides') ?? 0;
-      totalDistance = prefs.getDouble('statTotalDistance') ?? 0;
-      longestRide = prefs.getDouble('statLongestRide') ?? 0;
-      hoursRidden = prefs.getDouble('statHoursRidden') ?? 0;
+      totalRides =
+          analyticsStats.totalRides > 0
+              ? analyticsStats.totalRides
+              : prefs.getInt('statTotalRides') ?? 0;
+      totalDistance =
+          analyticsStats.totalDistanceKm > 0
+              ? analyticsStats.totalDistanceKm
+              : prefs.getDouble('statTotalDistance') ?? 0;
+      longestRide =
+          analyticsStats.longestRideKm > 0
+              ? analyticsStats.longestRideKm
+              : prefs.getDouble('statLongestRide') ?? 0;
+      hoursRidden =
+          analyticsStats.totalRidingHours > 0
+              ? analyticsStats.totalRidingHours
+              : prefs.getDouble('statHoursRidden') ?? 0;
       favoriteRoute =
-          prefs.getString('statFavoriteRoute') ?? 'No favorite route yet';
+          analyticsStats.favoriteDestination != 'No favorite route yet'
+              ? analyticsStats.favoriteDestination
+              : prefs.getString('statFavoriteRoute') ?? 'No favorite route yet';
+      fastestRide =
+          analyticsStats.fastestRideKmh > 0
+              ? analyticsStats.fastestRideKmh
+              : prefs.getDouble('statFastestRide') ?? 0;
+      averageRideScore =
+          analyticsStats.averageRideScore > 0
+              ? analyticsStats.averageRideScore
+              : prefs.getDouble('statAverageRideScore') ?? 0;
+      groupRidesCompleted =
+          analyticsStats.groupRidesCompleted > 0
+              ? analyticsStats.groupRidesCompleted
+              : prefs.getInt('statGroupRidesCompleted') ?? 0;
+      frequentRidingDay = analyticsStats.frequentDay;
+      unlockedAchievements = achievements;
 
       bikes = loadedBikes;
       activeBikeId =
@@ -651,6 +687,18 @@ class _ProfileScreenState extends State<ProfileScreen>
               Icons.timer_outlined,
               const Color(0xFF8B5CF6),
             ),
+            _buildStatCard(
+              'Fastest Ride',
+              '${fastestRide.toStringAsFixed(0)} km/h',
+              Icons.bolt_rounded,
+              const Color(0xFFEF4444),
+            ),
+            _buildStatCard(
+              'Avg Score',
+              averageRideScore > 0 ? averageRideScore.toStringAsFixed(0) : '--',
+              Icons.auto_graph_rounded,
+              const Color(0xFF00A8B0),
+            ),
           ],
         ),
         const SizedBox(height: 24),
@@ -670,6 +718,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                 'Favorite Route',
                 favoriteRoute,
                 Icons.star_rounded,
+              ),
+              const Divider(height: 20),
+              _buildPreferenceRow(
+                'Frequent Day',
+                frequentRidingDay,
+                Icons.calendar_month_rounded,
+              ),
+              const Divider(height: 20),
+              _buildPreferenceRow(
+                'Group Rides',
+                '$groupRidesCompleted',
+                Icons.groups_rounded,
               ),
             ],
           ),
@@ -937,13 +997,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         'title': 'First Ride',
         'desc': 'Complete your first Sync journey',
         'icon': '🏆',
-        'unlocked': totalRides > 0,
+        'unlocked': _hasAchievement('First Ride') || totalRides > 0,
       },
       {
         'title': '100 km Club',
         'desc': 'Ride a total of 100 kilometers',
         'icon': '⚡',
-        'unlocked': totalDistance >= 100,
+        'unlocked': _hasAchievement('100 km Ride') || totalDistance >= 100,
       },
       {
         'title': '500 km Club',
@@ -955,31 +1015,31 @@ class _ProfileScreenState extends State<ProfileScreen>
         'title': 'Night Rider',
         'desc': 'Complete a ride session after 8 PM',
         'icon': '🌙',
-        'unlocked': false,
+        'unlocked': _hasAchievement('Night Rider'),
       },
       {
         'title': 'Weekend Warrior',
         'desc': 'Complete a ride on a weekend',
         'icon': '⚔️',
-        'unlocked': false,
+        'unlocked': _hasAchievement('Weekend Explorer'),
       },
       {
         'title': 'Mountain Explorer',
         'desc': 'Ride at altitudes above 2000m',
         'icon': '⛰️',
-        'unlocked': longestRide > 150,
+        'unlocked': _hasAchievement('Mountain Rider') || longestRide > 150,
       },
       {
         'title': 'Leader',
         'desc': 'Host a ride session with members',
         'icon': '👑',
-        'unlocked': totalRides >= 10,
+        'unlocked': _hasAchievement('Group Leader') || groupRidesCompleted > 0,
       },
       {
         'title': 'SOS Hero',
         'desc': 'Acknowledge another rider\'s SOS',
         'icon': '❤️',
-        'unlocked': false,
+        'unlocked': _hasAchievement('SOS Helper'),
       },
       {
         'title': '10 Rides',
@@ -1076,6 +1136,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       },
     );
   }
+
+  bool _hasAchievement(String name) => unlockedAchievements.contains(name);
 }
 
 class _VehicleField extends StatelessWidget {

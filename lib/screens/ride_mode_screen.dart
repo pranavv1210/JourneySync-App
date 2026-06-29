@@ -15,11 +15,15 @@ import '../models/rider_location.dart';
 import '../coordinators/active_ride_coordinator.dart';
 import '../coordinators/realtime_coordinator.dart';
 import '../services/live_tracking_service.dart';
+import '../services/fuel_service.dart';
 import '../services/group_ride_intelligence.dart';
 import '../services/navigation_service.dart';
+import '../services/notification_service.dart';
+import '../services/ride_analytics_engine.dart';
 import '../services/ride_engine_core.dart';
 import '../services/ride_service.dart';
 import '../services/supabase_service.dart';
+import '../services/weather_service.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/realtime_ride_hud.dart';
@@ -53,6 +57,9 @@ class _RideModeScreenState extends State<RideModeScreen>
   final RealtimeCoordinator _realtimeCoordinator = RealtimeCoordinator.instance;
   final MapController _mapController = MapController();
   final Battery _battery = Battery();
+  late final RideAnalyticsEngine _analyticsEngine;
+  final WeatherService _weatherService = WeatherService();
+  final FuelService _fuelService = FuelService();
 
   // ── User / Ride state ──────────────────────────────────────────────────────
   bool _loading = true;
@@ -107,6 +114,10 @@ class _RideModeScreenState extends State<RideModeScreen>
   double? _destinationLat;
   double? _destinationLng;
   RideRoute? _rideRoute;
+  WeatherSnapshot? _weatherSnapshot;
+  DateTime? _lastWeatherAlertAt;
+  bool _fuelSuggestionShown = false;
+  bool _breakReminderShown = false;
 
   // ── Tracking active badge animation ───────────────────────────────────────
   late AnimationController _trackingPulse;
@@ -138,6 +149,7 @@ class _RideModeScreenState extends State<RideModeScreen>
   @override
   void initState() {
     super.initState();
+    _analyticsEngine = RideAnalyticsEngine(rideId: widget.rideId);
 
     _trackingPulse = AnimationController(
       vsync: this,
@@ -188,6 +200,8 @@ class _RideModeScreenState extends State<RideModeScreen>
 
       // ── Start GPS position stream (local, for UI position dot) ───────────
       await _startLocalGpsStream();
+      await _primeRideWeather();
+      await _analyticsEngine.start(weather: _weatherSnapshot);
 
       // ── Start enriched sync via LiveTrackingService ──────────────────────
       _trackingService.batteryLevelProvider = _getBatteryLevel;
@@ -275,9 +289,73 @@ class _RideModeScreenState extends State<RideModeScreen>
         _gpsQuality = 'Weak';
       }
 
+      _analyticsEngine.recordPosition(pos);
+      _maybeShowRideIntelligencePrompts(pos);
       _prevPosition = pos;
       if (mounted) setState(() {});
     });
+  }
+
+  Future<void> _primeRideWeather() async {
+    try {
+      _weatherSnapshot = await _weatherService.fetchCurrentWeather(
+        latitude: _currentPosition?.latitude,
+        longitude: _currentPosition?.longitude,
+      );
+      final weather = _weatherSnapshot;
+      if (weather != null && weather.alerts.isNotEmpty && mounted) {
+        _lastWeatherAlertAt = DateTime.now();
+        showAppToast(context, weather.alerts.first, type: AppToastType.info);
+      }
+    } catch (_) {}
+  }
+
+  void _maybeShowRideIntelligencePrompts(Position position) {
+    final weather = _weatherSnapshot;
+    if (weather != null &&
+        weather.alerts.isNotEmpty &&
+        (_lastWeatherAlertAt == null ||
+            DateTime.now().difference(_lastWeatherAlertAt!) >
+                const Duration(minutes: 45))) {
+      _lastWeatherAlertAt = DateTime.now();
+      showAppToast(context, weather.alerts.first, type: AppToastType.info);
+    }
+
+    if (!_breakReminderShown &&
+        (_secondsElapsed >= 7200 || _distanceTravelled >= 150)) {
+      _breakReminderShown = true;
+      showAppToast(
+        context,
+        'Consider taking a short break.',
+        type: AppToastType.info,
+      );
+    }
+
+    final hasFuelStop = (_rideRoute?.stops ?? <RouteStop>[]).any(
+      (stop) => stop.label.toLowerCase().contains('fuel'),
+    );
+    if (!_fuelSuggestionShown && !hasFuelStop && _distanceTravelled >= 80) {
+      _fuelSuggestionShown = true;
+      _showFuelSuggestion(position).ignore();
+    }
+  }
+
+  Future<void> _showFuelSuggestion(Position position) async {
+    try {
+      final stations = await _fuelService.fetchNearbyFuelStations(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      if (!mounted || stations.isEmpty) return;
+      final nearest = stations.first;
+      if (nearest.distanceKm <= 8) {
+        showAppToast(
+          context,
+          'Fuel nearby: ${nearest.name} (${nearest.distanceKm.toStringAsFixed(1)} km).',
+          type: AppToastType.info,
+        );
+      }
+    } catch (_) {}
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -316,6 +394,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       _groupSnapshot = snapshot;
     });
 
+    _analyticsEngine.recordGroupSnapshot(snapshot);
     _handleGroupAlerts(snapshot);
     _driveCamera(locations);
   }
@@ -548,6 +627,9 @@ class _RideModeScreenState extends State<RideModeScreen>
                 )
                 .toList();
       }
+      _analyticsEngine.recordRouteStops(
+        _rideRoute?.stops ?? const <RouteStop>[],
+      );
 
       final hasRoute =
           _routePoints.isNotEmpty || (destLat != null && destLng != null);
@@ -583,6 +665,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     HapticFeedback.heavyImpact();
     try {
       _trackingService.setEmergencySync(true);
+      _analyticsEngine.recordSos();
       await _realtimeCoordinator.triggerSOS(
         rideId: widget.rideId,
         profileId: _currentUserId,
@@ -712,6 +795,12 @@ class _RideModeScreenState extends State<RideModeScreen>
     if (confirmed != true) return;
 
     try {
+      final destination =
+          (_rideData?['end_location'] ?? _rideData?['destination'] ?? '')
+              .toString();
+      final analytics = await _analyticsEngine.complete(
+        destination: destination,
+      );
       await _trackingService.stopSyncing();
       await _rideService.finishRide(widget.rideId);
       await _trackingService.clearLiveLocation(
@@ -719,6 +808,13 @@ class _RideModeScreenState extends State<RideModeScreen>
         userId: _currentUserId,
       );
       await ActiveRideCoordinator.instance.markCompleted();
+      NotificationService.instance
+          .showLocal(
+            title: 'Ride summary ready',
+            body:
+                'Ride Score: ${analytics.rideScore} ${RideAnalyticsEngine.scoreLabelText(analytics.scoreLabel)}',
+          )
+          .ignore();
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
