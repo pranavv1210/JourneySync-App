@@ -1,9 +1,11 @@
-import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_config.dart';
 import '../models/ride_member.dart';
 import '../models/ride_route.dart';
+import '../utils/app_logger.dart';
 
 class SupabaseService {
   SupabaseService({SupabaseClient? client})
@@ -51,8 +53,10 @@ class SupabaseService {
     required String cachedBike,
   }) async {
     final authUser = _client.auth.currentUser;
-    debugPrint('SUPABASE AUTH USER ID: ${authUser?.id}');
-    debugPrint('SUPABASE AUTH USER PHONE: ${authUser?.phone}');
+    AppLogger.info(
+      'Auth profile lookup started. signedIn=${authUser != null}',
+      'SupabaseService',
+    );
 
     final authUserId = (authUser?.id ?? '').trim();
     final authPhone = (authUser?.phone ?? '').trim();

@@ -1133,7 +1133,7 @@ class _RideModeScreenState extends State<RideModeScreen>
         // Tile layer
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.journeysync',
+          userAgentPackageName: 'com.journeysync.app',
         ),
         // Route polyline
         PolylineLayer(polylines: _buildPolylines()),

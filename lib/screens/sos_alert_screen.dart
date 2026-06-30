@@ -494,7 +494,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                   ? 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
                   : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           subdomains: const ['a', 'b', 'c'],
-          userAgentPackageName: 'com.example.journeysync',
+          userAgentPackageName: 'com.journeysync.app',
         ),
         if (current != null)
           MarkerLayer(

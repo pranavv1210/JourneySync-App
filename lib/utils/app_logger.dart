@@ -6,14 +6,14 @@ class AppLogger {
   static void info(String message, [String? tag]) {
     final prefix = tag != null ? '[$tag] ' : '';
     if (kDebugMode) {
-      print('INFO: $prefix$message');
+      debugPrint('INFO: $prefix${_redact(message)}');
     }
   }
 
   static void warning(String message, [String? tag]) {
     final prefix = tag != null ? '[$tag] ' : '';
     if (kDebugMode) {
-      print('WARNING: $prefix$message');
+      debugPrint('WARNING: $prefix${_redact(message)}');
     }
   }
 
@@ -25,9 +25,9 @@ class AppLogger {
   ]) {
     final prefix = tag != null ? '[$tag] ' : '';
     if (kDebugMode) {
-      print('ERROR: $prefix$message');
-      if (error != null) print(error);
-      if (stackTrace != null) print(stackTrace);
+      debugPrint('ERROR: $prefix${_redact(message)}');
+      if (error != null) debugPrint(_redact(error.toString()));
+      if (stackTrace != null) debugPrint(_redact(stackTrace.toString()));
     }
 
     _recordToCrashlytics(
@@ -49,9 +49,9 @@ class AppLogger {
   ]) {
     final prefix = tag != null ? '[$tag] ' : '';
     if (kDebugMode) {
-      print('CRITICAL: $prefix$message');
-      if (error != null) print(error);
-      if (stackTrace != null) print(stackTrace);
+      debugPrint('CRITICAL: $prefix${_redact(message)}');
+      if (error != null) debugPrint(_redact(error.toString()));
+      if (stackTrace != null) debugPrint(_redact(stackTrace.toString()));
     }
 
     _recordToCrashlytics(
@@ -82,5 +82,20 @@ class AppLogger {
     } catch (_) {
       // Ignore if Firebase isn't initialized yet
     }
+  }
+
+  static String _redact(String value) {
+    return value
+        .replaceAll(
+          RegExp(
+            r'\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b',
+          ),
+          '[uuid]',
+        )
+        .replaceAll(RegExp(r'\b\d{10,15}\b'), '[number]')
+        .replaceAll(
+          RegExp(r'eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+'),
+          '[token]',
+        );
   }
 }

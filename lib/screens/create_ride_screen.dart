@@ -652,7 +652,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                           TileLayer(
                             urlTemplate:
                                 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                            userAgentPackageName: 'com.example.journeysync',
+                            userAgentPackageName: 'com.journeysync.app',
                           ),
                           if (currentLatLng != null)
                             MarkerLayer(

@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'services/app_navigation.dart';
 import 'services/app_config.dart';
+import 'services/app_version.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 import 'coordinators/active_ride_coordinator.dart';
@@ -46,7 +47,7 @@ void main() async {
   await SentryFlutter.init(
     (options) {
       options.dsn = _envLoaded ? (dotenv.env['SENTRY_DSN'] ?? '') : '';
-      options.tracesSampleRate = 1.0;
+      options.tracesSampleRate = 0.1;
       options.environment = 'production';
     },
     appRunner:
@@ -81,7 +82,7 @@ class JourneySyncApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'JourneySync',
+      title: AppVersion.name,
       theme: AppTheme.light,
       navigatorObservers: [
         appRouteObserver,

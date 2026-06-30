@@ -1145,7 +1145,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.journeysync',
+          userAgentPackageName: 'com.journeysync.app',
         ),
         if (start != null || end != null)
           MarkerLayer(

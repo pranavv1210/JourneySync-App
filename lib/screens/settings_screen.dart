@@ -9,6 +9,7 @@ import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../widgets/app_dialog.dart';
 import '../services/app_navigation.dart';
+import '../services/app_version.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
@@ -266,11 +267,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _buildSettingTile(
                         icon: Icons.info_outline_rounded,
                         title: 'About',
-                        subtitle: 'JourneySync v1.1.0',
+                        subtitle: AppVersion.label,
                         onTap:
                             () => _showInfoDialog(
                               'About JourneySync',
-                              'JourneySync v2.0.2\nBuilt for group rides, live tracking, SOS alerts, and ride coordination.',
+                              '${AppVersion.label}\nBuilt for group rides, live tracking, SOS alerts, and ride coordination.',
                             ),
                       ),
                     ]),

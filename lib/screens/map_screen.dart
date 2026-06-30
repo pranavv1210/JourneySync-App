@@ -228,7 +228,7 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.example.journeysync',
+                  userAgentPackageName: 'com.journeysync.app',
                 ),
                 MarkerLayer(markers: _buildRideMarkers(primary)),
                 MarkerLayer(markers: _buildMyLocationMarker(forest)),

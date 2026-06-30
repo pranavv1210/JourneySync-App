@@ -184,7 +184,7 @@ class _AuthShell extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'v2.0.2',
+                      'v1.1.0',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                     const SizedBox(height: AppSpacing.xxl),
