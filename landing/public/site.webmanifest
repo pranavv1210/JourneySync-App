@@ -1,0 +1,18 @@
+{
+  "name": "JourneySync",
+  "short_name": "JourneySync",
+  "description": "Motorcycle group ride coordination with Ride Radar, live tracking, SOS alerts, weather intelligence, and Google Maps hybrid navigation.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4efea",
+  "theme_color": "#db7706",
+  "icons": [
+    {
+      "src": "/assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
