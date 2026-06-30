@@ -551,7 +551,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                             )
                           else
                             Text(
-                              "Temp: ${_weatherSnapshot!.temperature.round()}°F  •  Rain: ${_weatherSnapshot!.rainChance}%  •  Wind: ${_weatherSnapshot!.windSpeed.round()} mph",
+                              "Temp: ${_weatherSnapshot!.temperature.round()}°C  •  Rain: ${_weatherSnapshot!.rainChance}%  •  Wind: ${_weatherSnapshot!.windSpeed.round()} km/h",
                               style: TextStyle(
                                 fontFamily: 'Proxima Nova',
                                 fontSize: 11,
@@ -1114,7 +1114,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                           children: [
                             _weatherTelemetryItem(
                               icon: Icons.thermostat_rounded,
-                              value: "${w.temperature.round()}°F",
+                              value: "${w.temperature.round()}°C",
                               label: "Temperature",
                               color: Colors.redAccent,
                             ),
@@ -1126,7 +1126,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                             ),
                             _weatherTelemetryItem(
                               icon: Icons.air_rounded,
-                              value: "${w.windSpeed.round()} mph",
+                              value: "${w.windSpeed.round()} km/h",
                               label: "Wind Speed",
                               color: Colors.teal,
                             ),
@@ -1509,12 +1509,23 @@ class _RadarAvatar extends StatelessWidget {
         onBackgroundImageError: (_, __) {},
         child:
             clean.isEmpty
-                ? Text(
-                  initial,
-                  style: TextStyle(
-                    color: const Color(0xFF8A3B08),
-                    fontSize: radius * 0.75,
-                    fontWeight: FontWeight.w800,
+                ? SizedBox.expand(
+                  child: Center(
+                    child: Text(
+                      initial,
+                      textAlign: TextAlign.center,
+                      strutStyle: StrutStyle(
+                        fontSize: radius * 0.75,
+                        height: 1,
+                        forceStrutHeight: true,
+                      ),
+                      style: TextStyle(
+                        color: const Color(0xFF8A3B08),
+                        fontSize: radius * 0.75,
+                        height: 1,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
                 )
                 : null,

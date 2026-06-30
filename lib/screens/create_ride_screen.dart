@@ -13,10 +13,20 @@ import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
 import '../models/ride_route.dart';
 import '../services/ride_service.dart';
+import '../services/supabase_service.dart';
 import 'ride_lobby_screen.dart';
 
 class CreateRideScreen extends StatefulWidget {
-  const CreateRideScreen({super.key});
+  const CreateRideScreen({
+    super.key,
+    this.initialRideName,
+    this.initialDestination,
+    this.initialMaxRiders,
+  });
+
+  final String? initialRideName;
+  final String? initialDestination;
+  final int? initialMaxRiders;
 
   @override
   State<CreateRideScreen> createState() => _CreateRideScreenState();
@@ -27,14 +37,18 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   final TextEditingController destinationController = TextEditingController();
   final TextEditingController stopsController = TextEditingController();
   final RideService _rideService = RideService();
+  final SupabaseService _supabaseService = SupabaseService();
   final MapController _mapController = MapController();
   bool isCreating = false;
   bool isResolvingDestination = false;
+  bool isLoadingGarage = true;
   bool loadingCurrentLocation = true;
   String currentLocationLabel = 'Locating your current position...';
   String destinationPreviewLabel = 'Start typing to preview route on map';
   LatLng? currentLatLng;
   LatLng? destinationLatLng;
+  List<Map<String, String>> garageBikes = const [];
+  String selectedBikeId = '';
   final List<_DestinationSuggestion> _suggestions = [];
   bool _showSuggestions = false;
   bool _suppressSearchOnTextChange = false;
@@ -46,8 +60,17 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   @override
   void initState() {
     super.initState();
+    rideNameController.text = widget.initialRideName ?? '';
+    destinationController.text = widget.initialDestination ?? '';
+    if (widget.initialMaxRiders != null) {
+      maxRiders = widget.initialMaxRiders!.clamp(1, 25).toDouble();
+    }
     destinationController.addListener(_onDestinationChanged);
     _loadCurrentLocation();
+    _loadGarage();
+    if (destinationController.text.trim().isNotEmpty) {
+      _searchDestination(destinationController.text.trim());
+    }
   }
 
   void _onDestinationChanged() {
@@ -276,10 +299,21 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     try {
-      final creatorId = prefs.getString('userId') ?? '';
-      if (!_looksLikeUuid(creatorId)) {
-        throw Exception('User session missing. Please login again.');
+      final creatorId = await _resolveCreatorId(prefs);
+      if (creatorId.isEmpty) {
+        throw Exception(
+          'Profile session unavailable. Sign in again to create rides.',
+        );
       }
+
+      if (garageBikes.isEmpty || selectedBikeId.isEmpty) {
+        throw Exception(
+          'No vehicle found in garage. Add a vehicle before creating a ride.',
+        );
+      }
+      final selectedBikeName = _bikeName(_selectedBike);
+      await prefs.setString('userActiveBikeId', selectedBikeId);
+      await prefs.setString('userBike', selectedBikeName);
 
       final startLocation = await _resolveStartLocation();
       final createdRide = await _rideService.createRide(
@@ -344,6 +378,8 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                         _buildRideNameField(),
                         const SizedBox(height: 24),
                         _buildDestinationSection(),
+                        const SizedBox(height: 20),
+                        _buildVehicleSection(),
                         const SizedBox(height: 20),
                         _buildLogisticsSection(),
                         const SizedBox(height: 20),
@@ -938,8 +974,191 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     );
   }
 
-  bool _looksLikeUuid(String value) {
-    return value.length >= 20;
+  Future<void> _loadGarage() async {
+    final prefs = await SharedPreferences.getInstance();
+    var bikes = _decodeGaragePrefs(prefs.getStringList('garageBikes') ?? []);
+    var activeBikeId = (prefs.getString('userActiveBikeId') ?? '').trim();
+    var userId = (prefs.getString('userId') ?? '').trim();
+    if (userId.isEmpty) {
+      userId = await _resolveCreatorId(prefs);
+    }
+
+    if (userId.isNotEmpty) {
+      try {
+        final remote = await _supabaseService.fetchGarage(userId: userId);
+        if (remote != null && remote.bikes.isNotEmpty) {
+          bikes = remote.bikes;
+          activeBikeId = remote.activeBikeId;
+        }
+      } catch (_) {}
+    }
+
+    if (activeBikeId.isEmpty ||
+        !bikes.any((bike) => bike['id'] == activeBikeId)) {
+      activeBikeId = bikes.isNotEmpty ? (bikes.first['id'] ?? '') : '';
+    }
+
+    if (!mounted) return;
+    setState(() {
+      garageBikes = bikes;
+      selectedBikeId = activeBikeId;
+      isLoadingGarage = false;
+    });
+  }
+
+  List<Map<String, String>> _decodeGaragePrefs(List<String> rows) {
+    return rows
+        .map((row) {
+          final parts = row.split('|');
+          return <String, String>{
+            'id': parts.isNotEmpty ? parts[0] : '',
+            'brand': parts.length > 1 ? parts[1] : '',
+            'model': parts.length > 2 ? parts[2] : '',
+            'cc': parts.length > 3 ? parts[3] : '',
+            'nickname': parts.length > 4 ? parts[4] : 'Motorcycle',
+            'fuelType': parts.length > 5 ? parts[5] : 'Petrol',
+            'imagePath': parts.length > 6 ? parts[6] : '',
+          };
+        })
+        .where((bike) => (bike['id'] ?? '').trim().isNotEmpty)
+        .toList(growable: false);
+  }
+
+  Map<String, String> get _selectedBike {
+    return garageBikes.firstWhere(
+      (bike) => bike['id'] == selectedBikeId,
+      orElse: () => garageBikes.isNotEmpty ? garageBikes.first : const {},
+    );
+  }
+
+  String _bikeName(Map<String, String> bike) {
+    final brand = (bike['brand'] ?? '').trim();
+    final model = (bike['model'] ?? '').trim();
+    final nickname = (bike['nickname'] ?? '').trim();
+    final name = '$brand $model'.trim();
+    return name.isNotEmpty
+        ? name
+        : (nickname.isNotEmpty ? nickname : 'Motorcycle');
+  }
+
+  Future<String> _resolveCreatorId(SharedPreferences prefs) async {
+    final cachedId = (prefs.getString('userId') ?? '').trim();
+    if (cachedId.isNotEmpty) return cachedId;
+
+    final row = await _supabaseService.fetchOrCreateCurrentUserProfile(
+      cachedUserId: cachedId,
+      cachedPhone: prefs.getString('userPhone') ?? '',
+      cachedName: prefs.getString('userName') ?? 'Rider',
+      cachedBike: prefs.getString('userBike') ?? 'No bike added',
+    );
+    final resolvedId =
+        (row?['id'] ?? row?['auth_user_id'] ?? '').toString().trim();
+    if (resolvedId.isNotEmpty) {
+      await prefs.setString('userId', resolvedId);
+    }
+    return resolvedId;
+  }
+
+  Widget _buildVehicleSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'RIDE VEHICLE',
+          style: AppTypography.labelMedium.copyWith(
+            color: AppColors.forest.withValues(alpha: 0.8),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            boxShadow: AppShadows.sm,
+          ),
+          child:
+              isLoadingGarage
+                  ? Row(
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Loading garage',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  )
+                  : garageBikes.isEmpty
+                  ? Row(
+                    children: [
+                      Icon(
+                        Icons.two_wheeler_outlined,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'No vehicle found in garage. Add a vehicle from Profile before creating a ride.',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.forest,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                  : DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedBikeId.isEmpty ? null : selectedBikeId,
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      items:
+                          garageBikes.map((bike) {
+                            final id = bike['id'] ?? '';
+                            return DropdownMenuItem<String>(
+                              value: id,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.two_wheeler_rounded,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _bikeName(bike),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.titleMedium.copyWith(
+                                        color: AppColors.forest,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => selectedBikeId = value);
+                      },
+                    ),
+                  ),
+        ),
+      ],
+    );
   }
 
   Future<String> _resolveStartLocation() async {

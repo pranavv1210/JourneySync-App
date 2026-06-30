@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../services/app_navigation.dart';
+import '../services/app_version.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
@@ -184,7 +185,7 @@ class _AuthShell extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'v1.1.0',
+                      'v${AppVersion.version}',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                     const SizedBox(height: AppSpacing.xxl),

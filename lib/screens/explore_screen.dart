@@ -5,6 +5,7 @@ import '../services/app_navigation.dart';
 import '../services/weather_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
+import '../widgets/premium/premium_toast.dart';
 import 'create_ride_screen.dart';
 import 'nearby_essentials_screen.dart';
 
@@ -93,8 +94,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (weather == null) return 72;
     var score = 92;
     score -= (weather.rainChance * 0.45).round();
-    if (weather.windSpeed > 18) score -= 14;
-    if (weather.temperature > 92 || weather.temperature < 45) score -= 12;
+    if (weather.windSpeed > 30) score -= 14;
+    if (weather.temperature > 33 || weather.temperature < 7) score -= 12;
     if (weather.visibility < 5) score -= 10;
     return score.clamp(42, 98);
   }
@@ -103,8 +104,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final weather = _weather;
     if (weather == null) return 'Checking ride conditions';
     if (weather.rainChance >= 60) return 'Rain expected. Keep rides short.';
-    if (weather.windSpeed > 18) return 'Windy conditions. Ride steady.';
-    if (weather.temperature > 92) return 'Hot day. Hydrate often.';
+    if (weather.windSpeed > 30) return 'Windy conditions. Ride steady.';
+    if (weather.temperature > 33) return 'Hot day. Hydrate often.';
     if (weather.alerts.isNotEmpty) return weather.alerts.first;
     return 'Perfect riding weather';
   }
@@ -142,7 +143,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 _detailRow('Ride score', '$_rideScore/100'),
                 _detailRow('Weather', weather?.displayText ?? 'Unavailable'),
                 _detailRow('Rain', '${weather?.rainChance ?? 0}%'),
-                _detailRow('Wind', '${weather?.windSpeed.round() ?? 0} mph'),
+                _detailRow('Wind', '${weather?.windSpeed.round() ?? 0} km/h'),
                 _detailRow(
                   'Visibility',
                   '${weather?.visibility.round() ?? 0} km',
@@ -244,11 +245,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed:
-                            () => Navigator.push(
-                              context,
-                              buildAppRoute(const CreateRideScreen()),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            buildAppRoute(
+                              CreateRideScreen(
+                                initialRideName: '${destination.name} ride',
+                                initialDestination: destination.mapQuery,
+                              ),
                             ),
+                          );
+                        },
                         icon: const Icon(Icons.add_rounded),
                         label: const Text('Create Ride'),
                       ),
@@ -461,11 +469,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget _essentialButton(EssentialType type) {
     return Expanded(
       child: GlassCard(
-        onTap:
-            () => Navigator.push(
-              context,
-              buildAppRoute(NearbyEssentialsScreen(type: type)),
-            ),
+        onTap: () => _showComingSoon(_essentialLabel(type)),
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Column(
           children: [
@@ -502,33 +506,53 @@ class _ExploreScreenState extends State<ExploreScreen> {
         spacing: 12,
         children:
             items.map((item) {
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppColors.divider),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(item.$1, size: 16, color: AppColors.primary),
-                    const SizedBox(width: 6),
-                    Text(
-                      item.$2,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w800,
+              return InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: () => _showComingSoon(item.$2),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(item.$1, size: 16, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        item.$2,
+                        style: AppTypography.labelMedium.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             }).toList(),
       ),
+    );
+  }
+
+  String _essentialLabel(EssentialType type) {
+    return switch (type) {
+      EssentialType.fuel => 'Fuel',
+      EssentialType.cafes => 'Cafes',
+      EssentialType.mechanics => 'Mechanics',
+    };
+  }
+
+  void _showComingSoon(String label) {
+    showPremiumToast(
+      context,
+      '$label coming soon',
+      type: PremiumToastType.info,
     );
   }
 }

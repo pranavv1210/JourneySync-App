@@ -48,8 +48,8 @@ class WeatherService {
         'longitude': lng.toString(),
         'current': 'temperature_2m,weather_code,wind_speed_10m,visibility',
         'daily': 'sunrise,sunset,precipitation_probability_max',
-        'temperature_unit': 'fahrenheit',
-        'wind_speed_unit': 'mph',
+        'temperature_unit': 'celsius',
+        'wind_speed_unit': 'kmh',
         'timezone': 'auto',
         'forecast_days': '1',
       });
@@ -66,7 +66,7 @@ class WeatherService {
       if (current is! Map<String, dynamic>) return null;
 
       final daily = data['daily'];
-      final temp = (current['temperature_2m'] as num?)?.toDouble() ?? 72.0;
+      final temp = (current['temperature_2m'] as num?)?.toDouble() ?? 24.0;
       final weatherCode = (current['weather_code'] as num?)?.toInt() ?? 0;
       final wind = (current['wind_speed_10m'] as num?)?.toDouble() ?? 0.0;
       final visMeters = (current['visibility'] as num?)?.toDouble() ?? 10000.0;
@@ -94,7 +94,7 @@ class WeatherService {
 
       final label = _weatherLabel(weatherCode);
       return WeatherSnapshot(
-        displayText: '${temp.round()}°F $label',
+        displayText: '${temp.round()}°C $label',
         latitude: lat,
         longitude: lng,
         temperature: temp,
@@ -129,16 +129,16 @@ class WeatherService {
     double visibility,
   ) {
     final alerts = <String>[];
-    if (temp > 95) {
+    if (temp > 35) {
       alerts.add('Extreme heat warning. Hydrate and take breaks.');
-    } else if (temp < 40) {
+    } else if (temp < 5) {
       alerts.add('Cold weather warning. Watch for low-grip roads.');
     }
     if (rainChance > 50) {
       alerts.add('High rain chance ($rainChance%). Wet roads possible.');
     }
-    if (windSpeed > 20) {
-      alerts.add('High wind advisory (${windSpeed.round()} mph).');
+    if (windSpeed > 32) {
+      alerts.add('High wind advisory (${windSpeed.round()} km/h).');
     }
     if (visibility < 5.0) {
       alerts.add('Reduced visibility (${visibility.toStringAsFixed(1)} km).');

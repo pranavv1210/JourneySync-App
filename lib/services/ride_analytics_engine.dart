@@ -390,7 +390,7 @@ class RideAnalyticsEngine {
     if (weather.rainChance > 50) score -= 16;
     if (weather.windSpeed > 20) score -= 14;
     if (weather.visibility < 5) score -= 12;
-    if (weather.temperature > 95 || weather.temperature < 40) score -= 10;
+    if (weather.temperature > 35 || weather.temperature < 5) score -= 10;
     return score.clamp(40, 100);
   }
 

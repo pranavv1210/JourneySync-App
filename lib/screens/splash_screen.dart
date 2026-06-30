@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_navigation.dart';
+import '../services/app_version.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ride_loading_indicator.dart';
 import 'home_screen.dart';
@@ -204,7 +205,7 @@ class _SplashScreenState extends State<SplashScreen>
                       const RideLoadingIndicator(label: 'Preparing your ride'),
                       const SizedBox(height: 16),
                       Text(
-                        'v1.0.2 Beta',
+                        'v${AppVersion.version}',
                         style: AppTypography.caption.copyWith(
                           color: AppColors.textTertiary,
                           letterSpacing: 1.2,

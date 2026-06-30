@@ -1388,13 +1388,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                   value: 'instant',
                   icon: Icons.flash_on_rounded,
                   title: 'Instant Ride',
-                  subtitle: 'Go live now and invite riders.',
+                  subtitle: 'Start a solo live ride with one tap setup.',
                 ),
                 _createOption(
                   context,
                   value: 'scheduled',
                   icon: Icons.event_rounded,
-                  title: 'Scheduled Ride',
+                  title: 'Plan Group Ride',
                   subtitle: 'Plan route details before going live.',
                 ),
                 _createOption(
@@ -1402,7 +1402,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                   value: 'private',
                   icon: Icons.lock_outline_rounded,
                   title: 'Private Ride',
-                  subtitle: 'Create a ride and share the access code.',
+                  subtitle: 'Create a smaller invite-only ride.',
                 ),
               ],
             ),
@@ -1411,7 +1411,18 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       },
     );
     if (selected == null || !mounted) return;
-    await Navigator.push(context, buildAppRoute(const CreateRideScreen()));
+    final screen = switch (selected) {
+      'instant' => const CreateRideScreen(
+        initialRideName: 'Instant solo ride',
+        initialMaxRiders: 1,
+      ),
+      'private' => const CreateRideScreen(
+        initialRideName: 'Private ride',
+        initialMaxRiders: 6,
+      ),
+      _ => const CreateRideScreen(),
+    };
+    await Navigator.push(context, buildAppRoute(screen));
     await _loadHomeData();
   }
 

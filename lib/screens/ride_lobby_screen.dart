@@ -183,7 +183,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                           children: [
                             _weatherTelemetryItem(
                               icon: Icons.thermostat_rounded,
-                              value: "${w.temperature.round()}°F",
+                              value: "${w.temperature.round()}°C",
                               label: "Temperature",
                               color: Colors.redAccent,
                             ),
@@ -195,7 +195,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                             ),
                             _weatherTelemetryItem(
                               icon: Icons.air_rounded,
-                              value: "${w.windSpeed.round()} mph",
+                              value: "${w.windSpeed.round()} km/h",
                               label: "Wind Speed",
                               color: Colors.teal,
                             ),
