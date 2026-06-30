@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -26,7 +27,7 @@ class WeatherSnapshot {
   final double windSpeed;
   final String sunset;
   final String sunrise;
-  final double visibility; // in km
+  final double visibility;
   final List<String> alerts;
 }
 
@@ -35,21 +36,11 @@ class WeatherService {
     double? latitude,
     double? longitude,
   }) async {
-    double lat;
-    double lng;
-
-    if (latitude != null && longitude != null) {
-      lat = latitude;
-      lng = longitude;
-    } else {
-      final position = await _resolvePosition();
-      if (position == null) {
-        // Return a default mock snapshot so that the UI never breaks
-        return _mockWeather(28.6139, 77.2090, "New Delhi (Simulated)");
-      }
-      lat = position.latitude;
-      lng = position.longitude;
-    }
+    final position =
+        latitude != null && longitude != null ? null : await _resolvePosition();
+    final lat = latitude ?? position?.latitude;
+    final lng = longitude ?? position?.longitude;
+    if (lat == null || lng == null) return null;
 
     try {
       final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
@@ -60,35 +51,30 @@ class WeatherService {
         'temperature_unit': 'fahrenheit',
         'wind_speed_unit': 'mph',
         'timezone': 'auto',
+        'forecast_days': '1',
       });
 
-      final response = await http.get(uri).timeout(const Duration(seconds: 5));
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        return _mockWeather(lat, lng, "Simulated");
+        return null;
       }
 
       final data = jsonDecode(response.body);
-      if (data is! Map<String, dynamic>) {
-        return _mockWeather(lat, lng, "Simulated");
-      }
+      if (data is! Map<String, dynamic>) return null;
 
       final current = data['current'];
-      final daily = data['daily'];
-      if (current is! Map<String, dynamic>) {
-        return _mockWeather(lat, lng, "Simulated");
-      }
+      if (current is! Map<String, dynamic>) return null;
 
+      final daily = data['daily'];
       final temp = (current['temperature_2m'] as num?)?.toDouble() ?? 72.0;
       final weatherCode = (current['weather_code'] as num?)?.toInt() ?? 0;
-      final wind = (current['wind_speed_10m'] as num?)?.toDouble() ?? 10.0;
-      // visibility is returned in meters, convert to km
+      final wind = (current['wind_speed_10m'] as num?)?.toDouble() ?? 0.0;
       final visMeters = (current['visibility'] as num?)?.toDouble() ?? 10000.0;
       final vis = visMeters / 1000.0;
 
-      int rainProb = 0;
-      String sunriseStr = "06:00 AM";
-      String sunsetStr = "07:00 PM";
-
+      var rainProb = 0;
+      var sunriseStr = '06:00 AM';
+      var sunsetStr = '07:00 PM';
       if (daily is Map<String, dynamic>) {
         final probs = daily['precipitation_probability_max'] as List?;
         if (probs != null && probs.isNotEmpty) {
@@ -107,8 +93,6 @@ class WeatherService {
       }
 
       final label = _weatherLabel(weatherCode);
-      final alerts = _generateAlerts(temp, rainProb, wind, vis);
-
       return WeatherSnapshot(
         displayText: '${temp.round()}°F $label',
         latitude: lat,
@@ -119,26 +103,22 @@ class WeatherService {
         sunrise: sunriseStr,
         sunset: sunsetStr,
         visibility: vis,
-        alerts: alerts,
+        alerts: _generateAlerts(temp, rainProb, wind, vis),
       );
     } catch (e) {
-      debugPrint("Error fetching weather: $e. Using simulated weather.");
-      return _mockWeather(lat, lng, "Simulated");
+      debugPrint('Error fetching weather: $e');
+      return null;
     }
   }
 
   String _formatTimeStr(String? isoTime) {
-    if (isoTime == null || isoTime.isEmpty) return "06:00 AM";
+    if (isoTime == null || isoTime.isEmpty) return '06:00 AM';
     try {
       final parsed = DateTime.parse(isoTime);
       return DateFormat('hh:mm a').format(parsed.toLocal());
     } catch (_) {
-      // If parsing fails, try to extract from string
       final parts = isoTime.split('T');
-      if (parts.length == 2) {
-        return parts[1];
-      }
-      return isoTime;
+      return parts.length == 2 ? parts[1] : isoTime;
     }
   }
 
@@ -150,63 +130,26 @@ class WeatherService {
   ) {
     final alerts = <String>[];
     if (temp > 95) {
-      alerts.add(
-        "Extreme Heat Warning: Keep hydrated and take frequent breaks.",
-      );
+      alerts.add('Extreme heat warning. Hydrate and take breaks.');
     } else if (temp < 40) {
-      alerts.add(
-        "Cold Weather Warning: Possibility of icy roads. Ride with caution.",
-      );
+      alerts.add('Cold weather warning. Watch for low-grip roads.');
     }
     if (rainChance > 50) {
-      alerts.add(
-        "High Chance of Rain ($rainChance%): Wet roads ahead. Wear rain gear.",
-      );
+      alerts.add('High rain chance ($rainChance%). Wet roads possible.');
     }
     if (windSpeed > 20) {
-      alerts.add(
-        "High Wind Advisory ($windSpeed mph): Crosswinds could affect stability.",
-      );
+      alerts.add('High wind advisory (${windSpeed.round()} mph).');
     }
     if (visibility < 5.0) {
-      alerts.add(
-        "Reduced Visibility Alert ($visibility km): Fog/haze. Turn on fog lights.",
-      );
+      alerts.add('Reduced visibility (${visibility.toStringAsFixed(1)} km).');
     }
     return alerts;
-  }
-
-  WeatherSnapshot _mockWeather(double lat, double lng, String tag) {
-    // Generate deterministic mock weather based on latitude and current hour
-    final hour = DateTime.now().hour;
-    final baseTemp =
-        70.0 + (lat.abs() % 15) + (hour > 12 ? (24 - hour) : hour) * 0.5;
-    final rainProb = ((lat.abs() * 10).toInt() + hour) % 100;
-    final wind = 5.0 + ((lng.abs() + hour) % 15);
-    final vis = 8.0 + (hour % 5);
-    final label = rainProb > 60 ? "Rain" : (rainProb > 30 ? "Cloudy" : "Clear");
-    final alerts = _generateAlerts(baseTemp, rainProb, wind, vis);
-
-    return WeatherSnapshot(
-      displayText: '${baseTemp.round()}°F $label ($tag)',
-      latitude: lat,
-      longitude: lng,
-      temperature: baseTemp,
-      rainChance: rainProb,
-      windSpeed: wind,
-      sunrise: "05:48 AM",
-      sunset: "07:12 PM",
-      visibility: vis,
-      alerts: alerts,
-    );
   }
 
   Future<Position?> _resolvePosition() async {
     try {
       final enabled = await Geolocator.isLocationServiceEnabled();
-      if (!enabled) {
-        return null;
-      }
+      if (!enabled) return null;
 
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -217,12 +160,16 @@ class WeatherService {
         return null;
       }
 
-      return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 4),
-        ),
-      );
+      try {
+        return await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+      } catch (_) {
+        return Geolocator.getLastKnownPosition();
+      }
     } catch (_) {
       return null;
     }

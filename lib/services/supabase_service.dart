@@ -147,14 +147,76 @@ class SupabaseService {
     required String userId,
     required String name,
     required String bike,
+    String? phone,
   }) async {
     final desired = <String, dynamic>{
       'id': userId.trim(),
       'auth_user_id': userId.trim(),
       'name': name.trim().isEmpty ? 'Rider' : name.trim(),
       'bike': bike.trim().isEmpty ? 'No bike added' : bike.trim(),
+      if (phone != null) 'phone': phone.trim().isEmpty ? null : phone.trim(),
     };
     return _updateProfileWithFallbacks(userId.trim(), desired);
+  }
+
+  Future<({List<Map<String, String>> bikes, String activeBikeId})?>
+  fetchGarage({required String userId}) async {
+    final normalized = userId.trim();
+    if (normalized.isEmpty) return null;
+
+    Future<Map<String, dynamic>?> fetchBy(String column) {
+      return _client
+          .from('profiles')
+          .select('garage_bikes,active_bike_id')
+          .eq(column, normalized)
+          .maybeSingle();
+    }
+
+    try {
+      Map<String, dynamic>? row;
+      if (await _profileColumnExists('auth_user_id')) {
+        row = await fetchBy('auth_user_id');
+      }
+      row ??= await fetchBy('id');
+      if (row == null) return null;
+      return (
+        bikes: _decodeGarageBikes(row['garage_bikes']),
+        activeBikeId: (row['active_bike_id'] ?? '').toString().trim(),
+      );
+    } on PostgrestException catch (error) {
+      if (_isMissingColumnError(error)) return null;
+      rethrow;
+    }
+  }
+
+  Future<void> saveGarage({
+    required String userId,
+    required List<Map<String, String>> bikes,
+    required String activeBikeId,
+  }) async {
+    final normalized = userId.trim();
+    if (normalized.isEmpty) return;
+    final payload = <String, dynamic>{
+      'garage_bikes':
+          bikes.map((bike) => Map<String, String>.from(bike)).toList(),
+      'active_bike_id':
+          activeBikeId.trim().isEmpty ? null : activeBikeId.trim(),
+    };
+
+    Future<void> updateBy(String column) {
+      return _client.from('profiles').update(payload).eq(column, normalized);
+    }
+
+    try {
+      if (await _profileColumnExists('auth_user_id')) {
+        await updateBy('auth_user_id');
+        return;
+      }
+      await updateBy('id');
+    } on PostgrestException catch (error) {
+      if (_isMissingColumnError(error)) return;
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> updateUserAvatar({
@@ -848,12 +910,12 @@ class SupabaseService {
   ) async {
     final attempts = <({Map<String, dynamic> payload, String select})>[
       (
-        payload: _pickExistingValues(desired, const ['name', 'bike']),
+        payload: _pickExistingValues(desired, const ['phone', 'name', 'bike']),
         select: 'id,auth_user_id,phone,name,bike,avatar_url',
       ),
       (
-        payload: _pickExistingValues(desired, const ['name', 'bike']),
-        select: 'id,name,bike',
+        payload: _pickExistingValues(desired, const ['phone', 'name', 'bike']),
+        select: 'id,phone,name,bike',
       ),
       (
         payload: _pickExistingValues(desired, const ['name']),
@@ -869,13 +931,28 @@ class SupabaseService {
     for (final attempt in attempts) {
       if (attempt.payload.isEmpty) continue;
       try {
-        final query = _client.from('profiles').update(attempt.payload);
-        final filteredQuery =
-            _looksLikeUuid(userId)
-                ? query.eq('auth_user_id', userId)
-                : query.eq('id', userId);
-        final row = await filteredQuery.select(attempt.select).single();
-        return _mergeProfileFallbacks(Map<String, dynamic>.from(row), desired);
+        final filterColumns = <String>[
+          if (await _profileColumnExists('auth_user_id')) 'auth_user_id',
+          'id',
+        ];
+        for (final column in filterColumns) {
+          try {
+            final row =
+                await _client
+                    .from('profiles')
+                    .update(attempt.payload)
+                    .eq(column, userId)
+                    .select(attempt.select)
+                    .single();
+            return _mergeProfileFallbacks(
+              Map<String, dynamic>.from(row),
+              desired,
+            );
+          } on PostgrestException catch (error) {
+            lastError = error;
+            if (!_isRecoverableProfileSchemaError(error)) rethrow;
+          }
+        }
       } on PostgrestException catch (error) {
         lastError = error;
         if (!_isRecoverableProfileSchemaError(error)) rethrow;
@@ -918,6 +995,25 @@ class SupabaseService {
       'bike': (row['bike'] ?? desired['bike'] ?? 'No bike added').toString(),
       'avatar_url': (row['avatar_url'] ?? '').toString(),
     };
+  }
+
+  List<Map<String, String>> _decodeGarageBikes(Object? raw) {
+    final source = raw is List ? raw : const [];
+    return source
+        .whereType<Map>()
+        .map((item) {
+          final map = Map<String, dynamic>.from(item);
+          return <String, String>{
+            'id': (map['id'] ?? '').toString(),
+            'brand': (map['brand'] ?? '').toString(),
+            'model': (map['model'] ?? '').toString(),
+            'cc': (map['cc'] ?? '').toString(),
+            'nickname': (map['nickname'] ?? 'Motorcycle').toString(),
+            'fuelType': (map['fuelType'] ?? 'Petrol').toString(),
+            'imagePath': (map['imagePath'] ?? '').toString(),
+          };
+        })
+        .toList(growable: false);
   }
 
   Future<bool> _profileColumnExists(String column) async {

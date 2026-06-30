@@ -158,34 +158,69 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
 
   Widget _statsCard() {
     return GlassCard(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       elevated: true,
       child: Row(
         children: [
-          _stat('Rides', _rides.length.toString()),
-          _stat('Summaries', _history.length.toString()),
-          _stat('Replay', _history.isEmpty ? '0' : _history.length.toString()),
-          _stat('Km', _totalDistance.toStringAsFixed(0)),
+          Expanded(
+            child: _statTile(
+              'Total',
+              _rides.length.toString(),
+              Icons.two_wheeler_rounded,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _statTile(
+              'Completed',
+              _history.length.toString(),
+              Icons.flag_rounded,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _statTile(
+              'Distance',
+              '${_totalDistance.toStringAsFixed(0)} km',
+              Icons.route_rounded,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _stat(String label, String value) {
-    return Expanded(
+  Widget _statTile(String label, String value, IconData icon) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.divider.withValues(alpha: 0.7)),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          Icon(icon, size: 18, color: AppColors.primary),
+          const SizedBox(height: 6),
           Text(
             value,
-            style: AppTypography.headlineSmall.copyWith(
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppTypography.titleLarge.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: AppTypography.caption.copyWith(
               color: AppColors.textSecondary,
             ),

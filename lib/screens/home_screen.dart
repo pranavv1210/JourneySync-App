@@ -128,6 +128,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       resolvedPhone = (userRow?['phone'] ?? resolvedPhone).toString().trim();
       resolvedName = (userRow?['name'] ?? resolvedName).toString().trim();
       resolvedBike = (userRow?['bike'] ?? resolvedBike).toString().trim();
+      final resolvedAvatarUrl =
+          (userRow?['avatar_url'] ?? prefs.getString('userAvatarUrl') ?? '')
+              .toString()
+              .trim();
 
       if (resolvedId.isNotEmpty) {
         await prefs.setString('userId', resolvedId);
@@ -144,6 +148,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         'userBike',
         resolvedBike.isNotEmpty ? resolvedBike : 'No bike added',
       );
+      if (resolvedAvatarUrl.isNotEmpty) {
+        await prefs.setString('userAvatarUrl', resolvedAvatarUrl);
+      }
 
       Future<List<RideRecord>>? recentFuture;
       Future<List<NearbyRide>>? nearbyFuture;
@@ -299,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           ),
                         _buildHeader(),
                         const SizedBox(height: 14),
-                        _buildRideCockpitHeader(),
+                        _buildRideCommandCard(),
                         const SizedBox(height: 20),
                         _buildQuickStatus(),
                         const SizedBox(height: 24),
@@ -442,19 +449,35 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
-  Widget _buildRideCockpitHeader() {
+  Widget _buildRideCommandCard() {
+    final activeSnapshot = ActiveRideCoordinator.instance.snapshot;
+    final hasActiveRide = activeSnapshot.hasActiveRide;
     return PremiumCard(
+      onTap:
+          hasActiveRide
+              ? () => Navigator.push(
+                context,
+                buildAppRoute(RideModeScreen(rideId: activeSnapshot.rideId)),
+              )
+              : () => Navigator.push(
+                context,
+                buildAppRoute(const NearbyRidesScreen()),
+              ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: AppColors.forest.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: Icon(Icons.radar_rounded, color: AppColors.forest, size: 22),
+            child: Icon(
+              hasActiveRide ? Icons.play_arrow_rounded : Icons.radar_rounded,
+              color: AppColors.forest,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -462,16 +485,18 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Ride cockpit',
+                  hasActiveRide ? 'Resume live ride' : 'Find riders nearby',
                   style: AppTypography.titleMedium.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
-                  'Create, discover, and resume synced rides from here.',
-                  maxLines: 1,
+                  hasActiveRide
+                      ? 'Return to tracking, group status, and route sync.'
+                      : 'Open Ride Radar to discover active group rides.',
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.textSecondary,
@@ -479,6 +504,11 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 ),
               ],
             ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: AppColors.textTertiary,
           ),
         ],
       ),

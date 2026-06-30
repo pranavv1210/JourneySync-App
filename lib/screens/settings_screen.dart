@@ -26,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String userBike = 'No bike added';
   String userPhone = '';
   String localAvatarPath = '';
+  String avatarUrl = '';
   List<Map<String, String>> emergencyContacts = const <Map<String, String>>[];
 
   @override
@@ -42,6 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       userBike = prefs.getString('userBike') ?? 'No bike added';
       userPhone = prefs.getString('userPhone') ?? '';
       localAvatarPath = prefs.getString('localAvatarPath') ?? '';
+      avatarUrl = prefs.getString('userAvatarUrl') ?? '';
       emergencyContacts = _decodeEmergencyContacts(
         prefs.getStringList('emergencyContacts') ?? const <String>[],
       );
@@ -144,20 +146,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 borderRadius: BorderRadius.circular(
                                   AppRadius.lg,
                                 ),
-                                image:
-                                    localAvatarPath.isNotEmpty &&
-                                            File(localAvatarPath).existsSync()
-                                        ? DecorationImage(
-                                          image: FileImage(
-                                            File(localAvatarPath),
-                                          ),
-                                          fit: BoxFit.cover,
-                                        )
-                                        : null,
+                                image: _settingsAvatarDecoration(),
                               ),
                               child:
-                                  localAvatarPath.isNotEmpty &&
-                                          File(localAvatarPath).existsSync()
+                                  _settingsAvatarDecoration() != null
                                       ? null
                                       : Icon(
                                         Icons.person_rounded,
@@ -388,6 +380,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  DecorationImage? _settingsAvatarDecoration() {
+    if (localAvatarPath.isNotEmpty && File(localAvatarPath).existsSync()) {
+      return DecorationImage(
+        image: FileImage(File(localAvatarPath)),
+        fit: BoxFit.cover,
+      );
+    }
+    if (avatarUrl.startsWith('http')) {
+      return DecorationImage(image: NetworkImage(avatarUrl), fit: BoxFit.cover);
+    }
+    return null;
   }
 
   List<Map<String, String>> _decodeEmergencyContacts(List<String> rows) {

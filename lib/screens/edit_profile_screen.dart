@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../services/supabase_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -21,6 +21,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _nameController = TextEditingController();
   final _bikeController = TextEditingController();
   final _phoneController = TextEditingController();
+  final SupabaseService _supabaseService = SupabaseService();
 
   bool _loading = true;
   bool _saving = false;
@@ -107,10 +108,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final userId = prefs.getString('userId') ?? '';
       if (userId.isNotEmpty) {
         try {
-          await Supabase.instance.client
-              .from('profiles')
-              .update({'name': name, 'bike': bike, 'phone': phone})
-              .eq('auth_user_id', userId);
+          final updated = await _supabaseService.updateUserProfile(
+            userId: userId,
+            name: name,
+            bike: bike,
+            phone: phone,
+          );
+          await prefs.setString(
+            'userName',
+            (updated['name'] ?? name).toString(),
+          );
+          await prefs.setString(
+            'userBike',
+            (updated['bike'] ?? bike).toString(),
+          );
+          await prefs.setString(
+            'userPhone',
+            (updated['phone'] ?? phone).toString(),
+          );
+          await _syncAvatarToSupabase(userId, prefs);
         } catch (e) {
           debugPrint('Error updating profile in Supabase: $e');
           // Non-blocking if offline
@@ -137,6 +153,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _saving = false;
         });
       }
+    }
+  }
+
+  Future<void> _syncAvatarToSupabase(
+    String userId,
+    SharedPreferences prefs,
+  ) async {
+    if (_localAvatarPath.isEmpty || !File(_localAvatarPath).existsSync()) {
+      return;
+    }
+    try {
+      final bytes = await File(_localAvatarPath).readAsBytes();
+      final avatarUrl = await _supabaseService.uploadAvatar(
+        userId: userId,
+        bytes: bytes,
+      );
+      await _supabaseService.updateUserAvatar(
+        userId: userId,
+        avatarUrl: avatarUrl,
+      );
+      await prefs.setString('userAvatarUrl', avatarUrl);
+    } catch (error) {
+      debugPrint('Avatar upload skipped: $error');
     }
   }
 

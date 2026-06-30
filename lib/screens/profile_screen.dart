@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 import '../services/ride_analytics_engine.dart';
+import '../services/supabase_service.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../widgets/app_dialog.dart';
@@ -22,6 +22,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final SupabaseService _supabaseService = SupabaseService();
 
   // Profile data
   String userName = 'Rider';
@@ -64,25 +65,22 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final savedBikesRaw = prefs.getStringList('garageBikes');
-    List<Map<String, String>> loadedBikes = [];
-    if (savedBikesRaw != null && savedBikesRaw.isNotEmpty) {
-      loadedBikes =
-          savedBikesRaw.map((b) {
-            final parts = b.split('|');
-            return {
-              'id': parts.isNotEmpty ? parts[0] : '',
-              'brand': parts.length > 1 ? parts[1] : '',
-              'model': parts.length > 2 ? parts[2] : '',
-              'cc': parts.length > 3 ? parts[3] : '',
-              'nickname': parts.length > 4 ? parts[4] : 'Motorcycle',
-              'fuelType': parts.length > 5 ? parts[5] : 'Petrol',
-              'imagePath': parts.length > 6 ? parts[6] : '',
-            };
-          }).toList();
+    var loadedBikes = _decodeGaragePrefs(
+      prefs.getStringList('garageBikes') ?? const <String>[],
+    );
+    var activeBike = prefs.getString('userActiveBikeId') ?? '';
+    final userId = (prefs.getString('userId') ?? '').trim();
+    if (userId.isNotEmpty) {
+      try {
+        final remoteGarage = await _supabaseService.fetchGarage(userId: userId);
+        if (remoteGarage != null && remoteGarage.bikes.isNotEmpty) {
+          loadedBikes = remoteGarage.bikes;
+          activeBike = remoteGarage.activeBikeId;
+          await _saveBikesToPrefs(loadedBikes);
+          await prefs.setString('userActiveBikeId', activeBike);
+        }
+      } catch (_) {}
     }
-
-    final activeBike = prefs.getString('userActiveBikeId') ?? '';
     final analyticsStats = await RideAnalyticsEngine.aggregateProfileStats();
     final achievements = await RideAnalyticsEngine.unlockedAchievements();
 
@@ -91,6 +89,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       bio = prefs.getString('userBio') ?? 'Ready for the first synced ride.';
       experienceLevel = prefs.getString('userExperienceLevel') ?? 'New Rider';
       avatarUrl = prefs.getString('localAvatarPath') ?? '';
+      if (avatarUrl.isEmpty || !File(avatarUrl).existsSync()) {
+        avatarUrl = prefs.getString('userAvatarUrl') ?? '';
+      }
 
       totalRides =
           analyticsStats.totalRides > 0
@@ -148,6 +149,35 @@ class _ProfileScreenState extends State<ProfileScreen>
     await prefs.setStringList('garageBikes', stringList);
   }
 
+  List<Map<String, String>> _decodeGaragePrefs(List<String> rows) {
+    return rows
+        .map((b) {
+          final parts = b.split('|');
+          return {
+            'id': parts.isNotEmpty ? parts[0] : '',
+            'brand': parts.length > 1 ? parts[1] : '',
+            'model': parts.length > 2 ? parts[2] : '',
+            'cc': parts.length > 3 ? parts[3] : '',
+            'nickname': parts.length > 4 ? parts[4] : 'Motorcycle',
+            'fuelType': parts.length > 5 ? parts[5] : 'Petrol',
+            'imagePath': parts.length > 6 ? parts[6] : '',
+          };
+        })
+        .toList(growable: false);
+  }
+
+  Future<void> _persistGarage() async {
+    await _saveBikesToPrefs(bikes);
+    final prefs = await SharedPreferences.getInstance();
+    final userId = (prefs.getString('userId') ?? '').trim();
+    if (userId.isEmpty) return;
+    await _supabaseService.saveGarage(
+      userId: userId,
+      bikes: bikes,
+      activeBikeId: activeBikeId,
+    );
+  }
+
   Future<void> _addBike() async {
     final newBike = await _showVehicleForm();
     if (newBike == null) return;
@@ -158,7 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       bikes.add(newBike);
       if (shouldSetActive) activeBikeId = newBike['id']!;
     });
-    await _saveBikesToPrefs(bikes);
+    await _persistGarage();
     if (shouldSetActive) {
       await _selectActiveBike(newBike['id']!, showToast: false);
     }
@@ -406,14 +436,19 @@ class _ProfileScreenState extends State<ProfileScreen>
     await prefs.setString('userActiveBikeId', id);
     await prefs.setString('userBike', bikeNameString);
 
-    // Also update in Supabase
     final userId = prefs.getString('userId') ?? '';
     if (userId.isNotEmpty) {
       try {
-        await Supabase.instance.client
-            .from('profiles')
-            .update({'bike': bikeNameString})
-            .eq('auth_user_id', userId);
+        await _supabaseService.updateUserProfile(
+          userId: userId,
+          name: userName,
+          bike: bikeNameString,
+        );
+        await _supabaseService.saveGarage(
+          userId: userId,
+          bikes: bikes,
+          activeBikeId: id,
+        );
       } catch (_) {}
     }
 
@@ -449,9 +484,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       }
     });
 
-    await _saveBikesToPrefs(bikes);
-
-    // Update active bike name in prefs
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userActiveBikeId', activeBikeId);
     if (activeBikeId.isEmpty) {
@@ -462,6 +494,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           '${selectedBike['brand']} ${selectedBike['model']}';
       await prefs.setString('userBike', bikeNameString);
     }
+    await _persistGarage();
   }
 
   @override
@@ -536,12 +569,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                       backgroundColor: AppColors.primary.withValues(
                         alpha: 0.15,
                       ),
-                      backgroundImage:
-                          avatarUrl.isNotEmpty && File(avatarUrl).existsSync()
-                              ? FileImage(File(avatarUrl))
-                              : null,
+                      backgroundImage: _profileAvatarImage(),
                       child:
-                          avatarUrl.isNotEmpty && File(avatarUrl).existsSync()
+                          _profileAvatarImage() != null
                               ? null
                               : Text(
                                 userName.isNotEmpty
@@ -1138,6 +1168,13 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   bool _hasAchievement(String name) => unlockedAchievements.contains(name);
+
+  ImageProvider? _profileAvatarImage() {
+    if (avatarUrl.isEmpty) return null;
+    if (File(avatarUrl).existsSync()) return FileImage(File(avatarUrl));
+    if (avatarUrl.startsWith('http')) return NetworkImage(avatarUrl);
+    return null;
+  }
 }
 
 class _VehicleField extends StatelessWidget {
