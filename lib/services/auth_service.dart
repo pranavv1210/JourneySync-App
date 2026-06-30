@@ -51,8 +51,12 @@ class AuthService {
 
   /// Resolves the auth redirect URL from dotenv (runtime) or fallback.
   String get _authRedirectUrl {
-    final env = dotenv.env['AUTH_REDIRECT_URL'] ?? AppConfig.authRedirectUrl;
-    return env.trim();
+    try {
+      final env = dotenv.env['AUTH_REDIRECT_URL'];
+      return (env ?? AppConfig.authRedirectUrl).trim();
+    } catch (_) {
+      return AppConfig.authRedirectUrl;
+    }
   }
 
   Future<({PhoneIdentity identity, String accessToken, String idToken})>
