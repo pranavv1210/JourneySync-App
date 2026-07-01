@@ -92,7 +92,114 @@ body section:not(#hero) {
   filter: drop-shadow(0 14px 18px rgba(120, 53, 15, 0.35));
 }
 
+#beta-signal .liquid-glass,
+#problems .feature-card,
+#comparison .feature-card,
+#built-by-riders .feature-card,
+#faq .faq-item {
+  position: relative;
+  overflow: hidden;
+}
+
+#beta-signal .liquid-glass::before,
+#problems .feature-card::before,
+#comparison .feature-card::before,
+#built-by-riders .feature-card::before,
+#faq .faq-item::before {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.42), transparent 34%),
+    radial-gradient(circle at 80% 0%, rgba(219,119,6,.12), transparent 34%);
+  content: "";
+  inset: 0;
+  opacity: .85;
+  pointer-events: none;
+  position: absolute;
+}
+
+#comparison table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+#comparison th,
+#comparison td {
+  vertical-align: top;
+}
+
+#demo video {
+  min-height: 100%;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(219, 119, 6, .55);
+  outline-offset: 4px;
+}
+
+.react-static-chunk section,
+#beta-signal,
+#problems,
+#comparison,
+#demo,
+#built-by-riders,
+#testimonials,
+#faq {
+  scroll-margin-top: 6rem;
+}
+
 @media (max-width: 767px) {
+  #beta-signal,
+  #problems,
+  #comparison,
+  #demo,
+  #built-by-riders,
+  #testimonials,
+  #faq {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  #beta-signal *,
+  #problems *,
+  #comparison *,
+  #demo *,
+  #built-by-riders *,
+  #testimonials *,
+  #faq * {
+    min-width: 0;
+  }
+
+  #beta-signal h2,
+  #problems h2,
+  #comparison h2,
+  #demo h2,
+  #built-by-riders h2,
+  #testimonials h2,
+  #faq h2 {
+    font-size: 1.625rem;
+    line-height: 1.18;
+    overflow-wrap: anywhere;
+  }
+
+  #features,
+  #how-it-works,
+  #safety,
+  #download-banner,
+  #download {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  #features h2,
+  #how-it-works h2,
+  #safety h2,
+  #download-banner h2,
+  #download h2 {
+    font-size: 1.625rem;
+    line-height: 1.18;
+    overflow-wrap: anywhere;
+  }
+
   #how-it-works-animation {
     padding-top: 0;
   }
@@ -114,5 +221,9 @@ body section:not(#hero) {
     height: 2.75rem !important;
     margin-left: -1.375rem !important;
     margin-top: -1.375rem !important;
+  }
+
+  #comparison .feature-card {
+    overflow-wrap: anywhere;
   }
 }

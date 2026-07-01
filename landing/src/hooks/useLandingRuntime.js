@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { trackEvent } from '../utils/tracking';
 
 export function useLandingRuntime() {
   useEffect(() => {
@@ -52,6 +53,13 @@ export function useLandingRuntime() {
       const ratio = max > 0 ? window.scrollY / max : 0;
       if(progress) progress.style.width = (ratio * 100).toFixed(2) + '%';
       if(header) header.classList.toggle('is-scrolled', window.scrollY > 36);
+      [25, 50, 75, 90].forEach(function(milestone){
+        if(ratio * 100 >= milestone && !window.__jsScrollMilestones?.[milestone]) {
+          window.__jsScrollMilestones = window.__jsScrollMilestones || {};
+          window.__jsScrollMilestones[milestone] = true;
+          trackEvent('scroll_milestone', { milestone });
+        }
+      });
     }
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -141,7 +149,22 @@ export function useLandingRuntime() {
         const item = btn.closest('.faq-item');
         const open = item.classList.toggle('open');
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if(open) trackEvent('faq_expand', { question: btn.innerText.trim().replace(/\s+/g, ' ') });
       });
+    });
+
+    document.addEventListener('click', function(e){
+      const target = e.target.closest && e.target.closest('a, button');
+      if(!target) return;
+      const text = target.innerText ? target.innerText.trim() : '';
+      const href = target.getAttribute('href') || '';
+      if(text.includes('Join Closed Beta') || text.includes('Join Beta')) trackEvent('hero_cta', { label: text || 'Join Beta' });
+      if(text.includes('Download Android') || text.includes('Download APK')) trackEvent('apk_download', { label: text });
+      if(text.includes('Watch Demo') || target.matches('[data-demo-open]')) trackEvent('watch_demo', { label: text || 'Demo' });
+      if(href.includes('instagram.com')) trackEvent('instagram', { href });
+      if(href.includes('github.com')) trackEvent('github', { href });
+      if(href.includes('linkedin.com')) trackEvent('linkedin', { href });
+      if(target.closest('#download')) trackEvent('footer_cta', { label: text });
     });
 
     if(!prefersReduced && glow && window.matchMedia('(pointer:fine)').matches) {
@@ -585,13 +608,13 @@ journeysync.app@gmail.com</pre>
 
   // Demo video modal handlers
   (function(){
-    const btn = document.getElementById('watch-demo-btn');
+    const buttons = Array.from(document.querySelectorAll('[data-demo-open], #watch-demo-btn'));
     const vmodal = document.getElementById('video-modal');
     const vclose = document.getElementById('video-close');
     const voverlay = vmodal && vmodal.querySelector('[data-close-video]');
     const video = document.getElementById('demo-video');
     let _last = null;
-    if(!btn || !vmodal || !video) return;
+    if(!buttons.length || !vmodal || !video) return;
 
     function openVideo(src){
       _last = document.activeElement;
@@ -605,18 +628,7 @@ journeysync.app@gmail.com</pre>
       document.body.classList.add('modal-open');
       vmodal.classList.remove('hidden');
       vmodal.setAttribute('aria-hidden','false');
-      // Try to play with audio; if browser blocks autoplay with sound,
-      // mute and try again so the demo reliably starts.
-      try {
-        const p = video.play();
-        if (p && typeof p.catch === 'function') {
-          p.catch(() => {
-            try { video.muted = true; video.play().catch(()=>{}); } catch{}
-          });
-        }
-      } catch {
-        try { video.muted = true; video.play().catch(()=>{}); } catch{}
-      }
+      trackEvent('demo_viewed', { source: src || './assets/demovideo.mp4' });
       (vclose || video).focus();
     }
 
@@ -632,10 +644,12 @@ journeysync.app@gmail.com</pre>
       if(_last && typeof _last.focus === 'function') _last.focus();
     }
 
-    btn.addEventListener('click', function(e){
-      e.preventDefault();
-      const src = this.getAttribute('data-video') || './demovideo.mp4';
-      openVideo(src);
+    buttons.forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.preventDefault();
+        const src = this.getAttribute('data-video') || './assets/demovideo.mp4';
+        openVideo(src);
+      });
     });
     if(vclose) vclose.addEventListener('click', closeVideo);
     if(voverlay) voverlay.addEventListener('click', closeVideo);
@@ -668,6 +682,7 @@ journeysync.app@gmail.com</pre>
     if(e) e.preventDefault();
     const dmodal = document.getElementById('download-modal');
     if(!dmodal) return;
+    trackEvent('apk_download_modal_opened');
     document.body.style.overflow = 'hidden';
     document.body.classList.add('modal-open');
     dmodal.classList.remove('hidden');

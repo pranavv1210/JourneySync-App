@@ -1,7 +1,6 @@
 import './index.css';
 import {
   DownloadBanner,
-  Faq,
   Features,
   FinalCta,
   FooterAndModals,
@@ -11,8 +10,16 @@ import {
   ProductSystem,
   Safety,
   ShellChrome,
-  Testimonials,
 } from './components/LandingSections';
+import {
+  BuiltByRiders,
+  Comparison,
+  DemoSection,
+  Faq,
+  ProblemSolution,
+  SocialProof,
+  Testimonials as GrowthTestimonials,
+} from './components/GrowthSections';
 import { useLandingRuntime } from './hooks/useLandingRuntime';
 
 export default function App() {
@@ -24,12 +31,17 @@ export default function App() {
       <Navbar />
       <main>
         <Hero />
+        <SocialProof />
+        <ProblemSolution />
         <Features />
         <ProductSystem />
         <HowItWorks />
+        <Comparison />
+        <DemoSection />
+        <BuiltByRiders />
         <Safety />
         <DownloadBanner />
-        <Testimonials />
+        <GrowthTestimonials />
         <Faq />
         <FinalCta />
       </main>
