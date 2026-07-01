@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://journeysync-app.vercel.app/sitemap.xml
+Sitemap: https://journeysyncrideapp.in/sitemap.xml
