@@ -37,7 +37,8 @@
       "logo": "https://journeysyncrideapp.in/assets/logo.png",
       "email": "journeysync.app@gmail.com",
       "sameAs": [
-        "https://www.instagram.com/journeysync.app/"
+        "https://www.instagram.com/journeysync.app/",
+        "https://github.com/pranavv1210/JourneySync-App"
       ]
     },
     {
@@ -537,14 +538,6 @@
           0%,100% { transform: translateY(0); opacity: .58; }
           50% { transform: translateY(8px); opacity: 1; }
         }
-        .testimonial-track {
-          animation: testimonialDrift 26s linear infinite;
-        }
-        @keyframes testimonialDrift {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-        .testimonial-track:hover { animation-play-state: paused; }
         section:not(#hero) {
           content-visibility: auto;
           contain-intrinsic-size: 760px;
@@ -560,7 +553,6 @@
           header.is-scrolled { width: calc(100% - 16px); top: 0; }
           .premium-hero { min-height: auto; }
           #cursor-glow { display: none; }
-          .testimonial-track { animation: none; }
           .slide-in-left, .slide-in-right { transform: translateY(40px) !important; }
           .slide-in-left.is-visible, .slide-in-right.is-visible { transform: translateY(0) !important; }
         }

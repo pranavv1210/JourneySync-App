@@ -202,58 +202,6 @@ export function useLandingRuntime() {
       });
     });
 
-    // How It Works 3D Scrolling Bike Animation
-    const desktopBike = document.getElementById('scrolling-bike-desktop');
-    const desktopPath = document.getElementById('timeline-curve-desktop');
-    const mobileBike = document.getElementById('scrolling-bike-mobile');
-    const mobilePath = document.getElementById('timeline-curve-mobile');
-    const animationSection = document.getElementById('how-it-works-animation');
-    
-    if (animationSection && !prefersReduced) {
-      setTimeout(() => {
-        function updateBikePosition() {
-          const isMobile = window.innerWidth < 768;
-          const bike = isMobile ? mobileBike : desktopBike;
-          const curvePath = isMobile ? mobilePath : desktopPath;
-          if (!bike || !curvePath) return;
-          
-          const pathLength = curvePath.getTotalLength();
-          if (pathLength === 0) return;
-          
-          const rect = animationSection.getBoundingClientRect();
-          const startOffset = window.innerHeight * 0.75; 
-          const endOffset = window.innerHeight * 0.25;
-          const totalScroll = rect.height + startOffset - endOffset;
-          const currentScroll = startOffset - rect.top;
-          
-          let progress = currentScroll / totalScroll;
-          progress = Math.max(0, Math.min(1, progress));
-          
-          const pt = curvePath.getPointAtLength(progress * pathLength);
-          const svg = curvePath.closest('svg');
-          const viewBox = svg.viewBox.baseVal;
-          const absoluteX = (pt.x / viewBox.width) * svg.clientWidth;
-          const absoluteY = (pt.y / viewBox.height) * svg.clientHeight;
-          
-          if (isMobile) {
-            // Mobile road is rotateY(-30deg). We scale it up as it goes down for extra 3D pop.
-            const scale = 1 + (progress * 0.8); 
-            bike.style.transform = `translate3d(${absoluteX}px, ${absoluteY}px, 0) rotate(90deg) rotateY(30deg) scale(${scale})`;
-          } else {
-            // Desktop road is rotateX(60deg). We counter rotateX(-60deg) so bike stands up.
-            // And we tilt it slightly up or down based on the curve slope!
-            const ptNext = curvePath.getPointAtLength(Math.min(pathLength, progress * pathLength + 2));
-            let slopeAngle = Math.atan2(ptNext.y - pt.y, ptNext.x - pt.x) * 180 / Math.PI;
-            // Dampen the slope angle since the road is flattened
-            slopeAngle = slopeAngle * 0.5;
-            bike.style.transform = `translate3d(${absoluteX}px, ${absoluteY}px, 0) rotateX(-60deg) rotateZ(${slopeAngle}deg) scale(1.4)`;
-          }
-        }
-        window.addEventListener('scroll', updateBikePosition, { passive: true });
-        window.addEventListener('resize', updateBikePosition, { passive: true });
-        updateBikePosition();
-      }, 100);
-    }
     }
 
     if('requestIdleCallback' in window) {

@@ -52,10 +52,8 @@ function SectionHeader({ eyebrow, title, copy, align = 'center' }) {
 
 const stats = [
   { label: 'Rides Coordinated', value: 120, suffix: '+', note: 'closed beta target' },
-  { label: 'Group Riders', value: 480, suffix: '+', note: 'rider network goal' },
   { label: 'Beta Testers', value: 75, suffix: '+', note: 'founding cohort' },
   { label: 'Cities Covered', value: 12, suffix: '', note: 'India-first rollout' },
-  { label: 'Countries', value: 1, suffix: '', note: 'built from Bengaluru' },
   { label: 'Hours of Testing', value: 300, suffix: '+', note: 'road + simulator checks' },
 ];
 
@@ -68,7 +66,7 @@ export function SocialProof() {
           title="Built for real riding groups, not solo navigation."
           copy="JourneySync is being shaped around the moments where group rides usually break down: junctions, fuel stops, weak coordination, and missing riders."
         />
-        <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" variants={container}>
+        <motion.div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5" variants={container}>
           {stats.map((stat) => (
             <motion.article
               key={stat.label}
@@ -93,13 +91,11 @@ const problems = [
   ['Getting separated', 'The group stretches out and riders disappear after traffic lights or turns.'],
   ['Waiting at junctions', 'Leads stop repeatedly because nobody knows who missed the turn.'],
   ['No live visibility', 'WhatsApp messages arrive late and maps only solve individual navigation.'],
-  ['Emergency handling', 'A rider needs help, but the group has no shared safety context.'],
-  ['No ride memory', 'After the ride, there is no replay, performance context, or shared record.'],
 ];
 
 export function ProblemSolution() {
   return (
-    <MotionSection id="problems" className="py-20 bg-background-light dark:bg-background-dark">
+    <MotionSection id="problems" className="py-16 bg-background-light dark:bg-background-dark">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-[0.92fr_1.08fr] gap-10 items-start">
           <SectionHeader
@@ -108,27 +104,34 @@ export function ProblemSolution() {
             title="Group rides are social. Coordination should not be chaotic."
             copy="JourneySync gives every rider the same ride context before, during, and after the journey, so the group moves like one connected pack."
           />
-          <motion.div className="relative space-y-4" variants={container}>
-            <div className="absolute left-6 top-5 bottom-5 w-px bg-gradient-to-b from-primary via-primary/40 to-secondary/40" />
+          <motion.div className="space-y-4" variants={container}>
             {problems.map(([title, copy], index) => (
               <motion.article
                 key={title}
-                className="relative ml-0 pl-16 feature-card rounded-3xl p-5"
+                className="feature-card rounded-3xl p-5"
                 variants={fadeUp}
               >
-                <div className="absolute left-0 top-5 w-12 h-12 rounded-full bg-primary text-white grid place-items-center font-extrabold shadow-xl shadow-primary/25">
-                  {index + 1}
+                <div className="flex items-start gap-4">
+                  <div className="grid h-10 w-10 flex-none place-items-center rounded-full bg-primary text-white font-extrabold shadow-xl shadow-primary/25">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-gray-900 dark:text-white">{title}</h3>
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{copy}</p>
+                  </div>
                 </div>
-                <h3 className="font-extrabold text-gray-900 dark:text-white">{title}</h3>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{copy}</p>
               </motion.article>
             ))}
-            <motion.article className="relative ml-0 pl-16 rounded-3xl p-5 bg-background-dark text-white shadow-2xl" variants={fadeUp}>
-              <div className="absolute left-0 top-5 w-12 h-12 rounded-full bg-secondary text-white grid place-items-center shadow-xl">
-                <span className="material-icons-round">check</span>
+            <motion.article className="rounded-3xl p-5 bg-background-dark text-white shadow-2xl" variants={fadeUp}>
+              <div className="flex items-start gap-4">
+                <div className="grid h-10 w-10 flex-none place-items-center rounded-full bg-secondary text-white shadow-xl">
+                  <span className="material-icons-round">check</span>
+                </div>
+                <div>
+                  <h3 className="font-extrabold">JourneySync solves all of these.</h3>
+                  <p className="mt-2 text-sm text-gray-300">One ride lobby, one shared route, live rider visibility, safety tools, and a ride record your group can trust.</p>
+                </div>
               </div>
-              <h3 className="font-extrabold">JourneySync solves all of these.</h3>
-              <p className="mt-2 text-sm text-gray-300">One ride lobby, one shared route, live rider visibility, safety tools, and a ride record your group can trust.</p>
             </motion.article>
           </motion.div>
         </div>
@@ -140,14 +143,9 @@ export function ProblemSolution() {
 const comparisonRows = [
   ['Navigation', 'Good', 'Links only', 'Hybrid Google Maps flow'],
   ['Live Tracking', 'Individual', 'Manual sharing', 'Built for the group'],
-  ['Ride Radar', 'No', 'No', 'Nearby active rides'],
   ['Ride Coordination', 'No', 'Chat noise', 'Lobby + synced route'],
   ['SOS', 'No', 'Manual calls', 'Ride safety context'],
-  ['Ride Replay', 'No', 'No', 'Planned ride history'],
-  ['Ride Analytics', 'No', 'No', 'Distance and pack insights'],
-  ['Achievements', 'No', 'No', 'Rider progression'],
-  ['Weather', 'Basic search', 'No', 'Ride-aware context'],
-  ['Fuel Stops', 'Search only', 'Chat only', 'Nearby essentials'],
+  ['Weather + Fuel', 'Search only', 'Chat only', 'Ride-aware essentials'],
   ['Group Management', 'No', 'Groups only', 'Ride crew state'],
 ];
 
@@ -155,7 +153,7 @@ export function Comparison() {
   return (
     <MotionSection
       id="comparison"
-      className="py-20 bg-white/60 dark:bg-gray-900/80"
+      className="py-16 bg-white/60 dark:bg-gray-900/80"
       onViewportEnter={() => trackEvent('comparison_viewed')}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -207,10 +205,10 @@ export function DemoSection() {
   return (
     <MotionSection
       id="demo"
-      className="py-20 bg-background-light dark:bg-background-dark"
+      className="py-16 bg-background-light dark:bg-background-dark"
       onViewportEnter={() => trackEvent('demo_viewed')}
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl download-glow">
           <div className="absolute inset-0 download-banner-glow pointer-events-none" />
           <div className="relative grid lg:grid-cols-[0.8fr_1.2fr] gap-8 items-center p-6 sm:p-10 lg:p-12">
@@ -225,7 +223,7 @@ export function DemoSection() {
               data-demo-open
               data-video="./assets/demovideo.mp4"
               onClick={() => trackEvent('watch_demo', { source: 'demo_section' })}
-              className="group relative aspect-video w-full overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-2xl"
+              className="group relative aspect-video w-full overflow-hidden rounded-[1.5rem] border border-white/10 bg-black shadow-2xl"
               variants={fadeUp}
               aria-label="Watch JourneySync demo video"
             >
@@ -248,7 +246,7 @@ export function DemoSection() {
 
 export function BuiltByRiders() {
   return (
-    <MotionSection id="built-by-riders" className="py-20 bg-background-light dark:bg-background-dark">
+    <MotionSection id="built-by-riders" className="py-16 bg-background-light dark:bg-background-dark">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-10 items-center">
           <SectionHeader
@@ -306,54 +304,49 @@ const testimonials = [
 
 export function Testimonials() {
   return (
-    <MotionSection id="testimonials" className="py-20 overflow-hidden bg-white/60 dark:bg-gray-900/80">
+    <MotionSection id="testimonials" className="py-16 overflow-hidden bg-white/60 dark:bg-gray-900/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeader
           eyebrow="Rider Feedback"
           title="What founding riders are asking for."
-          copy="Placeholder beta testimonials are structured for future backend replacement."
+          copy="Short beta signals from riders who understand the group-ride problem."
         />
-        <div className="overflow-hidden">
-          <motion.div className="testimonial-track flex gap-5 w-max" variants={container}>
-            {[...testimonials, ...testimonials].map((item, index) => (
-              <motion.article key={`${item.name}-${index}`} className="testimonial-card w-[320px] rounded-3xl p-6" variants={fadeUp}>
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-primary text-white grid place-items-center font-extrabold">
-                    {item.name.split(' ').map((part) => part[0]).join('')}
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-gray-900 dark:text-white">{item.name}</h3>
-                    <p className="text-xs text-gray-500">{item.location} · {item.bike}</p>
-                  </div>
+        <motion.div className="grid md:grid-cols-3 gap-5" variants={container}>
+          {testimonials.slice(0, 3).map((item) => (
+            <motion.article key={item.name} className="testimonial-card rounded-3xl p-6" variants={fadeUp}>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-primary text-white grid place-items-center font-extrabold">
+                  {item.name.split(' ').map((part) => part[0]).join('')}
                 </div>
-                <div className="mt-4 flex text-primary" aria-label="5 out of 5 rating">
-                  {'★★★★★'}
+                <div>
+                  <h3 className="font-extrabold text-gray-900 dark:text-white">{item.name}</h3>
+                  <p className="text-xs text-gray-500">{item.location} - {item.bike}</p>
                 </div>
-                <p className="mt-4 text-gray-700 dark:text-gray-200 leading-relaxed">“{item.quote}”</p>
-              </motion.article>
-            ))}
-          </motion.div>
-        </div>
+              </div>
+              <div className="mt-4 flex text-primary" aria-label="5 out of 5 rating">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <span key={index} className="material-icons-round text-base">star</span>
+                ))}
+              </div>
+              <p className="mt-4 text-gray-700 dark:text-gray-200 leading-relaxed">"{item.quote}"</p>
+            </motion.article>
+          ))}
+        </motion.div>
       </div>
     </MotionSection>
   );
 }
-
 const faqs = [
-  ['Is JourneySync free?', 'JourneySync is currently focused on closed beta riders. Core ride coordination is planned to stay accessible while premium capabilities evolve from rider feedback.'],
   ['Does it replace Google Maps?', 'No. JourneySync uses a hybrid flow: Google Maps handles turn-by-turn navigation while JourneySync maintains group ride state, tracking, and safety context.'],
   ['Why not just use WhatsApp?', 'WhatsApp is great for chat, but it does not know who missed a turn, where the pack is, what the route state is, or whether a rider needs help.'],
   ['Does everyone need the app?', 'For the best experience, every rider should join the lobby. The ride can still start with a smaller crew and expand as riders join.'],
-  ['How much battery does it consume?', 'The beta is being tuned for practical ride sessions with location updates balanced against battery impact.'],
-  ['How accurate is tracking?', 'Accuracy depends on device GPS, network conditions, and permissions. JourneySync surfaces ride context instead of pretending every point is perfect.'],
   ['Is my location private?', 'Ride location is designed around active ride context. Privacy and permission controls are a core part of the beta roadmap.'],
-  ['Can I use it on iPhone?', 'iOS support is planned through the beta path. Android APK access is available first.'],
   ['How do I join beta?', 'Use Join Closed Beta or the final CTA. We will use the beta list to prioritize active riders and groups.'],
 ];
 
 export function Faq() {
   return (
-    <MotionSection id="faq" className="py-20 bg-background-light dark:bg-background-dark">
+    <MotionSection id="faq" className="py-16 bg-background-light dark:bg-background-dark">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeader
           eyebrow="FAQ"

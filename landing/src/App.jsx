@@ -5,9 +5,7 @@ import {
   FinalCta,
   FooterAndModals,
   Hero,
-  HowItWorks,
   Navbar,
-  ProductSystem,
   Safety,
   ShellChrome,
 } from './components/LandingSections';
@@ -34,8 +32,6 @@ export default function App() {
         <SocialProof />
         <ProblemSolution />
         <Features />
-        <ProductSystem />
-        <HowItWorks />
         <Comparison />
         <DemoSection />
         <BuiltByRiders />
