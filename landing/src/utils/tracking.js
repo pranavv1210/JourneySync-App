@@ -23,4 +23,11 @@ export function trackEvent(name, payload = {}) {
   }
 }
 
+export function trackBetaEvent(name, payload = {}) {
+  trackEvent(name, {
+    page: 'beta',
+    ...payload,
+  });
+}
+
 export { analyticsConfig };
