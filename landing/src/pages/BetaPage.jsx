@@ -240,7 +240,7 @@ export default function BetaPage() {
         transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      <section className="relative z-10 mx-auto flex w-full max-w-[460px] flex-col items-center text-center">
+      <section className="beta-signup-wrapper relative z-10 flex flex-col items-center text-center">
         <motion.a
           href="/"
           aria-label="Return to JourneySync home"
