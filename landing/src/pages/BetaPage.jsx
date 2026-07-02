@@ -280,6 +280,13 @@ export default function BetaPage() {
     getDeviceId();
   }, []);
 
+  useEffect(() => {
+    document.body.classList.add('beta-page-lock');
+    return () => {
+      document.body.classList.remove('beta-page-lock');
+    };
+  }, []);
+
   function markStarted() {
     if (startedRef.current) return;
     startedRef.current = true;
@@ -361,7 +368,7 @@ export default function BetaPage() {
   }
 
   return (
-      <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f8f9ff] px-5 py-8 font-['Geist','Inter',sans-serif] text-[#121c2a] md:px-10">
+    <main className="relative flex h-[100svh] items-center justify-center overflow-hidden bg-[#f8f9ff] px-5 py-4 font-['Geist','Inter',sans-serif] text-[#121c2a] md:px-10">
       <BetaSeo />
 
       <div className="fixed inset-0 z-0">
@@ -386,7 +393,7 @@ export default function BetaPage() {
           initial={shouldReduceMotion ? false : { opacity: 0, y: 20, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.8, ease, delay: 0.1 }}
-          className="mb-6 flex flex-col items-center gap-3"
+          className="mb-4 flex flex-col items-center gap-2.5"
         >
           <a
             href="/"
@@ -406,15 +413,15 @@ export default function BetaPage() {
           initial={shouldReduceMotion ? false : { opacity: 0, y: 20, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.8, ease, delay: 0.2 }}
-          className="mb-8 space-y-3"
+          className="mb-5 space-y-2.5"
         >
           <h1 className="beta-signup-title">
             Join the JourneySync <span className="text-[#D97706]">Beta</span>
           </h1>
-          <p className="mx-auto max-w-[360px] text-[16px] font-normal leading-[1.55] text-[#554336]">
+          <p className="mx-auto max-w-[360px] text-[15px] font-normal leading-[1.45] text-[#554336]">
             Become one of the first riders helping shape the future of group motorcycle riding.
           </p>
-          <p className="mx-auto max-w-[310px] text-[14px] font-normal leading-[1.45] text-[#887364]">
+          <p className="mx-auto max-w-[310px] text-[13px] font-normal leading-[1.35] text-[#887364]">
             We're inviting a limited number of early riders before public launch.
           </p>
         </motion.div>

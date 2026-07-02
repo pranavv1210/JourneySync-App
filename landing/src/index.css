@@ -2,6 +2,11 @@
   display: contents;
 }
 
+body.beta-page-lock {
+  height: 100svh;
+  overflow: hidden;
+}
+
 .beta-signup-wrapper {
   box-sizing: border-box;
   margin-left: auto;
