@@ -6,6 +6,7 @@ import { trackBetaEvent } from '../utils/tracking';
 
 const DEVICE_ID_KEY = 'journeysync_beta_device_id';
 const REGISTERED_KEY = 'journeysync_beta_registered';
+const ease = [0.16, 1, 0.3, 1];
 
 function setMetaTag(name, content) {
   let tag = document.querySelector(`meta[name="${name}"]`);
@@ -77,51 +78,192 @@ function BetaSeo() {
   return null;
 }
 
+function ShaderBackground() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
+
+    const syncSize = () => {
+      const width = canvas.clientWidth || 1280;
+      const height = canvas.clientHeight || 720;
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+    };
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncSize) : null;
+    resizeObserver?.observe(canvas);
+    syncSize();
+
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return () => resizeObserver?.disconnect();
+
+    const vertexSource = `
+      attribute vec2 a_position;
+      varying vec2 v_texCoord;
+      void main() {
+        v_texCoord = a_position * 0.5 + 0.5;
+        gl_Position = vec4(a_position, 0.0, 1.0);
+      }
+    `;
+    const fragmentSource = `
+      precision highp float;
+      uniform float u_time;
+      uniform vec2 u_resolution;
+      uniform vec2 u_mouse;
+      varying vec2 v_texCoord;
+
+      vec3 colorBg = vec3(0.973, 0.976, 1.0);
+      vec3 colorOrange = vec3(0.85, 0.46, 0.02);
+      vec3 colorGreen = vec3(0.13, 0.30, 0.18);
+
+      float noise(vec2 p) {
+        return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+      }
+
+      void main() {
+        vec2 uv = v_texCoord;
+        vec2 p = -1.0 + 2.0 * uv;
+        p.x *= u_resolution.x / u_resolution.y;
+        vec2 mouse = (u_mouse / u_resolution) * 2.0 - 1.0;
+        mouse.y *= -1.0;
+
+        float t = u_time * 0.3;
+        vec2 b1 = vec2(0.5 * sin(t), 0.5 * cos(t * 1.2)) + mouse * 0.045;
+        float glow1 = smoothstep(1.5, 0.0, length(p - b1));
+
+        vec2 b2 = vec2(0.7 * cos(t * 0.8), 0.4 * sin(t * 1.5)) - mouse * 0.035;
+        float glow2 = smoothstep(1.2, 0.0, length(p - b2));
+
+        vec2 b3 = vec2(-0.6 * sin(t * 0.5), -0.5 * cos(t * 0.7));
+        float glow3 = smoothstep(1.8, 0.0, length(p - b3));
+
+        vec3 color = colorBg;
+        color = mix(color, colorOrange, glow1 * 0.15);
+        color = mix(color, colorGreen, glow2 * 0.08);
+        color = mix(color, colorOrange, glow3 * 0.1);
+        color += (noise(uv * 1000.0) - 0.5) * 0.02;
+
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+    const compile = (type, source) => {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      return shader;
+    };
+
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+    gl.linkProgram(program);
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+    const position = gl.getAttribLocation(program, 'a_position');
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uResolution = gl.getUniformLocation(program, 'u_resolution');
+    const uMouse = gl.getUniformLocation(program, 'u_mouse');
+    const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+
+    const handleMouseMove = (event) => {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      mouse.x = ((event.clientX - rect.left) / rect.width) * canvas.width;
+      mouse.y = (1 - ((event.clientY - rect.top) / rect.height)) * canvas.height;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+
+    let frame = 0;
+    const render = (time) => {
+      if (!resizeObserver) syncSize();
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.uniform1f(uTime, time * 0.001);
+      gl.uniform2f(uResolution, canvas.width, canvas.height);
+      gl.uniform2f(uMouse, mouse.x, mouse.y);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      frame = requestAnimationFrame(render);
+    };
+    frame = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('mousemove', handleMouseMove);
+      resizeObserver?.disconnect();
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-hidden="true" />;
+}
+
 function TrustRow() {
-  const badges = ['Free During Beta', 'Android Available', 'Privacy First'];
+  const badges = [
+    ['check', 'Free During Beta'],
+    ['smartphone', 'Android Available'],
+    ['shield', 'Privacy First'],
+  ];
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2.5 text-[12px] font-bold text-gray-600">
-      {badges.map((badge) => (
-        <span
-          key={badge}
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/65 bg-white/56 px-3 py-1.5 shadow-[0_8px_22px_rgba(31,25,18,0.05),inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl"
+    <motion.div
+      className="mt-12 flex flex-wrap justify-center gap-3"
+      initial="hidden"
+      animate="visible"
+      variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.35 } } }}
+    >
+      {badges.map(([icon, label]) => (
+        <motion.div
+          key={label}
+          variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
+          whileHover={{ y: -2 }}
+          className="glass-panel inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-1.5 shadow-[0_8px_26px_rgba(31,38,135,0.06)] backdrop-blur-[24px]"
         >
-          <span className="material-icons-round text-[13px] text-primary">check</span>
-          {badge}
-        </span>
+          <span className="material-symbols-outlined text-[14px] text-[#8d4b00]">{icon}</span>
+          <span className="text-[12px] font-semibold uppercase leading-none tracking-[0.05em] text-[#554336]">{label}</span>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }
 
 function SuccessState({ duplicate = false, deviceBlocked = false }) {
   const title = duplicate || deviceBlocked ? "You're already on the list." : 'Welcome to JourneySync!';
   const text = duplicate || deviceBlocked
-    ? "We'll email you as soon as beta access becomes available."
-    : "You're officially on the beta waitlist. We'll email you when your invitation is ready.";
+    ? "We'll notify you as soon as beta access becomes available."
+    : "You're officially on the beta waitlist. We'll notify you as soon as beta access becomes available.";
 
   return (
     <motion.div
       key="success"
       initial={{ opacity: 0, y: 18, scale: 0.97, filter: 'blur(10px)' }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, y: -12, scale: 0.98, filter: 'blur(8px)' }}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="text-center"
+      exit={{ opacity: 0, y: -16, scale: 0.98, filter: 'blur(8px)' }}
+      transition={{ duration: 0.5, ease }}
+      className="glass-panel flex w-full flex-col items-center rounded-[32px] p-8 text-center"
       role="status"
       aria-live="polite"
     >
       <motion.div
-        className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-green-500 text-white shadow-2xl shadow-green-500/20"
+        className="relative mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#b15f00]/20 text-[#b15f00]"
         initial={{ scale: 0.72, rotate: -8 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 18 }}
       >
-        <span className="material-icons-round text-5xl">check</span>
+        <span className="material-symbols-outlined text-4xl">check_circle</span>
       </motion.div>
-      <h1 className="mt-8 text-3xl font-extrabold leading-tight tracking-tight text-gray-900 sm:text-4xl">{title}</h1>
-      <p className="mx-auto mt-4 max-w-sm text-base leading-relaxed text-gray-600">{text}</p>
+      <h3 className="mb-2 text-[24px] font-semibold leading-[1.3] text-[#121c2a]">{title}</h3>
+      <p className="text-[16px] leading-[1.5] text-[#554336]">{text}</p>
     </motion.div>
   );
 }
@@ -148,12 +290,12 @@ export default function BetaPage() {
     if (shouldReduceMotion) return;
 
     confetti({
-      particleCount: 48,
-      spread: 58,
-      startVelocity: 30,
+      particleCount: 42,
+      spread: 56,
+      startVelocity: 28,
       scalar: 0.72,
       origin: { y: 0.58 },
-      colors: ['#db7706', '#f59e0b', '#22c55e', '#ffffff'],
+      colors: ['#b15f00', '#ffb77d', '#ffdcc3'],
     });
   }
 
@@ -215,71 +357,89 @@ export default function BetaPage() {
 
     window.setTimeout(() => {
       window.location.href = '/beta/download';
-    }, 2800);
+    }, 2600);
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#fbf7f1] px-6 py-10 text-gray-900">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f8f9ff] px-5 py-10 font-['Geist','Inter',sans-serif] text-[#121c2a] md:px-10">
       <BetaSeo />
 
-      <div className="absolute inset-0 map-texture opacity-35" aria-hidden="true" />
-      <div className="absolute left-1/2 top-[-12rem] h-[28rem] w-[28rem] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" aria-hidden="true" />
-      <motion.div
-        className="absolute -right-28 top-28 h-72 w-72 rounded-full bg-orange-200/45 blur-3xl"
-        aria-hidden="true"
-        animate={shouldReduceMotion ? undefined : { y: [0, 18, 0], x: [0, -12, 0] }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-green-200/35 blur-3xl"
-        aria-hidden="true"
-        animate={shouldReduceMotion ? undefined : { y: [0, -18, 0], x: [0, 12, 0] }}
-        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
-      />
+      <div className="fixed inset-0 z-0">
+        <ShaderBackground />
+        <div className="beta-plus-grid absolute inset-0 pointer-events-none" aria-hidden="true" />
+        <motion.div
+          className="absolute -right-24 top-16 h-72 w-72 rounded-full bg-[#D97706]/10 blur-3xl"
+          aria-hidden="true"
+          animate={shouldReduceMotion ? undefined : { x: [0, -12, 0], y: [0, 10, 0] }}
+          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute -bottom-28 -left-24 h-80 w-80 rounded-full bg-[#214d2e]/10 blur-3xl"
+          aria-hidden="true"
+          animate={shouldReduceMotion ? undefined : { x: [0, 12, 0], y: [0, -10, 0] }}
+          transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
 
-      <section className="beta-signup-wrapper relative z-10 flex flex-col items-center text-center">
-        <motion.a
-          href="/"
-          aria-label="Return to JourneySync home"
-          initial={shouldReduceMotion ? false : { opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="inline-flex h-[52px] items-center gap-3 rounded-full border border-white/70 bg-white/62 px-4.5 text-sm font-extrabold text-gray-800 shadow-lg shadow-gray-900/5 backdrop-blur-2xl transition hover:-translate-y-0.5 hover:text-primary"
+      <section className="beta-signup-wrapper relative z-10 mx-auto flex w-full max-w-[460px] flex-col items-center text-center">
+        <motion.div
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 20, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.8, ease, delay: 0.1 }}
+          className="mb-8 flex flex-col items-center gap-4"
         >
-          <img src="/logo.png" alt="" className="h-8 w-8 rounded-[0.65rem] object-cover" />
-          JourneySync
-        </motion.a>
+          <a
+            href="/"
+            aria-label="Return to JourneySync home"
+            className="glass-panel flex items-center gap-2 rounded-full px-[26px] py-2.5 text-[#8d4b00] shadow-[0_12px_36px_rgba(31,38,135,0.08)] backdrop-blur-[26px] transition-transform hover:-translate-y-0.5"
+          >
+            <span className="material-symbols-outlined text-[26px]">route</span>
+            <span className="text-[24px] font-semibold leading-[1.3]">JourneySync</span>
+          </a>
 
-        <AnimatePresence mode="wait">
-          {status === 'success' || status === 'duplicate' || status === 'device' ? (
-            <SuccessState duplicate={status === 'duplicate'} deviceBlocked={status === 'device'} />
-          ) : (
-            <motion.div
-              key="form"
-              initial={shouldReduceMotion ? false : { opacity: 0, y: 18, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -12, filter: 'blur(8px)' }}
-              transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-6 w-full"
-            >
-              <div className="inline-flex rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary backdrop-blur-xl">
-                Beta Access
-              </div>
+          <div className="glass-panel rounded-full bg-white/30 px-3 py-1 text-[12px] font-semibold uppercase leading-none tracking-[0.05em] text-[#554336]">
+            Beta Access
+          </div>
+        </motion.div>
 
-              <h1 className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight text-gray-900 sm:text-[2.75rem]">
-                Join the JourneySync <span className="text-primary">Beta</span>
-              </h1>
+        <motion.div
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 20, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.8, ease, delay: 0.2 }}
+          className="mb-10 space-y-4"
+        >
+          <h1 className="text-[36px] font-bold leading-[1.2] tracking-[-0.02em] text-[#121c2a] md:text-[48px] md:leading-[1.1]">
+            Join the JourneySync <span className="text-[#D97706]">Beta</span>
+          </h1>
+          <p className="mx-auto max-w-sm text-[18px] font-normal leading-[1.6] text-[#554336]">
+            Become one of the first riders helping shape the future of group motorcycle riding.
+          </p>
+          <p className="mx-auto max-w-xs text-[16px] font-normal leading-[1.5] text-[#887364]">
+            We're inviting a limited number of early riders before public launch.
+          </p>
+        </motion.div>
 
-              <p className="mx-auto mt-4 max-w-[420px] text-[15px] leading-6 text-gray-600">
-                Become one of the first riders helping shape the future of group motorcycle riding.
-              </p>
-              <p className="mx-auto mt-2 max-w-[390px] text-[13px] leading-5 text-gray-500">
-                We're inviting a limited number of early riders before public launch.
-              </p>
-
-              <form className="mt-9 w-full" onSubmit={handleSubmit} noValidate>
+        <motion.div
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 20, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.8, ease, delay: 0.3 }}
+          className="relative w-full"
+        >
+          <AnimatePresence mode="wait">
+            {status === 'success' || status === 'duplicate' || status === 'device' ? (
+              <SuccessState duplicate={status === 'duplicate'} deviceBlocked={status === 'device'} />
+            ) : (
+              <motion.form
+                key="form"
+                className="flex w-full flex-col gap-4"
+                onSubmit={handleSubmit}
+                noValidate
+                exit={{ opacity: 0, y: -18, filter: 'blur(10px)' }}
+                transition={{ duration: 0.48, ease }}
+              >
                 <label className="sr-only" htmlFor="beta-email">Email address</label>
-                <div className="relative">
-                  <span className="material-icons-round pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[21px] text-gray-400">mail</span>
+                <div className="group relative w-full">
+                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#dbc2b0] transition-colors group-focus-within:text-[#b15f00]">mail</span>
                   <input
                     id="beta-email"
                     type="email"
@@ -290,10 +450,11 @@ export default function BetaPage() {
                       setError('');
                     }}
                     placeholder="Enter your email address"
+                    required
                     autoComplete="email"
                     aria-invalid={Boolean(error)}
                     aria-describedby={error ? 'beta-email-error' : undefined}
-                    className="h-14 w-full rounded-2xl border border-white/70 bg-white/68 py-4 pl-14 pr-4 text-[15px] font-semibold text-gray-900 shadow-[0_14px_35px_rgba(31,25,18,0.07),inset_0_1px_0_rgba(255,255,255,0.72)] outline-none backdrop-blur-2xl transition duration-200 placeholder:text-gray-400 focus:border-primary/70 focus:bg-white/88 focus:shadow-[0_0_0_4px_rgba(219,119,6,0.13),0_18px_42px_rgba(31,25,18,0.10),inset_0_1px_0_rgba(255,255,255,0.82)]"
+                    className="glass-panel input-glass h-14 w-full rounded-[24px] border-white/60 bg-white/50 py-4 pl-12 pr-4 text-[16px] font-normal leading-[1.5] text-[#121c2a] caret-[#D97706] outline-none transition-all duration-300 placeholder:text-[#dbc2b0] focus:border-[#b15f00]"
                   />
                 </div>
 
@@ -302,7 +463,7 @@ export default function BetaPage() {
                     id="beta-email-error"
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 text-left text-sm font-semibold text-red-600"
+                    className="text-left text-sm font-semibold text-red-600"
                   >
                     {error}
                   </motion.p>
@@ -312,29 +473,30 @@ export default function BetaPage() {
                   type="submit"
                   disabled={submitting}
                   whileHover={submitting || shouldReduceMotion ? undefined : { y: -2, scale: 1.01 }}
-                  whileTap={submitting || shouldReduceMotion ? undefined : { scale: 0.985 }}
-                  className="mt-[18px] flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-[#f09213] via-[#df7d05] to-[#b85d00] text-[15px] font-extrabold text-white shadow-[0_18px_40px_rgba(189,97,0,0.30)] transition duration-200 hover:shadow-[0_22px_48px_rgba(189,97,0,0.36)] disabled:cursor-not-allowed disabled:opacity-75"
+                  whileTap={submitting || shouldReduceMotion ? undefined : { scale: 0.98 }}
+                  className="button-glow group relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-[24px] bg-gradient-to-r from-[#D97706] to-[#b15f00] py-4 text-[18px] font-semibold leading-[1.6] text-white shadow-[0_14px_30px_-10px_rgba(177,95,0,0.5)] transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-80"
                 >
-                  {submitting ? (
-                    <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/45 border-t-white" aria-hidden="true" />
-                      Joining...
-                    </>
-                  ) : (
-                    <>
-                      Join Beta
-                      <span className="material-icons-round text-[19px]">arrow_forward</span>
-                    </>
-                  )}
+                  <div className="absolute inset-0 translate-y-full bg-white/20 transition-transform duration-300 ease-out group-hover:translate-y-0" />
+                  <span className="relative z-10 flex items-center gap-2">
+                    {submitting ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/45 border-t-white" aria-hidden="true" />
+                        Joining...
+                      </>
+                    ) : (
+                      <>
+                        Join Beta
+                        <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
+                      </>
+                    )}
+                  </span>
                 </motion.button>
-              </form>
+              </motion.form>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
-              <div className="mt-6">
-                <TrustRow />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <TrustRow />
       </section>
     </main>
   );

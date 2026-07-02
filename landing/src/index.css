@@ -6,10 +6,36 @@
   box-sizing: border-box;
   margin-left: auto;
   margin-right: auto;
-  max-width: 432px;
+  max-width: 460px;
   padding-bottom: 0 !important;
   padding-top: 0 !important;
   width: 100%;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(22px) saturate(1.16);
+  -webkit-backdrop-filter: blur(22px) saturate(1.16);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.beta-plus-grid {
+  background-image: radial-gradient(#dbc2b0 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.3;
+}
+
+.input-glass:focus {
+  box-shadow: 0 0 0 2px #b15f00, 0 0 20px #ffb77d, 0 14px 30px rgba(31, 25, 18, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+.input-glass:not(:placeholder-shown)::placeholder {
+  opacity: 0.42;
+}
+
+.button-glow:hover {
+  box-shadow: 0 10px 25px -5px #b15f00, 0 18px 40px rgba(177, 95, 0, 0.22);
 }
 
 body section:not(#hero) {
