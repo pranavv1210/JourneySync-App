@@ -217,7 +217,7 @@ function TrustRow() {
 
   return (
     <motion.div
-      className="mt-8 flex flex-wrap justify-center gap-2"
+      className="mt-7 flex flex-wrap justify-center gap-2"
       initial="hidden"
       animate="visible"
       variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.35 } } }}
@@ -227,10 +227,10 @@ function TrustRow() {
           key={label}
           variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
           whileHover={{ y: -2 }}
-          className="glass-panel inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 shadow-[0_8px_22px_rgba(31,38,135,0.05)] backdrop-blur-[24px]"
+          className="glass-panel inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-full bg-white/20 px-2.5 py-1 shadow-[0_6px_18px_rgba(31,38,135,0.045)] backdrop-blur-[24px]"
         >
-          <span className="material-symbols-outlined text-[13px] text-[#8d4b00]">{icon}</span>
-          <span className="text-[10.5px] font-semibold uppercase leading-none tracking-[0.045em] text-[#554336]">{label}</span>
+          <span className="material-symbols-outlined text-[12px] text-[#8d4b00]">{icon}</span>
+          <span className="text-[9.5px] font-semibold uppercase leading-none tracking-[0.035em] text-[#554336]">{label}</span>
         </motion.div>
       ))}
     </motion.div>
