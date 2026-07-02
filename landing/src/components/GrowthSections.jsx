@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { trackEvent } from '../utils/tracking';
 
@@ -186,12 +187,21 @@ export function Comparison() {
         </motion.div>
         <motion.div className="md:hidden space-y-4" variants={container}>
           {comparisonRows.map(([capability, maps, whatsapp, js]) => (
-            <motion.article key={capability} className="feature-card rounded-3xl p-5" variants={fadeUp}>
-              <h3 className="font-extrabold text-gray-900 dark:text-white">{capability}</h3>
-              <div className="mt-4 grid gap-3 text-sm">
-                <p><span className="font-bold">Google Maps:</span> {maps}</p>
-                <p><span className="font-bold">WhatsApp:</span> {whatsapp}</p>
-                <p className="text-primary"><span className="font-bold">JourneySync:</span> {js}</p>
+            <motion.article key={capability} className="feature-card rounded-2xl p-4" variants={fadeUp}>
+              <h3 className="text-sm font-extrabold uppercase tracking-wide text-gray-900 dark:text-white">{capability}</h3>
+              <div className="mt-4 grid gap-2 text-sm">
+                <div className="rounded-xl bg-white/60 p-3">
+                  <span className="block text-xs font-extrabold uppercase tracking-wide text-gray-500">Google Maps</span>
+                  <span className="mt-1 block text-gray-800">{maps}</span>
+                </div>
+                <div className="rounded-xl bg-white/60 p-3">
+                  <span className="block text-xs font-extrabold uppercase tracking-wide text-gray-500">WhatsApp</span>
+                  <span className="mt-1 block text-gray-800">{whatsapp}</span>
+                </div>
+                <div className="rounded-xl bg-primary/10 p-3">
+                  <span className="block text-xs font-extrabold uppercase tracking-wide text-primary">JourneySync</span>
+                  <span className="mt-1 block font-bold text-gray-900">{js}</span>
+                </div>
               </div>
             </motion.article>
           ))}
@@ -218,25 +228,24 @@ export function DemoSection() {
               title="See the ride layer in motion."
               copy="Watch how a group can start together, stay visible, and move through the ride with less coordination friction."
             />
-            <motion.button
-              type="button"
-              data-demo-open
-              data-video="./assets/demovideo.mp4"
-              onClick={() => trackEvent('watch_demo', { source: 'demo_section' })}
-              className="group relative aspect-video w-full lg:max-w-md lg:justify-self-end overflow-hidden rounded-[1.25rem] border border-white/10 bg-black shadow-2xl"
+            <motion.div
+              className="relative aspect-video w-full lg:max-w-md lg:justify-self-end overflow-hidden rounded-[1.25rem] border border-white/10 bg-black shadow-2xl"
               variants={fadeUp}
-              aria-label="Watch JourneySync demo video"
+              aria-label="JourneySync demo video"
             >
-              <video className="h-full w-full object-cover opacity-80" preload="metadata" muted playsInline>
+              <video
+                className="h-full w-full object-cover opacity-95"
+                preload="metadata"
+                muted
+                playsInline
+                autoPlay
+                loop
+                aria-label="JourneySync product demo preview"
+                onPlay={() => trackEvent('demo_viewed', { source: 'inline_autoplay' })}
+              >
                 <source src="./assets/demovideo.mp4" type="video/mp4" />
               </video>
-              <span className="absolute inset-0 bg-black/20" />
-              <span className="absolute inset-0 grid place-items-center">
-                <span className="grid h-16 w-16 place-items-center rounded-full bg-white text-primary shadow-2xl transition-transform group-hover:scale-105">
-                  <span className="material-icons-round text-3xl">play_arrow</span>
-                </span>
-              </span>
-            </motion.button>
+            </motion.div>
           </div>
         </div>
       </div>
@@ -345,6 +354,8 @@ const faqs = [
 ];
 
 export function Faq() {
+  const [openQuestion, setOpenQuestion] = useState(null);
+
   return (
     <MotionSection id="faq" className="py-16 bg-background-light dark:bg-background-dark">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -354,10 +365,19 @@ export function Faq() {
         />
         <motion.div className="space-y-4" variants={container}>
           {faqs.map(([question, answer]) => (
-            <motion.article key={question} className="faq-item rounded-3xl p-5" variants={fadeUp}>
+            <motion.article
+              key={question}
+              className={`faq-item rounded-3xl p-5 ${openQuestion === question ? 'open' : ''}`}
+              variants={fadeUp}
+            >
               <button
                 className="faq-toggle w-full flex items-center justify-between gap-4 text-left"
-                aria-expanded="false"
+                aria-expanded={openQuestion === question}
+                onClick={() => {
+                  const next = openQuestion === question ? null : question;
+                  setOpenQuestion(next);
+                  if (next) trackEvent('faq_expand', { question });
+                }}
               >
                 <span className="font-extrabold text-gray-900 dark:text-white">{question}</span>
                 <span className="material-icons-round text-primary">expand_more</span>
@@ -440,6 +460,42 @@ export function BetaDownloadModal() {
             Request Beta Access
           </a>
         </div>
+      </div>
+    </div>
+  );
+}
+
+export function LegalInfoModal() {
+  return (
+    <div
+      id="legal-modal"
+      className="fixed inset-0 z-[99999] hidden items-center justify-center px-4 py-8"
+      aria-hidden="true"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/70"
+        data-close
+        aria-label="Close information modal"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="legal-title"
+        className="relative max-h-[84vh] w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/15 bg-white p-6 text-gray-900 shadow-2xl dark:bg-[#171717] dark:text-white"
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <h2 id="legal-title" className="text-2xl font-extrabold">Info</h2>
+          <button
+            id="legal-close"
+            type="button"
+            className="grid h-10 w-10 flex-none place-items-center rounded-full bg-gray-100 text-gray-800 transition-colors hover:bg-gray-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+            aria-label="Close"
+          >
+            <span className="material-icons-round">close</span>
+          </button>
+        </div>
+        <div id="legal-content" className="max-h-[64vh] overflow-y-auto pr-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300" />
       </div>
     </div>
   );

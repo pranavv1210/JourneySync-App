@@ -15,6 +15,7 @@ import {
   Comparison,
   DemoSection,
   Faq,
+  LegalInfoModal,
   ProblemSolution,
   SocialProof,
   Testimonials as GrowthTestimonials,
@@ -44,6 +45,7 @@ export default function App() {
       </main>
       <FooterAndModals />
       <BetaDownloadModal />
+      <LegalInfoModal />
     </>
   );
 }

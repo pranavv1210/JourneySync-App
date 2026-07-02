@@ -144,15 +144,6 @@ export function useLandingRuntime() {
     }, { threshold: 0.5 });
     document.querySelectorAll('.stat-number').forEach(el => countObserver.observe(el));
 
-    document.querySelectorAll('.faq-toggle').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        const item = btn.closest('.faq-item');
-        const open = item.classList.toggle('open');
-        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        if(open) trackEvent('faq_expand', { question: btn.innerText.trim().replace(/\s+/g, ' ') });
-      });
-    });
-
     document.addEventListener('click', function(e){
       const target = e.target.closest && e.target.closest('a, button');
       if(!target) return;
@@ -160,7 +151,7 @@ export function useLandingRuntime() {
       const href = target.getAttribute('href') || '';
       if(text.includes('Join Closed Beta') || text.includes('Join Beta')) trackEvent('hero_cta', { label: text || 'Join Beta' });
       if(text.includes('Download Android') || text.includes('Download APK')) trackEvent('apk_download', { label: text });
-      if(text.includes('Watch Demo') || target.matches('[data-demo-open]')) trackEvent('watch_demo', { label: text || 'Demo' });
+      if(text.includes('Watch Demo')) trackEvent('watch_demo', { label: text || 'Demo' });
       if(href.includes('instagram.com')) trackEvent('instagram', { href });
       if(href.includes('github.com')) trackEvent('github', { href });
       if(href.includes('linkedin.com')) trackEvent('linkedin', { href });
@@ -553,57 +544,6 @@ journeysync.app@gmail.com</pre>
       }
     });
   })();
-
-  // Demo video modal handlers
-  (function(){
-    const buttons = Array.from(document.querySelectorAll('[data-demo-open], #watch-demo-btn'));
-    const vmodal = document.getElementById('video-modal');
-    const vclose = document.getElementById('video-close');
-    const voverlay = vmodal && vmodal.querySelector('[data-close-video]');
-    const video = document.getElementById('demo-video');
-    let _last = null;
-    if(!buttons.length || !vmodal || !video) return;
-
-    function openVideo(src){
-      _last = document.activeElement;
-      if(src) {
-        // update source if provided
-        const s = video.querySelector('source');
-        if(s) s.src = src;
-        try{ video.load(); }catch{}
-      }
-      document.body.style.overflow = 'hidden';
-      document.body.classList.add('modal-open');
-      vmodal.classList.remove('hidden');
-      vmodal.setAttribute('aria-hidden','false');
-      trackEvent('demo_viewed', { source: src || './assets/demovideo.mp4' });
-      (vclose || video).focus();
-    }
-
-    function closeVideo(){
-      vmodal.classList.add('hidden');
-      vmodal.setAttribute('aria-hidden','true');
-      try{ video.pause(); video.currentTime = 0; }catch{}
-      // reset source to stop downloads (optional)
-      const s = video.querySelector('source');
-      if(s) s.src = s.getAttribute('data-default') || s.src;
-      document.body.style.overflow = '';
-      document.body.classList.remove('modal-open');
-      if(_last && typeof _last.focus === 'function') _last.focus();
-    }
-
-    buttons.forEach(function(btn){
-      btn.addEventListener('click', function(e){
-        e.preventDefault();
-        const src = this.getAttribute('data-video') || './assets/demovideo.mp4';
-        openVideo(src);
-      });
-    });
-    if(vclose) vclose.addEventListener('click', closeVideo);
-    if(voverlay) voverlay.addEventListener('click', closeVideo);
-    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeVideo(); });
-  })();
-
 
   function handleHeaderDownloadCTA(e) {
     if(e) e.preventDefault();

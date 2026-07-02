@@ -34,6 +34,29 @@ main > section:not(#hero) + section {
   display: flex;
 }
 
+#legal-modal:not(.hidden) {
+  display: flex;
+}
+
+#demo h2 {
+  color: #fff !important;
+}
+
+#demo p {
+  color: rgba(229, 231, 235, .86) !important;
+}
+
+#demo video {
+  background: #0b0b0b;
+}
+
+#download .flex > a,
+#download .flex > button,
+#download-banner .flex > a,
+#download-banner .flex > button {
+  min-height: 3.5rem;
+}
+
 .react-static-chunk .stagger-children.is-visible > *,
 .react-static-chunk .section-reveal.is-visible .stagger-children > * {
   opacity: 1;
@@ -191,5 +214,7 @@ a:focus-visible {
 
   #comparison .feature-card {
     overflow-wrap: anywhere;
+    border-radius: 1.25rem;
+    padding: 1rem;
   }
 }
