@@ -217,7 +217,7 @@ function TrustRow() {
 
   return (
     <motion.div
-      className="mt-12 flex flex-wrap justify-center gap-3"
+      className="mt-8 flex flex-wrap justify-center gap-2"
       initial="hidden"
       animate="visible"
       variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.35 } } }}
@@ -227,10 +227,10 @@ function TrustRow() {
           key={label}
           variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
           whileHover={{ y: -2 }}
-          className="glass-panel inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-1.5 shadow-[0_8px_26px_rgba(31,38,135,0.06)] backdrop-blur-[24px]"
+          className="glass-panel inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 shadow-[0_8px_22px_rgba(31,38,135,0.05)] backdrop-blur-[24px]"
         >
-          <span className="material-symbols-outlined text-[14px] text-[#8d4b00]">{icon}</span>
-          <span className="text-[12px] font-semibold uppercase leading-none tracking-[0.05em] text-[#554336]">{label}</span>
+          <span className="material-symbols-outlined text-[13px] text-[#8d4b00]">{icon}</span>
+          <span className="text-[10.5px] font-semibold uppercase leading-none tracking-[0.045em] text-[#554336]">{label}</span>
         </motion.div>
       ))}
     </motion.div>
@@ -361,7 +361,7 @@ export default function BetaPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f8f9ff] px-5 py-10 font-['Geist','Inter',sans-serif] text-[#121c2a] md:px-10">
+      <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f8f9ff] px-5 py-8 font-['Geist','Inter',sans-serif] text-[#121c2a] md:px-10">
       <BetaSeo />
 
       <div className="fixed inset-0 z-0">
@@ -381,19 +381,19 @@ export default function BetaPage() {
         />
       </div>
 
-      <section className="beta-signup-wrapper relative z-10 mx-auto flex w-full max-w-[460px] flex-col items-center text-center">
+      <section className="beta-signup-wrapper relative z-10 mx-auto flex w-full flex-col items-center text-center">
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 20, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.8, ease, delay: 0.1 }}
-          className="mb-8 flex flex-col items-center gap-4"
+          className="mb-6 flex flex-col items-center gap-3"
         >
           <a
             href="/"
             aria-label="Return to JourneySync home"
             className="glass-panel beta-brand-pill"
           >
-            <img src="/logo.png" alt="" className="h-8 w-8 rounded-[0.65rem] object-cover shadow-sm" />
+            <img src="/logo.png" alt="" className="h-7 w-7 rounded-[0.6rem] object-cover shadow-sm" />
             <span>JourneySync</span>
           </a>
 
@@ -406,15 +406,15 @@ export default function BetaPage() {
           initial={shouldReduceMotion ? false : { opacity: 0, y: 20, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.8, ease, delay: 0.2 }}
-          className="mb-10 space-y-4"
+          className="mb-8 space-y-3"
         >
           <h1 className="beta-signup-title">
             Join the JourneySync <span className="text-[#D97706]">Beta</span>
           </h1>
-          <p className="mx-auto max-w-sm text-[18px] font-normal leading-[1.6] text-[#554336]">
+          <p className="mx-auto max-w-[360px] text-[16px] font-normal leading-[1.55] text-[#554336]">
             Become one of the first riders helping shape the future of group motorcycle riding.
           </p>
-          <p className="mx-auto max-w-xs text-[16px] font-normal leading-[1.5] text-[#887364]">
+          <p className="mx-auto max-w-[310px] text-[14px] font-normal leading-[1.45] text-[#887364]">
             We're inviting a limited number of early riders before public launch.
           </p>
         </motion.div>
@@ -439,7 +439,7 @@ export default function BetaPage() {
               >
                 <label className="sr-only" htmlFor="beta-email">Email address</label>
                 <div className="group relative w-full">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#dbc2b0] transition-colors group-focus-within:text-[#b15f00]">mail</span>
+                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[22px] text-[#dbc2b0] transition-colors group-focus-within:text-[#b15f00]">mail</span>
                   <input
                     id="beta-email"
                     type="email"
