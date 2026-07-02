@@ -11,8 +11,8 @@ const initialForm = {
   platform: 'Android',
 };
 
-const fieldClasses = 'h-14 w-full rounded-2xl border border-white/60 bg-white/75 px-4 text-base font-semibold text-gray-900 shadow-inner shadow-white/30 outline-none backdrop-blur-md transition placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/15';
-const labelClasses = 'block text-sm font-extrabold text-gray-900';
+const fieldClasses = 'w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 shadow-sm outline-none transition-colors placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:ring-offset-1';
+const labelClasses = 'block text-sm font-semibold text-gray-700';
 
 function setMetaTag(name, content) {
   let tag = document.querySelector(`meta[name="${name}"]`);
@@ -278,14 +278,14 @@ export default function BetaPage() {
                   </div>
                 </div>
 
-                <form className="space-y-5 rounded-[1.5rem] border border-white/70 bg-white/62 p-4 shadow-xl shadow-gray-900/5 backdrop-blur-2xl sm:p-5 lg:p-6" onSubmit={handleSubmit} noValidate>
+                <form className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg sm:p-8" onSubmit={handleSubmit} noValidate>
                   <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-                    <div className="space-y-2.5">
+                    <div className="space-y-1.5">
                       <label className={labelClasses} htmlFor="beta-name">Full Name *</label>
                       <input id="beta-name" className={fieldClasses} value={form.name} onFocus={markStarted} onChange={(event) => updateField('name', event.target.value)} autoComplete="name" aria-invalid={Boolean(errors.name)} />
                       {errors.name && <p className="text-sm font-semibold text-red-600">{errors.name}</p>}
                     </div>
-                    <div className="space-y-2.5">
+                    <div className="space-y-1.5">
                       <label className={labelClasses} htmlFor="beta-email">Email Address *</label>
                       <input id="beta-email" type="email" className={fieldClasses} value={form.email} onFocus={markStarted} onChange={(event) => updateField('email', event.target.value)} autoComplete="email" aria-invalid={Boolean(errors.email)} />
                       {errors.email && <p className="text-sm font-semibold text-red-600">{errors.email}</p>}
@@ -293,34 +293,37 @@ export default function BetaPage() {
                   </div>
 
                   <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-                    <div className="space-y-2.5">
+                    <div className="space-y-1.5">
                       <label className={labelClasses} htmlFor="beta-city">City *</label>
                       <input id="beta-city" className={fieldClasses} value={form.city} onFocus={markStarted} onChange={(event) => updateField('city', event.target.value)} autoComplete="address-level2" aria-invalid={Boolean(errors.city)} />
                       {errors.city && <p className="text-sm font-semibold text-red-600">{errors.city}</p>}
                     </div>
-                    <div className="space-y-2.5">
+                    <div className="space-y-1.5">
                       <label className={labelClasses} htmlFor="beta-vehicle">Vehicle *</label>
                       <input id="beta-vehicle" className={fieldClasses} value={form.vehicle} onFocus={markStarted} onChange={(event) => updateField('vehicle', event.target.value)} placeholder="GT650, Himalayan, Duke 390" aria-invalid={Boolean(errors.vehicle)} />
                       {errors.vehicle && <p className="text-sm font-semibold text-red-600">{errors.vehicle}</p>}
                     </div>
                   </div>
 
-                  <fieldset className="space-y-2.5 pt-1">
+                  <fieldset className="space-y-3 pt-2">
                     <legend className={labelClasses}>Platform</legend>
-                    <div className="grid rounded-2xl border border-white/70 bg-white/55 p-1.5 shadow-inner shadow-white/30 backdrop-blur-xl sm:grid-cols-2" role="radiogroup" aria-label="Choose platform">
+                    <div className="flex gap-6" role="radiogroup" aria-label="Choose platform">
                       {['Android', 'iPhone'].map((platform) => {
                         const selected = form.platform === platform;
                         return (
-                          <button
-                            key={platform}
-                            type="button"
-                            className={`min-h-12 rounded-xl px-4 py-3 text-sm font-extrabold transition ${selected ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'}`}
-                            role="radio"
-                            aria-checked={selected}
-                            onClick={() => updateField('platform', platform)}
-                          >
-                            {platform}
-                          </button>
+                          <label key={platform} className="flex cursor-pointer items-center gap-2.5">
+                            <input
+                              type="radio"
+                              name="platform"
+                              value={platform}
+                              checked={selected}
+                              onChange={() => updateField('platform', platform)}
+                              className="h-5 w-5 border-gray-300 text-primary accent-primary focus:ring-primary"
+                            />
+                            <span className="text-base font-medium text-gray-800">
+                              {platform}
+                            </span>
+                          </label>
                         );
                       })}
                     </div>
@@ -336,7 +339,7 @@ export default function BetaPage() {
                     type="submit"
                     disabled={submitting}
                     whileTap={{ scale: submitting ? 1 : 0.98 }}
-                    className="premium-btn flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary-dark px-6 py-3.5 text-base font-extrabold text-white shadow-xl shadow-primary/25 transition hover:-translate-y-0.5 hover:bg-[#8f4a03] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3.5 text-base font-bold text-white shadow-md transition-colors hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <span className="material-icons-round">{submitting ? 'progress_activity' : 'groups'}</span>
                     {submitting ? 'Submitting...' : 'Join Beta'}
