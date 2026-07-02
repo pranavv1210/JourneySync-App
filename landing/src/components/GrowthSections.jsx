@@ -59,7 +59,7 @@ const stats = [
 
 export function SocialProof() {
   return (
-    <MotionSection id="beta-signal" className="py-14 bg-white/60 dark:bg-gray-900/80">
+    <MotionSection id="beta-signal" className="pt-14 pb-20 md:pt-16 md:pb-24 bg-white/60 dark:bg-gray-900/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeader
           eyebrow="Beta Signal"
@@ -95,7 +95,7 @@ const problems = [
 
 export function ProblemSolution() {
   return (
-    <MotionSection id="problems" className="py-16 bg-background-light dark:bg-background-dark">
+    <MotionSection id="problems" className="pt-20 pb-16 md:pt-24 md:pb-20 bg-background-light dark:bg-background-dark">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-[0.92fr_1.08fr] gap-10 items-start">
           <SectionHeader
@@ -205,13 +205,13 @@ export function DemoSection() {
   return (
     <MotionSection
       id="demo"
-      className="py-16 bg-background-light dark:bg-background-dark"
+      className="py-14 bg-background-light dark:bg-background-dark"
       onViewportEnter={() => trackEvent('demo_viewed')}
     >
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl download-glow">
           <div className="absolute inset-0 download-banner-glow pointer-events-none" />
-          <div className="relative grid lg:grid-cols-[0.8fr_1.2fr] gap-8 items-center p-6 sm:p-10 lg:p-12">
+          <div className="relative grid lg:grid-cols-2 gap-6 lg:gap-8 items-center p-6 sm:p-8 lg:p-10">
             <SectionHeader
               align="left"
               eyebrow="Product Demo"
@@ -223,7 +223,7 @@ export function DemoSection() {
               data-demo-open
               data-video="./assets/demovideo.mp4"
               onClick={() => trackEvent('watch_demo', { source: 'demo_section' })}
-              className="group relative aspect-video w-full overflow-hidden rounded-[1.5rem] border border-white/10 bg-black shadow-2xl"
+              className="group relative aspect-video w-full lg:max-w-md lg:justify-self-end overflow-hidden rounded-[1.25rem] border border-white/10 bg-black shadow-2xl"
               variants={fadeUp}
               aria-label="Watch JourneySync demo video"
             >
@@ -232,8 +232,8 @@ export function DemoSection() {
               </video>
               <span className="absolute inset-0 bg-black/20" />
               <span className="absolute inset-0 grid place-items-center">
-                <span className="grid h-20 w-20 place-items-center rounded-full bg-white text-primary shadow-2xl transition-transform group-hover:scale-105">
-                  <span className="material-icons-round text-4xl">play_arrow</span>
+                <span className="grid h-16 w-16 place-items-center rounded-full bg-white text-primary shadow-2xl transition-transform group-hover:scale-105">
+                  <span className="material-icons-round text-3xl">play_arrow</span>
                 </span>
               </span>
             </motion.button>
