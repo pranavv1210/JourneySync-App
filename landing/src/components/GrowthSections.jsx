@@ -469,12 +469,12 @@ export function LegalInfoModal() {
   return (
     <div
       id="legal-modal"
-      className="fixed inset-0 z-[99999] hidden items-center justify-center px-4 py-8"
+      className="fixed inset-0 z-[99999] hidden items-center justify-center px-4 py-6 sm:py-8"
       aria-hidden="true"
     >
       <button
         type="button"
-        className="absolute inset-0 bg-black/70"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         data-close
         aria-label="Close information modal"
       />
@@ -482,20 +482,65 @@ export function LegalInfoModal() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="legal-title"
-        className="relative max-h-[84vh] w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/15 bg-white p-6 text-gray-900 shadow-2xl dark:bg-[#171717] dark:text-white"
+        className="relative max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-[2rem] shadow-2xl"
+        style={{
+          background: 'linear-gradient(135deg, rgba(255,255,255,.82), rgba(255,255,255,.52))',
+          backdropFilter: 'blur(24px) saturate(1.4)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
+          border: '1px solid rgba(255,255,255,.5)',
+          boxShadow: '0 24px 80px rgba(31,25,18,.15), inset 0 1px 0 rgba(255,255,255,.6)',
+        }}
       >
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 id="legal-title" className="text-2xl font-extrabold">Info</h2>
+        {/* Header */}
+        <div
+          className="flex items-center justify-between gap-4 px-6 py-5 sm:px-8"
+          style={{
+            borderBottom: '1px solid rgba(219,119,6,.12)',
+            background: 'linear-gradient(135deg, rgba(219,119,6,.06), transparent 60%)',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-primary/10 text-primary">
+              <span className="material-icons-round text-xl">gavel</span>
+            </div>
+            <h2 id="legal-title" className="text-xl font-extrabold text-gray-900 sm:text-2xl">Info</h2>
+          </div>
           <button
             id="legal-close"
             type="button"
-            className="grid h-10 w-10 flex-none place-items-center rounded-full bg-gray-100 text-gray-800 transition-colors hover:bg-gray-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+            className="grid h-10 w-10 flex-none place-items-center rounded-full text-gray-500 transition-all duration-200 hover:bg-gray-900/5 hover:text-gray-800"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,.6), rgba(255,255,255,.3))',
+              border: '1px solid rgba(255,255,255,.5)',
+            }}
             aria-label="Close"
           >
-            <span className="material-icons-round">close</span>
+            <span className="material-icons-round text-xl">close</span>
           </button>
         </div>
-        <div id="legal-content" className="max-h-[64vh] overflow-y-auto pr-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300" />
+        {/* Body */}
+        <div
+          id="legal-content"
+          className="legal-content-scroll max-h-[68vh] overflow-y-auto px-6 py-5 sm:px-8 sm:py-6 text-sm leading-relaxed text-gray-600"
+        />
+        <style dangerouslySetInnerHTML={{ __html: `
+          .legal-content-scroll::-webkit-scrollbar { width: 6px; }
+          .legal-content-scroll::-webkit-scrollbar-track { background: transparent; }
+          .legal-content-scroll::-webkit-scrollbar-thumb { background: rgba(219,119,6,.2); border-radius: 999px; }
+          .legal-content-scroll::-webkit-scrollbar-thumb:hover { background: rgba(219,119,6,.35); }
+          .legal-content-scroll { scrollbar-width: thin; scrollbar-color: rgba(219,119,6,.2) transparent; }
+          .legal-content-scroll h5 { font-size: 1.125rem; font-weight: 800; color: #1a1a1a; margin-bottom: .5rem; }
+          .legal-content-scroll ul { list-style-type: disc; margin-left: 1.25rem; }
+          .legal-content-scroll li { margin-bottom: .35rem; }
+          .legal-content-scroll a { color: #db7706; text-decoration: underline; text-underline-offset: 3px; }
+          .legal-content-scroll a:hover { color: #b45f04; }
+          .legal-content-scroll pre { font-family: inherit; }
+          .legal-content-scroll .legal-section { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid rgba(0,0,0,.06); }
+          .legal-content-scroll .legal-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+          .legal-content-scroll .legal-heading { font-size: .8125rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #db7706; margin-bottom: .5rem; }
+          .legal-content-scroll .legal-meta { display: inline-flex; align-items: center; gap: .5rem; padding: .375rem .75rem; border-radius: 9999px; background: rgba(219,119,6,.08); color: #b45f04; font-size: .75rem; font-weight: 700; margin-bottom: 1rem; }
+          .legal-content-scroll iframe { border-radius: 1rem; border: 1px solid rgba(0,0,0,.08) !important; }
+        ` }} />
       </div>
     </div>
   );

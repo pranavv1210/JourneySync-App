@@ -24,6 +24,7 @@ import {
 import { useLandingRuntime } from './hooks/useLandingRuntime';
 
 const BetaPage = lazy(() => import('./pages/BetaPage.jsx'));
+const BetaDownloadPage = lazy(() => import('./pages/BetaDownloadPage.jsx'));
 
 function LandingPage() {
   useLandingRuntime();
@@ -71,6 +72,14 @@ export default function App() {
     return (
       <Suspense fallback={<PageFallback />}>
         <BetaPage />
+      </Suspense>
+    );
+  }
+
+  if (pathname === '/beta/download') {
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <BetaDownloadPage />
       </Suspense>
     );
   }
