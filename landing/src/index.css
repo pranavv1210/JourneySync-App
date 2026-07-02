@@ -6,7 +6,9 @@
   box-sizing: border-box;
   margin-left: auto;
   margin-right: auto;
-  max-width: 480px;
+  max-width: 432px;
+  padding-bottom: 0 !important;
+  padding-top: 0 !important;
   width: 100%;
 }
 

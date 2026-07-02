@@ -78,31 +78,28 @@ function BetaSeo() {
 }
 
 function TrustRow() {
+  const badges = ['Free During Beta', 'Android Available', 'Privacy First'];
+
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold text-gray-500">
-      <span className="inline-flex items-center gap-1.5">
-        <span className="material-icons-round text-[14px] text-primary">check</span>
-        Free during beta
-      </span>
-      <span className="text-gray-300">•</span>
-      <span className="inline-flex items-center gap-1.5">
-        <span className="material-icons-round text-[14px] text-primary">check</span>
-        Android available
-      </span>
-      <span className="text-gray-300">•</span>
-      <span className="inline-flex items-center gap-1.5">
-        <span className="material-icons-round text-[14px] text-primary">check</span>
-        No spam
-      </span>
+    <div className="flex flex-wrap items-center justify-center gap-2.5 text-[12px] font-bold text-gray-600">
+      {badges.map((badge) => (
+        <span
+          key={badge}
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/65 bg-white/56 px-3 py-1.5 shadow-[0_8px_22px_rgba(31,25,18,0.05),inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl"
+        >
+          <span className="material-icons-round text-[13px] text-primary">check</span>
+          {badge}
+        </span>
+      ))}
     </div>
   );
 }
 
 function SuccessState({ duplicate = false, deviceBlocked = false }) {
-  const title = duplicate || deviceBlocked ? "You're already on the list." : "You're on the JourneySync Beta!";
+  const title = duplicate || deviceBlocked ? "You're already on the list." : 'Welcome to JourneySync!';
   const text = duplicate || deviceBlocked
     ? "We'll email you as soon as beta access becomes available."
-    : "Thanks for joining. We'll email you as soon as beta access becomes available.";
+    : "You're officially on the beta waitlist. We'll email you when your invitation is ready.";
 
   return (
     <motion.div
@@ -117,8 +114,8 @@ function SuccessState({ duplicate = false, deviceBlocked = false }) {
     >
       <motion.div
         className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-green-500 text-white shadow-2xl shadow-green-500/20"
-        initial={{ scale: 0.72 }}
-        animate={{ scale: 1 }}
+        initial={{ scale: 0.72, rotate: -8 }}
+        animate={{ scale: 1, rotate: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 18 }}
       >
         <span className="material-icons-round text-5xl">check</span>
@@ -218,7 +215,7 @@ export default function BetaPage() {
 
     window.setTimeout(() => {
       window.location.href = '/beta/download';
-    }, 2500);
+    }, 2800);
   }
 
   return (
@@ -246,9 +243,9 @@ export default function BetaPage() {
           aria-label="Return to JourneySync home"
           initial={shouldReduceMotion ? false : { opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="inline-flex h-12 items-center gap-3 rounded-full border border-white/70 bg-white/62 px-4 text-sm font-extrabold text-gray-800 shadow-lg shadow-gray-900/5 backdrop-blur-2xl transition hover:-translate-y-0.5 hover:text-primary"
+          className="inline-flex h-[52px] items-center gap-3 rounded-full border border-white/70 bg-white/62 px-4.5 text-sm font-extrabold text-gray-800 shadow-lg shadow-gray-900/5 backdrop-blur-2xl transition hover:-translate-y-0.5 hover:text-primary"
         >
-          <img src="/logo.png" alt="" className="h-7 w-7 rounded-lg object-cover" />
+          <img src="/logo.png" alt="" className="h-8 w-8 rounded-[0.65rem] object-cover" />
           JourneySync
         </motion.a>
 
@@ -275,11 +272,14 @@ export default function BetaPage() {
               <p className="mx-auto mt-4 max-w-[420px] text-[15px] leading-6 text-gray-600">
                 Become one of the first riders helping shape the future of group motorcycle riding.
               </p>
+              <p className="mx-auto mt-2 max-w-[390px] text-[13px] leading-5 text-gray-500">
+                We're inviting a limited number of early riders before public launch.
+              </p>
 
               <form className="mt-9 w-full" onSubmit={handleSubmit} noValidate>
                 <label className="sr-only" htmlFor="beta-email">Email address</label>
                 <div className="relative">
-                  <span className="material-icons-round pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[21px] text-gray-400">mail</span>
+                  <span className="material-icons-round pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[21px] text-gray-400">mail</span>
                   <input
                     id="beta-email"
                     type="email"
@@ -293,7 +293,7 @@ export default function BetaPage() {
                     autoComplete="email"
                     aria-invalid={Boolean(error)}
                     aria-describedby={error ? 'beta-email-error' : undefined}
-                    className="h-14 w-full rounded-2xl border border-white/75 bg-white/72 pl-12 pr-4 text-[15px] font-semibold text-gray-900 shadow-[0_14px_35px_rgba(31,25,18,0.08),inset_0_1px_0_rgba(255,255,255,0.75)] outline-none backdrop-blur-2xl transition duration-200 placeholder:text-gray-400 focus:border-primary/70 focus:bg-white/86 focus:shadow-[0_0_0_4px_rgba(219,119,6,0.14),0_16px_38px_rgba(31,25,18,0.09)]"
+                    className="h-14 w-full rounded-2xl border border-white/70 bg-white/68 py-4 pl-14 pr-4 text-[15px] font-semibold text-gray-900 shadow-[0_14px_35px_rgba(31,25,18,0.07),inset_0_1px_0_rgba(255,255,255,0.72)] outline-none backdrop-blur-2xl transition duration-200 placeholder:text-gray-400 focus:border-primary/70 focus:bg-white/88 focus:shadow-[0_0_0_4px_rgba(219,119,6,0.13),0_18px_42px_rgba(31,25,18,0.10),inset_0_1px_0_rgba(255,255,255,0.82)]"
                   />
                 </div>
 
@@ -313,7 +313,7 @@ export default function BetaPage() {
                   disabled={submitting}
                   whileHover={submitting || shouldReduceMotion ? undefined : { y: -2, scale: 1.01 }}
                   whileTap={submitting || shouldReduceMotion ? undefined : { scale: 0.985 }}
-                  className="mt-[18px] flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-[#ea8508] to-[#bd6100] text-[15px] font-extrabold text-white shadow-[0_18px_40px_rgba(189,97,0,0.28)] transition disabled:cursor-not-allowed disabled:opacity-75"
+                  className="mt-[18px] flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-[#f09213] via-[#df7d05] to-[#b85d00] text-[15px] font-extrabold text-white shadow-[0_18px_40px_rgba(189,97,0,0.30)] transition duration-200 hover:shadow-[0_22px_48px_rgba(189,97,0,0.36)] disabled:cursor-not-allowed disabled:opacity-75"
                 >
                   {submitting ? (
                     <>
