@@ -285,19 +285,19 @@ const testimonials = [
   {
     name: 'Nisha Rao',
     bike: 'KTM Duke 390',
-    location: 'Pune',
+    location: 'Bengaluru',
     quote: 'The hybrid Google Maps flow makes sense. I keep familiar navigation but the group stays visible.',
   },
   {
     name: 'Rohan Iyer',
     bike: 'Interceptor 650',
-    location: 'Chennai',
+    location: 'Bengaluru',
     quote: 'This solves the exact junction problem every weekend ride has. Less calling, more riding.',
   },
   {
-    name: 'Dev Shah',
+    name: 'Dev Gowda',
     bike: 'Dominar 400',
-    location: 'Mumbai',
+    location: 'Bengaluru',
     quote: 'The safety and SOS thinking makes JourneySync feel like a serious ride product, not a demo.',
   },
 ];
@@ -309,7 +309,7 @@ export function Testimonials() {
         <SectionHeader
           eyebrow="Rider Feedback"
           title="What founding riders are asking for."
-          copy="Short beta signals from riders who understand the group-ride problem."
+          copy="Short beta signals from Bengaluru riders who understand the group-ride problem."
         />
         <motion.div className="grid md:grid-cols-3 gap-5" variants={container}>
           {testimonials.slice(0, 3).map((item) => (
@@ -368,5 +368,79 @@ export function Faq() {
         </motion.div>
       </div>
     </MotionSection>
+  );
+}
+
+export function BetaDownloadModal() {
+  return (
+    <div
+      id="download-modal"
+      className="fixed inset-0 z-[99999] hidden flex items-center justify-center px-4 py-8"
+      aria-hidden="true"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/70"
+        data-close-download
+        aria-label="Close beta download modal"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="download-modal-title"
+        className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-white/15 bg-[#171717] p-6 text-white shadow-2xl"
+      >
+        <button
+          type="button"
+          className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/15"
+          data-close-download
+          aria-label="Close"
+        >
+          <span className="material-icons-round">close</span>
+        </button>
+        <div className="pr-10">
+          <span className="text-primary text-xs font-extrabold uppercase tracking-wider">
+            Closed Beta
+          </span>
+          <h2 id="download-modal-title" className="mt-3 text-2xl font-extrabold leading-tight">
+            Download the Android beta build.
+          </h2>
+          <p className="mt-4 text-sm leading-relaxed text-gray-300">
+            This is an early rider test build for active groups. Install it only if you are comfortable testing beta software and sharing feedback.
+          </p>
+        </div>
+        <div className="mt-6 grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
+          <div className="flex items-start gap-3">
+            <span className="material-icons-round text-primary text-lg">android</span>
+            <span>Android beta APK is available now.</span>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="material-icons-round text-primary text-lg">verified_user</span>
+            <span>Ride carefully and do not interact with the app while moving.</span>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="material-icons-round text-primary text-lg">feedback</span>
+            <span>Feedback from Bengaluru rider groups will shape the next build.</span>
+          </div>
+        </div>
+        <div className="mt-6 grid gap-3">
+          <a
+            href="./journeysync.apk"
+            download
+            className="flex items-center justify-center gap-2 rounded-xl bg-primary-dark px-5 py-3.5 font-bold text-white shadow-xl shadow-primary/25 transition-transform hover:-translate-y-0.5"
+          >
+            <span className="material-icons-round">download</span>
+            Download Android Beta
+          </a>
+          <a
+            href="mailto:journeysync.app@gmail.com?subject=JourneySync%20closed%20beta%20access"
+            className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3.5 font-bold text-white transition-colors hover:bg-white/10"
+          >
+            <span className="material-icons-round">mail</span>
+            Request Beta Access
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }

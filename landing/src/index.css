@@ -7,6 +7,33 @@ body section:not(#hero) {
   contain-intrinsic-size: auto !important;
 }
 
+main > section:not(#hero) {
+  padding-top: clamp(5rem, 7vw, 7rem) !important;
+  padding-bottom: clamp(5rem, 7vw, 7rem) !important;
+}
+
+main > section:not(#hero) > div:first-child {
+  position: relative;
+}
+
+main > section:not(#hero) + section {
+  border-top: 1px solid rgba(17, 24, 39, 0.05);
+}
+
+#demo {
+  padding-top: clamp(4.5rem, 6vw, 6rem) !important;
+  padding-bottom: clamp(4.5rem, 6vw, 6rem) !important;
+}
+
+#download {
+  padding-top: clamp(5.5rem, 8vw, 7.5rem) !important;
+  padding-bottom: clamp(5.5rem, 8vw, 7.5rem) !important;
+}
+
+#download-modal:not(.hidden) {
+  display: flex;
+}
+
 .react-static-chunk .stagger-children.is-visible > *,
 .react-static-chunk .section-reveal.is-visible .stagger-children > * {
   opacity: 1;
@@ -105,6 +132,11 @@ a:focus-visible {
 }
 
 @media (max-width: 767px) {
+  main > section:not(#hero) {
+    padding-top: 4.5rem !important;
+    padding-bottom: 4.5rem !important;
+  }
+
   #beta-signal,
   #problems,
   #comparison,

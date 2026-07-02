@@ -11,6 +11,7 @@ import {
 } from './components/LandingSections';
 import {
   BuiltByRiders,
+  BetaDownloadModal,
   Comparison,
   DemoSection,
   Faq,
@@ -42,6 +43,7 @@ export default function App() {
         <FinalCta />
       </main>
       <FooterAndModals />
+      <BetaDownloadModal />
     </>
   );
 }
