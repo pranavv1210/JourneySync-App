@@ -11,8 +11,8 @@ const initialForm = {
   platform: 'Android',
 };
 
-const fieldClasses = 'w-full rounded-2xl border border-white/60 bg-white/75 px-4 py-3.5 text-base font-semibold text-gray-900 shadow-inner shadow-white/30 outline-none backdrop-blur-md transition focus:border-primary focus:ring-4 focus:ring-primary/15';
-const labelClasses = 'text-sm font-extrabold text-gray-900';
+const fieldClasses = 'h-14 w-full rounded-2xl border border-white/60 bg-white/75 px-4 text-base font-semibold text-gray-900 shadow-inner shadow-white/30 outline-none backdrop-blur-md transition placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/15';
+const labelClasses = 'block text-sm font-extrabold text-gray-900';
 
 function setMetaTag(name, content) {
   let tag = document.querySelector(`meta[name="${name}"]`);
@@ -236,14 +236,14 @@ export default function BetaPage() {
         transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      <section className="relative z-10 flex min-h-screen items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
+      <section className="relative z-10 flex min-h-screen items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 24, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-2xl"
+          className="w-full max-w-3xl"
         >
-          <a href="/" className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/60 px-4 py-2 text-sm font-extrabold text-gray-700 shadow-sm backdrop-blur-xl transition hover:text-primary">
+          <a href="/" className="mb-7 inline-flex min-h-12 items-center gap-3 rounded-full border border-white/60 bg-white/65 px-5 py-2 text-sm font-extrabold text-gray-700 shadow-sm backdrop-blur-xl transition hover:text-primary">
             <img src="/logo.png" alt="JourneySync" className="h-7 w-7 rounded-lg object-cover" />
             JourneySync
           </a>
@@ -251,45 +251,45 @@ export default function BetaPage() {
           {status === 'success' || status === 'duplicate' ? (
             <StatusCard mode={status} email={submittedEmail} />
           ) : (
-            <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-2xl shadow-primary/10 backdrop-blur-2xl sm:p-8">
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-2xl shadow-primary/10 backdrop-blur-2xl sm:p-8 lg:p-10">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_0%,rgba(219,119,6,0.14),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.55),transparent_38%)]" aria-hidden="true" />
               <div className="relative">
-                <div className="mb-8 text-center">
+                <div className="mx-auto mb-10 max-w-2xl text-center">
                   <span className="text-sm font-extrabold uppercase tracking-[0.18em] text-primary">Closed Beta</span>
-                  <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">Join the JourneySync Beta</h1>
+                  <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl lg:text-5xl">Join the JourneySync Beta</h1>
                   <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-gray-600 sm:text-lg">
                     Help shape the future of group motorcycle riding. Become one of our first JourneySync Beta riders.
                   </p>
                 </div>
 
-                <form className="space-y-5" onSubmit={handleSubmit} noValidate>
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <div className="space-y-2">
+                <form className="mx-auto max-w-3xl space-y-6" onSubmit={handleSubmit} noValidate>
+                  <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                    <div className="space-y-2.5">
                       <label className={labelClasses} htmlFor="beta-name">Full Name *</label>
                       <input id="beta-name" className={fieldClasses} value={form.name} onFocus={markStarted} onChange={(event) => updateField('name', event.target.value)} autoComplete="name" aria-invalid={Boolean(errors.name)} />
                       {errors.name && <p className="text-sm font-semibold text-red-600">{errors.name}</p>}
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <label className={labelClasses} htmlFor="beta-email">Email Address *</label>
                       <input id="beta-email" type="email" className={fieldClasses} value={form.email} onFocus={markStarted} onChange={(event) => updateField('email', event.target.value)} autoComplete="email" aria-invalid={Boolean(errors.email)} />
                       {errors.email && <p className="text-sm font-semibold text-red-600">{errors.email}</p>}
                     </div>
                   </div>
 
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <div className="space-y-2">
+                  <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                    <div className="space-y-2.5">
                       <label className={labelClasses} htmlFor="beta-city">City *</label>
                       <input id="beta-city" className={fieldClasses} value={form.city} onFocus={markStarted} onChange={(event) => updateField('city', event.target.value)} autoComplete="address-level2" aria-invalid={Boolean(errors.city)} />
                       {errors.city && <p className="text-sm font-semibold text-red-600">{errors.city}</p>}
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <label className={labelClasses} htmlFor="beta-vehicle">Vehicle *</label>
-                      <input id="beta-vehicle" className={fieldClasses} value={form.vehicle} onFocus={markStarted} onChange={(event) => updateField('vehicle', event.target.value)} placeholder="GT650, Classic 350, Himalayan, Duke 390, Honda CB350, Interceptor 650" aria-invalid={Boolean(errors.vehicle)} />
+                      <input id="beta-vehicle" className={fieldClasses} value={form.vehicle} onFocus={markStarted} onChange={(event) => updateField('vehicle', event.target.value)} placeholder="GT650, Himalayan, Duke 390" aria-invalid={Boolean(errors.vehicle)} />
                       {errors.vehicle && <p className="text-sm font-semibold text-red-600">{errors.vehicle}</p>}
                     </div>
                   </div>
 
-                  <fieldset className="space-y-3">
+                  <fieldset className="space-y-2.5 pt-1">
                     <legend className={labelClasses}>Platform</legend>
                     <div className="grid rounded-2xl border border-white/70 bg-white/55 p-1.5 shadow-inner shadow-white/30 backdrop-blur-xl sm:grid-cols-2" role="radiogroup" aria-label="Choose platform">
                       {['Android', 'iPhone'].map((platform) => {
