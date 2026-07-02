@@ -65,20 +65,20 @@ function BetaSeo() {
   return null;
 }
 
+const glassInput = {
+  background: 'linear-gradient(135deg, rgba(255,255,255,.9), rgba(255,255,255,.6))',
+  backdropFilter: 'blur(24px) saturate(1.2)',
+  WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
+  border: '1.5px solid rgba(255,255,255,.6)',
+  boxShadow: 'inset 0 2px 6px rgba(31,25,18,.04), 0 4px 16px rgba(31,25,18,.03)',
+};
+
 const glassCard = {
   background: 'linear-gradient(135deg, rgba(255,255,255,.72), rgba(255,255,255,.36))',
   backdropFilter: 'blur(22px) saturate(1.32)',
   WebkitBackdropFilter: 'blur(22px) saturate(1.32)',
   border: '1px solid rgba(255,255,255,.42)',
   boxShadow: '0 14px 45px rgba(31,25,18,.08), inset 0 1px 0 rgba(255,255,255,.58)',
-};
-
-const infoPill = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,.68), rgba(255,255,255,.32))',
-  backdropFilter: 'blur(18px) saturate(1.2)',
-  WebkitBackdropFilter: 'blur(18px) saturate(1.2)',
-  border: '1px solid rgba(255,255,255,.5)',
-  boxShadow: '0 8px 28px rgba(31,25,18,.05), inset 0 1px 0 rgba(255,255,255,.5)',
 };
 
 function StatusCard({ mode }) {
@@ -89,7 +89,7 @@ function StatusCard({ mode }) {
     <motion.div
       initial={{ opacity: 0, y: 18, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      className="relative overflow-hidden rounded-[2.5rem] p-10 text-center sm:p-12"
+      className="relative mx-auto max-w-[520px] overflow-hidden rounded-[2rem] p-10 text-center"
       style={glassCard}
       role="status"
       aria-live="polite"
@@ -102,24 +102,24 @@ function StatusCard({ mode }) {
       >
         <span className="material-icons-round text-5xl">{isSuccess ? 'check' : isDeviceBlocked ? 'devices' : 'mark_email_read'}</span>
       </motion.div>
-      <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+      <h2 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">
         {isSuccess ? "🎉 You're on the JourneySync Beta." : isDeviceBlocked ? "Device already registered." : "You're already on the list."}
       </h2>
-      <div className="mx-auto mt-4 max-w-lg space-y-2 text-lg leading-relaxed text-gray-600">
+      <div className="mx-auto mt-4 max-w-sm space-y-2 text-base leading-relaxed text-gray-600">
         {isSuccess ? (
           <>
-            <p className="font-semibold text-gray-800">Thanks for joining us.</p>
-            <p className="text-sm">We'll notify you as soon as beta access becomes available.</p>
+            <p className="font-medium text-gray-800">We'll notify you as soon as beta access becomes available.</p>
+            <p className="text-sm mt-3 text-gray-500">Thanks for helping us build JourneySync.</p>
           </>
         ) : isDeviceBlocked ? (
           <>
             <p>This device has already joined the JourneySync Beta.</p>
-            <p className="text-sm mt-4">If you need to update your email, please contact us.</p>
+            <p className="text-sm mt-3">If you need to update your email, please contact us.</p>
           </>
         ) : (
           <>
             <p>You're already on the JourneySync Beta waitlist.</p>
-            <p className="text-sm mt-4">We'll email you when your invitation is ready.</p>
+            <p className="text-sm mt-3">We'll email you when your invitation is ready.</p>
           </>
         )}
       </div>
@@ -178,15 +178,15 @@ export default function BetaPage() {
     const trimmedEmail = email.trim().toLowerCase();
     
     if (!trimmedEmail) {
-      setError('Enter your email address.');
+      setError('Enter your email address');
       return;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError('Enter a valid email address.');
+      setError('Enter a valid email address');
       return;
     }
 
     if (!isSupabaseConfigured || !supabase) {
-      setError('Beta registration is not configured yet. (Missing Supabase credentials)');
+      setError('Beta registration is not configured yet.');
       return;
     }
 
@@ -209,7 +209,7 @@ export default function BetaPage() {
         setStatus('duplicate');
         trackBetaEvent('beta_duplicate');
       } else {
-        setError('Something went wrong while joining the beta. Please try again.');
+        setError('Something went wrong. Please try again.');
         return;
       }
     } else {
@@ -226,143 +226,136 @@ export default function BetaPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden text-gray-900" style={{
-      background: 'radial-gradient(circle at 12% 8%, rgba(219,119,6,.16), transparent 30rem), radial-gradient(circle at 86% 16%, rgba(21,128,61,.11), transparent 28rem), linear-gradient(135deg, #fbf7f1 0%, #f4efea 42%, #fffaf3 100%)',
+    <main className="relative min-h-screen overflow-hidden text-gray-900 flex flex-col justify-center items-center" style={{
+      background: 'radial-gradient(circle at 12% 8%, rgba(219,119,6,.12), transparent 30rem), radial-gradient(circle at 86% 16%, rgba(21,128,61,.08), transparent 28rem), linear-gradient(135deg, #fbf7f1 0%, #f4efea 42%, #fffaf3 100%)',
     }}>
       <BetaSeo />
 
       {/* Map texture overlay */}
-      <div className="absolute inset-0 map-texture opacity-50" aria-hidden="true" />
+      <div className="absolute inset-0 map-texture opacity-30 mix-blend-overlay" aria-hidden="true" />
 
       {/* Animated mesh blobs */}
       <motion.div
-        className="absolute -top-28 right-[-10rem] h-[340px] w-[340px] rounded-full opacity-50 pointer-events-none"
-        style={{ background: 'rgba(219,119,6,.30)', filter: 'blur(42px)' }}
+        className="absolute -top-28 right-[-10rem] h-[340px] w-[340px] rounded-full opacity-40 pointer-events-none"
+        style={{ background: 'rgba(219,119,6,.20)', filter: 'blur(42px)' }}
         aria-hidden="true"
         animate={shouldReduceMotion ? undefined : { y: [0, 28, 0], x: [0, -20, 0] }}
         transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
       />
       <motion.div
-        className="absolute bottom-[-10rem] left-[-8rem] h-[380px] w-[380px] rounded-full opacity-40 pointer-events-none"
-        style={{ background: 'rgba(21,128,61,.22)', filter: 'blur(42px)' }}
+        className="absolute bottom-[-10rem] left-[-8rem] h-[380px] w-[380px] rounded-full opacity-30 pointer-events-none"
+        style={{ background: 'rgba(21,128,61,.15)', filter: 'blur(42px)' }}
         aria-hidden="true"
         animate={shouldReduceMotion ? undefined : { y: [0, -28, 0], x: [0, 20, 0] }}
         transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
       />
-      <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[260px] w-[260px] rounded-full opacity-30 pointer-events-none"
-        style={{ background: 'rgba(255,255,255,.85)', filter: 'blur(42px)' }}
-        aria-hidden="true"
-        animate={shouldReduceMotion ? undefined : { scale: [1, 1.08, 1] }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-      />
 
-      <section className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+      <section className="relative z-10 w-full max-w-[560px] px-6 py-12 flex flex-col items-center">
         
-        {/* Logo Header */}
         <motion.a
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           href="/"
-          className="mb-10 inline-flex items-center gap-2.5 rounded-full px-5 py-2.5 text-sm font-bold text-gray-700 transition-all duration-300 hover:text-primary hover:-translate-y-0.5"
-          style={infoPill}
+          className="mb-10 block"
         >
-          <img src="/logo.png" alt="JourneySync" className="h-8 w-8 rounded-lg object-cover shadow-sm" />
-          JourneySync
+          <img src="/logo.png" alt="JourneySync" className="h-12 w-12 rounded-xl object-cover shadow-sm mx-auto transition-transform hover:scale-105" />
         </motion.a>
 
         <motion.div
-          initial={shouldReduceMotion ? false : { opacity: 0, y: 28, filter: 'blur(12px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-[540px]"
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full text-center"
         >
-          {status === 'success' || status === 'duplicate' ? (
+          {status === 'success' || status === 'duplicate' || status === 'device_blocked' ? (
             <StatusCard mode={status} />
           ) : (
-            <div className="relative overflow-hidden rounded-[2.5rem] p-8 sm:p-10 lg:p-12 text-center" style={glassCard}>
-              {/* Decorative radial highlight */}
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(219,119,6,0.1),transparent_40%),linear-gradient(135deg,rgba(255,255,255,0.4),transparent_50%)]" aria-hidden="true" />
+            <div className="w-full">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary mb-5">
+                Beta Access
+              </span>
 
-              <div className="relative">
-                <h1 className="text-3xl font-extrabold leading-[1.1] tracking-tight text-gray-900 sm:text-4xl lg:text-[2.75rem] mb-4">
-                  Join the JourneySync <span className="text-primary">Beta</span>
-                </h1>
+              <h1 className="text-[2.25rem] font-extrabold leading-[1.1] tracking-tight text-gray-900 sm:text-4xl mb-4">
+                Join the JourneySync <span className="text-primary">Beta</span>
+              </h1>
 
-                <p className="mx-auto max-w-sm text-base leading-relaxed text-gray-600 sm:text-lg mb-8">
-                  Become one of the first riders helping shape the future of group motorcycle riding.
-                </p>
+              <p className="mx-auto max-w-[400px] text-[15px] leading-relaxed text-gray-500 mb-8">
+                Become one of the first riders helping shape the future of group motorcycle riding.
+              </p>
 
-                <form onSubmit={handleSubmit} noValidate className="space-y-4">
-                  <div className="relative">
-                    <input
-                      type="email"
-                      placeholder="Enter your email address"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setError('');
-                      }}
-                      className="w-full rounded-2xl px-6 py-4 text-[17px] font-medium text-gray-900 outline-none transition-all duration-300 placeholder:text-gray-400"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,.9), rgba(255,255,255,.6))',
-                        backdropFilter: 'blur(16px)',
-                        border: `1.5px solid ${error ? 'rgba(239,68,68,.5)' : 'rgba(255,255,255,.6)'}`,
-                        boxShadow: 'inset 0 2px 6px rgba(31,25,18,.04), 0 2px 8px rgba(31,25,18,.04)',
-                      }}
-                    />
-                    <style dangerouslySetInnerHTML={{ __html: `
-                      input[type="email"]:focus {
-                        border-color: #db7706 !important;
-                        box-shadow: 0 0 0 4px rgba(219,119,6,.15), inset 0 2px 6px rgba(31,25,18,.04) !important;
-                      }
-                    `}} />
-                  </div>
-                  
-                  {error && (
-                    <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="text-sm font-semibold text-red-500 text-left px-2">
-                      {error}
-                    </motion.p>
-                  )}
-
-                  <motion.button
-                    type="submit"
-                    disabled={submitting}
-                    whileHover={submitting ? {} : { scale: 1.02 }}
-                    whileTap={submitting ? {} : { scale: 0.98 }}
-                    className="premium-btn glow-pulse flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-dark px-6 py-4 text-[17px] font-extrabold text-white shadow-xl shadow-primary/25 transition-all duration-300 hover:bg-[#8f4a03] hover:shadow-2xl hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-80 disabled:transform-none"
-                  >
-                    {submitting ? (
-                      <span className="material-icons-round animate-spin">autorenew</span>
-                    ) : (
-                      <>
-                        Join Beta <span className="material-icons-round text-lg">arrow_forward</span>
-                      </>
-                    )}
-                  </motion.button>
-                </form>
-
-                {/* Features List */}
-                <div className="mt-8 grid grid-cols-2 gap-3 text-left text-[13px] font-bold text-gray-600 sm:text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="material-icons-round text-primary text-base">verified</span>
-                    Free during beta
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="material-icons-round text-primary text-base">shield</span>
-                    No spam
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="material-icons-round text-green-600 text-base">android</span>
-                    Android Available
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="material-icons-round text-gray-400 text-base">phone_iphone</span>
-                    iOS Coming Soon
-                  </div>
+              <form onSubmit={handleSubmit} noValidate className="w-full max-w-[520px] mx-auto flex flex-col items-center">
+                <div className="relative w-full mb-4">
+                  <input
+                    type="email"
+                    placeholder="Enter your email address"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setError('');
+                    }}
+                    className="w-full rounded-2xl px-6 py-[18px] text-[16px] font-medium text-gray-900 outline-none transition-all duration-300 placeholder:text-gray-400"
+                    style={{
+                      ...glassInput,
+                      border: error ? '1.5px solid rgba(239,68,68,.5)' : glassInput.border,
+                    }}
+                  />
+                  <style dangerouslySetInnerHTML={{ __html: `
+                    input[type="email"]:focus {
+                      border-color: #db7706 !important;
+                      box-shadow: 0 0 0 4px rgba(219,119,6,.15), inset 0 2px 6px rgba(31,25,18,.04) !important;
+                    }
+                  `}} />
                 </div>
-              </div>
+                
+                {error && (
+                  <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[13px] font-semibold text-red-500 mb-4 self-start pl-2">
+                    {error}
+                  </motion.p>
+                )}
+
+                <motion.button
+                  type="submit"
+                  disabled={submitting}
+                  whileHover={submitting ? {} : { scale: 1.02, y: -2 }}
+                  whileTap={submitting ? {} : { scale: 0.98 }}
+                  className="flex w-full h-[54px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#e67e22] to-[#d35400] text-[16px] font-bold text-white shadow-lg shadow-primary/25 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-80"
+                >
+                  {submitting ? (
+                    <>
+                      <span className="material-icons-round animate-spin text-[20px]">autorenew</span>
+                      Joining...
+                    </>
+                  ) : (
+                    <>
+                      Join Beta <span className="material-icons-round text-[20px]">arrow_forward</span>
+                    </>
+                  )}
+                </motion.button>
+              </form>
+
+              {/* Trust Row */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="mt-6 flex flex-row flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[13px] font-semibold text-gray-500 max-w-[520px] mx-auto"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="material-icons-round text-primary text-[14px]">check</span>
+                  Free during beta
+                </div>
+                <span className="text-gray-300">•</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="material-icons-round text-primary text-[14px]">check</span>
+                  Android Available
+                </div>
+                <span className="text-gray-300">•</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="material-icons-round text-primary text-[14px]">check</span>
+                  No Spam
+                </div>
+              </motion.div>
             </div>
           )}
         </motion.div>
