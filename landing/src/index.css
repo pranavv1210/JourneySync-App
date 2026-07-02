@@ -38,6 +38,123 @@
   box-shadow: 0 10px 25px -5px #b15f00, 0 18px 40px rgba(177, 95, 0, 0.22);
 }
 
+.beta-brand-pill {
+  align-items: center;
+  color: #121c2a;
+  display: flex;
+  font-size: 20px;
+  font-weight: 700;
+  gap: 10px;
+  line-height: 1.25;
+  padding: 10px 22px 10px 12px;
+  box-shadow: 0 16px 44px rgba(31, 25, 18, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.beta-brand-pill:hover {
+  box-shadow: 0 20px 54px rgba(31, 25, 18, 0.11), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  transform: translateY(-2px);
+}
+
+.beta-access-pill {
+  background: rgba(255, 255, 255, 0.52);
+  border-radius: 9999px;
+  color: #8d4b00;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  padding: 9px 17px;
+  text-transform: uppercase;
+}
+
+.beta-signup-title {
+  color: #121c2a;
+  font-size: clamp(40px, 6vw, 52px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+
+.beta-form-shell {
+  border-radius: 32px;
+  padding: 10px;
+}
+
+.beta-email-input {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.46));
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 24px;
+  box-shadow: 0 14px 34px rgba(31, 25, 18, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  caret-color: #d97706;
+  color: #121c2a;
+  font-size: 16px;
+  font-weight: 500;
+  height: 58px;
+  line-height: 1.5;
+  outline: none;
+  padding: 16px 16px 16px 52px;
+  transition: border-color 220ms ease, background 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+  width: 100%;
+}
+
+.beta-email-input::placeholder {
+  color: #9ca7b6;
+  transition: opacity 180ms ease;
+}
+
+.beta-email-input:not(:placeholder-shown)::placeholder {
+  opacity: 0.38;
+}
+
+.beta-email-input:focus {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.62));
+  border-color: rgba(217, 119, 6, 0.58);
+  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.13), 0 18px 44px rgba(31, 25, 18, 0.11), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.beta-submit-button {
+  align-items: center;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 48%, #a95400 100%);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 24px;
+  box-shadow: 0 18px 42px rgba(177, 95, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  color: #ffffff;
+  display: flex;
+  font-size: 18px;
+  font-weight: 800;
+  gap: 8px;
+  height: 58px;
+  justify-content: center;
+  line-height: 1.3;
+  overflow: hidden;
+  position: relative;
+  transition: box-shadow 220ms ease, filter 220ms ease;
+  width: 100%;
+}
+
+.beta-submit-button::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0));
+  content: "";
+  height: 52%;
+  left: 1px;
+  pointer-events: none;
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  border-radius: 23px 23px 16px 16px;
+}
+
+.beta-submit-button:hover {
+  box-shadow: 0 24px 56px rgba(177, 95, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  filter: saturate(1.04);
+}
+
+.beta-submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
 body section:not(#hero) {
   content-visibility: visible !important;
   contain-intrinsic-size: auto !important;

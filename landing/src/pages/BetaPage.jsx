@@ -391,13 +391,13 @@ export default function BetaPage() {
           <a
             href="/"
             aria-label="Return to JourneySync home"
-            className="glass-panel flex items-center gap-2 rounded-full px-[26px] py-2.5 text-[#8d4b00] shadow-[0_12px_36px_rgba(31,38,135,0.08)] backdrop-blur-[26px] transition-transform hover:-translate-y-0.5"
+            className="glass-panel beta-brand-pill"
           >
-            <span className="material-symbols-outlined text-[26px]">route</span>
-            <span className="text-[24px] font-semibold leading-[1.3]">JourneySync</span>
+            <img src="/logo.png" alt="" className="h-8 w-8 rounded-[0.65rem] object-cover shadow-sm" />
+            <span>JourneySync</span>
           </a>
 
-          <div className="glass-panel rounded-full bg-white/30 px-3 py-1 text-[12px] font-semibold uppercase leading-none tracking-[0.05em] text-[#554336]">
+          <div className="glass-panel beta-access-pill">
             Beta Access
           </div>
         </motion.div>
@@ -408,7 +408,7 @@ export default function BetaPage() {
           transition={{ duration: 0.8, ease, delay: 0.2 }}
           className="mb-10 space-y-4"
         >
-          <h1 className="text-[36px] font-bold leading-[1.2] tracking-[-0.02em] text-[#121c2a] md:text-[48px] md:leading-[1.1]">
+          <h1 className="beta-signup-title">
             Join the JourneySync <span className="text-[#D97706]">Beta</span>
           </h1>
           <p className="mx-auto max-w-sm text-[18px] font-normal leading-[1.6] text-[#554336]">
@@ -423,7 +423,7 @@ export default function BetaPage() {
           initial={shouldReduceMotion ? false : { opacity: 0, y: 20, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.8, ease, delay: 0.3 }}
-          className="relative w-full"
+          className="beta-form-shell relative w-full"
         >
           <AnimatePresence mode="wait">
             {status === 'success' || status === 'duplicate' || status === 'device' ? (
@@ -454,7 +454,7 @@ export default function BetaPage() {
                     autoComplete="email"
                     aria-invalid={Boolean(error)}
                     aria-describedby={error ? 'beta-email-error' : undefined}
-                    className="glass-panel input-glass h-14 w-full rounded-[24px] border-white/60 bg-white/50 py-4 pl-12 pr-4 text-[16px] font-normal leading-[1.5] text-[#121c2a] caret-[#D97706] outline-none transition-all duration-300 placeholder:text-[#dbc2b0] focus:border-[#b15f00]"
+                    className="beta-email-input"
                   />
                 </div>
 
@@ -474,7 +474,7 @@ export default function BetaPage() {
                   disabled={submitting}
                   whileHover={submitting || shouldReduceMotion ? undefined : { y: -2, scale: 1.01 }}
                   whileTap={submitting || shouldReduceMotion ? undefined : { scale: 0.98 }}
-                  className="button-glow group relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-[24px] bg-gradient-to-r from-[#D97706] to-[#b15f00] py-4 text-[18px] font-semibold leading-[1.6] text-white shadow-[0_14px_30px_-10px_rgba(177,95,0,0.5)] transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-80"
+                  className="beta-submit-button button-glow group"
                 >
                   <div className="absolute inset-0 translate-y-full bg-white/20 transition-transform duration-300 ease-out group-hover:translate-y-0" />
                   <span className="relative z-10 flex items-center gap-2">
