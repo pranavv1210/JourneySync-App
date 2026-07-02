@@ -241,7 +241,7 @@ export default function BetaPage() {
           initial={shouldReduceMotion ? false : { opacity: 0, y: 24, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-3xl"
+          className="w-full max-w-5xl"
         >
           <a href="/" className="mb-7 inline-flex min-h-12 items-center gap-3 rounded-full border border-white/60 bg-white/65 px-5 py-2 text-sm font-extrabold text-gray-700 shadow-sm backdrop-blur-xl transition hover:text-primary">
             <img src="/logo.png" alt="JourneySync" className="h-7 w-7 rounded-lg object-cover" />
@@ -251,18 +251,34 @@ export default function BetaPage() {
           {status === 'success' || status === 'duplicate' ? (
             <StatusCard mode={status} email={submittedEmail} />
           ) : (
-            <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-2xl shadow-primary/10 backdrop-blur-2xl sm:p-8 lg:p-10">
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/72 p-4 shadow-2xl shadow-primary/10 backdrop-blur-2xl sm:p-6 lg:p-8">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_0%,rgba(219,119,6,0.14),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.55),transparent_38%)]" aria-hidden="true" />
-              <div className="relative">
-                <div className="mx-auto mb-10 max-w-2xl text-center">
-                  <span className="text-sm font-extrabold uppercase tracking-[0.18em] text-primary">Closed Beta</span>
-                  <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl lg:text-5xl">Join the JourneySync Beta</h1>
-                  <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-gray-600 sm:text-lg">
+              <div className="relative grid gap-7 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-10">
+                <div className="px-1 py-2 text-left sm:px-2 lg:py-4">
+                  <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.18em] text-primary">Closed Beta</span>
+                  <h1 className="mt-5 max-w-xl text-3xl font-extrabold leading-tight tracking-tight text-gray-900 sm:text-4xl lg:text-5xl">
+                    Join the JourneySync Beta
+                  </h1>
+                  <p className="mt-5 max-w-lg text-base leading-relaxed text-gray-600 sm:text-lg">
                     Help shape the future of group motorcycle riding. Become one of our first JourneySync Beta riders.
                   </p>
+                  <div className="mt-8 grid gap-3 text-sm font-semibold text-gray-600">
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/60 bg-white/55 px-4 py-3 backdrop-blur-xl">
+                      <span className="material-icons-round text-primary">schedule</span>
+                      Takes less than 15 seconds.
+                    </div>
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/60 bg-white/55 px-4 py-3 backdrop-blur-xl">
+                      <span className="material-icons-round text-primary">two_wheeler</span>
+                      Built for active rider groups.
+                    </div>
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/60 bg-white/55 px-4 py-3 backdrop-blur-xl">
+                      <span className="material-icons-round text-primary">lock</span>
+                      Your details stay private.
+                    </div>
+                  </div>
                 </div>
 
-                <form className="mx-auto max-w-3xl space-y-6" onSubmit={handleSubmit} noValidate>
+                <form className="space-y-5 rounded-[1.5rem] border border-white/70 bg-white/62 p-4 shadow-xl shadow-gray-900/5 backdrop-blur-2xl sm:p-5 lg:p-6" onSubmit={handleSubmit} noValidate>
                   <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                     <div className="space-y-2.5">
                       <label className={labelClasses} htmlFor="beta-name">Full Name *</label>
