@@ -249,7 +249,12 @@ export function useLandingRuntime() {
     const dmodal = document.getElementById('download-modal');
     if(!dmodal) return;
     trackEvent('apk_download_modal_opened');
+    window.__downloadModalScrollState = window.__downloadModalScrollState || {
+      bodyOverflow: document.body.style.overflow,
+      htmlOverflow: document.documentElement.style.overflow,
+    };
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
     document.body.classList.add('modal-open');
     dmodal.classList.remove('hidden');
     dmodal.setAttribute('aria-hidden', 'false');
@@ -260,8 +265,10 @@ export function useLandingRuntime() {
     if(!dmodal) return;
     dmodal.classList.add('hidden');
     dmodal.setAttribute('aria-hidden', 'true');
-    document.body.style.overflow = '';
+    document.body.style.overflow = window.__downloadModalScrollState?.bodyOverflow || '';
+    document.documentElement.style.overflow = window.__downloadModalScrollState?.htmlOverflow || '';
     document.body.classList.remove('modal-open');
+    window.__downloadModalScrollState = null;
   }
 
   window.handleHeaderDownloadCTA = handleHeaderDownloadCTA;

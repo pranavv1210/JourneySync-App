@@ -3,14 +3,18 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { trackEvent } from '../utils/tracking';
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 28, filter: 'blur(10px)' },
-  visible: { opacity: 1, y: 0, filter: 'blur(0px)' },
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.42, ease: [0.22, 1, 0.36, 1] },
+  },
 };
 
 const container = {
   hidden: {},
   visible: {
-    transition: { staggerChildren: 0.08 },
+    transition: { staggerChildren: 0.09 },
   },
 };
 
@@ -71,7 +75,7 @@ export function SocialProof() {
           {stats.map((stat) => (
             <motion.article
               key={stat.label}
-              className="liquid-glass stat-entrance rounded-3xl p-6 border border-white/10"
+              className="liquid-glass premium-card stat-entrance rounded-3xl p-6 border border-white/20"
               variants={fadeUp}
             >
               <div className="flex items-end gap-1 text-4xl font-extrabold text-gray-900 dark:text-white">
@@ -97,45 +101,43 @@ const problems = [
 export function ProblemSolution() {
   return (
     <MotionSection id="problems" className="pt-20 pb-16 md:pt-24 md:pb-20 bg-background-light dark:bg-background-dark">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-[0.92fr_1.08fr] gap-10 items-start">
-          <SectionHeader
-            align="left"
-            eyebrow="Problem to Solution"
-            title="Group rides are social. Coordination should not be chaotic."
-            copy="JourneySync gives every rider the same ride context before, during, and after the journey, so the group moves like one connected pack."
-          />
-          <motion.div className="space-y-4" variants={container}>
-            {problems.map(([title, copy], index) => (
-              <motion.article
-                key={title}
-                className="feature-card rounded-3xl p-5"
-                variants={fadeUp}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="grid h-10 w-10 flex-none place-items-center rounded-full bg-primary text-white font-extrabold shadow-xl shadow-primary/25">
-                    {index + 1}
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-gray-900 dark:text-white">{title}</h3>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{copy}</p>
-                  </div>
-                </div>
-              </motion.article>
-            ))}
-            <motion.article className="rounded-3xl p-5 bg-background-dark text-white shadow-2xl" variants={fadeUp}>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <SectionHeader
+          align="left"
+          eyebrow="Problem to Solution"
+          title="Group rides are social. Coordination should not be chaotic."
+          copy="JourneySync gives every rider the same ride context before, during, and after the journey, so the group moves like one connected pack."
+        />
+        <motion.div className="w-full space-y-4" variants={container}>
+          {problems.map(([title, copy], index) => (
+            <motion.article
+              key={title}
+              className="feature-card premium-card rounded-3xl p-5"
+              variants={fadeUp}
+            >
               <div className="flex items-start gap-4">
-                <div className="grid h-10 w-10 flex-none place-items-center rounded-full bg-secondary text-white shadow-xl">
-                  <span className="material-icons-round">check</span>
+                <div className="grid h-10 w-10 flex-none place-items-center rounded-full bg-primary text-white font-extrabold shadow-xl shadow-primary/25">
+                  {index + 1}
                 </div>
                 <div>
-                  <h3 className="font-extrabold">JourneySync solves all of these.</h3>
-                  <p className="mt-2 text-sm text-gray-300">One ride lobby, one shared route, live rider visibility, safety tools, and a ride record your group can trust.</p>
+                  <h3 className="font-extrabold text-gray-900 dark:text-white">{title}</h3>
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{copy}</p>
                 </div>
               </div>
             </motion.article>
-          </motion.div>
-        </div>
+          ))}
+          <motion.article className="feature-card premium-card problem-solved-card rounded-3xl p-5 bg-background-dark text-white shadow-2xl" variants={fadeUp}>
+            <div className="flex items-start gap-4">
+              <div className="grid h-10 w-10 flex-none place-items-center rounded-full bg-secondary text-white shadow-xl">
+                <span className="material-icons-round">check</span>
+              </div>
+              <div>
+                <h3 className="font-extrabold">JourneySync solves all of these.</h3>
+                <p className="mt-2 text-sm text-gray-300">One ride lobby, one shared route, live rider visibility, safety tools, and a ride record your group can trust.</p>
+              </div>
+            </div>
+          </motion.article>
+        </motion.div>
       </div>
     </MotionSection>
   );
@@ -157,14 +159,15 @@ export function Comparison() {
       className="py-16 bg-white/60 dark:bg-gray-900/80"
       onViewportEnter={() => trackEvent('comparison_viewed')}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeader
+          align="left"
           eyebrow="Why JourneySync"
           title="Maps navigate. Chats notify. JourneySync coordinates the ride."
           copy="Riders already use Google Maps and WhatsApp. JourneySync is the missing ride layer that connects navigation, safety, and group state."
         />
-        <motion.div className="hidden md:block overflow-hidden rounded-3xl border border-white/40 shadow-2xl bg-white/60 backdrop-blur-xl" variants={fadeUp}>
-          <table className="w-full text-left">
+        <motion.div className="comparison-table-card hidden md:block overflow-x-auto rounded-3xl border border-white/40 shadow-2xl bg-white/60 backdrop-blur-xl" variants={fadeUp}>
+          <table className="min-w-[760px] w-full text-left">
             <thead className="bg-background-dark text-white">
               <tr>
                 <th className="p-5 text-sm uppercase tracking-wider">Capability</th>
@@ -187,7 +190,7 @@ export function Comparison() {
         </motion.div>
         <motion.div className="md:hidden space-y-4" variants={container}>
           {comparisonRows.map(([capability, maps, whatsapp, js]) => (
-            <motion.article key={capability} className="feature-card rounded-2xl p-4" variants={fadeUp}>
+            <motion.article key={capability} className="feature-card premium-card rounded-2xl p-4" variants={fadeUp}>
               <h3 className="text-sm font-extrabold uppercase tracking-wide text-gray-900 dark:text-white">{capability}</h3>
               <div className="mt-4 grid gap-2 text-sm">
                 <div className="rounded-xl bg-white/60 p-3">
@@ -219,7 +222,7 @@ export function DemoSection() {
       onViewportEnter={() => trackEvent('demo_viewed')}
     >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl download-glow">
+        <div className="demo-card relative overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl download-glow">
           <div className="absolute inset-0 download-banner-glow pointer-events-none" />
           <div className="relative grid lg:grid-cols-2 gap-6 lg:gap-8 items-center p-6 sm:p-8 lg:p-10">
             <SectionHeader
@@ -229,7 +232,7 @@ export function DemoSection() {
               copy="Watch how a group can start together, stay visible, and move through the ride with less coordination friction."
             />
             <motion.div
-              className="relative aspect-video w-full lg:max-w-md lg:justify-self-end overflow-hidden rounded-[1.25rem] border border-white/10 bg-black shadow-2xl"
+              className="demo-video-shell relative aspect-video w-full lg:max-w-md lg:justify-self-end overflow-hidden rounded-[1.25rem] border border-white/10 bg-black shadow-2xl"
               variants={fadeUp}
               aria-label="JourneySync demo video"
             >
@@ -256,29 +259,27 @@ export function DemoSection() {
 export function BuiltByRiders() {
   return (
     <MotionSection id="built-by-riders" className="py-16 bg-background-light dark:bg-background-dark">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-10 items-center">
-          <SectionHeader
-            align="left"
-            eyebrow="Startup Story"
-            title="Built by Riders. For Riders."
-            copy="Every group ride starts with excitement. Then someone misses a turn, someone gets left behind, someone stops for fuel, and the whole group starts coordinating through calls and chat."
-          />
-          <motion.div className="feature-card rounded-[2rem] p-6 sm:p-8" variants={fadeUp}>
-            <div className="grid gap-4">
-              {[
-                'JourneySync was built from those real ride moments.',
-                'The goal is simple: help riding groups stay connected without replacing the tools riders already trust.',
-                'Google Maps still handles navigation. JourneySync handles the ride layer around it.',
-              ].map((copy) => (
-                <div key={copy} className="flex gap-3">
-                  <span className="material-icons-round text-primary">two_wheeler</span>
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{copy}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <SectionHeader
+          align="left"
+          eyebrow="Startup Story"
+          title="Built by Riders. For Riders."
+          copy="Every group ride starts with excitement. Then someone misses a turn, someone gets left behind, someone stops for fuel, and the whole group starts coordinating through calls and chat."
+        />
+        <motion.div className="feature-card premium-card rounded-[2rem] p-6 sm:p-8" variants={fadeUp}>
+          <div className="grid gap-4">
+            {[
+              'JourneySync was built from those real ride moments.',
+              'The goal is simple: help riding groups stay connected without replacing the tools riders already trust.',
+              'Google Maps still handles navigation. JourneySync handles the ride layer around it.',
+            ].map((copy) => (
+              <div key={copy} className="flex gap-3">
+                <span className="material-icons-round text-primary">two_wheeler</span>
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{copy}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       </div>
     </MotionSection>
   );
@@ -322,7 +323,7 @@ export function Testimonials() {
         />
         <motion.div className="grid md:grid-cols-3 gap-5" variants={container}>
           {testimonials.slice(0, 3).map((item) => (
-            <motion.article key={item.name} className="testimonial-card rounded-3xl p-6" variants={fadeUp}>
+            <motion.article key={item.name} className="testimonial-card premium-card rounded-3xl p-6" variants={fadeUp}>
               <div className="flex items-center gap-3">
                 <div className="h-12 w-12 rounded-full bg-primary text-white grid place-items-center font-extrabold">
                   {item.name.split(' ').map((part) => part[0]).join('')}

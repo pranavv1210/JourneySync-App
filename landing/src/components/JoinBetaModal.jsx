@@ -24,6 +24,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
   const [status, setStatus] = useState('idle'); // 'idle' | 'submitting' | 'success' | 'duplicate_email' | 'duplicate_device'
   const startedRef = useRef(false);
   const modalRef = useRef(null);
+  const scrollLockRef = useRef(null);
 
   // Track modal open/close
   useEffect(() => {
@@ -34,9 +35,13 @@ export function JoinBetaModal({ isOpen, onClose }) {
       setError('');
       startedRef.current = false;
       
-      // Prevent body scrolling
-      const originalStyle = window.getComputedStyle(document.body).overflow;
+      // Prevent page scrolling while preserving the exact previous inline styles.
+      scrollLockRef.current = {
+        bodyOverflow: document.body.style.overflow,
+        htmlOverflow: document.documentElement.style.overflow,
+      };
       document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
       
       // Focus trapping
       const handleKeyDown = (e) => {
@@ -46,8 +51,11 @@ export function JoinBetaModal({ isOpen, onClose }) {
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => {
-        document.body.style.overflow = originalStyle;
+        document.body.style.overflow = scrollLockRef.current?.bodyOverflow ?? '';
+        document.documentElement.style.overflow = scrollLockRef.current?.htmlOverflow ?? '';
+        document.body.classList.remove('modal-open');
         window.removeEventListener('keydown', handleKeyDown);
+        scrollLockRef.current = null;
       };
     } else {
       if (startedRef.current) {
@@ -149,7 +157,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
           {/* Dark translucent overlay + backdrop blur */}
           <motion.div
-            className="absolute inset-0 bg-black/50 backdrop-blur-md"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -163,14 +171,12 @@ export function JoinBetaModal({ isOpen, onClose }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-title"
-            className="relative w-full overflow-hidden rounded-[28px] border border-white/20 bg-white/95 p-6 sm:p-8 shadow-2xl backdrop-blur-2xl flex flex-col items-center justify-center"
+            className="relative w-full max-w-md overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl flex flex-col items-center justify-center sm:p-8"
             style={{
-              maxWidth: '420px',
-              width: '100%',
               boxSizing: 'border-box',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 40px rgba(249, 115, 22, 0.04)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
             }}
             initial={{ opacity: 0, scale: 0.92, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -183,8 +189,8 @@ export function JoinBetaModal({ isOpen, onClose }) {
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="absolute right-4 top-4 p-1.5 rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors z-50 cursor-pointer"
-              style={{ background: 'transparent', border: 'none' }}
+              className="absolute right-4 top-4 z-50 grid h-9 w-9 place-items-center rounded-full text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 cursor-pointer"
+              style={{ border: 'none' }}
               aria-label="Close modal"
             >
               <X size={16} />
@@ -272,7 +278,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
                     </p>
 
                     {/* Email Form */}
-                    <form onSubmit={handleSubmit} className="w-full space-y-3" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <form onSubmit={handleSubmit} className="w-full" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       <div className="relative w-full" style={{ position: 'relative', width: '100%' }}>
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
                           <Mail size={16} />
@@ -309,7 +315,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
                       <button
                         type="submit"
                         disabled={status === 'submitting'}
-                        className="relative overflow-hidden w-full rounded-xl bg-gradient-to-r from-orange-600 to-orange-500 text-white font-semibold text-xs shadow-md shadow-orange-500/10 hover:shadow-lg hover:shadow-orange-500/25 transition-all flex items-center justify-center gap-1.5 group cursor-pointer"
+                        className="relative overflow-hidden w-full rounded-xl bg-primary-dark text-white font-semibold text-xs shadow-md shadow-primary/20 transition-all hover:bg-[#8f4a03] hover:shadow-lg hover:shadow-primary/25 active:bg-[#733a02] flex items-center justify-center gap-1.5 group cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
                         style={{
                           width: '100%',
                           height: '44px',

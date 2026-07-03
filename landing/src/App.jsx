@@ -22,7 +22,7 @@ import {
 } from './components/GrowthSections';
 import { useLandingRuntime } from './hooks/useLandingRuntime';
 import { JoinBetaModal } from './components/JoinBetaModal';
-import { InfoModals } from './components/InfoModals';
+import { InfoModal } from './components/InfoModal';
 
 const BetaDownloadPage = lazy(() => import('./pages/BetaDownloadPage.jsx'));
 
@@ -49,7 +49,6 @@ function LandingPage() {
       </main>
       <FooterAndModals />
       <BetaDownloadModal />
-      <InfoModals />
     </>
   );
 }
@@ -67,6 +66,7 @@ function PageFallback() {
 
 export default function App() {
   const [isBetaOpen, setIsBetaOpen] = useState(false);
+  const [activeInfoModal, setActiveInfoModal] = useState(null);
   const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
 
   // Global event interceptor for Join Beta buttons
@@ -77,11 +77,21 @@ export default function App() {
 
       const href = target.getAttribute('href');
       const text = target.innerText ? target.innerText.trim() : '';
+      const infoKey = target.getAttribute('data-info') || target.getAttribute('data-legal');
+
+      if (infoKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsBetaOpen(false);
+        setActiveInfoModal(infoKey);
+        return;
+      }
 
       // Intercept any click pointing to /beta or containing 'Join Beta' / 'Join Closed Beta'
       if (href === '/beta' || text.includes('Join Closed Beta') || text.includes('Join Beta')) {
         e.preventDefault();
         e.stopPropagation();
+        setActiveInfoModal(null);
         setIsBetaOpen(true);
       }
     };
@@ -104,6 +114,7 @@ export default function App() {
     <>
       <LandingPage onOpenBeta={() => setIsBetaOpen(true)} />
       <JoinBetaModal isOpen={isBetaOpen} onClose={() => setIsBetaOpen(false)} />
+      <InfoModal modalKey={activeInfoModal} onClose={() => setActiveInfoModal(null)} />
     </>
   );
 }

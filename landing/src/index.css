@@ -183,6 +183,22 @@ main > section:not(#hero) + section {
   padding-bottom: clamp(4.5rem, 6vw, 6rem) !important;
 }
 
+#problems {
+  padding-bottom: clamp(3.75rem, 5vw, 5rem) !important;
+}
+
+#comparison {
+  padding-top: clamp(3.75rem, 5vw, 5rem) !important;
+}
+
+#demo {
+  padding-bottom: clamp(3.75rem, 5vw, 5rem) !important;
+}
+
+#built-by-riders {
+  padding-top: clamp(3.75rem, 5vw, 5rem) !important;
+}
+
 #download {
   padding-top: clamp(5.5rem, 8vw, 7.5rem) !important;
   padding-bottom: clamp(5.5rem, 8vw, 7.5rem) !important;
@@ -328,8 +344,9 @@ main > section:not(#hero) + section {
 .react-static-chunk .tilt-card,
 .react-static-chunk .testimonial-card,
 .react-static-chunk .faq-item,
-.react-static-chunk .liquid-glass {
-  will-change: transform, opacity, filter;
+.react-static-chunk .liquid-glass,
+.premium-card {
+  will-change: transform, opacity;
 }
 
 .react-static-chunk .card-glow,
@@ -364,15 +381,23 @@ main > section:not(#hero) + section {
 #problems .feature-card,
 #comparison .feature-card,
 #built-by-riders .feature-card,
+#testimonials .testimonial-card,
 #faq .faq-item {
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.58);
   position: relative;
   overflow: hidden;
+  transition: border-color 180ms ease, box-shadow 180ms ease, filter 180ms ease, transform 180ms ease;
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+  backdrop-filter: blur(18px) saturate(1.12);
 }
 
 #beta-signal .liquid-glass::before,
 #problems .feature-card::before,
 #comparison .feature-card::before,
 #built-by-riders .feature-card::before,
+#testimonials .testimonial-card::before,
 #faq .faq-item::before {
   background:
     linear-gradient(135deg, rgba(255,255,255,.42), transparent 34%),
@@ -384,6 +409,65 @@ main > section:not(#hero) + section {
   position: absolute;
 }
 
+#beta-signal .liquid-glass:hover,
+#problems .feature-card:hover,
+#comparison .feature-card:hover,
+#built-by-riders .feature-card:hover,
+#testimonials .testimonial-card:hover,
+#faq .faq-item:hover {
+  border-color: rgba(219, 119, 6, 0.28);
+  box-shadow: 0 22px 58px rgba(17, 24, 39, 0.1), 0 0 0 1px rgba(219, 119, 6, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  filter: brightness(1.02);
+  transform: translateY(-2px) scale(1.02);
+}
+
+#problems .problem-solved-card {
+  background: rgba(23, 23, 23, 0.94);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+#problems .feature-card::before,
+#comparison .feature-card::before,
+#built-by-riders .feature-card::before {
+  display: none;
+}
+
+.premium-btn {
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+#hero .premium-btn:first-child,
+#hero .glow-pulse {
+  box-shadow: 0 16px 38px rgba(177, 95, 0, 0.3), 0 8px 18px rgba(17, 24, 39, 0.1);
+}
+
+#hero .glow-pulse {
+  animation: heroCtaPulse 3s ease-in-out infinite;
+}
+
+main section:not(#hero) .glow-pulse {
+  animation: none;
+}
+
+.phone-mockup {
+  box-shadow:
+    0 30px 80px rgba(17, 24, 39, 0.26),
+    0 14px 34px rgba(177, 95, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.demo-card,
+.demo-video-shell {
+  box-shadow:
+    0 26px 70px rgba(17, 24, 39, 0.2),
+    0 12px 30px rgba(177, 95, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.comparison-table-card {
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
 #comparison table {
   border-collapse: separate;
   border-spacing: 0;
@@ -392,6 +476,46 @@ main > section:not(#hero) + section {
 #comparison th,
 #comparison td {
   vertical-align: top;
+}
+
+#comparison tbody tr:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.34);
+}
+
+#comparison tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+#comparison th:nth-child(4),
+#comparison td:nth-child(4) {
+  background: rgba(219, 119, 6, 0.1);
+  box-shadow: inset 1px 0 rgba(219, 119, 6, 0.16), inset -1px 0 rgba(219, 119, 6, 0.16);
+}
+
+@keyframes heroCtaPulse {
+  0%,
+  100% {
+    box-shadow: 0 16px 38px rgba(177, 95, 0, 0.28), 0 8px 18px rgba(17, 24, 39, 0.1);
+  }
+
+  50% {
+    box-shadow: 0 20px 48px rgba(177, 95, 0, 0.38), 0 10px 22px rgba(17, 24, 39, 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #hero .glow-pulse {
+    animation: none;
+  }
+
+  #beta-signal .liquid-glass:hover,
+  #problems .feature-card:hover,
+  #comparison .feature-card:hover,
+  #built-by-riders .feature-card:hover,
+  #testimonials .testimonial-card:hover,
+  #faq .faq-item:hover {
+    transform: none;
+  }
 }
 
 #demo video {
@@ -419,6 +543,63 @@ a:focus-visible {
   .app-modal-shell {
     max-height: calc(100svh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1rem);
     width: calc(100vw - 1.5rem);
+  }
+
+  #hero,
+  #hero > div,
+  #hero .max-w-2xl,
+  #hero .max-w-lg,
+  #hero .hero-device-wrap,
+  #hero-ctas,
+  #hero-ctas .premium-btn {
+    max-width: 100% !important;
+  }
+
+  #hero > div.relative.z-10 {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    max-width: calc(100vw - 2rem) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    width: calc(100vw - 2rem) !important;
+  }
+
+  #hero * {
+    min-width: 0;
+  }
+
+  #hero h1,
+  #hero p {
+    overflow-wrap: anywhere;
+  }
+
+  #hero .grid {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  #hero > .relative,
+  #hero .max-w-2xl,
+  #hero .max-w-lg,
+  #hero-ctas {
+    box-sizing: border-box;
+    width: 100% !important;
+  }
+
+  #hero-ctas .premium-btn {
+    box-sizing: border-box;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  #hero .max-w-2xl,
+  #hero .max-w-lg {
+    width: 100% !important;
+  }
+
+  #hero p,
+  #hero-ctas {
+    max-width: 100% !important;
   }
 
   main > section:not(#hero) {
