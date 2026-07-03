@@ -192,8 +192,111 @@ main > section:not(#hero) + section {
   display: flex;
 }
 
-#legal-modal:not(.hidden) {
-  display: flex;
+.app-modal-shell {
+  max-height: min(85vh, calc(100svh - 2rem));
+}
+
+.app-modal-scroll {
+  scrollbar-color: rgba(217, 119, 6, 0.34) transparent;
+  scrollbar-width: thin;
+}
+
+.app-modal-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.app-modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(217, 119, 6, 0.28);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.app-modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(217, 119, 6, 0.46);
+  background-clip: padding-box;
+}
+
+.app-modal-content {
+  color: #404040;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.app-modal-content p {
+  margin: 0 0 1rem;
+}
+
+.app-modal-content p:last-child {
+  margin-bottom: 0;
+}
+
+.app-modal-content h3 {
+  color: #171717;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0 0 0.55rem;
+}
+
+.app-modal-section {
+  margin-bottom: 2rem;
+}
+
+.app-modal-section:last-child {
+  margin-bottom: 0;
+}
+
+.app-modal-content ul,
+.app-modal-content ol {
+  margin: 0 0 1rem 1.25rem;
+  padding: 0;
+}
+
+.app-modal-content li {
+  margin: 0.35rem 0;
+  padding-left: 0.15rem;
+}
+
+.app-modal-content a {
+  color: #db7706;
+  font-weight: 700;
+  text-decoration-color: transparent;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: color 180ms ease, text-decoration-color 180ms ease;
+}
+
+.app-modal-content a:hover {
+  color: #a95400;
+  text-decoration-color: currentColor;
+}
+
+.app-modal-button {
+  align-items: center;
+  background: #171717;
+  border-radius: 999px;
+  color: #ffffff !important;
+  display: inline-flex;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  justify-content: center;
+  margin-top: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 1.15rem;
+  text-decoration: none !important;
+  transition: background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.app-modal-button:hover {
+  background: #db7706;
+  box-shadow: 0 12px 28px rgba(217, 119, 6, 0.22);
+  transform: translateY(-1px);
 }
 
 #demo h2 {
@@ -313,6 +416,11 @@ a:focus-visible {
 }
 
 @media (max-width: 767px) {
+  .app-modal-shell {
+    max-height: calc(100svh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1rem);
+    width: calc(100vw - 1.5rem);
+  }
+
   main > section:not(#hero) {
     padding-top: 4.5rem !important;
     padding-bottom: 4.5rem !important;

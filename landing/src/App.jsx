@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import './index.css';
 import {
   DownloadBanner,
@@ -16,14 +16,14 @@ import {
   Comparison,
   DemoSection,
   Faq,
-  LegalInfoModal,
   ProblemSolution,
   SocialProof,
   Testimonials as GrowthTestimonials,
 } from './components/GrowthSections';
 import { useLandingRuntime } from './hooks/useLandingRuntime';
+import { JoinBetaModal } from './components/JoinBetaModal';
+import { InfoModals } from './components/InfoModals';
 
-const BetaPage = lazy(() => import('./pages/BetaPage.jsx'));
 const BetaDownloadPage = lazy(() => import('./pages/BetaDownloadPage.jsx'));
 
 function LandingPage() {
@@ -49,7 +49,7 @@ function LandingPage() {
       </main>
       <FooterAndModals />
       <BetaDownloadModal />
-      <LegalInfoModal />
+      <InfoModals />
     </>
   );
 }
@@ -66,15 +66,31 @@ function PageFallback() {
 }
 
 export default function App() {
+  const [isBetaOpen, setIsBetaOpen] = useState(false);
   const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
 
-  if (pathname === '/beta') {
-    return (
-      <Suspense fallback={<PageFallback />}>
-        <BetaPage />
-      </Suspense>
-    );
-  }
+  // Global event interceptor for Join Beta buttons
+  useEffect(() => {
+    const handleGlobalClick = (e) => {
+      const target = e.target.closest && e.target.closest('a, button');
+      if (!target) return;
+
+      const href = target.getAttribute('href');
+      const text = target.innerText ? target.innerText.trim() : '';
+
+      // Intercept any click pointing to /beta or containing 'Join Beta' / 'Join Closed Beta'
+      if (href === '/beta' || text.includes('Join Closed Beta') || text.includes('Join Beta')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsBetaOpen(true);
+      }
+    };
+
+    document.addEventListener('click', handleGlobalClick, true);
+    return () => {
+      document.removeEventListener('click', handleGlobalClick, true);
+    };
+  }, []);
 
   if (pathname === '/beta/download') {
     return (
@@ -84,5 +100,10 @@ export default function App() {
     );
   }
 
-  return <LandingPage />;
+  return (
+    <>
+      <LandingPage onOpenBeta={() => setIsBetaOpen(true)} />
+      <JoinBetaModal isOpen={isBetaOpen} onClose={() => setIsBetaOpen(false)} />
+    </>
+  );
 }
