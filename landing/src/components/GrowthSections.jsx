@@ -223,9 +223,9 @@ export function DemoSection() {
       onViewportEnter={() => trackEvent('demo_viewed')}
     >
       <div className="landing-container">
-        <div className="demo-card relative overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl download-glow">
+        <div className="demo-card relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl download-glow">
           <div className="absolute inset-0 download-banner-glow pointer-events-none" />
-          <div className="relative grid lg:grid-cols-2 gap-6 lg:gap-8 items-center p-6 sm:p-8 lg:p-10">
+          <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[1fr_20rem] lg:items-center lg:p-8">
             <SectionHeader
               align="left"
               eyebrow="Product Demo"
@@ -233,7 +233,7 @@ export function DemoSection() {
               copy="Watch how a group can start together, stay visible, and move through the ride with less coordination friction."
             />
             <motion.div
-              className="demo-video-shell relative aspect-video w-full lg:max-w-md lg:justify-self-end overflow-hidden rounded-[1.25rem] border border-white/10 bg-black shadow-2xl"
+              className="demo-video-shell relative mx-auto aspect-video w-full max-w-sm overflow-hidden rounded-[1.25rem] border border-white/10 bg-black shadow-2xl lg:max-w-[20rem] lg:justify-self-end"
               variants={fadeUp}
               aria-label="JourneySync demo video"
             >
@@ -415,7 +415,6 @@ export function BetaDownloadModal() {
       labelledBy="download-modal-title"
       panelClassName="border-white/15 bg-[#171717] text-white"
       headerClassName="bg-[#171717]/95 text-white"
-      closeButtonClassName="border-white/15 bg-white/10 text-white/80 hover:border-orange-300/40 hover:bg-white/15 hover:text-white"
       contentClassName="p-6 text-white"
     >
       <div>
