@@ -223,9 +223,9 @@ export function DemoSection() {
       onViewportEnter={() => trackEvent('demo_viewed')}
     >
       <div className="landing-container">
-        <div className="demo-card relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl download-glow">
+        <div className="demo-card relative mx-auto max-w-3xl overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl download-glow">
           <div className="absolute inset-0 download-banner-glow pointer-events-none" />
-          <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[1fr_20rem] lg:items-center lg:p-8">
+          <div className="relative grid gap-5 p-5 sm:p-6 lg:grid-cols-[1fr_15rem] lg:items-center lg:p-7">
             <SectionHeader
               align="left"
               eyebrow="Product Demo"
@@ -233,7 +233,7 @@ export function DemoSection() {
               copy="Watch how a group can start together, stay visible, and move through the ride with less coordination friction."
             />
             <motion.div
-              className="demo-video-shell relative mx-auto aspect-video w-full max-w-sm overflow-hidden rounded-[1.25rem] border border-white/10 bg-black shadow-2xl lg:max-w-[20rem] lg:justify-self-end"
+              className="demo-video-shell relative mx-auto aspect-[9/16] w-full max-w-[14rem] overflow-hidden rounded-[1.25rem] border border-white/10 bg-black shadow-2xl sm:max-w-[15rem] lg:justify-self-end"
               variants={fadeUp}
               aria-label="JourneySync demo video"
             >
