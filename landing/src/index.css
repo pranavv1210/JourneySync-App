@@ -520,6 +520,36 @@ main section:not(#hero) .glow-pulse {
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
+#demo .demo-card {
+  max-width: 36rem !important;
+}
+
+#demo .demo-card-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#demo .demo-video-shell {
+  aspect-ratio: 9 / 16 !important;
+  max-width: 11rem !important;
+  width: min(100%, 11rem) !important;
+}
+
+#demo .demo-card h2 {
+  font-size: clamp(1.35rem, 2.4vw, 1.9rem) !important;
+  line-height: 1.1 !important;
+}
+
+#demo .demo-card p {
+  font-size: 0.95rem !important;
+  line-height: 1.55 !important;
+}
+
+@media (min-width: 1024px) {
+  #demo .demo-card-grid {
+    grid-template-columns: minmax(0, 1fr) 11rem !important;
+  }
+}
+
 .comparison-table-card {
   box-shadow: 0 24px 70px rgba(17, 24, 39, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
