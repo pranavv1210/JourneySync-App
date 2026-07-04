@@ -168,7 +168,10 @@ body section:not(#hero) {
 .landing-container,
 main > section > div[class*="max-w-4xl"],
 main > section > div[class*="max-w-6xl"],
-main > section > div[class*="max-w-7xl"] {
+main > section > div[class*="max-w-7xl"],
+.react-static-chunk > section > div[class*="max-w-4xl"],
+.react-static-chunk > section > div[class*="max-w-6xl"],
+.react-static-chunk > section > div[class*="max-w-7xl"] {
   box-sizing: border-box;
   margin-left: auto !important;
   margin-right: auto !important;
@@ -188,7 +191,10 @@ main > section > div[class*="max-w-7xl"] {
   .landing-container,
   main > section > div[class*="max-w-4xl"],
   main > section > div[class*="max-w-6xl"],
-  main > section > div[class*="max-w-7xl"] {
+  main > section > div[class*="max-w-7xl"],
+  .react-static-chunk > section > div[class*="max-w-4xl"],
+  .react-static-chunk > section > div[class*="max-w-6xl"],
+  .react-static-chunk > section > div[class*="max-w-7xl"] {
     width: calc(100% - 3rem) !important;
   }
 }
@@ -197,7 +203,10 @@ main > section > div[class*="max-w-7xl"] {
   .landing-container,
   main > section > div[class*="max-w-4xl"],
   main > section > div[class*="max-w-6xl"],
-  main > section > div[class*="max-w-7xl"] {
+  main > section > div[class*="max-w-7xl"],
+  .react-static-chunk > section > div[class*="max-w-4xl"],
+  .react-static-chunk > section > div[class*="max-w-6xl"],
+  .react-static-chunk > section > div[class*="max-w-7xl"] {
     width: calc(100% - 4rem) !important;
   }
 }

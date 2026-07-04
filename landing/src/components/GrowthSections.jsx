@@ -414,6 +414,8 @@ export function BetaDownloadModal() {
       onClose={() => setIsOpen(false)}
       labelledBy="download-modal-title"
       panelClassName="border-white/15 bg-[#171717] text-white"
+      headerClassName="bg-[#171717]/95 text-white"
+      closeButtonClassName="border-white/15 bg-white/10 text-white/80 hover:border-orange-300/40 hover:bg-white/15 hover:text-white"
       contentClassName="p-6 text-white"
     >
       <div>

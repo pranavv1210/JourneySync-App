@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useEffect } from 'react';
+import { X } from 'lucide-react';
 
 export function AppModal({
   isOpen,
@@ -12,6 +13,8 @@ export function AppModal({
   maxWidth: explicitMaxWidth,
   contentClassName = '',
   panelClassName = 'border-neutral-200 bg-white text-neutral-900',
+  headerClassName = 'bg-white/95 text-neutral-950',
+  closeButtonClassName = 'border-neutral-200 bg-white/85 text-neutral-600 hover:border-orange-200 hover:bg-orange-50 hover:text-primary',
 }) {
   const shouldReduceMotion = useReducedMotion();
   const maxWidth = explicitMaxWidth ?? (size === 'lg' ? '48rem' : '28rem');
@@ -65,25 +68,42 @@ export function AppModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby={labelledBy}
-            className={`app-modal-shell relative flex w-full flex-col overflow-hidden rounded-2xl border shadow-2xl ${panelClassName}`}
-            style={{ maxWidth }}
+            className={`app-modal-shell relative flex flex-col overflow-hidden rounded-2xl border shadow-2xl ${panelClassName}`}
+            style={{
+              boxSizing: 'border-box',
+              maxWidth,
+              width: 'min(100%, calc(100vw - 2rem))',
+            }}
             initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96, y: 16 }}
             animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
             exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 16 }}
             transition={{ duration: shouldReduceMotion ? 0 : 0.28, ease: 'easeOut' }}
           >
-            {title ? (
-              <header className="sticky top-0 z-10 flex items-center gap-3 bg-white px-5 py-4 sm:px-6">
-                {Icon ? (
-                  <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-orange-50 text-primary">
-                    <Icon size={17} />
-                  </span>
-                ) : null}
-                <h2 id={labelledBy} className="min-w-0 truncate text-lg font-extrabold text-neutral-950 sm:text-xl">
-                  {title}
-                </h2>
-              </header>
-            ) : null}
+            <header className={`sticky top-0 z-10 flex items-center justify-between gap-3 px-5 py-4 sm:px-6 ${headerClassName}`}>
+              {title ? (
+                <div className="flex min-w-0 items-center gap-3">
+                  {Icon ? (
+                    <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-orange-50 text-primary">
+                      <Icon size={17} />
+                    </span>
+                  ) : null}
+                  <h2 id={labelledBy} className="min-w-0 truncate text-lg font-extrabold sm:text-xl">
+                    {title}
+                  </h2>
+                </div>
+              ) : (
+                <span aria-hidden="true" />
+              )}
+
+              <button
+                type="button"
+                aria-label="Close modal"
+                onClick={onClose}
+                className={`grid h-9 w-9 flex-none place-items-center rounded-full border shadow-sm transition duration-200 ease-out hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500/30 ${closeButtonClassName}`}
+              >
+                <X size={16} strokeWidth={2.4} />
+              </button>
+            </header>
 
             <div className={`app-modal-scroll overflow-y-auto ${contentClassName}`}>
               {children}

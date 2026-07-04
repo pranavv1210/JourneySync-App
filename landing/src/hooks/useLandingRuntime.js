@@ -6,10 +6,20 @@ export function useLandingRuntime() {
     // We execute the extracted JS here
     try {
       
+  var loaderSeen = false;
+  try {
+    loaderSeen = window.sessionStorage.getItem('journeysync_loader_seen') === 'true';
+    window.sessionStorage.setItem('journeysync_loader_seen', 'true');
+  } catch {}
+
+  if(loaderSeen) {
+    document.getElementById('loading-screen')?.remove();
+  }
+
   setTimeout(function(){
     var loader = document.getElementById('loading-screen');
     if(loader) loader.remove();
-  }, 720);
+  }, loaderSeen ? 0 : 720);
 
 
   // Show a small toast when links with .coming-soon are clicked

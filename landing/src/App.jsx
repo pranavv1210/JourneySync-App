@@ -82,6 +82,7 @@ export default function App() {
       if (infoKey) {
         e.preventDefault();
         e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
         setIsBetaOpen(false);
         setActiveInfoModal(infoKey);
         return;
@@ -91,6 +92,7 @@ export default function App() {
       if (href === '/beta' || text.includes('Join Closed Beta') || text.includes('Join Beta')) {
         e.preventDefault();
         e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
         setActiveInfoModal(null);
         setIsBetaOpen(true);
       }
