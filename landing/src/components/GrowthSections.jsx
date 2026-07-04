@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { trackEvent } from '../utils/tracking';
+import { AppModal } from './AppModal';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -65,7 +66,7 @@ const stats = [
 export function SocialProof() {
   return (
     <MotionSection id="beta-signal" className="pt-14 pb-20 md:pt-16 md:pb-24 bg-white/60 dark:bg-gray-900/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="landing-container">
         <SectionHeader
           eyebrow="Beta Signal"
           title="Built for real riding groups, not solo navigation."
@@ -101,14 +102,14 @@ const problems = [
 export function ProblemSolution() {
   return (
     <MotionSection id="problems" className="pt-20 pb-16 md:pt-24 md:pb-20 bg-background-light dark:bg-background-dark">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="landing-container">
         <SectionHeader
           align="left"
           eyebrow="Problem to Solution"
           title="Group rides are social. Coordination should not be chaotic."
           copy="JourneySync gives every rider the same ride context before, during, and after the journey, so the group moves like one connected pack."
         />
-        <motion.div className="w-full space-y-4" variants={container}>
+        <motion.div className="landing-content space-y-4" variants={container}>
           {problems.map(([title, copy], index) => (
             <motion.article
               key={title}
@@ -126,7 +127,7 @@ export function ProblemSolution() {
               </div>
             </motion.article>
           ))}
-          <motion.article className="feature-card premium-card problem-solved-card rounded-3xl p-5 bg-background-dark text-white shadow-2xl" variants={fadeUp}>
+          <motion.article className="problem-solved-card rounded-3xl p-5 text-white shadow-2xl" variants={fadeUp}>
             <div className="flex items-start gap-4">
               <div className="grid h-10 w-10 flex-none place-items-center rounded-full bg-secondary text-white shadow-xl">
                 <span className="material-icons-round">check</span>
@@ -159,7 +160,7 @@ export function Comparison() {
       className="py-16 bg-white/60 dark:bg-gray-900/80"
       onViewportEnter={() => trackEvent('comparison_viewed')}
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="landing-container">
         <SectionHeader
           align="left"
           eyebrow="Why JourneySync"
@@ -221,7 +222,7 @@ export function DemoSection() {
       className="py-14 bg-background-light dark:bg-background-dark"
       onViewportEnter={() => trackEvent('demo_viewed')}
     >
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="landing-container">
         <div className="demo-card relative overflow-hidden rounded-[2rem] bg-[#171717] text-white shadow-2xl download-glow">
           <div className="absolute inset-0 download-banner-glow pointer-events-none" />
           <div className="relative grid lg:grid-cols-2 gap-6 lg:gap-8 items-center p-6 sm:p-8 lg:p-10">
@@ -259,7 +260,7 @@ export function DemoSection() {
 export function BuiltByRiders() {
   return (
     <MotionSection id="built-by-riders" className="py-16 bg-background-light dark:bg-background-dark">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="landing-container">
         <SectionHeader
           align="left"
           eyebrow="Startup Story"
@@ -315,7 +316,7 @@ const testimonials = [
 export function Testimonials() {
   return (
     <MotionSection id="testimonials" className="py-16 overflow-hidden bg-white/60 dark:bg-gray-900/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="landing-container">
         <SectionHeader
           eyebrow="Rider Feedback"
           title="What founding riders are asking for."
@@ -359,7 +360,7 @@ export function Faq() {
 
   return (
     <MotionSection id="faq" className="py-16 bg-background-light dark:bg-background-dark">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="landing-container">
         <SectionHeader
           eyebrow="FAQ"
           title="Answers before you join the beta."
@@ -393,33 +394,29 @@ export function Faq() {
 }
 
 export function BetaDownloadModal() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const open = () => setIsOpen(true);
+    const close = () => setIsOpen(false);
+
+    window.addEventListener('journeysync:download-modal-open', open);
+    window.addEventListener('journeysync:download-modal-close', close);
+    return () => {
+      window.removeEventListener('journeysync:download-modal-open', open);
+      window.removeEventListener('journeysync:download-modal-close', close);
+    };
+  }, []);
+
   return (
-    <div
-      id="download-modal"
-      className="fixed inset-0 z-[99999] hidden flex items-center justify-center px-4 py-8"
-      aria-hidden="true"
+    <AppModal
+      isOpen={isOpen}
+      onClose={() => setIsOpen(false)}
+      labelledBy="download-modal-title"
+      panelClassName="border-white/15 bg-[#171717] text-white"
+      contentClassName="p-6 text-white"
     >
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/70"
-        data-close-download
-        aria-label="Close beta download modal"
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="download-modal-title"
-        className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-white/15 bg-[#171717] p-6 text-white shadow-2xl"
-      >
-        <button
-          type="button"
-          className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/15"
-          data-close-download
-          aria-label="Close"
-        >
-          <span className="material-icons-round">close</span>
-        </button>
-        <div className="pr-10">
+      <div>
           <span className="text-primary text-xs font-extrabold uppercase tracking-wider">
             Closed Beta
           </span>
@@ -429,7 +426,6 @@ export function BetaDownloadModal() {
           <p className="mt-4 text-sm leading-relaxed text-gray-300">
             This is an early rider test build for active groups. Install it only if you are comfortable testing beta software and sharing feedback.
           </p>
-        </div>
         <div className="mt-6 grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
           <div className="flex items-start gap-3">
             <span className="material-icons-round text-primary text-lg">android</span>
@@ -462,6 +458,6 @@ export function BetaDownloadModal() {
           </a>
         </div>
       </div>
-    </div>
+    </AppModal>
   );
 }

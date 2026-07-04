@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Mail, ArrowRight, Check, X, Shield, Smartphone } from 'lucide-react';
+import { Mail, ArrowRight, Check, Shield, Smartphone } from 'lucide-react';
+import { AppModal } from './AppModal';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { trackBetaEvent } from '../utils/tracking';
 
@@ -23,8 +24,6 @@ export function JoinBetaModal({ isOpen, onClose }) {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('idle'); // 'idle' | 'submitting' | 'success' | 'duplicate_email' | 'duplicate_device'
   const startedRef = useRef(false);
-  const modalRef = useRef(null);
-  const scrollLockRef = useRef(null);
 
   // Track modal open/close
   useEffect(() => {
@@ -34,29 +33,6 @@ export function JoinBetaModal({ isOpen, onClose }) {
       setEmail('');
       setError('');
       startedRef.current = false;
-      
-      // Prevent page scrolling while preserving the exact previous inline styles.
-      scrollLockRef.current = {
-        bodyOverflow: document.body.style.overflow,
-        htmlOverflow: document.documentElement.style.overflow,
-      };
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
-      
-      // Focus trapping
-      const handleKeyDown = (e) => {
-        if (e.key === 'Escape') {
-          onClose();
-        }
-      };
-      window.addEventListener('keydown', handleKeyDown);
-      return () => {
-        document.body.style.overflow = scrollLockRef.current?.bodyOverflow ?? '';
-        document.documentElement.style.overflow = scrollLockRef.current?.htmlOverflow ?? '';
-        document.body.classList.remove('modal-open');
-        window.removeEventListener('keydown', handleKeyDown);
-        scrollLockRef.current = null;
-      };
     } else {
       if (startedRef.current) {
         trackBetaEvent('beta_modal_close');
@@ -152,49 +128,14 @@ export function JoinBetaModal({ isOpen, onClose }) {
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
-          {/* Dark translucent overlay + backdrop blur */}
-          <motion.div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            onClick={onClose}
-          />
-
-          {/* Premium Modal Wrapper */}
-          <motion.div
-            ref={modalRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="modal-title"
-            className="relative w-full max-w-md overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl flex flex-col items-center justify-center sm:p-8"
-            style={{
-              boxSizing: 'border-box',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
-            }}
-            initial={{ opacity: 0, scale: 0.92, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 16 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-          >
+    <AppModal
+      isOpen={isOpen}
+      onClose={onClose}
+      labelledBy="modal-title"
+      contentClassName="p-6 sm:p-8"
+    >
             {/* Ambient orange reflection */}
             <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-40 -translate-x-1/2 rounded-full bg-orange-500/10 blur-3xl" />
-
-            {/* Close Button */}
-            <button
-              onClick={onClose}
-              className="absolute right-4 top-4 z-50 grid h-9 w-9 place-items-center rounded-full text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 cursor-pointer"
-              style={{ border: 'none' }}
-              aria-label="Close modal"
-            >
-              <X size={16} />
-            </button>
 
             {/* Content Container */}
             <div className="w-full relative z-10 flex flex-col items-center text-center" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -362,10 +303,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
                 )}
               </AnimatePresence>
             </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    </AppModal>
   );
 }
 

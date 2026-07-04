@@ -1,6 +1,5 @@
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Briefcase, FileText, Info, Mail, Newspaper, Shield, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { Briefcase, FileText, Info, Mail, Newspaper, Shield } from 'lucide-react';
+import { AppModal } from './AppModal';
 
 const modalContent = {
   about: {
@@ -177,75 +176,21 @@ const modalContent = {
 };
 
 export function InfoModal({ modalKey, onClose }) {
-  const shouldReduceMotion = useReducedMotion();
   const content = modalKey ? modalContent[modalKey] : null;
   const Icon = content?.icon ?? Info;
 
-  useEffect(() => {
-    if (!content) return undefined;
-
-    const previousOverflow = document.body.style.overflow;
-    const previousHtmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.documentElement.style.overflow = previousHtmlOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [content, onClose]);
-
   return (
-    <AnimatePresence>
+    <AppModal
+      isOpen={Boolean(content)}
+      onClose={onClose}
+      title={content?.title}
+      icon={Icon}
+      labelledBy="info-modal-title"
+      size="lg"
+      maxWidth="48rem"
+      contentClassName="px-5 pb-6 sm:px-6 sm:pb-8"
+    >
       {content ? (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6">
-          <motion.button
-            type="button"
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            aria-label="Close modal"
-            onClick={onClose}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: shouldReduceMotion ? 0 : 0.28, ease: 'easeOut' }}
-          />
-
-          <motion.article
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="info-modal-title"
-            className="app-modal-shell relative flex w-full max-w-[760px] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white text-neutral-900 shadow-2xl"
-            initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96, y: 16 }}
-            animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
-            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 16 }}
-            transition={{ duration: shouldReduceMotion ? 0 : 0.28, ease: 'easeOut' }}
-          >
-            <header className="sticky top-0 z-10 flex items-center justify-between gap-4 bg-white px-5 py-4 sm:px-6">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-orange-50 text-primary">
-                  <Icon size={17} />
-                </span>
-                <h2 id="info-modal-title" className="truncate text-lg font-extrabold text-neutral-950 sm:text-xl">
-                  {content.title}
-                </h2>
-              </div>
-              <button
-                type="button"
-                className="grid h-9 w-9 flex-none place-items-center rounded-full text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
-                onClick={onClose}
-                aria-label="Close modal"
-              >
-                <X size={16} />
-              </button>
-            </header>
-
-            <div className="app-modal-scroll overflow-y-auto px-5 pb-6 sm:px-6 sm:pb-8">
               <div className="app-modal-content mx-auto max-w-[640px] pt-2">
                 {content.sections.map((section) => (
                   <section className="app-modal-section" key={section.heading}>
@@ -263,10 +208,7 @@ export function InfoModal({ modalKey, onClose }) {
                   </section>
                 ))}
               </div>
-            </div>
-          </motion.article>
-        </div>
       ) : null}
-    </AnimatePresence>
+    </AppModal>
   );
 }

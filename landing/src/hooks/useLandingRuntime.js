@@ -246,29 +246,12 @@ export function useLandingRuntime() {
 
   function openDownloadModal(e) {
     if(e) e.preventDefault();
-    const dmodal = document.getElementById('download-modal');
-    if(!dmodal) return;
     trackEvent('apk_download_modal_opened');
-    window.__downloadModalScrollState = window.__downloadModalScrollState || {
-      bodyOverflow: document.body.style.overflow,
-      htmlOverflow: document.documentElement.style.overflow,
-    };
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-    document.body.classList.add('modal-open');
-    dmodal.classList.remove('hidden');
-    dmodal.setAttribute('aria-hidden', 'false');
+    window.dispatchEvent(new CustomEvent('journeysync:download-modal-open'));
   }
 
   function closeDownloadModal() {
-    const dmodal = document.getElementById('download-modal');
-    if(!dmodal) return;
-    dmodal.classList.add('hidden');
-    dmodal.setAttribute('aria-hidden', 'true');
-    document.body.style.overflow = window.__downloadModalScrollState?.bodyOverflow || '';
-    document.documentElement.style.overflow = window.__downloadModalScrollState?.htmlOverflow || '';
-    document.body.classList.remove('modal-open');
-    window.__downloadModalScrollState = null;
+    window.dispatchEvent(new CustomEvent('journeysync:download-modal-close'));
   }
 
   window.handleHeaderDownloadCTA = handleHeaderDownloadCTA;
@@ -276,10 +259,6 @@ export function useLandingRuntime() {
   window.closeDownloadModal = closeDownloadModal;
 
   (function(){
-    const dcancels = document.querySelectorAll('[data-close-download]');
-    dcancels.forEach(btn => {
-      btn.addEventListener('click', closeDownloadModal);
-    });
     document.addEventListener('keydown', function(e){ 
       if(e.key === 'Escape') closeDownloadModal(); 
     });

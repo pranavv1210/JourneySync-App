@@ -165,6 +165,43 @@ body section:not(#hero) {
   contain-intrinsic-size: auto !important;
 }
 
+.landing-container,
+main > section > div[class*="max-w-4xl"],
+main > section > div[class*="max-w-6xl"],
+main > section > div[class*="max-w-7xl"] {
+  box-sizing: border-box;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: 72rem !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  width: calc(100% - 2rem) !important;
+}
+
+.landing-content {
+  box-sizing: border-box;
+  max-width: 100%;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .landing-container,
+  main > section > div[class*="max-w-4xl"],
+  main > section > div[class*="max-w-6xl"],
+  main > section > div[class*="max-w-7xl"] {
+    width: calc(100% - 3rem) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-container,
+  main > section > div[class*="max-w-4xl"],
+  main > section > div[class*="max-w-6xl"],
+  main > section > div[class*="max-w-7xl"] {
+    width: calc(100% - 4rem) !important;
+  }
+}
+
 main > section:not(#hero) {
   padding-top: clamp(5rem, 7vw, 7rem) !important;
   padding-bottom: clamp(5rem, 7vw, 7rem) !important;
@@ -422,8 +459,18 @@ main > section:not(#hero) + section {
 }
 
 #problems .problem-solved-card {
-  background: rgba(23, 23, 23, 0.94);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: #171717;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 24px 58px rgba(17, 24, 39, 0.18), 0 18px 42px rgba(177, 95, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  position: relative;
+  transition: border-color 180ms ease, box-shadow 180ms ease, filter 180ms ease, transform 180ms ease;
+}
+
+#problems .problem-solved-card:hover {
+  border-color: rgba(219, 119, 6, 0.4);
+  filter: brightness(1.04);
+  transform: translateY(-2px) scale(1.01);
 }
 
 #problems .feature-card::before,
@@ -555,15 +602,6 @@ a:focus-visible {
     max-width: 100% !important;
   }
 
-  #hero > div.relative.z-10 {
-    margin-left: auto !important;
-    margin-right: auto !important;
-    max-width: calc(100vw - 2rem) !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    width: calc(100vw - 2rem) !important;
-  }
-
   #hero * {
     min-width: 0;
   }
@@ -584,6 +622,21 @@ a:focus-visible {
   #hero-ctas {
     box-sizing: border-box;
     width: 100% !important;
+  }
+
+  #hero .max-w-2xl {
+    flex: 0 1 auto !important;
+    max-width: calc(100vw - 2rem) !important;
+  }
+
+  #hero h1 {
+    font-size: clamp(2.25rem, 10vw, 3rem) !important;
+    line-height: 1.08 !important;
+  }
+
+  #hero p {
+    font-size: 1rem !important;
+    line-height: 1.6 !important;
   }
 
   #hero-ctas .premium-btn {
