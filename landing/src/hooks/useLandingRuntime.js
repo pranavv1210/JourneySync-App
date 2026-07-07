@@ -7,18 +7,32 @@ export function useLandingRuntime() {
     try {
       
   var loaderSeen = false;
+  var loaderObserver = null;
+  function removeLoader(){
+    document.getElementById('loading-screen')?.remove();
+  }
+  function observeLoaderReinsertions(){
+    if(loaderObserver || !document.body) return;
+    loaderObserver = new MutationObserver(function(){
+      if(window.sessionStorage?.getItem('journeysync_loader_seen') === 'true') {
+        removeLoader();
+      }
+    });
+    loaderObserver.observe(document.body, { childList: true, subtree: true });
+  }
   try {
     loaderSeen = window.sessionStorage.getItem('journeysync_loader_seen') === 'true';
     window.sessionStorage.setItem('journeysync_loader_seen', 'true');
   } catch {}
 
   if(loaderSeen) {
-    document.getElementById('loading-screen')?.remove();
+    removeLoader();
+    observeLoaderReinsertions();
   }
 
   setTimeout(function(){
-    var loader = document.getElementById('loading-screen');
-    if(loader) loader.remove();
+    removeLoader();
+    observeLoaderReinsertions();
   }, loaderSeen ? 0 : 720);
 
 

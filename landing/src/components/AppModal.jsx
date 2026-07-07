@@ -29,6 +29,7 @@ export function AppModal({
 
     document.body.style.overflow = 'hidden';
     document.body.style.paddingRight = '';
+    document.body.classList.add('modal-open');
     document.documentElement.style.overflow = 'hidden';
     document.documentElement.style.paddingRight = '';
 
@@ -78,7 +79,7 @@ export function AppModal({
             transition={{ duration: shouldReduceMotion ? 0 : 0.28, ease: 'easeOut' }}
           >
             {title ? (
-              <header className={`sticky top-0 z-10 flex items-center gap-3 px-5 py-4 sm:px-6 ${headerClassName}`}>
+              <header className={`sticky top-0 z-10 flex items-center gap-3 rounded-t-2xl border-b border-neutral-100 ${headerClassName}`}>
                   {Icon ? (
                     <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-orange-50 text-primary">
                       <Icon size={17} />

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, memo, Suspense, useState, useEffect } from 'react';
 import './index.css';
 import {
   DownloadBanner,
@@ -26,7 +26,7 @@ import { InfoModal } from './components/InfoModal';
 
 const BetaDownloadPage = lazy(() => import('./pages/BetaDownloadPage.jsx'));
 
-function LandingPage() {
+const LandingPage = memo(function LandingPage() {
   useLandingRuntime();
 
   return (
@@ -51,7 +51,7 @@ function LandingPage() {
       <BetaDownloadModal />
     </>
   );
-}
+});
 
 function PageFallback() {
   return (
@@ -114,7 +114,7 @@ export default function App() {
 
   return (
     <>
-      <LandingPage onOpenBeta={() => setIsBetaOpen(true)} />
+      <LandingPage />
       <JoinBetaModal isOpen={isBetaOpen} onClose={() => setIsBetaOpen(false)} />
       <InfoModal modalKey={activeInfoModal} onClose={() => setActiveInfoModal(null)} />
     </>

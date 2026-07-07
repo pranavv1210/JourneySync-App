@@ -258,9 +258,18 @@ main > section:not(#hero) + section {
   max-height: min(85vh, calc(100svh - 2rem));
 }
 
+.app-modal-shell > header {
+  flex: 0 0 auto;
+  padding: 1.5rem;
+}
+
 .app-modal-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 1.5rem;
   scrollbar-color: rgba(217, 119, 6, 0.34) transparent;
   scrollbar-width: thin;
+  overscroll-behavior: contain;
 }
 
 .app-modal-scroll::-webkit-scrollbar {
@@ -337,6 +346,36 @@ main > section:not(#hero) + section {
 .app-modal-content a:hover {
   color: #a95400;
   text-decoration-color: currentColor;
+}
+
+.app-modal-document-scroll {
+  scroll-padding-bottom: 2rem;
+}
+
+.app-modal-document {
+  color: #404040;
+  font-size: 0.95rem;
+  line-height: 1.72;
+}
+
+.app-modal-document h3 {
+  color: #171717;
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1.35;
+  margin: 1.7rem 0 0.55rem;
+}
+
+.app-modal-document h3:first-child {
+  margin-top: 0;
+}
+
+.app-modal-document p {
+  margin: 0 0 0.85rem;
+}
+
+.app-modal-document p:last-child {
+  margin-bottom: 0;
 }
 
 .app-modal-button {
@@ -755,5 +794,12 @@ a:focus-visible {
     overflow-wrap: anywhere;
     border-radius: 1.25rem;
     padding: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-modal-shell > header,
+  .app-modal-scroll {
+    padding: 2rem;
   }
 }

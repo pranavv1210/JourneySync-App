@@ -1,5 +1,22 @@
 import { Briefcase, FileText, Info, Mail, Newspaper, Shield } from 'lucide-react';
+import privacyPolicyHtml from '../../public/privacy-policy.html?raw';
+import termsOfUseText from '../data/termsOfUse.txt?raw';
 import { AppModal } from './AppModal';
+
+function extractPreText(html) {
+  const match = html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+  const raw = match ? match[1] : html;
+
+  if (typeof document === 'undefined') {
+    return raw.replaceAll('&quot;', '"').replaceAll('&amp;', '&').trim();
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = raw;
+  return textarea.value.trim();
+}
+
+const privacyPolicyText = extractPreText(privacyPolicyHtml);
 
 const modalContent = {
   about: {
@@ -19,9 +36,9 @@ const modalContent = {
         ],
       },
       {
-        heading: 'The problem it solves',
+        heading: 'Where we are headed',
         body: [
-          'Maps are built for individual navigation. Chats are built for conversation. JourneySync connects the ride state around both: who is in the crew, where the route is going, what changed, and whether anyone needs help.',
+          'The product is in closed beta with an India-first focus. We are building around rider feedback, reliable ride state, safer group coordination, and a practical workflow that works before, during, and after the ride.',
         ],
       },
     ],
@@ -33,13 +50,18 @@ const modalContent = {
       {
         heading: 'Current openings',
         body: [
-          "We're currently a small team building JourneySync.",
-          "Although we don't have open positions today, we'd love to hear from passionate builders who care about mobility, maps, safety, and rider communities.",
+          'JourneySync is still a small founder-led product team. We are not hiring for full-time roles today, but we keep a short list of builders who understand maps, mobility, safety, realtime systems, and rider communities.',
+        ],
+      },
+      {
+        heading: 'What we look for',
+        body: [
+          'Strong product judgment, clean execution, and respect for real-world rider constraints matter more than titles. The work spans Flutter, React, Supabase, maps, realtime coordination, and thoughtful safety design.',
         ],
       },
       {
         heading: 'Reach out',
-        body: ['Email us at journeysync.app@gmail.com with a short note about what you want to build and why JourneySync interests you.'],
+        body: ['Email journeysync.app@gmail.com with a concise note about what you want to build, links to relevant work, and why JourneySync interests you.'],
       },
     ],
   },
@@ -48,12 +70,22 @@ const modalContent = {
     icon: Newspaper,
     sections: [
       {
-        heading: 'Coming soon',
-        body: ['Articles and ride stories are coming soon.'],
+        heading: 'Product notes',
+        body: [
+          'The public blog is being prepared around practical ride coordination, beta learnings, product updates, and the engineering choices behind JourneySync.',
+        ],
       },
       {
-        heading: 'What to expect',
-        list: ['Ride Tips', 'Product Updates', 'Community Stories'],
+        heading: 'Upcoming topics',
+        list: [
+          'How Ride Radar keeps nearby discovery focused.',
+          'Why group rides need shared state, not another chat thread.',
+          'What we are learning from closed beta rider groups.',
+        ],
+      },
+      {
+        heading: 'Press and stories',
+        body: ['For product stories, launch notes, or rider community features, contact journeysync.app@gmail.com.'],
       },
     ],
   },
@@ -63,7 +95,12 @@ const modalContent = {
     sections: [
       {
         heading: 'Email',
-        body: ['journeysync.app@gmail.com'],
+        body: [
+          {
+            label: 'journeysync.app@gmail.com',
+            href: 'mailto:journeysync.app@gmail.com',
+          },
+        ],
       },
       {
         heading: 'Location',
@@ -75,73 +112,32 @@ const modalContent = {
       },
       {
         heading: 'Social',
-        body: ['Instagram: @journeysync.app', 'GitHub: github.com/pranavv1210/JourneySync-App'],
+        body: [
+          {
+            prefix: 'Instagram: ',
+            label: '@journeysync.app',
+            href: 'https://instagram.com/journeysync.app',
+            external: true,
+          },
+          {
+            prefix: 'GitHub: ',
+            label: 'github.com/pranavv1210/JourneySync-App',
+            href: 'https://github.com/pranavv1210/JourneySync-App',
+            external: true,
+          },
+        ],
       },
     ],
   },
   privacy: {
     title: 'Privacy Policy',
     icon: Shield,
-    sections: [
-      {
-        heading: 'Information we collect',
-        body: [
-          'JourneySync may collect information you provide directly, including your email address, beta signup details, profile information, motorcycle details, ride preferences, support messages, and feedback.',
-          'When you use ride features, JourneySync may process location data, route information, ride lobby participation, rider status, timestamps, device identifiers, diagnostics, and app usage events needed to operate the service.',
-        ],
-      },
-      {
-        heading: 'How we use information',
-        body: [
-          'We use information to provide group ride coordination, operate live ride visibility, improve beta reliability, detect abuse, respond to support requests, and communicate important product updates.',
-          'Location and ride data are used to power active ride experiences such as shared route context, rider visibility, SOS context, and ride history where available.',
-        ],
-      },
-      {
-        heading: 'Sharing and storage',
-        body: [
-          'We do not sell personal information. We may share limited information with service providers that help us host, secure, analyze, and operate JourneySync.',
-          'Beta-stage systems may change as the product evolves. We aim to keep data access limited to what is needed for product operation, safety, support, and improvement.',
-        ],
-      },
-      {
-        heading: 'Your choices',
-        body: [
-          'You can choose not to provide certain information, but some ride coordination features may not work without location, profile, or ride lobby data.',
-          'For privacy questions or deletion requests, contact journeysync.app@gmail.com.',
-        ],
-      },
-    ],
+    documentText: privacyPolicyText,
   },
   terms: {
     title: 'Terms of Use',
     icon: FileText,
-    sections: [
-      {
-        heading: 'Beta-stage service',
-        body: [
-          'JourneySync is currently a beta-stage product. Features may change, break, be delayed, or be removed as we test and improve the service.',
-        ],
-      },
-      {
-        heading: 'Acceptable use',
-        body: [
-          'You agree to use JourneySync only for lawful ride planning, coordination, and community purposes. Do not misuse the service, interfere with other riders, attempt unauthorized access, or submit harmful content.',
-        ],
-      },
-      {
-        heading: 'Accounts and access',
-        body: [
-          'You are responsible for the information you provide and for activity associated with your access. We may limit, suspend, or revoke beta access if needed to protect the product, riders, or the community.',
-        ],
-      },
-      {
-        heading: 'No guarantees',
-        body: [
-          'JourneySync is provided as-is during beta. We aim to build reliable tools, but we do not guarantee uninterrupted access, perfect location accuracy, or suitability for every ride condition.',
-        ],
-      },
-    ],
+    documentText: termsOfUseText.trim(),
   },
   safety: {
     title: 'Safety Disclaimer',
@@ -150,19 +146,19 @@ const modalContent = {
       {
         heading: 'General safety',
         body: [
-          'JourneySync assists with group ride coordination. It does not replace rider judgment, training, protective gear, road awareness, or safe riding practices.',
+          'JourneySync assists with group ride coordination. It does not replace rider judgment, training, protective gear, road awareness, traffic laws, emergency services, or safe riding practices.',
         ],
       },
       {
         heading: 'Road responsibility',
         body: [
-          'Riders are responsible for following traffic laws, speed limits, road signs, local regulations, and safe group riding etiquette at all times.',
+          'Riders are responsible for following traffic laws, speed limits, road signs, local regulations, weather conditions, road quality, and safe group riding etiquette at all times.',
         ],
       },
       {
         heading: 'Emergency usage',
         body: [
-          'SOS and safety-related features are support tools and may depend on device battery, network connectivity, permissions, location accuracy, and service availability. In an emergency, contact local emergency services directly.',
+          'SOS and safety-related features are support tools and may depend on device battery, network connectivity, permissions, location accuracy, third-party services, and service availability. In an emergency, contact local emergency services directly.',
         ],
       },
       {
@@ -175,9 +171,44 @@ const modalContent = {
   },
 };
 
+function isDocumentHeading(line) {
+  return /^[0-9]+\. [A-Z0-9 ,?'-]+$/.test(line) || /^[A-Z][A-Z0-9 ,?'-]{5,}$/.test(line);
+}
+
+function renderBodyItem(item) {
+  if (typeof item === 'string') return item;
+
+  return (
+    <>
+      {item.prefix ?? ''}
+      <a href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noopener noreferrer' : undefined}>
+        {item.label}
+      </a>
+    </>
+  );
+}
+
+function DocumentText({ text }) {
+  return (
+    <div className="app-modal-document">
+      {text.split(/\n+/).map((line) => {
+        const value = line.trim();
+        if (!value) return null;
+
+        if (isDocumentHeading(value)) {
+          return <h3 key={value}>{value}</h3>;
+        }
+
+        return <p key={value}>{value}</p>;
+      })}
+    </div>
+  );
+}
+
 export function InfoModal({ modalKey, onClose }) {
   const content = modalKey ? modalContent[modalKey] : null;
   const Icon = content?.icon ?? Info;
+  const isLegalDocument = Boolean(content?.documentText);
 
   return (
     <AppModal
@@ -187,27 +218,29 @@ export function InfoModal({ modalKey, onClose }) {
       icon={Icon}
       labelledBy="info-modal-title"
       size="lg"
-      maxWidth="48rem"
-      contentClassName="px-5 pb-6 sm:px-6 sm:pb-8"
+      maxWidth={isLegalDocument ? '56rem' : '48rem'}
+      contentClassName={isLegalDocument ? 'app-modal-document-scroll' : ''}
     >
-      {content ? (
-              <div className="app-modal-content mx-auto max-w-[640px] pt-2">
-                {content.sections.map((section) => (
-                  <section className="app-modal-section" key={section.heading}>
-                    <h3>{section.heading}</h3>
-                    {section.body?.map((paragraph) => (
-                      <p key={paragraph}>{paragraph}</p>
-                    ))}
-                    {section.list ? (
-                      <ul>
-                        {section.list.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </section>
-                ))}
-              </div>
+      {content?.documentText ? (
+        <DocumentText text={content.documentText} />
+      ) : content ? (
+        <div className="app-modal-content mx-auto max-w-[640px]">
+          {content.sections.map((section) => (
+            <section className="app-modal-section" key={section.heading}>
+              <h3>{section.heading}</h3>
+              {section.body?.map((paragraph) => (
+                <p key={typeof paragraph === 'string' ? paragraph : paragraph.label}>{renderBodyItem(paragraph)}</p>
+              ))}
+              {section.list ? (
+                <ul>
+                  {section.list.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </section>
+          ))}
+        </div>
       ) : null}
     </AppModal>
   );
