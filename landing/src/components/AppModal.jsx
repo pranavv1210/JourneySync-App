@@ -51,7 +51,7 @@ export function AppModal({
   return (
     <AnimatePresence>
       {isOpen ? (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6">
+        <div className="app-modal-overlay fixed inset-0 flex items-center justify-center p-4 sm:p-6">
           <motion.button
             type="button"
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -79,7 +79,7 @@ export function AppModal({
             transition={{ duration: shouldReduceMotion ? 0 : 0.28, ease: 'easeOut' }}
           >
             {title ? (
-              <header className={`sticky top-0 z-10 flex items-center gap-3 rounded-t-2xl border-b border-neutral-100 ${headerClassName}`}>
+              <header className={`app-modal-header sticky top-0 flex items-center gap-3 rounded-t-2xl border-b border-neutral-100 ${headerClassName}`}>
                   {Icon ? (
                     <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-orange-50 text-primary">
                       <Icon size={17} />
