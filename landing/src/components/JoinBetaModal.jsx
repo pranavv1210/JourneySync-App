@@ -47,6 +47,20 @@ async function insertBetaApplication(payload) {
   });
 }
 
+async function sendWelcomeEmail(email) {
+  const { error } = await supabase.functions.invoke('send-beta-welcome-email', {
+    body: { email },
+  });
+
+  if (error) {
+    console.warn('Beta welcome email failed:', error.message);
+    trackBetaEvent('beta_welcome_email_failed');
+    return;
+  }
+
+  trackBetaEvent('beta_welcome_email_sent');
+}
+
 export function JoinBetaModal({ isOpen, onClose }) {
   const shouldReduceMotion = useReducedMotion();
   const [email, setEmail] = useState('');
@@ -121,7 +135,6 @@ export function JoinBetaModal({ isOpen, onClose }) {
     const { error: dbError } = await insertBetaApplication({
       email: normalizedEmail,
       device_id: deviceId,
-      status: 'pending',
     });
 
     if (dbError) {
@@ -155,6 +168,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
     window.localStorage.setItem(REGISTERED_KEY, 'true');
     setStatus('success');
     trackBetaEvent('beta_success');
+    void sendWelcomeEmail(normalizedEmail);
     fireSuccessConfetti();
 
     setTimeout(() => {
@@ -195,7 +209,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
                           🎉 You're officially on the JourneySync Beta!
                         </h3>
                         <p className="text-neutral-500 text-xs max-w-[280px]">
-                          We'll notify you when beta access becomes available.
+                          Check your inbox for the beta download link.
                         </p>
                       </>
                     )}

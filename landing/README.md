@@ -28,3 +28,27 @@ supabase/migrations/20260702_beta_email_device_registration.sql
 ```
 
 That migration creates or updates `public.beta_applications`, enables RLS, allows anonymous inserts, and adds duplicate protection for email and device IDs.
+
+The signup flow also invokes the Supabase Edge Function at:
+
+```text
+supabase/functions/send-beta-welcome-email
+```
+
+Deploy that function and configure these Supabase secrets:
+
+```text
+BREVO_API_KEY=<Brevo transactional API key, not the SMTP password>
+BREVO_SENDER_EMAIL=<verified Brevo sender email>
+BREVO_SENDER_NAME=JourneySync
+BREVO_REPLY_TO_EMAIL=journeysync.app@gmail.com
+BETA_DOWNLOAD_URL=https://journeysyncrideapp.in/journeysync.apk
+```
+
+The welcome email subject is:
+
+```text
+You're in: download the JourneySync Beta
+```
+
+The email includes a welcome note, beta safety note, support contact, and the Android beta download link.
