@@ -1,4 +1,17 @@
 {
-    "java.configuration.updateBuildConfiguration": "disabled",
-    "cmake.sourceDirectory": "C:/Users/Pranav/Desktop/journeysync/linux"
+  "java.configuration.updateBuildConfiguration": "disabled",
+  "cmake.sourceDirectory": "C:/Users/Pranav/Desktop/journeysync/linux",
+  "deno.enablePaths": [
+    "supabase/functions"
+  ],
+  "deno.disablePaths": [
+    "android",
+    "ios",
+    "landing",
+    "lib",
+    "macos",
+    "test",
+    "web",
+    "windows"
+  ]
 }
