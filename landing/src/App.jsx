@@ -1,7 +1,6 @@
 import { lazy, memo, Suspense, useState, useEffect } from 'react';
 import './index.css';
 import {
-  DownloadBanner,
   Features,
   FinalCta,
   FooterAndModals,
@@ -12,7 +11,6 @@ import {
 } from './components/LandingSections';
 import {
   BuiltByRiders,
-  BetaDownloadModal,
   Comparison,
   DemoSection,
   Faq,
@@ -42,13 +40,11 @@ const LandingPage = memo(function LandingPage() {
         <DemoSection />
         <BuiltByRiders />
         <Safety />
-        <DownloadBanner />
         <GrowthTestimonials />
         <Faq />
         <FinalCta />
       </main>
       <FooterAndModals />
-      <BetaDownloadModal />
     </>
   );
 });
