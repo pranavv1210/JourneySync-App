@@ -14,3 +14,17 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the Oxlint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+
+## Beta Signup Supabase Setup
+
+The beta signup modal writes to `public.beta_applications` in Supabase.
+
+The landing site reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` when they are provided by the host. If those variables are missing, it falls back to the same public Supabase URL and anon key used by the Flutter app so the beta form still works on deployed builds.
+
+Before launch, apply the latest beta signup migration in Supabase:
+
+```sql
+supabase/migrations/20260702_beta_email_device_registration.sql
+```
+
+That migration creates or updates `public.beta_applications`, enables RLS, allows anonymous inserts, and adds duplicate protection for email and device IDs.

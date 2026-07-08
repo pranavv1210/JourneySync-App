@@ -18,6 +18,35 @@ function getDeviceId() {
   return next;
 }
 
+function needsLegacyBetaPayload(error) {
+  const message = error?.message?.toLowerCase() ?? '';
+  const details = error?.details?.toLowerCase() ?? '';
+
+  return (
+    error?.code === '23502' &&
+    (message.includes('name') ||
+      message.includes('city') ||
+      message.includes('vehicle') ||
+      details.includes('name') ||
+      details.includes('city') ||
+      details.includes('vehicle'))
+  );
+}
+
+async function insertBetaApplication(payload) {
+  const response = await supabase.from('beta_applications').insert(payload);
+
+  if (!needsLegacyBetaPayload(response.error)) return response;
+
+  return supabase.from('beta_applications').insert({
+    ...payload,
+    name: 'Beta rider',
+    city: 'Not provided',
+    vehicle: 'Not provided',
+    platform: 'Android',
+  });
+}
+
 export function JoinBetaModal({ isOpen, onClose }) {
   const shouldReduceMotion = useReducedMotion();
   const [email, setEmail] = useState('');
@@ -89,7 +118,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
 
     const deviceId = getDeviceId();
 
-    const { error: dbError } = await supabase.from('beta_applications').insert({
+    const { error: dbError } = await insertBetaApplication({
       email: normalizedEmail,
       device_id: deviceId,
       status: 'pending',
@@ -111,7 +140,13 @@ export function JoinBetaModal({ isOpen, onClose }) {
         return;
       }
 
-      setError('Something went wrong. Please try again.');
+      if (dbError.code === '42P01' || dbError.code === 'PGRST205') {
+        setError('Beta signup table is missing in Supabase.');
+      } else if (dbError.code === '42501') {
+        setError('Beta signup is blocked by Supabase permissions.');
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
       setStatus('idle');
       return;
     }
