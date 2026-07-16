@@ -197,8 +197,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             width: 24,
             height: 24,
           ),
-          onPressed:
-              () => pushAppRoute(context, const SignInScreen(autoStart: true)),
+          onPressed: () => pushAppRoute(context, const SignInScreen()),
         ),
         const SizedBox(height: AppSpacing.md),
         AppButton(

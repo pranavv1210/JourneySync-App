@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -11,6 +12,7 @@ import '../widgets/app_card.dart';
 import '../widgets/app_toast_premium.dart';
 import 'create_account_screen.dart';
 import 'home_screen.dart';
+import 'legal_document_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key, this.autoStart = false});
@@ -24,12 +26,20 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen> {
   final AuthService _authService = AuthService();
   bool _loading = false;
+  bool _acceptedPrivacy = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.autoStart) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _signIn());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showPremiumToast(
+          context,
+          'Review and accept the Privacy Policy to continue.',
+          type: PremiumToastType.info,
+        );
+      });
     }
   }
 
@@ -40,19 +50,25 @@ class _SignInScreenState extends State<SignInScreen> {
       title: 'Welcome back.',
       subtitle:
           'Continue with your Google account to restore rides, profile, and live sessions.',
-      action: AppButton(
-        label: _loading ? 'Signing in...' : 'Continue with Google',
-        icon: _loading ? null : null,
-        customIcon:
-            _loading
-                ? null
-                : SvgPicture.asset(
-                  'assets/google_logo.svg',
-                  width: 24,
-                  height: 24,
-                ),
-        loading: _loading,
-        onPressed: _loading ? null : _signIn,
+      action: Column(
+        children: [
+          _buildPrivacyAgreement(),
+          const SizedBox(height: AppSpacing.lg),
+          AppButton(
+            label: _loading ? 'Signing in...' : 'Continue with Google',
+            customIcon:
+                _loading
+                    ? null
+                    : SvgPicture.asset(
+                      'assets/google_logo.svg',
+                      width: 24,
+                      height: 24,
+                    ),
+            loading: _loading,
+            disabled: !_acceptedPrivacy,
+            onPressed: _loading ? null : _signIn,
+          ),
+        ],
       ),
       footer: TextButton(
         onPressed:
@@ -70,6 +86,14 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _signIn() async {
     if (_loading) return;
+    if (!_acceptedPrivacy) {
+      showPremiumToast(
+        context,
+        'Please accept the Privacy Policy before signing in.',
+        type: PremiumToastType.info,
+      );
+      return;
+    }
     setState(() => _loading = true);
     try {
       final result = await _authService.authenticateWithGoogle();
@@ -111,6 +135,117 @@ class _SignInScreenState extends State<SignInScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Widget _buildPrivacyAgreement() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        onTap: () => setState(() => _acceptedPrivacy = !_acceptedPrivacy),
+        child: AnimatedContainer(
+          duration: AppDurations.fast,
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.textPrimary.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(AppRadius.xxl),
+            border: Border.all(
+              color:
+                  _acceptedPrivacy
+                      ? AppColors.primary
+                      : AppColors.textOnDark.withValues(alpha: 0.16),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: AppDurations.fast,
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color:
+                      _acceptedPrivacy ? AppColors.primary : Colors.transparent,
+                  border: Border.all(
+                    color:
+                        _acceptedPrivacy
+                            ? AppColors.primary
+                            : AppColors.primaryLight,
+                    width: 1.8,
+                  ),
+                ),
+                child:
+                    _acceptedPrivacy
+                        ? const Icon(
+                          Icons.check_rounded,
+                          color: AppColors.textOnDark,
+                          size: 16,
+                        )
+                        : null,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      'I agree to the ',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.textOnDark.withValues(alpha: 0.86),
+                      ),
+                    ),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _showPrivacyPolicy,
+                      child: Text(
+                        'Privacy Policy',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.primaryLight,
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.primaryLight,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '.',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.textOnDark.withValues(alpha: 0.86),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showPrivacyPolicy() async {
+    final content = await rootBundle.loadString(
+      'assets/legal/privacy_policy.txt',
+    );
+    if (!mounted) return;
+    await showLegalDocumentDialog(
+      context: context,
+      title: 'Privacy Policy',
+      content: content,
+      titleStyle: AppTypography.titleLarge.copyWith(
+        color: AppColors.textPrimary,
+      ),
+      contentStyle: AppTypography.bodySmall.copyWith(
+        color: AppColors.textSecondary,
+        height: 1.5,
+      ),
+      actionColor: AppColors.primary,
+    );
   }
 }
 
