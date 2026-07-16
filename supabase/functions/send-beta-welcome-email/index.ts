@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const defaultDownloadUrl = 'https://journeysyncrideapp.in/journeysync.apk';
+const defaultDownloadPageUrl = 'https://journeysyncrideapp.in/beta/download';
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -22,7 +23,7 @@ function isValidEmail(value: unknown) {
   return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function buildEmailHtml(downloadUrl: string) {
+function buildEmailHtml(downloadUrl: string, downloadPageUrl: string) {
   return `<!doctype html>
 <html>
   <body style="margin:0;background:#f4efea;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1f2937;">
@@ -39,13 +40,13 @@ function buildEmailHtml(downloadUrl: string) {
             <tr>
               <td style="padding:8px 28px 0;color:#4b5563;font-size:16px;line-height:1.65;">
                 <p style="margin:0 0 16px;">Thanks for joining the JourneySync beta. You're helping shape a group riding app built around live coordination, Ride Radar, shared ride context, and safety-first workflows.</p>
-                <p style="margin:0 0 22px;">Download the Android beta build below and test it with your riding group.</p>
+                <p style="margin:0 0 22px;">Open the beta download page below, then tap Download APK. This keeps the app download on JourneySync's own domain instead of an email tracking redirect.</p>
                 <p style="margin:0 0 28px;">
-                  <a href="${downloadUrl}" style="display:inline-block;background:#b45f04;color:#ffffff;text-decoration:none;font-weight:800;border-radius:12px;padding:14px 20px;">Download Android Beta</a>
+                  <a href="${downloadPageUrl}" style="display:inline-block;background:#b45f04;color:#ffffff;text-decoration:none;font-weight:800;border-radius:12px;padding:14px 20px;">Open Beta Download Page</a>
                 </p>
-                <p style="margin:0 0 16px;font-size:14px;color:#6b7280;">If the button does not open, copy this link:</p>
-                <p style="margin:0 0 24px;word-break:break-all;font-size:14px;">
-                  <a href="${downloadUrl}" style="color:#b45f04;">${downloadUrl}</a>
+                <p style="margin:0 0 16px;font-size:14px;color:#6b7280;">If the email app has trouble downloading, open this direct APK link in Chrome:</p>
+                <p style="margin:0 0 24px;word-break:break-all;font-size:14px;color:#b45f04;">
+                  ${downloadUrl}
                 </p>
               </td>
             </tr>
@@ -64,13 +65,16 @@ function buildEmailHtml(downloadUrl: string) {
 </html>`;
 }
 
-function buildEmailText(downloadUrl: string) {
+function buildEmailText(downloadUrl: string, downloadPageUrl: string) {
   return [
     "You're in. Welcome to the JourneySync Beta.",
     '',
     "Thanks for joining the JourneySync beta. You're helping shape a group riding app built around live coordination, Ride Radar, shared ride context, and safety-first workflows.",
     '',
-    'Download the Android beta build:',
+    'Open the beta download page, then tap Download APK:',
+    downloadPageUrl,
+    '',
+    'Direct APK link if your email app has trouble downloading:',
     downloadUrl,
     '',
     'Beta note: This is an early test build. Use it only when you are comfortable testing beta software, and keep normal road safety, emergency services, and rider judgment first.',
@@ -106,6 +110,8 @@ Deno.serve(async (request) => {
   }
 
   const downloadUrl = Deno.env.get('BETA_DOWNLOAD_URL') || defaultDownloadUrl;
+  const downloadPageUrl =
+    Deno.env.get('BETA_DOWNLOAD_PAGE_URL') || defaultDownloadPageUrl;
   const senderEmail = Deno.env.get('BREVO_SENDER_EMAIL') || 'journeysync.app@gmail.com';
   const senderName = Deno.env.get('BREVO_SENDER_NAME') || 'JourneySync';
   const replyToEmail = Deno.env.get('BREVO_REPLY_TO_EMAIL') || 'journeysync.app@gmail.com';
@@ -128,8 +134,8 @@ Deno.serve(async (request) => {
         name: senderName,
       },
       subject: "You're in: download the JourneySync Beta",
-      htmlContent: buildEmailHtml(downloadUrl),
-      textContent: buildEmailText(downloadUrl),
+      htmlContent: buildEmailHtml(downloadUrl, downloadPageUrl),
+      textContent: buildEmailText(downloadUrl, downloadPageUrl),
       tags: ['beta-signup'],
     }),
   });
