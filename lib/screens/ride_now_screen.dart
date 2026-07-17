@@ -163,7 +163,18 @@ class _RideNowScreenState extends State<RideNowScreen> {
       child: SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
         value: _publicRide,
-        activeColor: AppColors.primary,
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected)
+                  ? AppColors.primary
+                  : AppColors.textTertiary,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected)
+                  ? AppColors.primary.withValues(alpha: 0.32)
+                  : AppColors.divider,
+        ),
         onChanged: (value) => setState(() => _publicRide = value),
         title: Text(
           _publicRide ? 'Public radar ride' : 'Private instant ride',

@@ -287,7 +287,18 @@ class _PlanTogetherScreenState extends State<PlanTogetherScreen> {
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           value: _publicRide,
-          activeColor: AppColors.primary,
+          thumbColor: WidgetStateProperty.resolveWith(
+            (states) =>
+                states.contains(WidgetState.selected)
+                    ? AppColors.primary
+                    : AppColors.textTertiary,
+          ),
+          trackColor: WidgetStateProperty.resolveWith(
+            (states) =>
+                states.contains(WidgetState.selected)
+                    ? AppColors.primary.withValues(alpha: 0.32)
+                    : AppColors.divider,
+          ),
           onChanged: (value) => setState(() => _publicRide = value),
           title: Text(
             _publicRide ? 'Community ride' : 'Invite-only ride',
