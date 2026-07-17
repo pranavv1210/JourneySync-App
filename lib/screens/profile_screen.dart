@@ -128,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       frequentRidingDay = analyticsStats.frequentDay;
       unlockedAchievements = achievements;
 
-      bikes = loadedBikes;
+      bikes = List<Map<String, String>>.from(loadedBikes);
       activeBikeId =
           loadedBikes.any((bike) => bike['id'] == activeBike)
               ? activeBike
@@ -150,32 +150,35 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   List<Map<String, String>> _decodeGaragePrefs(List<String> rows) {
-    return rows
-        .map((b) {
-          final parts = b.split('|');
-          return {
-            'id': parts.isNotEmpty ? parts[0] : '',
-            'brand': parts.length > 1 ? parts[1] : '',
-            'model': parts.length > 2 ? parts[2] : '',
-            'cc': parts.length > 3 ? parts[3] : '',
-            'nickname': parts.length > 4 ? parts[4] : 'Motorcycle',
-            'fuelType': parts.length > 5 ? parts[5] : 'Petrol',
-            'imagePath': parts.length > 6 ? parts[6] : '',
-          };
-        })
-        .toList(growable: false);
+    return rows.map((b) {
+      final parts = b.split('|');
+      return {
+        'id': parts.isNotEmpty ? parts[0] : '',
+        'brand': parts.length > 1 ? parts[1] : '',
+        'model': parts.length > 2 ? parts[2] : '',
+        'cc': parts.length > 3 ? parts[3] : '',
+        'nickname': parts.length > 4 ? parts[4] : 'Motorcycle',
+        'fuelType': parts.length > 5 ? parts[5] : 'Petrol',
+        'imagePath': parts.length > 6 ? parts[6] : '',
+      };
+    }).toList();
   }
 
-  Future<void> _persistGarage() async {
+  Future<bool> _persistGarage() async {
     await _saveBikesToPrefs(bikes);
     final prefs = await SharedPreferences.getInstance();
     final userId = (prefs.getString('userId') ?? '').trim();
-    if (userId.isEmpty) return;
-    await _supabaseService.saveGarage(
-      userId: userId,
-      bikes: bikes,
-      activeBikeId: activeBikeId,
-    );
+    if (userId.isEmpty) return true;
+    try {
+      await _supabaseService.saveGarage(
+        userId: userId,
+        bikes: bikes,
+        activeBikeId: activeBikeId,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _addBike() async {
@@ -188,7 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       bikes.add(newBike);
       if (shouldSetActive) activeBikeId = newBike['id']!;
     });
-    await _persistGarage();
+    final synced = await _persistGarage();
     if (shouldSetActive) {
       await _selectActiveBike(newBike['id']!, showToast: false);
     }
@@ -196,8 +199,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (mounted) {
       showPremiumToast(
         context,
-        '${newBike['nickname']} added to your garage!',
-        type: PremiumToastType.success,
+        synced
+            ? '${newBike['nickname']} added to your garage!'
+            : '${newBike['nickname']} saved on this device. Cloud sync will retry later.',
+        type: synced ? PremiumToastType.success : PremiumToastType.info,
       );
     }
   }

@@ -151,15 +151,22 @@ class _SignInScreenState extends State<SignInScreen> {
             vertical: AppSpacing.md,
           ),
           decoration: BoxDecoration(
-            color: AppColors.textPrimary.withValues(alpha: 0.9),
+            color: AppColors.surfaceAlt.withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(AppRadius.xxl),
             border: Border.all(
-              color:
-                  _acceptedPrivacy
-                      ? AppColors.primary
-                      : AppColors.textOnDark.withValues(alpha: 0.16),
+              color: _acceptedPrivacy ? AppColors.primary : AppColors.divider,
               width: 1.5,
             ),
+            boxShadow:
+                _acceptedPrivacy
+                    ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                    : AppShadows.sm,
           ),
           child: Row(
             children: [
@@ -196,7 +203,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     Text(
                       'I agree to the ',
                       style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textOnDark.withValues(alpha: 0.86),
+                        color: AppColors.textSecondary,
                       ),
                     ),
                     GestureDetector(
@@ -215,7 +222,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     Text(
                       '.',
                       style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textOnDark.withValues(alpha: 0.86),
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
