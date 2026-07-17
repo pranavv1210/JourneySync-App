@@ -44,9 +44,9 @@ function buildEmailHtml(downloadUrl: string, downloadPageUrl: string) {
                 <p style="margin:0 0 28px;">
                   <a href="${downloadPageUrl}" style="display:inline-block;background:#b45f04;color:#ffffff;text-decoration:none;font-weight:800;border-radius:12px;padding:14px 20px;">Open Beta Download Page</a>
                 </p>
-                <p style="margin:0 0 16px;font-size:14px;color:#6b7280;">If the email app has trouble downloading, open this direct APK link in Chrome:</p>
+                <p style="margin:0 0 16px;font-size:14px;color:#6b7280;">If Gmail opens this inside its browser, use the menu and choose Open in Chrome.</p>
                 <p style="margin:0 0 24px;word-break:break-all;font-size:14px;color:#b45f04;">
-                  ${downloadUrl}
+                  journeysyncrideapp.in/beta/download
                 </p>
               </td>
             </tr>
@@ -74,8 +74,8 @@ function buildEmailText(downloadUrl: string, downloadPageUrl: string) {
     'Open the beta download page, then tap Download APK:',
     downloadPageUrl,
     '',
-    'Direct APK link if your email app has trouble downloading:',
-    downloadUrl,
+    'If Gmail opens this inside its browser, use the menu and choose Open in Chrome:',
+    downloadPageUrl.replace(/^https?:\/\//, ''),
     '',
     'Beta note: This is an early test build. Use it only when you are comfortable testing beta software, and keep normal road safety, emergency services, and rider judgment first.',
     '',
