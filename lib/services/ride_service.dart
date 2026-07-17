@@ -44,6 +44,9 @@ class RideService {
     required String endLocation,
     DateTime? scheduledStartTime,
     int? maxRiders,
+    String rideVisibility = 'public',
+    String rideMode = 'group',
+    String status = 'scheduled',
   }) async {
     final row = await _supabaseService.createRide(
       creatorId: creatorId,
@@ -52,6 +55,9 @@ class RideService {
       endLocation: endLocation,
       scheduledStartTime: scheduledStartTime,
       maxRiders: maxRiders,
+      rideVisibility: rideVisibility,
+      rideMode: rideMode,
+      status: status,
     );
     final ride = _toRideRecord(row);
     await joinRide(rideId: ride.id, userId: creatorId, suppressDuplicate: true);
@@ -79,8 +85,9 @@ class RideService {
 
     final filtered =
         rides.where((ride) {
+          if (ride.creatorId == currentUserId) return false;
           if (ride.archived || ride.isCompleted) return false;
-          if (ride.status.trim().toLowerCase() == 'cancelled') return false;
+          if (!ride.isActive || !ride.isPublic) return false;
           if (origin == null) return true;
 
           final startPoint = _parseLatLng(ride.startLocation);
@@ -135,6 +142,8 @@ class RideService {
           endLocation: ride.endLocation,
           createdAt: ride.createdAt,
           status: ride.status,
+          visibility: ride.visibility,
+          rideMode: ride.rideMode,
           participantCount: participantCount,
         ),
         hostName: hostName.isNotEmpty ? hostName : 'Rider',
@@ -367,6 +376,11 @@ class RideService {
         row['is_archived'] == true ||
         row['archived'] == true ||
         status.toLowerCase() == 'archived';
+    final visibility =
+        (row['ride_visibility'] ?? row['visibility'] ?? 'public')
+            .toString()
+            .trim();
+    final rideMode = (row['ride_mode'] ?? 'group').toString().trim();
     return RideRecord(
       id: (row['id'] ?? '').toString(),
       creatorId: creator,
@@ -377,6 +391,8 @@ class RideService {
       status: status,
       endedAt: endedAt,
       archived: archived,
+      visibility: visibility.isEmpty ? 'public' : visibility,
+      rideMode: rideMode.isEmpty ? 'group' : rideMode,
     );
   }
 
@@ -403,6 +419,8 @@ class RideService {
             endedAt: ride.endedAt,
             archived: ride.archived,
             participantCount: counts[ride.id] ?? 0,
+            visibility: ride.visibility,
+            rideMode: ride.rideMode,
           ),
         )
         .toList();

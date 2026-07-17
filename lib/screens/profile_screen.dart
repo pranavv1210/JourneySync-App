@@ -502,6 +502,215 @@ class _ProfileScreenState extends State<ProfileScreen>
     await _persistGarage();
   }
 
+  Widget _buildProfileHero(BuildContext context) {
+    final image = _profileHeroImage();
+    final motorcycle = _activeMotorcycleLabel();
+    final riderLocation = _riderLocationLabel();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final heroHeight =
+            (constraints.maxWidth * 1.16).clamp(380.0, 500.0).toDouble();
+        return Container(
+          height: heroHeight,
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(34),
+              bottomRight: Radius.circular(34),
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (image != null)
+                  Image(
+                    image: image,
+                    fit: BoxFit.cover,
+                    alignment: const Alignment(0, -0.28),
+                    filterQuality: FilterQuality.medium,
+                  )
+                else
+                  _buildHeroFallback(),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.16),
+                        Colors.black.withValues(alpha: 0.54),
+                      ],
+                      stops: const [0.28, 0.62, 1],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: AppSpacing.xl,
+                  right: AppSpacing.xl,
+                  bottom: AppSpacing.xxl,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _buildHeroChip(
+                            experienceLevel.toUpperCase(),
+                            AppColors.primary,
+                          ),
+                          _buildHeroChip(
+                            riderLocation,
+                            AppColors.forest,
+                            icon: Icons.location_on_rounded,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        userName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.displayMedium.copyWith(
+                          color: AppColors.textOnDark,
+                          fontWeight: FontWeight.w900,
+                          height: 1.02,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.34),
+                              blurRadius: 18,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        bio.trim().isEmpty
+                            ? 'Ready for the first synced ride.'
+                            : bio.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.textOnDark.withValues(alpha: 0.88),
+                          height: 1.38,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.two_wheeler_rounded,
+                            color: AppColors.primaryLight,
+                            size: 18,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              motorcycle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.titleSmall.copyWith(
+                                color: AppColors.textOnDark,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeroFallback() {
+    final initial = userName.trim().isNotEmpty ? userName.trim()[0] : 'R';
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF6EFE7), Color(0xFFEAF0E9), Color(0xFF211C17)],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: 56,
+            right: -48,
+            child: Icon(
+              Icons.route_rounded,
+              size: 220,
+              color: AppColors.forest.withValues(alpha: 0.12),
+            ),
+          ),
+          Positioned(
+            left: -32,
+            bottom: 72,
+            child: Icon(
+              Icons.two_wheeler_rounded,
+              size: 180,
+              color: AppColors.primary.withValues(alpha: 0.16),
+            ),
+          ),
+          Center(
+            child: Text(
+              initial.toUpperCase(),
+              style: AppTypography.displayLarge.copyWith(
+                color: AppColors.primary.withValues(alpha: 0.62),
+                fontSize: 96,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroChip(String label, Color color, {IconData? icon}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.26),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: color, size: 14),
+              const SizedBox(width: AppSpacing.xs),
+            ],
+            Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                color: AppColors.textOnDark,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -558,92 +767,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
 
-            // Profile Info Header Card
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.xl,
-                vertical: AppSpacing.md,
-              ),
-              child: GlassCard(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                elevated: true,
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 36,
-                      backgroundColor: AppColors.primary.withValues(
-                        alpha: 0.15,
-                      ),
-                      backgroundImage: _profileAvatarImage(),
-                      child:
-                          _profileAvatarImage() != null
-                              ? null
-                              : Text(
-                                userName.isNotEmpty
-                                    ? userName[0].toUpperCase()
-                                    : 'R',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                userName,
-                                style: AppTypography.headlineSmall.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFFFF6A00),
-                                      Color(0xFFFF8C42),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  experienceLevel.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            bio,
-                            style: AppTypography.caption.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _buildProfileHero(context),
 
             // Tab Bar
             TabBar(
@@ -1174,11 +1298,41 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   bool _hasAchievement(String name) => unlockedAchievements.contains(name);
 
-  ImageProvider? _profileAvatarImage() {
+  ImageProvider? _profileHeroImage() {
     if (avatarUrl.isEmpty) return null;
     if (File(avatarUrl).existsSync()) return FileImage(File(avatarUrl));
     if (avatarUrl.startsWith('http')) return NetworkImage(avatarUrl);
     return null;
+  }
+
+  String _activeMotorcycleLabel() {
+    if (activeBikeId.isNotEmpty) {
+      for (final bike in bikes) {
+        if (bike['id'] == activeBikeId) {
+          final brand = (bike['brand'] ?? '').trim();
+          final model = (bike['model'] ?? '').trim();
+          final nickname = (bike['nickname'] ?? '').trim();
+          final name = '$brand $model'.trim();
+          if (name.isNotEmpty && nickname.isNotEmpty) {
+            return '$nickname • $name';
+          }
+          if (name.isNotEmpty) return name;
+          if (nickname.isNotEmpty) return nickname;
+        }
+      }
+    }
+    if (bikes.isNotEmpty) {
+      final bike = bikes.first;
+      final brand = (bike['brand'] ?? '').trim();
+      final model = (bike['model'] ?? '').trim();
+      final name = '$brand $model'.trim();
+      if (name.isNotEmpty) return name;
+    }
+    return 'JourneySync Rider';
+  }
+
+  String _riderLocationLabel() {
+    return 'Bengaluru, India';
   }
 }
 

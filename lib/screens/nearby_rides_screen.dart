@@ -715,10 +715,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                         yFactor: node.yFactor,
                         visible: rides.isNotEmpty,
                       ),
-                    _RadarCenterMarker(
-                      name: currentUserName,
-                      avatarUrl: currentUserAvatarUrl,
-                    ),
+                    _RadarCenterMarker(avatarUrl: currentUserAvatarUrl),
                   ],
                 );
               },
@@ -1427,53 +1424,60 @@ class _RadarRideMarker extends StatelessWidget {
 }
 
 class _RadarCenterMarker extends StatelessWidget {
-  const _RadarCenterMarker({required this.name, required this.avatarUrl});
+  const _RadarCenterMarker({required this.avatarUrl});
 
-  final String name;
   final String avatarUrl;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 74,
-          height: 74,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.9),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 14,
+    return SizedBox(
+      width: 112,
+      height: 112,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          Positioned(
+            top: 19,
+            child: Container(
+              width: 74,
+              height: 74,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 14,
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: _RadarAvatar(
-            avatarUrl: avatarUrl,
-            label: name,
-            radius: 31,
-            borderColor: const Color(0xFFF7B267),
-          ),
-        ),
-        const SizedBox(height: 8),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 110),
-          child: Text(
-            name.trim().isEmpty ? 'You' : name.trim(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
+              child: _RadarAvatar(
+                avatarUrl: avatarUrl,
+                label: 'You',
+                radius: 31,
+                borderColor: const Color(0xFFF7B267),
+              ),
             ),
           ),
-        ),
-      ],
+          Positioned(
+            top: 96,
+            left: 0,
+            right: 0,
+            child: Text(
+              'You',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

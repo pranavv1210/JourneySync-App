@@ -8,9 +8,12 @@ import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
 import 'create_ride_screen.dart';
+import 'explore_solo_screen.dart';
 import 'explore_screen.dart';
 import 'my_rides_screen.dart';
 import 'nearby_rides_screen.dart';
+import 'plan_together_screen.dart';
+import 'ride_now_screen.dart';
 import '../services/ride_service.dart';
 import 'settings_screen.dart';
 import '../services/supabase_service.dart';
@@ -1376,7 +1379,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Create Ride',
+                  'What do you want to do?',
                   style: AppTypography.headlineSmall.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w900,
@@ -1385,24 +1388,25 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 const SizedBox(height: 14),
                 _createOption(
                   context,
-                  value: 'instant',
+                  value: 'ride_now',
                   icon: Icons.flash_on_rounded,
-                  title: 'Instant Ride',
-                  subtitle: 'Start a solo live ride with one tap setup.',
+                  title: 'Ride Now',
+                  subtitle:
+                      'Start instantly. Nearby riders can join if public.',
                 ),
                 _createOption(
                   context,
-                  value: 'scheduled',
+                  value: 'plan_together',
                   icon: Icons.event_rounded,
-                  title: 'Plan Group Ride',
-                  subtitle: 'Plan route details before going live.',
+                  title: 'Plan Together',
+                  subtitle: 'Schedule, invite, and organize with your crew.',
                 ),
                 _createOption(
                   context,
-                  value: 'private',
-                  icon: Icons.lock_outline_rounded,
-                  title: 'Private Ride',
-                  subtitle: 'Create a smaller invite-only ride.',
+                  value: 'explore_solo',
+                  icon: Icons.landscape_rounded,
+                  title: 'Explore Solo',
+                  subtitle: 'Private navigation, stats, and memories.',
                 ),
               ],
             ),
@@ -1412,14 +1416,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
     if (selected == null || !mounted) return;
     final screen = switch (selected) {
-      'instant' => const CreateRideScreen(
-        initialRideName: 'Instant solo ride',
-        initialMaxRiders: 1,
-      ),
-      'private' => const CreateRideScreen(
-        initialRideName: 'Private ride',
-        initialMaxRiders: 6,
-      ),
+      'ride_now' => const RideNowScreen(),
+      'plan_together' => const PlanTogetherScreen(),
+      'explore_solo' => const ExploreSoloScreen(),
       _ => const CreateRideScreen(),
     };
     await Navigator.push(context, buildAppRoute(screen));
@@ -1436,20 +1435,26 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadius.lg),
       onTap: () => Navigator.pop(context, value),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Container(
+        margin: const EdgeInsets.only(top: AppSpacing.md),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceAlt.withValues(alpha: 0.78),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: AppColors.divider),
+        ),
         child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 54,
+              height: 54,
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
-              child: Icon(icon, color: AppColors.primary),
+              child: Icon(icon, color: AppColors.primary, size: 28),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.lg),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -11,6 +11,8 @@ class RideRecord {
     this.archived = false,
     this.participantCount = 0,
     this.rideLeaderId,
+    this.visibility = 'public',
+    this.rideMode = 'group',
   });
 
   final String id;
@@ -24,6 +26,8 @@ class RideRecord {
   final DateTime? endedAt;
   final bool archived;
   final int participantCount;
+  final String visibility;
+  final String rideMode;
 
   bool get isCompleted =>
       endedAt != null ||
@@ -37,6 +41,8 @@ class RideRecord {
 
   bool get isActive =>
       status.toLowerCase() == 'active' || status.toLowerCase() == 'live';
+
+  bool get isPublic => visibility.toLowerCase() != 'private';
 }
 
 class NearbyRide {

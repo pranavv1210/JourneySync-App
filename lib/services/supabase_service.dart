@@ -18,7 +18,7 @@ class SupabaseService {
   );
 
   static const String _rideColumnsWithHost =
-      'id,host_id,title,start_location,end_location,created_at';
+      'id,host_id,title,start_location,end_location,created_at,status,ride_visibility,ride_mode';
 
   Future<Map<String, dynamic>?> fetchUserByPhone(String phone) async {
     final normalized = phone.trim();
@@ -366,11 +366,20 @@ class SupabaseService {
     required String endLocation,
     DateTime? scheduledStartTime,
     int? maxRiders,
+    String rideVisibility = 'public',
+    String rideMode = 'group',
+    String status = 'scheduled',
   }) async {
     final optionalPayload = <String, dynamic>{
       if (scheduledStartTime != null)
         'start_time': scheduledStartTime.toIso8601String(),
       if (maxRiders != null) 'max_riders': maxRiders,
+      'ride_visibility':
+          rideVisibility.trim().toLowerCase() == 'private'
+              ? 'private'
+              : 'public',
+      'ride_mode': rideMode.trim().isEmpty ? 'group' : rideMode.trim(),
+      'status': status.trim().isEmpty ? 'scheduled' : status.trim(),
     };
     final basePayload = <String, dynamic>{
       'title': title.trim(),
@@ -389,8 +398,14 @@ class SupabaseService {
       if (_isMissingRideOptionalColumns(error) && optionalPayload.isNotEmpty) {
         return await _client
             .from('rides')
-            .insert({...basePayload, 'host_id': creatorId.trim()})
-            .select(_rideColumnsWithHost)
+            .insert({
+              ...basePayload,
+              'host_id': creatorId.trim(),
+              'status': status.trim().isEmpty ? 'scheduled' : status.trim(),
+            })
+            .select(
+              'id,host_id,title,start_location,end_location,created_at,status',
+            )
             .single();
       }
       rethrow;
@@ -1081,7 +1096,10 @@ class SupabaseService {
     if (code != '42703' && code != 'PGRST204') {
       return false;
     }
-    return message.contains('start_time') || message.contains('max_riders');
+    return message.contains('start_time') ||
+        message.contains('max_riders') ||
+        message.contains('ride_visibility') ||
+        message.contains('ride_mode');
   }
 
   bool _isMissingRideMembersSchema(PostgrestException error) {
