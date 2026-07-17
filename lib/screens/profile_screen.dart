@@ -230,23 +230,34 @@ class _ProfileScreenState extends State<ProfileScreen>
     final result = await showModalBottomSheet<Map<String, String>>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
             return Padding(
-              padding: EdgeInsets.only(
-                left: AppSpacing.xl,
-                right: AppSpacing.xl,
-                bottom:
-                    MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl,
+                0,
+                AppSpacing.xl,
+                AppSpacing.xl,
               ),
-              child: Material(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadius.xxl),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
+              child: FractionallySizedBox(
+                heightFactor: 0.82,
+                child: Material(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.xxl),
+                  clipBehavior: Clip.antiAlias,
                   child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpacing.xl,
+                      AppSpacing.xl,
+                      AppSpacing.xl,
+                      AppSpacing.xl + keyboardInset,
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,7 +521,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return LayoutBuilder(
       builder: (context, constraints) {
         final heroHeight =
-            (constraints.maxWidth * 1.16).clamp(380.0, 500.0).toDouble();
+            (constraints.maxWidth * 0.92).clamp(310.0, 390.0).toDouble();
         return Container(
           height: heroHeight,
           width: double.infinity,
@@ -539,10 +550,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withValues(alpha: 0.16),
-                        Colors.black.withValues(alpha: 0.54),
+                        Colors.black.withValues(alpha: 0.2),
+                        Colors.black.withValues(alpha: 0.68),
                       ],
-                      stops: const [0.28, 0.62, 1],
+                      stops: const [0.2, 0.58, 1],
                     ),
                   ),
                 ),

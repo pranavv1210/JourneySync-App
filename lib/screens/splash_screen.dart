@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_navigation.dart';
 import '../services/app_version.dart';
 import '../theme/app_theme.dart';
-import '../widgets/ride_loading_indicator.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'setup_error_screen.dart';
@@ -120,23 +119,17 @@ class _SplashScreenState extends State<SplashScreen>
 
                 JourneyIntroAnimation(animation: _introController),
 
-                // Bottom loading indicator
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: 48,
-                  child: Column(
-                    children: [
-                      const RideLoadingIndicator(label: 'Preparing your ride'),
-                      const SizedBox(height: 16),
-                      Text(
-                        'v${AppVersion.version}',
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.textTertiary,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ],
+                  bottom: 54,
+                  child: Text(
+                    'v${AppVersion.version}',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.textTertiary,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ),
               ],

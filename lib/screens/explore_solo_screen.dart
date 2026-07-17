@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../widgets/ride_flow_map_preview.dart';
 import 'ride_mode_screen.dart';
 
 class ExploreSoloScreen extends StatefulWidget {
@@ -97,6 +98,12 @@ class _ExploreSoloScreenState extends State<ExploreSoloScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
+              const RideFlowMapPreview(
+                title: 'Private route preview',
+                subtitle:
+                    'Your solo ride stays private while navigation and stats remain active.',
+              ),
+              const SizedBox(height: AppSpacing.xl),
               GlassCard(
                 elevated: true,
                 padding: const EdgeInsets.all(AppSpacing.xl),

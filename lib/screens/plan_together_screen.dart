@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../widgets/ride_flow_map_preview.dart';
 import 'ride_lobby_screen.dart';
 
 class PlanTogetherScreen extends StatefulWidget {
@@ -137,6 +138,12 @@ class _PlanTogetherScreenState extends State<PlanTogetherScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
+              const RideFlowMapPreview(
+                title: 'Plan from the map',
+                subtitle:
+                    'Use the map context while choosing meeting and destination points.',
+              ),
+              const SizedBox(height: AppSpacing.xl),
               GlassCard(
                 elevated: true,
                 padding: const EdgeInsets.all(AppSpacing.xl),
@@ -303,6 +310,7 @@ class _PlanTogetherScreenState extends State<PlanTogetherScreen> {
           title: Text(
             _publicRide ? 'Community ride' : 'Invite-only ride',
             style: AppTypography.titleMedium.copyWith(
+              color: AppColors.textPrimary,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -310,6 +318,9 @@ class _PlanTogetherScreenState extends State<PlanTogetherScreen> {
             _publicRide
                 ? 'Visible to riders when it goes live.'
                 : 'Only invited riders can join.',
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.md),

@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../widgets/ride_flow_map_preview.dart';
 import 'ride_mode_screen.dart';
 
 class RideNowScreen extends StatefulWidget {
@@ -92,6 +93,11 @@ class _RideNowScreenState extends State<RideNowScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
+              const RideFlowMapPreview(
+                title: 'Live start point',
+                subtitle: 'Your ride starts from your current location.',
+              ),
+              const SizedBox(height: AppSpacing.xl),
               GlassCard(
                 elevated: true,
                 padding: const EdgeInsets.all(AppSpacing.xl),
