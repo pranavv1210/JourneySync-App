@@ -243,12 +243,48 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  Future<Map<String, String>?> _showVehicleForm() async {
-    final brandController = TextEditingController();
-    final modelController = TextEditingController();
-    final ccController = TextEditingController();
-    final nicknameController = TextEditingController();
-    var imagePath = '';
+  Future<void> _editBike(Map<String, String> bike) async {
+    final updatedBike = await _showVehicleForm(initialBike: bike);
+    if (updatedBike == null) return;
+
+    setState(() {
+      final index = bikes.indexWhere((item) => item['id'] == bike['id']);
+      if (index != -1) {
+        bikes[index] = updatedBike;
+      }
+      _refreshBikeImageCache(bikes);
+    });
+    final synced = await _persistGarage();
+    if (activeBikeId == updatedBike['id']) {
+      await _selectActiveBike(updatedBike['id']!, showToast: false);
+    }
+
+    if (mounted) {
+      showPremiumToast(
+        context,
+        synced
+            ? '${updatedBike['nickname']} updated.'
+            : '${updatedBike['nickname']} updated on this device. Cloud sync will retry later.',
+        type: synced ? PremiumToastType.success : PremiumToastType.info,
+      );
+    }
+  }
+
+  Future<Map<String, String>?> _showVehicleForm({
+    Map<String, String>? initialBike,
+  }) async {
+    final isEditing = initialBike != null;
+    final brandController = TextEditingController(
+      text: initialBike?['brand'] ?? '',
+    );
+    final modelController = TextEditingController(
+      text: initialBike?['model'] ?? '',
+    );
+    final ccController = TextEditingController(text: initialBike?['cc'] ?? '');
+    final nicknameController = TextEditingController(
+      text: initialBike?['nickname'] ?? '',
+    );
+    var imagePath = initialBike?['imagePath'] ?? '';
 
     Future<String> saveBikeImage(XFile picked) async {
       final directory = await getApplicationDocumentsDirectory();
@@ -299,7 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Add vehicle',
+                          isEditing ? 'Edit vehicle' : 'Add vehicle',
                           style: AppTypography.headlineSmall.copyWith(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w800,
@@ -307,7 +343,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                         const SizedBox(height: AppSpacing.xs),
                         Text(
-                          'Save the motorcycle you use for group rides.',
+                          isEditing
+                              ? 'Update the motorcycle details used across rides.'
+                              : 'Save the motorcycle you use for group rides.',
                           style: AppTypography.bodyMedium.copyWith(
                             color: AppColors.textSecondary,
                           ),
@@ -448,6 +486,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   }
                                   Navigator.pop(context, {
                                     'id':
+                                        initialBike?['id'] ??
                                         'bike_${DateTime.now().millisecondsSinceEpoch}',
                                     'brand': brand,
                                     'model': model,
@@ -457,7 +496,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     'imagePath': imagePath,
                                   });
                                 },
-                                child: const Text('Save'),
+                                child: Text(isEditing ? 'Update' : 'Save'),
                               ),
                             ),
                           ],
@@ -1142,13 +1181,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                       children: [
                         Row(
                           children: [
-                            Text(
-                              bike['nickname']!,
-                              style: AppTypography.titleMedium.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                            Expanded(
+                              child: Text(
+                                bike['nickname']!,
+                                style: AppTypography.titleMedium.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
                             if (isSelected) ...[
                               const SizedBox(width: 8),
@@ -1192,6 +1233,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                   Column(
                     children: [
+                      IconButton(
+                        tooltip: 'Edit vehicle',
+                        onPressed: () => _editBike(bike),
+                        icon: const Icon(
+                          Icons.edit_rounded,
+                          color: AppColors.primary,
+                        ),
+                      ),
                       if (!isSelected)
                         IconButton(
                           onPressed: () => _selectActiveBike(bike['id']!),

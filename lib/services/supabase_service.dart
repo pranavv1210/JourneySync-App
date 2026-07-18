@@ -395,6 +395,14 @@ class SupabaseService {
           .select(_rideColumnsWithHost)
           .single();
     } on PostgrestException catch (error) {
+      if (_isMissingRideColumn(error, 'end_location')) {
+        return _createRideWithLegacyDestinationFallback(
+          creatorId: creatorId,
+          basePayload: basePayload,
+          optionalPayload: optionalPayload,
+          endLocation: endLocation,
+        );
+      }
       if (_isMissingRideOptionalColumns(error) && optionalPayload.isNotEmpty) {
         return await _client
             .from('rides')
@@ -409,6 +417,53 @@ class SupabaseService {
             .single();
       }
       rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> _createRideWithLegacyDestinationFallback({
+    required String creatorId,
+    required Map<String, dynamic> basePayload,
+    required Map<String, dynamic> optionalPayload,
+    required String endLocation,
+  }) async {
+    final legacyBase =
+        Map<String, dynamic>.from(basePayload)
+          ..remove('end_location')
+          ..['destination'] = endLocation.trim();
+    final attempts = <Map<String, dynamic>>[
+      {...legacyBase, ...optionalPayload, 'host_id': creatorId.trim()},
+      {
+        ...legacyBase,
+        'host_id': creatorId.trim(),
+        'status':
+            (optionalPayload['status'] ?? 'scheduled').toString().trim().isEmpty
+                ? 'scheduled'
+                : optionalPayload['status'],
+      },
+    ];
+
+    Object? lastError;
+    for (final attempt in attempts) {
+      try {
+        return await _client.from('rides').insert(attempt).select().single();
+      } on PostgrestException catch (error) {
+        lastError = error;
+        if (!_isMissingColumnError(error)) rethrow;
+      }
+    }
+
+    final minimalPayload = Map<String, dynamic>.from(basePayload)
+      ..remove('end_location');
+    try {
+      final row =
+          await _client
+              .from('rides')
+              .insert({...minimalPayload, 'host_id': creatorId.trim()})
+              .select()
+              .single();
+      return {...Map<String, dynamic>.from(row), 'end_location': endLocation};
+    } on PostgrestException {
+      throw lastError ?? Exception('Could not create ride.');
     }
   }
 
@@ -1100,6 +1155,13 @@ class SupabaseService {
         message.contains('max_riders') ||
         message.contains('ride_visibility') ||
         message.contains('ride_mode');
+  }
+
+  bool _isMissingRideColumn(PostgrestException error, String column) {
+    if (!_isMissingColumnError(error)) return false;
+    final target = column.toLowerCase();
+    final text = '${error.message} $error'.toLowerCase();
+    return text.contains(target);
   }
 
   bool _isMissingRideMembersSchema(PostgrestException error) {

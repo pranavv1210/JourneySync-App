@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
@@ -20,6 +21,7 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _nameController = TextEditingController();
   final _bikeController = TextEditingController();
+  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final SupabaseService _supabaseService = SupabaseService();
 
@@ -35,11 +37,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
+    final authUser = Supabase.instance.client.auth.currentUser;
+    final authEmail =
+        (authUser?.email ?? authUser?.userMetadata?['email'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+    final cachedPhone = prefs.getString('userPhone') ?? '';
     if (!mounted) return;
     setState(() {
       _nameController.text = prefs.getString('userName') ?? '';
       _bikeController.text = prefs.getString('userBike') ?? '';
-      _phoneController.text = prefs.getString('userPhone') ?? '';
+      _emailController.text =
+          authEmail.isNotEmpty
+              ? authEmail
+              : (prefs.getString('userEmail') ?? '').trim().toLowerCase();
+      _phoneController.text = cachedPhone.contains('@') ? '' : cachedPhone;
       _localAvatarPath = prefs.getString('localAvatarPath') ?? '';
       _loading = false;
     });
@@ -100,9 +113,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final name = _nameController.text.trim();
       final bike = _bikeController.text.trim();
       final phone = _phoneController.text.trim();
+      final email = _emailController.text.trim().toLowerCase();
 
       await prefs.setString('userName', name);
       await prefs.setString('userBike', bike);
+      if (email.isNotEmpty) {
+        await prefs.setString('userEmail', email);
+      }
       await prefs.setString('userPhone', phone);
 
       final userId = prefs.getString('userId') ?? '';
@@ -112,7 +129,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             userId: userId,
             name: name,
             bike: bike,
-            phone: phone,
           );
           await prefs.setString(
             'userName',
@@ -122,10 +138,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             'userBike',
             (updated['bike'] ?? bike).toString(),
           );
-          await prefs.setString(
-            'userPhone',
-            (updated['phone'] ?? phone).toString(),
-          );
+          await prefs.setString('userPhone', phone);
           await _syncAvatarToSupabase(userId, prefs);
         } catch (e) {
           debugPrint('Error updating profile in Supabase: $e');
@@ -136,7 +149,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (!mounted) return;
       showPremiumToast(
         context,
-        'Profile updated successfully',
+        phone.isEmpty
+            ? 'Profile updated successfully'
+            : 'Profile saved. Mobile OTP verification will be available soon.',
         type: PremiumToastType.success,
       );
       Navigator.pop(context, true);
@@ -183,6 +198,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _bikeController.dispose();
+    _emailController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
@@ -235,58 +251,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Center(
-                                    child: GestureDetector(
-                                      onTap: _pickProfilePhoto,
-                                      child: Stack(
-                                        alignment: Alignment.bottomRight,
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 46,
-                                            backgroundColor: AppColors.primary
-                                                .withValues(alpha: 0.12),
-                                            backgroundImage:
-                                                _localAvatarPath.isNotEmpty &&
-                                                        File(
-                                                          _localAvatarPath,
-                                                        ).existsSync()
-                                                    ? FileImage(
-                                                      File(_localAvatarPath),
-                                                    )
-                                                    : null,
-                                            child:
-                                                _localAvatarPath.isNotEmpty &&
-                                                        File(
-                                                          _localAvatarPath,
-                                                        ).existsSync()
-                                                    ? null
-                                                    : Icon(
-                                                      Icons.person_rounded,
-                                                      color: AppColors.primary,
-                                                      size: 38,
-                                                    ),
-                                          ),
-                                          Container(
-                                            width: 30,
-                                            height: 30,
-                                            decoration: BoxDecoration(
-                                              color: AppColors.primary,
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: AppColors.surface,
-                                                width: 2,
-                                              ),
-                                            ),
-                                            child: const Icon(
-                                              Icons.camera_alt_rounded,
-                                              color: Colors.white,
-                                              size: 16,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
+                                  _buildEditablePhotoHero(),
                                   const SizedBox(height: AppSpacing.xl),
                                   Text(
                                     'Name',
@@ -321,7 +286,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   const SizedBox(height: 20),
 
                                   Text(
-                                    'Mobile Number',
+                                    'Email ID',
+                                    style: AppTypography.labelMedium.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _emailController,
+                                    readOnly: true,
+                                    style: _inputTextStyle(),
+                                    decoration: _inputDecoration(
+                                      'Signed in with Google',
+                                      suffixIcon: Icons.lock_rounded,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'This comes from Google sign-in and cannot be changed here.',
+                                    style: AppTypography.caption.copyWith(
+                                      color: AppColors.textTertiary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  Text(
+                                    'Mobile Number Optional',
                                     style: AppTypography.labelMedium.copyWith(
                                       color: AppColors.textSecondary,
                                     ),
@@ -331,8 +321,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     controller: _phoneController,
                                     keyboardType: TextInputType.phone,
                                     style: _inputTextStyle(),
+                                    onTap: () {
+                                      showPremiumToast(
+                                        context,
+                                        'OTP verification will be available soon.',
+                                        type: PremiumToastType.info,
+                                      );
+                                    },
                                     decoration: _inputDecoration(
-                                      'Enter your mobile number',
+                                      'Add mobile number',
+                                      suffixIcon: Icons.sms_outlined,
                                     ),
                                   ),
                                 ],
@@ -361,7 +359,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _inputDecoration(String hint, {IconData? suffixIcon}) {
     return InputDecoration(
       hintText: hint,
       hintStyle: AppTypography.bodyMedium.copyWith(
@@ -377,7 +375,117 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
       ),
+      suffixIcon:
+          suffixIcon == null
+              ? null
+              : Icon(suffixIcon, color: AppColors.textTertiary, size: 20),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  Widget _buildEditablePhotoHero() {
+    final imageProvider =
+        _localAvatarPath.isNotEmpty && File(_localAvatarPath).existsSync()
+            ? FileImage(File(_localAvatarPath))
+            : null;
+    final initial =
+        _nameController.text.trim().isNotEmpty
+            ? _nameController.text.trim()[0]
+            : 'R';
+
+    return GestureDetector(
+      onTap: _pickProfilePhoto,
+      child: Container(
+        height: 220,
+        width: double.infinity,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AppColors.forestDark,
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (imageProvider != null)
+              Image(
+                image: imageProvider,
+                fit: BoxFit.cover,
+                alignment: const Alignment(0, -0.22),
+                filterQuality: FilterQuality.medium,
+              )
+            else
+              DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFFF5EEE7),
+                      AppColors.forest,
+                      AppColors.forestDark,
+                    ],
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    initial.toUpperCase(),
+                    style: AppTypography.displayLarge.copyWith(
+                      color: AppColors.primaryLight.withValues(alpha: 0.72),
+                      fontSize: 80,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    AppColors.forestDark.withValues(alpha: 0.24),
+                    AppColors.forestDark.withValues(alpha: 0.82),
+                  ],
+                  stops: const [0.18, 0.56, 1],
+                ),
+              ),
+            ),
+            Positioned(
+              right: AppSpacing.md,
+              top: AppSpacing.md,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.22),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.camera_alt_rounded,
+                  color: AppColors.textOnDark,
+                  size: 20,
+                ),
+              ),
+            ),
+            Positioned(
+              left: AppSpacing.lg,
+              right: AppSpacing.lg,
+              bottom: AppSpacing.lg,
+              child: Text(
+                'Profile photo',
+                style: AppTypography.headlineSmall.copyWith(
+                  color: AppColors.textOnDark,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

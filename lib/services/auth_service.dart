@@ -261,9 +261,22 @@ class AuthService {
     required String jwtToken,
   }) async {
     final prefs = await SharedPreferences.getInstance();
+    final authUser = Supabase.instance.client.auth.currentUser;
+    final authEmail =
+        (authUser?.email ?? authUser?.userMetadata?['email'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+    final phoneLooksLikeEmail = user.phone.contains('@');
     await prefs.setBool('isLoggedIn', true);
     await prefs.setString('userId', user.id);
-    await prefs.setString('userPhone', user.phone);
+    await prefs.setString('userPhone', phoneLooksLikeEmail ? '' : user.phone);
+    if (authEmail.isNotEmpty || phoneLooksLikeEmail) {
+      await prefs.setString(
+        'userEmail',
+        authEmail.isNotEmpty ? authEmail : user.phone.toLowerCase(),
+      );
+    }
     await prefs.setString('userName', user.name);
     await prefs.setString('userBike', user.bike);
     await prefs.setString('userAvatarUrl', user.avatarUrl);
@@ -282,6 +295,7 @@ class AuthService {
     await prefs.setBool('isLoggedIn', false);
     await prefs.remove('userId');
     await prefs.remove('userPhone');
+    await prefs.remove('userEmail');
     await prefs.remove('userName');
     await prefs.remove('userBike');
     await prefs.remove('userAvatarUrl');
