@@ -29,6 +29,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   String bio = 'Ready for the first synced ride.';
   String experienceLevel = 'New Rider';
   String avatarUrl = '';
+  ImageProvider? profileHeroImage;
 
   // Stats
   int totalRides = 0;
@@ -45,6 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   // Garage
   List<Map<String, String>> bikes = [];
   String activeBikeId = '';
+  final Map<String, ImageProvider> _bikeImageCache = {};
 
   // Loading state
   bool _loading = true;
@@ -69,6 +71,41 @@ class _ProfileScreenState extends State<ProfileScreen>
       prefs.getStringList('garageBikes') ?? const <String>[],
     );
     var activeBike = prefs.getString('userActiveBikeId') ?? '';
+    final cachedAvatarPath = prefs.getString('localAvatarPath') ?? '';
+    var resolvedAvatar = cachedAvatarPath;
+    if (resolvedAvatar.isEmpty || !File(resolvedAvatar).existsSync()) {
+      resolvedAvatar = prefs.getString('userAvatarUrl') ?? '';
+    }
+
+    if (mounted) {
+      _refreshBikeImageCache(loadedBikes);
+      setState(() {
+        userName = prefs.getString('userName') ?? 'Rider';
+        bio = prefs.getString('userBio') ?? 'Ready for the first synced ride.';
+        experienceLevel = prefs.getString('userExperienceLevel') ?? 'New Rider';
+        avatarUrl = resolvedAvatar;
+        profileHeroImage = _imageProviderFor(resolvedAvatar);
+        totalRides = prefs.getInt('statTotalRides') ?? 0;
+        totalDistance = prefs.getDouble('statTotalDistance') ?? 0;
+        longestRide = prefs.getDouble('statLongestRide') ?? 0;
+        hoursRidden = prefs.getDouble('statHoursRidden') ?? 0;
+        favoriteRoute =
+            prefs.getString('statFavoriteRoute') ?? 'No favorite route yet';
+        fastestRide = prefs.getDouble('statFastestRide') ?? 0;
+        averageRideScore = prefs.getDouble('statAverageRideScore') ?? 0;
+        groupRidesCompleted = prefs.getInt('statGroupRidesCompleted') ?? 0;
+        frequentRidingDay = prefs.getString('statFrequentRidingDay') ?? '--';
+        bikes = List<Map<String, String>>.from(loadedBikes);
+        activeBikeId =
+            loadedBikes.any((bike) => bike['id'] == activeBike)
+                ? activeBike
+                : loadedBikes.isNotEmpty
+                ? loadedBikes.first['id']!
+                : '';
+        _loading = false;
+      });
+    }
+
     final userId = (prefs.getString('userId') ?? '').trim();
     if (userId.isNotEmpty) {
       try {
@@ -85,13 +122,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     final achievements = await RideAnalyticsEngine.unlockedAchievements();
 
     setState(() {
+      _refreshBikeImageCache(loadedBikes);
       userName = prefs.getString('userName') ?? 'Rider';
       bio = prefs.getString('userBio') ?? 'Ready for the first synced ride.';
       experienceLevel = prefs.getString('userExperienceLevel') ?? 'New Rider';
-      avatarUrl = prefs.getString('localAvatarPath') ?? '';
-      if (avatarUrl.isEmpty || !File(avatarUrl).existsSync()) {
-        avatarUrl = prefs.getString('userAvatarUrl') ?? '';
-      }
+      avatarUrl = resolvedAvatar;
+      profileHeroImage = _imageProviderFor(resolvedAvatar);
 
       totalRides =
           analyticsStats.totalRides > 0
@@ -514,23 +550,19 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildProfileHero(BuildContext context) {
-    final image = _profileHeroImage();
+    final image = profileHeroImage;
     final motorcycle = _activeMotorcycleLabel();
     final riderLocation = _riderLocationLabel();
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final heroHeight =
-            (constraints.maxWidth * 0.92).clamp(310.0, 390.0).toDouble();
+            (constraints.maxWidth * 0.98).clamp(320.0, 410.0).toDouble();
         return Container(
           height: heroHeight,
           width: double.infinity,
-          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: ClipRRect(
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(34),
-              bottomRight: Radius.circular(34),
-            ),
+          margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+          child: ClipRect(
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -550,17 +582,36 @@ class _ProfileScreenState extends State<ProfileScreen>
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withValues(alpha: 0.2),
-                        Colors.black.withValues(alpha: 0.68),
+                        AppColors.forestDark.withValues(alpha: 0.18),
+                        AppColors.forestDark.withValues(alpha: 0.72),
+                        AppColors.background.withValues(alpha: 0.98),
                       ],
-                      stops: const [0.2, 0.58, 1],
+                      stops: const [0.22, 0.52, 0.82, 1],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 120,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          AppColors.background.withValues(alpha: 0.92),
+                        ],
+                      ),
                     ),
                   ),
                 ),
                 Positioned(
                   left: AppSpacing.xl,
                   right: AppSpacing.xl,
-                  bottom: AppSpacing.xxl,
+                  bottom: AppSpacing.huge,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -593,7 +644,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           shadows: [
                             Shadow(
                               color: Colors.black.withValues(alpha: 0.34),
-                              blurRadius: 18,
+                              blurRadius: 20,
                               offset: const Offset(0, 5),
                             ),
                           ],
@@ -607,8 +658,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textOnDark.withValues(alpha: 0.88),
+                          color: AppColors.textOnDark.withValues(alpha: 0.9),
                           height: 1.38,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.28),
+                              blurRadius: 12,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: AppSpacing.md),
@@ -753,7 +811,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Rider Profile',
+                    'Garage & Achievements',
                     style: AppTypography.headlineMedium.copyWith(
                       color: AppColors.textPrimary,
                     ),
@@ -1036,7 +1094,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ...bikes.map((bike) {
           final isSelected = bike['id'] == activeBikeId;
-          final imagePath = bike['imagePath'] ?? '';
+          final bikeImage = _bikeImageCache[bike['id'] ?? ''];
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
             child: GlassCard(
@@ -1060,15 +1118,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                               : Colors.grey.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
                       image:
-                          imagePath.isNotEmpty && File(imagePath).existsSync()
+                          bikeImage != null
                               ? DecorationImage(
-                                image: FileImage(File(imagePath)),
+                                image: bikeImage,
                                 fit: BoxFit.cover,
                               )
                               : null,
                     ),
                     child:
-                        imagePath.isNotEmpty && File(imagePath).existsSync()
+                        bikeImage != null
                             ? null
                             : Icon(
                               Icons.motorcycle_rounded,
@@ -1309,11 +1367,24 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   bool _hasAchievement(String name) => unlockedAchievements.contains(name);
 
-  ImageProvider? _profileHeroImage() {
-    if (avatarUrl.isEmpty) return null;
-    if (File(avatarUrl).existsSync()) return FileImage(File(avatarUrl));
-    if (avatarUrl.startsWith('http')) return NetworkImage(avatarUrl);
+  ImageProvider? _imageProviderFor(String source) {
+    if (source.isEmpty) return null;
+    if (source.startsWith('http')) return NetworkImage(source);
+    final file = File(source);
+    if (file.existsSync()) return FileImage(file);
     return null;
+  }
+
+  void _refreshBikeImageCache(List<Map<String, String>> bikeList) {
+    _bikeImageCache.clear();
+    for (final bike in bikeList) {
+      final id = bike['id'] ?? '';
+      final imagePath = bike['imagePath'] ?? '';
+      final provider = _imageProviderFor(imagePath);
+      if (id.isNotEmpty && provider != null) {
+        _bikeImageCache[id] = provider;
+      }
+    }
   }
 
   String _activeMotorcycleLabel() {

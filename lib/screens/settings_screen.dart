@@ -11,6 +11,7 @@ import '../widgets/app_dialog.dart';
 import '../services/app_navigation.dart';
 import '../services/app_version.dart';
 import '../services/auth_service.dart';
+import 'edit_profile_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 
@@ -119,74 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Profile Section
-                    InkWell(
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      onTap: () async {
-                        final updated = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ProfileScreen(),
-                          ),
-                        );
-                        if (updated == true) {
-                          _loadProfile();
-                        }
-                      },
-                      child: GlassCard(
-                        padding: const EdgeInsets.all(AppSpacing.xl),
-                        elevated: true,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: AppColors.forest.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.lg,
-                                ),
-                                image: _settingsAvatarDecoration(),
-                              ),
-                              child:
-                                  _settingsAvatarDecoration() != null
-                                      ? null
-                                      : Icon(
-                                        Icons.person_rounded,
-                                        color: AppColors.forest,
-                                        size: 28,
-                                      ),
-                            ),
-                            const SizedBox(width: AppSpacing.lg),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    userName,
-                                    style: AppTypography.headlineSmall.copyWith(
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    userBike,
-                                    style: AppTypography.bodyMedium.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              Icons.edit_rounded,
-                              color: AppColors.textTertiary,
-                              size: 20,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    _buildProfileHeroCard(),
                     const SizedBox(height: 24),
 
                     // Settings Sections
@@ -307,6 +241,187 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _openEditProfile() async {
+    final updated = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+    );
+    if (updated == true) {
+      _loadProfile();
+    }
+  }
+
+  Widget _buildProfileHeroCard() {
+    final image = _settingsHeroImage();
+    final bikeText =
+        userBike.trim().isEmpty || userBike == 'No bike added'
+            ? 'JourneySync Rider'
+            : userBike.trim();
+
+    return Semantics(
+      button: true,
+      label: 'Edit profile',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        onTap: _openEditProfile,
+        child: Container(
+          height: 330,
+          width: double.infinity,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppColors.forestDark,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            boxShadow: AppShadows.lg,
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (image != null)
+                Image(
+                  image: image,
+                  fit: BoxFit.cover,
+                  alignment: const Alignment(0, -0.24),
+                  filterQuality: FilterQuality.medium,
+                )
+              else
+                _buildSettingsHeroFallback(),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      AppColors.forestDark.withValues(alpha: 0.18),
+                      AppColors.forestDark.withValues(alpha: 0.74),
+                      AppColors.forestDark.withValues(alpha: 0.92),
+                    ],
+                    stops: const [0.16, 0.48, 0.78, 1],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: AppSpacing.lg,
+                right: AppSpacing.lg,
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.edit_rounded,
+                    color: AppColors.textOnDark,
+                    size: 20,
+                  ),
+                ),
+              ),
+              Positioned(
+                left: AppSpacing.xl,
+                right: AppSpacing.xl,
+                bottom: AppSpacing.xl,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.18),
+                        ),
+                      ),
+                      child: Text(
+                        'PROFILE',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: AppColors.primaryLight,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      userName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.displayMedium.copyWith(
+                        color: AppColors.textOnDark,
+                        fontWeight: FontWeight.w900,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            blurRadius: 18,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.two_wheeler_rounded,
+                          color: AppColors.primaryLight,
+                          size: 18,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            bikeText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.titleMedium.copyWith(
+                              color: AppColors.textOnDark.withValues(
+                                alpha: 0.88,
+                              ),
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.md,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.13),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.16),
+                        ),
+                      ),
+                      child: Text(
+                        'Edit photo, rider details, and account profile',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.buttonMedium.copyWith(
+                          color: AppColors.textOnDark,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSettingTile({
     required IconData icon,
     required String title,
@@ -382,17 +497,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  DecorationImage? _settingsAvatarDecoration() {
-    if (localAvatarPath.isNotEmpty && File(localAvatarPath).existsSync()) {
-      return DecorationImage(
-        image: FileImage(File(localAvatarPath)),
-        fit: BoxFit.cover,
-      );
+  ImageProvider? _settingsHeroImage() {
+    if (localAvatarPath.isNotEmpty) {
+      final file = File(localAvatarPath);
+      if (file.existsSync()) return FileImage(file);
     }
     if (avatarUrl.startsWith('http')) {
-      return DecorationImage(image: NetworkImage(avatarUrl), fit: BoxFit.cover);
+      return NetworkImage(avatarUrl);
     }
     return null;
+  }
+
+  Widget _buildSettingsHeroFallback() {
+    final initial = userName.trim().isNotEmpty ? userName.trim()[0] : 'R';
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF5EEE7), Color(0xFF1E3A2F), Color(0xFF0F1F19)],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          initial.toUpperCase(),
+          style: AppTypography.displayLarge.copyWith(
+            color: AppColors.primaryLight.withValues(alpha: 0.72),
+            fontSize: 92,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
   }
 
   List<Map<String, String>> _decodeEmergencyContacts(List<String> rows) {
