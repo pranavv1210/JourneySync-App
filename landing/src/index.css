@@ -580,6 +580,23 @@ main section:not(#hero) .glow-pulse {
   overflow: hidden !important;
 }
 
+.phone-mockup .hero-phone-chip {
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  box-shadow: 0 10px 26px rgba(17, 24, 39, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+.phone-mockup .hero-phone-riders {
+  border: 1px solid rgba(255, 255, 255, 0.42) !important;
+  background: linear-gradient(135deg, #f97316, #b45309) !important;
+  box-shadow: 0 10px 24px rgba(180, 83, 9, 0.32) !important;
+}
+
+.phone-mockup .hero-phone-sheet {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), #ffffff) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.9) !important;
+}
+
 .demo-card,
 .demo-video-shell {
   box-shadow:
