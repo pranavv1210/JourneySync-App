@@ -37,6 +37,28 @@ function normalizePlatform(value) {
   return value === 'ios' ? 'ios' : 'android';
 }
 
+function AndroidLogo({ className = '' }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M7.2 9.4h9.6c1 0 1.8.8 1.8 1.8v5.4c0 1-.8 1.8-1.8 1.8H7.2c-1 0-1.8-.8-1.8-1.8v-5.4c0-1 .8-1.8 1.8-1.8Zm2.1 2.5a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6Zm5.4 0a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6ZM7.6 7.8 5.8 5.9a.5.5 0 1 1 .7-.7l2 2.1A7.8 7.8 0 0 1 12 6.5c1.2 0 2.4.3 3.5.8l2-2.1a.5.5 0 0 1 .7.7l-1.8 1.9c1.1.8 1.8 1.7 2.1 2.9h-13c.3-1.2 1-2.1 2.1-2.9ZM3.8 11.3c.6 0 1 .4 1 1v4.3a1 1 0 0 1-2 0v-4.3c0-.6.4-1 1-1Zm16.4 0c.6 0 1 .4 1 1v4.3a1 1 0 0 1-2 0v-4.3c0-.6.4-1 1-1ZM8.3 19.1h1.8v1.7a.9.9 0 0 1-1.8 0v-1.7Zm5.6 0h1.8v1.7a.9.9 0 0 1-1.8 0v-1.7Z"
+      />
+    </svg>
+  );
+}
+
+function AppleLogo({ className = '' }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M16.7 12.5c0-2 1.7-3 1.8-3.1-1-1.4-2.4-1.6-2.9-1.6-1.2-.1-2.4.7-3 0-.7-.7-1.7-.7-2.7-.7-1.4 0-2.7.8-3.4 2.1-1.5 2.6-.4 6.4 1 8.5.7 1 1.6 2.2 2.7 2.1 1.1 0 1.5-.7 2.8-.7s1.7.7 2.8.7c1.2 0 1.9-1.1 2.6-2.1.8-1.2 1.1-2.3 1.2-2.4 0 0-2.9-1.1-2.9-3.8Zm-2-6c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.6.7-1 1.6-.9 2.6.9.1 1.9-.5 2.5-1.2Z"
+      />
+    </svg>
+  );
+}
+
 function isMissingPlatformColumn(error) {
   const message = error?.message?.toLowerCase() ?? '';
   const details = error?.details?.toLowerCase() ?? '';
@@ -83,7 +105,7 @@ async function sendWelcomeEmail(email, platform) {
 export function JoinBetaModal({ isOpen, onClose }) {
   const shouldReduceMotion = useReducedMotion();
   const [email, setEmail] = useState('');
-  const [platform, setPlatform] = useState('android');
+  const [platform, setPlatform] = useState('');
   const [error, setError] = useState('');
   const [status, setStatus] = useState('idle'); // 'idle' | 'submitting' | 'success' | 'duplicate_email' | 'duplicate_device'
   const startedRef = useRef(false);
@@ -94,7 +116,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
       trackBetaEvent('beta_modal_open');
       setStatus('idle');
       setEmail('');
-      setPlatform('android');
+      setPlatform('');
       setError('');
       startedRef.current = false;
     } else {
@@ -132,6 +154,11 @@ export function JoinBetaModal({ isOpen, onClose }) {
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       setError('Enter a valid email address');
+      return;
+    }
+
+    if (!platform) {
+      setError('Choose Android or iOS');
       return;
     }
 
@@ -197,6 +224,9 @@ export function JoinBetaModal({ isOpen, onClose }) {
       onClose();
     }, 2800);
   };
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const canSubmit = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) && Boolean(platform);
 
   return (
     <AppModal
@@ -319,8 +349,8 @@ export function JoinBetaModal({ isOpen, onClose }) {
 
                       <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Choose beta platform">
                         {[
-                          { key: 'android', label: 'Android', note: 'APK ready', icon: Smartphone },
-                          { key: 'ios', label: 'iOS', note: 'TestFlight', icon: Smartphone },
+                          { key: 'android', label: 'Android', note: 'APK ready', icon: AndroidLogo },
+                          { key: 'ios', label: 'iOS', note: 'TestFlight', icon: AppleLogo },
                         ].map((option) => {
                           const Icon = option.icon;
                           const selected = platform === option.key;
@@ -333,11 +363,12 @@ export function JoinBetaModal({ isOpen, onClose }) {
                               onClick={() => {
                                 markStarted();
                                 setPlatform(option.key);
+                                setError('');
                               }}
                               className={`relative rounded-xl border px-3 py-3 text-left transition-all ${
                                 selected
-                                  ? 'border-orange-600 bg-gradient-to-br from-orange-50 to-amber-50 shadow-lg shadow-orange-500/20 ring-2 ring-orange-500/20'
-                                  : 'border-neutral-200 bg-white/60 shadow-sm hover:border-orange-200 hover:bg-orange-50/40'
+                                  ? 'border-orange-600 bg-gradient-to-br from-orange-100 via-amber-50 to-white shadow-xl shadow-orange-500/25 ring-2 ring-orange-500/35'
+                                  : 'border-neutral-200 bg-white/70 shadow-sm hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-md'
                               }`}
                             >
                               {selected && (
@@ -346,12 +377,23 @@ export function JoinBetaModal({ isOpen, onClose }) {
                                 </span>
                               )}
                               <span className="flex items-center gap-2 text-xs font-extrabold text-neutral-900">
-                                <Icon size={14} className={selected ? 'text-orange-600' : 'text-neutral-400'} />
+                                <span
+                                  className={`grid h-6 w-6 place-items-center rounded-lg ${
+                                    selected ? 'bg-orange-600 text-white' : 'bg-neutral-100 text-neutral-500'
+                                  }`}
+                                >
+                                  <Icon className="h-4 w-4" />
+                                </span>
                                 {option.label}
                               </span>
-                              <span className={`mt-1 block text-[10px] font-bold ${selected ? 'text-orange-800' : 'text-neutral-400'}`}>
+                              <span className={`mt-1.5 block text-[10px] font-bold ${selected ? 'text-orange-800' : 'text-neutral-400'}`}>
                                 {option.note}
                               </span>
+                              {selected && (
+                                <span className="mt-2 inline-flex rounded-full bg-orange-600 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-white shadow-sm">
+                                  Selected
+                                </span>
+                              )}
                             </button>
                           );
                         })}
@@ -366,8 +408,8 @@ export function JoinBetaModal({ isOpen, onClose }) {
                       {/* Primary CTA */}
                       <button
                         type="submit"
-                        disabled={status === 'submitting'}
-                        className="relative overflow-hidden w-full rounded-xl bg-primary-dark text-white font-semibold text-xs shadow-md shadow-primary/20 transition-all hover:bg-[#8f4a03] hover:shadow-lg hover:shadow-primary/25 active:bg-[#733a02] flex items-center justify-center gap-1.5 group cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+                        disabled={status === 'submitting' || !canSubmit}
+                        className="relative overflow-hidden w-full rounded-xl bg-primary-dark text-white font-semibold text-xs shadow-md shadow-primary/20 transition-all hover:bg-[#8f4a03] hover:shadow-lg hover:shadow-primary/25 active:bg-[#733a02] flex items-center justify-center gap-1.5 group cursor-pointer disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500 disabled:shadow-none"
                         style={{
                           width: '100%',
                           height: '44px',
@@ -378,7 +420,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: '6px',
-                          cursor: 'pointer',
+                          cursor: status === 'submitting' || !canSubmit ? 'not-allowed' : 'pointer',
                         }}
                       >
                         {status === 'submitting' ? (
@@ -388,7 +430,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
                           </>
                         ) : (
                           <>
-                            <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Join the Beta</span>
+                            <span style={{ color: canSubmit ? '#ffffff' : '#6b7280', fontWeight: 'bold' }}>Join the Beta</span>
                             <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
                           </>
                         )}
