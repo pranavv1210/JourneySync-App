@@ -580,10 +580,10 @@ main section:not(#hero) .glow-pulse {
   overflow: hidden !important;
 }
 
-.phone-mockup .hero-phone-chip {
-  border: 1px solid rgba(255, 255, 255, 0.72) !important;
-  background: rgba(255, 255, 255, 0.86) !important;
-  box-shadow: 0 10px 26px rgba(17, 24, 39, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+.phone-mockup .hero-phone-topbar {
+  border: 1px solid rgba(255, 255, 255, 0.76) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
 }
 
 .phone-mockup .hero-phone-riders {
@@ -595,6 +595,16 @@ main section:not(#hero) .glow-pulse {
 .phone-mockup .hero-phone-sheet {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), #ffffff) !important;
   border-top: 1px solid rgba(255, 255, 255, 0.9) !important;
+}
+
+.phone-mockup .hero-phone-mic {
+  background: linear-gradient(135deg, #fb7185, #dc2626) !important;
+  box-shadow: 0 12px 26px rgba(220, 38, 38, 0.28) !important;
+  outline: 4px solid rgba(254, 242, 242, 0.98) !important;
+}
+
+.phone-mockup .hero-phone-avatar {
+  box-shadow: 0 7px 16px rgba(17, 24, 39, 0.12) !important;
 }
 
 .demo-card,
