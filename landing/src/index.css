@@ -562,11 +562,11 @@ main section:not(#hero) .glow-pulse {
 }
 
 .phone-mockup {
-  width: 300px !important;
-  height: 600px !important;
+  width: 280px !important;
+  height: 560px !important;
   box-sizing: border-box !important;
   border: 8px solid #1f2937 !important;
-  border-radius: 3rem !important;
+  border-radius: 2.5rem !important;
   background: #111827 !important;
   overflow: hidden !important;
   box-shadow:
@@ -576,7 +576,7 @@ main section:not(#hero) .glow-pulse {
 }
 
 .phone-mockup > div:last-child {
-  border-radius: 2.45rem !important;
+  border-radius: 2rem !important;
   overflow: hidden !important;
 }
 
@@ -752,9 +752,9 @@ a:focus-visible {
   }
 
   #hero .phone-mockup {
-    width: min(76vw, 250px) !important;
-    height: min(145vw, 472px) !important;
-    border-width: 7px !important;
+    width: min(76vw, 280px) !important;
+    height: min(152vw, 560px) !important;
+    border-width: 8px !important;
     border-radius: 2.5rem !important;
   }
 
