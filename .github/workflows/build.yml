@@ -1,41 +1,212 @@
-name: Build Flutter Apps (APK & IPA)
+name: Build Flutter Release Artifacts
 
 on:
   workflow_dispatch:
+    inputs:
+      build_ios_signed:
+        description: 'Build a signed TestFlight/App Store IPA. Requires Apple signing secrets.'
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   build_android:
+    name: Android release APK
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Set up Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: zulu
           java-version: '17'
-      - uses: subosito/flutter-action@v2
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-      - run: flutter pub get
-      - run: flutter build apk --release
+          channel: stable
+          cache: true
+
+      - name: Create CI env file
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}" > .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY || 'placeholder' }}" >> .env
+          echo "AUTH_REDIRECT_URL=journeysync://login-callback" >> .env
+          echo "SENTRY_DSN=${{ secrets.SENTRY_DSN || '' }}" >> .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --dart-define-from-file=.env
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release.apk
+          name: journeysync-android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
 
-  build_ios:
+  build_ios_unsigned:
+    name: iOS release app unsigned
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-      - run: flutter pub get
-      - run: cd ios && pod install
-      - run: flutter build ipa --release --no-codesign
-      - name: Upload IPA
+          channel: stable
+          cache: true
+
+      - name: Create CI env file
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}" > .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY || 'placeholder' }}" >> .env
+          echo "AUTH_REDIRECT_URL=journeysync://login-callback" >> .env
+          echo "SENTRY_DSN=${{ secrets.SENTRY_DSN || '' }}" >> .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install iOS pods
+        run: pod install
+        working-directory: ios
+
+      - name: Build unsigned iOS app
+        run: flutter build ios --release --no-codesign --dart-define-from-file=.env
+
+      - name: Package unsigned Runner.app
+        run: |
+          cd build/ios/iphoneos
+          zip -qry Runner-unsigned.zip Runner.app
+
+      - name: Upload unsigned iOS app
         uses: actions/upload-artifact@v4
         with:
-          name: app-release.ipa
+          name: journeysync-ios-release-unsigned-app
+          path: build/ios/iphoneos/Runner-unsigned.zip
+          if-no-files-found: error
+
+  build_ios_signed:
+    name: iOS signed IPA
+    runs-on: macos-latest
+    if: ${{ inputs.build_ios_signed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Apple signing secrets
+        run: |
+          test -n "${{ secrets.IOS_CERTIFICATE_BASE64 }}" || (echo "Missing IOS_CERTIFICATE_BASE64" && exit 1)
+          test -n "${{ secrets.IOS_CERTIFICATE_PASSWORD }}" || (echo "Missing IOS_CERTIFICATE_PASSWORD" && exit 1)
+          test -n "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" || (echo "Missing IOS_PROVISIONING_PROFILE_BASE64" && exit 1)
+          test -n "${{ secrets.IOS_KEYCHAIN_PASSWORD }}" || (echo "Missing IOS_KEYCHAIN_PASSWORD" && exit 1)
+          test -n "${{ secrets.IOS_TEAM_ID }}" || (echo "Missing IOS_TEAM_ID" && exit 1)
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Create CI env file
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}" > .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY || 'placeholder' }}" >> .env
+          echo "AUTH_REDIRECT_URL=journeysync://login-callback" >> .env
+          echo "SENTRY_DSN=${{ secrets.SENTRY_DSN || '' }}" >> .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install iOS pods
+        run: pod install
+        working-directory: ios
+
+      - name: Install signing certificate and provisioning profile
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
+          PP_PATH="$RUNNER_TEMP/build_pp.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+
+          echo -n "$IOS_CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
+          echo -n "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+
+          security create-keychain -p "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          PROFILE_PLIST="$RUNNER_TEMP/profile.plist"
+          security cms -D -i "$PP_PATH" > "$PROFILE_PLIST"
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$PROFILE_PLIST")
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' "$PROFILE_PLIST")
+          cp "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          echo "IOS_PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
+          echo "IOS_PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+
+      - name: Create export options
+        run: |
+          cat > ios/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>${{ secrets.IOS_TEAM_ID }}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.journeysync.app</key>
+              <string>${IOS_PROFILE_NAME}</string>
+            </dict>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>compileBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Build signed IPA
+        run: |
+          flutter build ios --release --no-codesign --dart-define-from-file=.env
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            DEVELOPMENT_TEAM="${{ secrets.IOS_TEAM_ID }}" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$IOS_PROFILE_NAME"
+          xcodebuild -exportArchive \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            -exportPath build/ios/ipa \
+            -exportOptionsPlist ios/ExportOptions.plist
+
+      - name: Upload signed IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: journeysync-ios-release-signed-ipa
           path: build/ios/ipa/*.ipa
+          if-no-files-found: error
