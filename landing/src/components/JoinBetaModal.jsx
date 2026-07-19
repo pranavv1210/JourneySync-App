@@ -370,9 +370,21 @@ export function JoinBetaModal({ isOpen, onClose }) {
                                   ? 'border-orange-600 bg-gradient-to-br from-orange-100 via-amber-50 to-white shadow-xl shadow-orange-500/25 ring-2 ring-orange-500/35'
                                   : 'border-neutral-200 bg-white/70 shadow-sm hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-md'
                               }`}
+                              style={
+                                selected
+                                  ? {
+                                      background: 'linear-gradient(135deg, #ffedd5 0%, #fff7ed 55%, #ffffff 100%)',
+                                      borderColor: '#ea580c',
+                                      boxShadow: '0 14px 30px rgba(234, 88, 12, 0.22), 0 0 0 2px rgba(234, 88, 12, 0.18)',
+                                    }
+                                  : undefined
+                              }
                             >
                               {selected && (
-                                <span className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-orange-600 text-white shadow-md shadow-orange-500/30">
+                                <span
+                                  className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-orange-600 text-white shadow-md shadow-orange-500/30"
+                                  style={{ backgroundColor: '#ea580c', color: '#ffffff' }}
+                                >
                                   <CircleCheck size={13} />
                                 </span>
                               )}
@@ -390,7 +402,10 @@ export function JoinBetaModal({ isOpen, onClose }) {
                                 {option.note}
                               </span>
                               {selected && (
-                                <span className="mt-2 inline-flex rounded-full bg-orange-600 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-white shadow-sm">
+                                <span
+                                  className="mt-2 inline-flex rounded-full bg-orange-600 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-white shadow-sm"
+                                  style={{ backgroundColor: '#ea580c', color: '#ffffff' }}
+                                >
                                   Selected
                                 </span>
                               )}
@@ -421,6 +436,9 @@ export function JoinBetaModal({ isOpen, onClose }) {
                           justifyContent: 'center',
                           gap: '6px',
                           cursor: status === 'submitting' || !canSubmit ? 'not-allowed' : 'pointer',
+                          backgroundColor: !canSubmit ? '#fed7aa' : undefined,
+                          color: !canSubmit ? '#9a3412' : undefined,
+                          boxShadow: !canSubmit ? 'none' : undefined,
                         }}
                       >
                         {status === 'submitting' ? (
