@@ -112,7 +112,7 @@ export default function BetaDownloadPage() {
               </h1>
 
               <p className="mx-auto max-w-lg text-base leading-relaxed text-gray-600 sm:text-lg mb-10">
-                You're officially off the waitlist. Install the Android beta build below to get started.
+                You're officially on the beta list. Android can install the APK now; iOS access will open through TestFlight.
               </p>
 
               {/* Download Grid */}
@@ -166,15 +166,15 @@ export default function BetaDownloadPage() {
                       </span>
                     </div>
                     <h3 className="mb-1 text-lg font-extrabold text-gray-900">iOS Beta</h3>
-                    <p className="mb-6 text-sm font-medium text-gray-500">TestFlight coming soon</p>
+                    <p className="mb-6 text-sm font-medium text-gray-500">Your iOS interest is saved when you choose iOS on the beta form.</p>
                   </div>
-                  <button
-                    disabled
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-200/50 px-4 py-3.5 text-sm font-bold text-gray-500"
+                  <a
+                    href="mailto:journeysync.app@gmail.com?subject=JourneySync%20iOS%20TestFlight%20access"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-900/10 bg-white/70 px-4 py-3.5 text-sm font-bold text-gray-700 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white"
                   >
-                    <span className="material-icons-round text-lg">hourglass_empty</span>
-                    Pending Review
-                  </button>
+                    <span className="material-icons-round text-lg">mail</span>
+                    Request TestFlight
+                  </a>
                 </div>
               </div>
 
@@ -198,6 +198,26 @@ export default function BetaDownloadPage() {
                     UI polish for night mode visibility.
                   </li>
                 </ul>
+              </div>
+
+              <div className="mt-8 rounded-3xl bg-[#171717] p-6 text-left text-white shadow-2xl shadow-primary/10">
+                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
+                  Download fallback
+                </p>
+                <h2 className="mt-3 text-2xl font-extrabold tracking-tight">
+                  If Gmail gets stuck, download from here.
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-gray-300">
+                  Open this page in Chrome and tap the button below. Keep this page bookmarked because the same link will always point to the latest Android beta APK.
+                </p>
+                <a
+                  href="/journeysync.apk"
+                  download
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-dark px-5 py-4 text-sm font-extrabold text-white shadow-xl shadow-primary/25 transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#8f4a03]"
+                >
+                  <span className="material-icons-round">download</span>
+                  Download Latest Android APK
+                </a>
               </div>
 
             </div>

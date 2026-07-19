@@ -443,7 +443,7 @@ export function BetaDownloadModal() {
         </div>
         <div className="mt-6 grid gap-3">
           <a
-            href="./journeysync.apk"
+            href="/journeysync.apk"
             download
             className="flex items-center justify-center gap-2 rounded-xl bg-primary-dark px-5 py-3.5 font-bold text-white shadow-xl shadow-primary/25 transition-transform hover:-translate-y-0.5"
           >

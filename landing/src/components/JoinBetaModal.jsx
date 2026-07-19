@@ -33,8 +33,27 @@ function needsLegacyBetaPayload(error) {
   );
 }
 
+function normalizePlatform(value) {
+  return value === 'ios' ? 'ios' : 'android';
+}
+
+function isMissingPlatformColumn(error) {
+  const message = error?.message?.toLowerCase() ?? '';
+  const details = error?.details?.toLowerCase() ?? '';
+  return (
+    (error?.code === 'PGRST204' || error?.code === '42703') &&
+    (message.includes('platform') || details.includes('platform'))
+  );
+}
+
 async function insertBetaApplication(payload) {
   const response = await supabase.from('beta_applications').insert(payload);
+
+  if (isMissingPlatformColumn(response.error)) {
+    const legacyPayload = { ...payload };
+    delete legacyPayload.platform;
+    return supabase.from('beta_applications').insert(legacyPayload);
+  }
 
   if (!needsLegacyBetaPayload(response.error)) return response;
 
@@ -43,13 +62,13 @@ async function insertBetaApplication(payload) {
     name: 'Beta rider',
     city: 'Not provided',
     vehicle: 'Not provided',
-    platform: 'Android',
+    platform: normalizePlatform(payload.platform),
   });
 }
 
-async function sendWelcomeEmail(email) {
+async function sendWelcomeEmail(email, platform) {
   const { error } = await supabase.functions.invoke('send-beta-welcome-email', {
-    body: { email },
+    body: { email, platform: normalizePlatform(platform) },
   });
 
   if (error) {
@@ -64,6 +83,7 @@ async function sendWelcomeEmail(email) {
 export function JoinBetaModal({ isOpen, onClose }) {
   const shouldReduceMotion = useReducedMotion();
   const [email, setEmail] = useState('');
+  const [platform, setPlatform] = useState('android');
   const [error, setError] = useState('');
   const [status, setStatus] = useState('idle'); // 'idle' | 'submitting' | 'success' | 'duplicate_email' | 'duplicate_device'
   const startedRef = useRef(false);
@@ -74,6 +94,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
       trackBetaEvent('beta_modal_open');
       setStatus('idle');
       setEmail('');
+      setPlatform('android');
       setError('');
       startedRef.current = false;
     } else {
@@ -135,6 +156,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
     const { error: dbError } = await insertBetaApplication({
       email: normalizedEmail,
       device_id: deviceId,
+      platform: normalizePlatform(platform),
     });
 
     if (dbError) {
@@ -168,7 +190,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
     window.localStorage.setItem(REGISTERED_KEY, 'true');
     setStatus('success');
     trackBetaEvent('beta_success');
-    void sendWelcomeEmail(normalizedEmail);
+    void sendWelcomeEmail(normalizedEmail, platform);
     fireSuccessConfetti();
 
     setTimeout(() => {
@@ -264,7 +286,7 @@ export function JoinBetaModal({ isOpen, onClose }) {
                       Join the JourneySync Beta
                     </h2>
                     <p className="text-neutral-500 text-xs leading-normal mb-5 max-w-xs" style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 20px 0' }}>
-                      Be among the first riders helping shape the future of motorcycle group riding.
+                      Choose your device and join the rider test list.
                     </p>
 
                     {/* Email Form */}
@@ -293,6 +315,41 @@ export function JoinBetaModal({ isOpen, onClose }) {
                             borderRadius: '12px',
                           }}
                         />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Choose beta platform">
+                        {[
+                          { key: 'android', label: 'Android', note: 'APK ready', icon: Smartphone },
+                          { key: 'ios', label: 'iOS', note: 'TestFlight', icon: Smartphone },
+                        ].map((option) => {
+                          const Icon = option.icon;
+                          const selected = platform === option.key;
+                          return (
+                            <button
+                              key={option.key}
+                              type="button"
+                              role="radio"
+                              aria-checked={selected}
+                              onClick={() => {
+                                markStarted();
+                                setPlatform(option.key);
+                              }}
+                              className={`rounded-xl border px-3 py-3 text-left transition-all ${
+                                selected
+                                  ? 'border-orange-500 bg-orange-50 shadow-sm shadow-orange-500/10'
+                                  : 'border-neutral-200 bg-white/60 hover:border-orange-200'
+                              }`}
+                            >
+                              <span className="flex items-center gap-2 text-xs font-extrabold text-neutral-900">
+                                <Icon size={14} className={selected ? 'text-orange-600' : 'text-neutral-400'} />
+                                {option.label}
+                              </span>
+                              <span className={`mt-1 block text-[10px] font-bold ${selected ? 'text-orange-700' : 'text-neutral-400'}`}>
+                                {option.note}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
 
                       {error && (
