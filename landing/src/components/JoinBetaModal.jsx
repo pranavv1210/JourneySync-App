@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Mail, ArrowRight, Check, Shield, Smartphone } from 'lucide-react';
+import { Mail, ArrowRight, Check, Shield, Smartphone, CircleCheck } from 'lucide-react';
 import { AppModal } from './AppModal';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { trackBetaEvent } from '../utils/tracking';
@@ -334,17 +334,22 @@ export function JoinBetaModal({ isOpen, onClose }) {
                                 markStarted();
                                 setPlatform(option.key);
                               }}
-                              className={`rounded-xl border px-3 py-3 text-left transition-all ${
+                              className={`relative rounded-xl border px-3 py-3 text-left transition-all ${
                                 selected
-                                  ? 'border-orange-500 bg-orange-50 shadow-sm shadow-orange-500/10'
-                                  : 'border-neutral-200 bg-white/60 hover:border-orange-200'
+                                  ? 'border-orange-600 bg-gradient-to-br from-orange-50 to-amber-50 shadow-lg shadow-orange-500/20 ring-2 ring-orange-500/20'
+                                  : 'border-neutral-200 bg-white/60 shadow-sm hover:border-orange-200 hover:bg-orange-50/40'
                               }`}
                             >
+                              {selected && (
+                                <span className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-orange-600 text-white shadow-md shadow-orange-500/30">
+                                  <CircleCheck size={13} />
+                                </span>
+                              )}
                               <span className="flex items-center gap-2 text-xs font-extrabold text-neutral-900">
                                 <Icon size={14} className={selected ? 'text-orange-600' : 'text-neutral-400'} />
                                 {option.label}
                               </span>
-                              <span className={`mt-1 block text-[10px] font-bold ${selected ? 'text-orange-700' : 'text-neutral-400'}`}>
+                              <span className={`mt-1 block text-[10px] font-bold ${selected ? 'text-orange-800' : 'text-neutral-400'}`}>
                                 {option.note}
                               </span>
                             </button>
