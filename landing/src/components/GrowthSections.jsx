@@ -267,16 +267,18 @@ export function BuiltByRiders() {
           title="Built by Riders. For Riders."
           copy="Every group ride starts with excitement. Then someone misses a turn, someone gets left behind, someone stops for fuel, and the whole group starts coordinating through calls and chat."
         />
-        <motion.div className="feature-card premium-card rounded-[2rem] p-6 sm:p-8" variants={fadeUp}>
-          <div className="grid gap-4">
+        <motion.div className="feature-card premium-card rounded-[2rem] p-5 sm:p-8" variants={fadeUp}>
+          <div className="grid gap-3 sm:gap-4">
             {[
               'JourneySync was built from those real ride moments.',
               'The goal is simple: help riding groups stay connected without replacing the tools riders already trust.',
               'Google Maps still handles navigation. JourneySync handles the ride layer around it.',
             ].map((copy) => (
-              <div key={copy} className="flex gap-3">
-                <span className="material-icons-round text-primary">two_wheeler</span>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{copy}</p>
+              <div key={copy} className="flex items-start gap-3 rounded-2xl bg-white/60 p-3 dark:bg-white/5 sm:p-4">
+                <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-primary/10 text-primary shadow-sm shadow-primary/10">
+                  <span className="material-icons-round text-[20px] leading-none">two_wheeler</span>
+                </span>
+                <p className="pt-1 text-sm leading-relaxed text-gray-700 dark:text-gray-300 sm:text-base">{copy}</p>
               </div>
             ))}
           </div>
