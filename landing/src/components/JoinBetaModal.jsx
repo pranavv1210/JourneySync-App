@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Mail, ArrowRight, Check, Shield, Smartphone, CircleCheck } from 'lucide-react';
+import { Mail, ArrowRight, Check, Shield, Smartphone } from 'lucide-react';
 import { AppModal } from './AppModal';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { trackBetaEvent } from '../utils/tracking';
@@ -380,14 +380,6 @@ export function JoinBetaModal({ isOpen, onClose }) {
                                   : undefined
                               }
                             >
-                              {selected && (
-                                <span
-                                  className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-orange-600 text-white shadow-md shadow-orange-500/30"
-                                  style={{ backgroundColor: '#ea580c', color: '#ffffff' }}
-                                >
-                                  <CircleCheck size={13} />
-                                </span>
-                              )}
                               <span className="flex items-center gap-2 text-xs font-extrabold text-neutral-900">
                                 <span
                                   className={`grid h-6 w-6 place-items-center rounded-lg ${
@@ -401,14 +393,6 @@ export function JoinBetaModal({ isOpen, onClose }) {
                               <span className={`mt-1.5 block text-[10px] font-bold ${selected ? 'text-orange-800' : 'text-neutral-400'}`}>
                                 {option.note}
                               </span>
-                              {selected && (
-                                <span
-                                  className="mt-2 inline-flex rounded-full bg-orange-600 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-white shadow-sm"
-                                  style={{ backgroundColor: '#ea580c', color: '#ffffff' }}
-                                >
-                                  Selected
-                                </span>
-                              )}
                             </button>
                           );
                         })}
