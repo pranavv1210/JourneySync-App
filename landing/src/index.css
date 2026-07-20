@@ -595,16 +595,17 @@ main section:not(#hero) .glow-pulse {
 .phone-mockup .hero-phone-sheet {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), #ffffff) !important;
   border-top: 1px solid rgba(255, 255, 255, 0.9) !important;
+  min-height: 138px !important;
 }
 
 .phone-mockup .hero-phone-mic {
   background: linear-gradient(135deg, #fb7185, #dc2626) !important;
-  box-shadow: 0 12px 26px rgba(220, 38, 38, 0.28) !important;
-  outline: 4px solid rgba(254, 242, 242, 0.98) !important;
+  box-shadow: 0 10px 22px rgba(220, 38, 38, 0.24) !important;
+  outline: 3px solid rgba(254, 242, 242, 0.98) !important;
 }
 
 .phone-mockup .hero-phone-avatar {
-  box-shadow: 0 7px 16px rgba(17, 24, 39, 0.12) !important;
+  box-shadow: 0 5px 12px rgba(17, 24, 39, 0.1) !important;
 }
 
 .demo-card,
