@@ -11,7 +11,7 @@
   <a href="./SECURITY.md">Security</a>
 </p>
 
-<img src="assets/banner.png" alt="JourneySync Banner" width="85%" />
+<img src="assets/journeysync%20banner.png" alt="JourneySync Banner" width="85%" />
 
 <br/>
 
