@@ -41,8 +41,8 @@ function buildEmailHtml(
     ? 'You selected iOS. JourneySync iOS testing will be distributed through TestFlight once the Apple build is ready. We saved your iOS interest and will send TestFlight access when it opens.'
     : 'You selected Android. Open the beta download page below, then tap Download APK. This keeps the app download on JourneySync\'s own domain instead of an email tracking redirect.';
   const fallbackCopy = isIos
-    ? 'You can also check the beta page for the latest Android download and iOS TestFlight status.'
-    : 'If the APK does not download from Gmail, open the beta page in Chrome and use the Download Android Beta button near the bottom of the page.';
+    ? 'You can also check the JourneySync landing page for the latest Android download and iOS TestFlight status.'
+    : 'If the APK does not download from Gmail, open the JourneySync landing page in Chrome and use the Download Android Beta button near the bottom of the page.';
 
   return `<!doctype html>
 <html>
@@ -103,8 +103,8 @@ function buildEmailText(
     isIos ? iosBetaUrl : downloadPageUrl,
     '',
     isIos
-      ? 'You can also check this page for the latest Android download and iOS beta status:'
-      : 'If the APK does not download from Gmail, open this page in Chrome and use the Download Android Beta button near the bottom:',
+      ? 'You can also check the JourneySync landing page for the latest Android download and iOS beta status:'
+      : 'If the APK does not download from Gmail, open the JourneySync landing page in Chrome and use the Download Android Beta button near the bottom:',
     downloadPageUrl.replace(/^https?:\/\//, ''),
     '',
     'Beta note: This is an early test build. Use it only when you are comfortable testing beta software, and keep normal road safety, emergency services, and rider judgment first.',
