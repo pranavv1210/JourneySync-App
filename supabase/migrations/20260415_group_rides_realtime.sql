@@ -38,9 +38,29 @@ alter table if exists public.rides
   add column if not exists ended_at timestamptz,
   add column if not exists max_riders integer;
 
-update public.rides
-set host_id = coalesce(host_id, creator_id, user_id, leader_id)
-where host_id is null;
+do $$
+declare
+  source_columns text;
+begin
+  select string_agg(format('%I', column_name), ', ')
+  into source_columns
+  from unnest(array['host_id', 'creator_id', 'user_id', 'leader_id', 'ride_leader_id'])
+    as candidate(column_name)
+  where exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'rides'
+      and column_name = candidate.column_name
+  );
+
+  if source_columns is not null then
+    execute format(
+      'update public.rides set host_id = coalesce(%s) where host_id is null',
+      source_columns
+    );
+  end if;
+end $$;
 
 create table if not exists public.ride_members (
   id uuid primary key default gen_random_uuid(),

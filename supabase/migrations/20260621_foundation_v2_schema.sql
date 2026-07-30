@@ -42,9 +42,29 @@ alter table if exists public.rides
 alter table if exists public.profiles
   add column if not exists active_ride_id uuid references public.rides(id) on delete set null;
 
-update public.rides
-set host_id = coalesce(host_id, creator_id, user_id, leader_id)
-where host_id is null;
+do $$
+declare
+  source_columns text;
+begin
+  select string_agg(format('%I', column_name), ', ')
+  into source_columns
+  from unnest(array['host_id', 'creator_id', 'user_id', 'leader_id', 'ride_leader_id'])
+    as candidate(column_name)
+  where exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'rides'
+      and column_name = candidate.column_name
+  );
+
+  if source_columns is not null then
+    execute format(
+      'update public.rides set host_id = coalesce(%s) where host_id is null',
+      source_columns
+    );
+  end if;
+end $$;
 
 create table if not exists public.ride_members (
   id uuid primary key default gen_random_uuid(),
@@ -61,9 +81,20 @@ alter table if exists public.ride_members
   add column if not exists role text not null default 'member',
   add column if not exists status text not null default 'approved';
 
-update public.ride_members
-set member_id = user_id
-where member_id is null and user_id is not null;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'ride_members'
+      and column_name = 'user_id'
+  ) then
+    update public.ride_members
+    set member_id = user_id
+    where member_id is null and user_id is not null;
+  end if;
+end $$;
 
 insert into public.ride_members (ride_id, member_id, role, status)
 select id, host_id, 'host', 'approved'
@@ -104,13 +135,35 @@ alter table if exists public.live_locations
   add column if not exists bike_name text not null default 'No bike added',
   add column if not exists is_leader boolean not null default false;
 
-update public.live_locations
-set profile_id = user_id
-where profile_id is null and user_id is not null;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'live_locations'
+      and column_name = 'user_id'
+  ) then
+    update public.live_locations
+    set profile_id = user_id
+    where profile_id is null and user_id is not null;
+  end if;
+end $$;
 
-update public.live_locations
-set speed = speed_mps
-where speed is null and speed_mps is not null;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'live_locations'
+      and column_name = 'speed_mps'
+  ) then
+    update public.live_locations
+    set speed = speed_mps
+    where speed is null and speed_mps is not null;
+  end if;
+end $$;
 
 create unique index if not exists live_locations_ride_profile_uidx
   on public.live_locations(ride_id, profile_id)
@@ -142,9 +195,20 @@ create table if not exists public.ride_alerts (
 alter table if exists public.ride_alerts
   add column if not exists profile_id uuid references public.profiles(id) on delete set null;
 
-update public.ride_alerts
-set profile_id = user_id
-where profile_id is null and user_id is not null;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'ride_alerts'
+      and column_name = 'user_id'
+  ) then
+    update public.ride_alerts
+    set profile_id = user_id
+    where profile_id is null and user_id is not null;
+  end if;
+end $$;
 
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),

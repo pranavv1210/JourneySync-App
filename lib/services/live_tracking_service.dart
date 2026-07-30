@@ -267,7 +267,9 @@ class LiveTrackingService {
       'is_leader': _syncIsLeader,
       'updated_at': DateTime.now().toIso8601String(),
     };
-    await _client.from('live_locations').upsert(payload);
+    await _client
+        .from('live_locations')
+        .upsert(payload, onConflict: 'ride_id,profile_id');
     _lastSyncedPosition = position;
   }
 
@@ -389,7 +391,9 @@ class LiveTrackingService {
     };
 
     try {
-      await _client.from('live_locations').upsert(payload);
+      await _client
+          .from('live_locations')
+          .upsert(payload, onConflict: 'ride_id,profile_id');
       _lastSyncedPosition = pos;
       if (_isOffline) {
         _isOffline = false;
@@ -454,7 +458,9 @@ class LiveTrackingService {
 
     for (final payload in batch) {
       try {
-        await _client.from('live_locations').upsert(payload);
+        await _client
+            .from('live_locations')
+            .upsert(payload, onConflict: 'ride_id,profile_id');
         await _persistOfflineQueue();
       } catch (e) {
         debugPrint('[LiveTracking] Flush failed: $e');

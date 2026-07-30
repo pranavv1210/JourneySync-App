@@ -15,9 +15,20 @@ alter table if exists public.live_locations
   add column if not exists speed double precision;
 
 -- Back-fill speed from speed_mps where it exists
-update public.live_locations
-set speed = speed_mps
-where speed is null and speed_mps is not null;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'live_locations'
+      and column_name = 'speed_mps'
+  ) then
+    update public.live_locations
+    set speed = speed_mps
+    where speed is null and speed_mps is not null;
+  end if;
+end $$;
 
 -- 2) Ensure ride_alerts table exists with full schema
 create table if not exists public.ride_alerts (
