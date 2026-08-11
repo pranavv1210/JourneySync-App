@@ -1004,13 +1004,26 @@ class SupabaseService {
     }
 
     final trimmedFeedback = improvementFeedback.trim();
-    await _client.from('app_feedback').insert({
+    final authUserId = (_client.auth.currentUser?.id ?? '').trim();
+    final payload = <String, dynamic>{
       'user_id': profileId,
+      if (authUserId.isNotEmpty) 'auth_user_id': authUserId,
       'rating': rating,
       'improvement_feedback': trimmedFeedback.isEmpty ? null : trimmedFeedback,
       'app_version': appVersion.trim(),
       'platform': platform.trim(),
-    });
+    };
+
+    try {
+      await _client.from('app_feedback').insert(payload);
+    } on PostgrestException catch (error) {
+      if (_isMissingColumnError(error) && payload.containsKey('auth_user_id')) {
+        payload.remove('auth_user_id');
+        await _client.from('app_feedback').insert(payload);
+        return;
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>?> _fetchUserSingle({

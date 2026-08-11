@@ -30,9 +30,27 @@ function getPlacement(targetRect) {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
   const margin = 16;
-  const gap = 18;
-  const calloutWidth = Math.min(340, viewportWidth - margin * 2);
-  const estimatedHeight = viewportWidth < 640 ? 205 : 190;
+  const gap = viewportWidth < 640 ? 12 : 18;
+  const isMobile = viewportWidth < 640;
+  const calloutWidth = Math.min(isMobile ? 292 : 320, viewportWidth - margin * 2);
+  const estimatedHeight = isMobile ? 158 : 176;
+
+  if (isMobile) {
+    const targetCenter = targetRect.left + targetRect.width / 2;
+    const fitsBelow = targetRect.bottom + gap + estimatedHeight <= viewportHeight - margin;
+
+    return {
+      placement: fitsBelow ? 'mobile-bottom' : 'mobile-top',
+      style: {
+        left: clamp(targetCenter - calloutWidth / 2, margin, viewportWidth - calloutWidth - margin),
+        top: fitsBelow
+          ? targetRect.bottom + gap
+          : clamp(targetRect.top - estimatedHeight - gap, margin, viewportHeight - estimatedHeight - margin),
+        width: calloutWidth,
+        maxWidth: 'calc(100vw - 32px)',
+      },
+    };
+  }
 
   if (viewportWidth >= 768 && targetRect.right + gap + calloutWidth <= viewportWidth - margin) {
     return {
@@ -221,7 +239,7 @@ export function JoinBetaGuide({ isBetaOpen, onJoin }) {
 
   if (!spotlight || !placement) return null;
 
-  const panelClassName = 'fixed bg-neutral-950/58 backdrop-blur-[2px]';
+  const panelClassName = 'fixed bg-neutral-950/38 backdrop-blur-[1px]';
   const panelTransition = { duration: shouldReduceMotion ? 0 : 0.26, ease: 'easeOut' };
   const calloutTransition = { duration: shouldReduceMotion ? 0 : 0.32, delay: shouldReduceMotion ? 0 : 0.14, ease: 'easeOut' };
 
@@ -294,35 +312,35 @@ export function JoinBetaGuide({ isBetaOpen, onJoin }) {
             aria-labelledby="beta-guide-title"
             aria-describedby="beta-guide-copy"
             data-beta-guide-callout="true"
-            className={`beta-guide-callout fixed rounded-[1.35rem] border border-white/70 bg-white/92 p-4 text-neutral-900 shadow-2xl backdrop-blur-xl sm:p-5 beta-guide-callout--${placement.placement}`}
+            className={`beta-guide-callout fixed rounded-2xl border border-white/80 bg-white p-3.5 text-neutral-900 shadow-2xl sm:p-4 beta-guide-callout--${placement.placement}`}
             style={placement.style}
-            initial={shouldReduceMotion ? false : { opacity: 0, y: placement.placement === 'top' ? 8 : -8, scale: 0.98 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: placement.placement.includes('top') ? 8 : -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: placement.placement === 'top' ? 8 : -8, scale: 0.98 }}
+            exit={{ opacity: 0, y: placement.placement.includes('top') ? 8 : -8, scale: 0.98 }}
             transition={calloutTransition}
           >
             <button
               ref={closeButtonRef}
               type="button"
               aria-label="Close Join Beta guide"
-              className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+              className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center text-neutral-400 transition-colors hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               onClick={dismiss}
             >
-              <span className="material-icons-round text-[18px]" aria-hidden="true">close</span>
+              <span className="material-icons-round text-[17px]" aria-hidden="true">close</span>
             </button>
 
-            <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.18em] text-primary">Start here</p>
-            <h2 id="beta-guide-title" className="pr-8 text-lg font-extrabold tracking-tight text-neutral-950">
-              Join the JourneySync Beta
+            <p className="mb-1.5 text-[11px] font-extrabold uppercase tracking-[0.16em] text-primary">Start here</p>
+            <h2 id="beta-guide-title" className="pr-8 text-base font-extrabold tracking-tight text-neutral-950 sm:text-lg">
+              Join the beta
             </h2>
-            <p id="beta-guide-copy" className="mt-2 text-sm font-medium leading-6 text-neutral-600">
-              Be among the first riders to try group ride discovery, coordination, and live ride tools.
+            <p id="beta-guide-copy" className="mt-1.5 text-sm font-medium leading-5 text-neutral-600 sm:leading-6">
+              Get early access to JourneySync and the Android beta build.
             </p>
 
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
               <button
                 type="button"
-                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary-dark px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:bg-[#8f4a03]"
+                className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-primary-dark px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-[#8f4a03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 onClick={join}
               >
                 Join Beta
@@ -330,7 +348,7 @@ export function JoinBetaGuide({ isBetaOpen, onJoin }) {
               </button>
               <button
                 type="button"
-                className="inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
+                className="inline-flex min-h-10 items-center justify-center rounded-xl px-3 py-2 text-sm font-bold text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 onClick={dismiss}
               >
                 Explore first
