@@ -548,66 +548,6 @@ body.modal-open .app-modal-header {
   transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
-.beta-guide-target {
-  isolation: isolate;
-  position: relative !important;
-  z-index: 2147482600 !important;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 6px rgba(217, 119, 6, 0.18), 0 14px 32px rgba(177, 95, 0, 0.28) !important;
-}
-
-.beta-guide-spotlight {
-  border: 1px solid rgba(255, 255, 255, 0.88);
-  border-radius: 1rem;
-  box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.24), 0 0 30px rgba(217, 119, 6, 0.22);
-}
-
-.beta-guide-callout {
-  max-width: calc(100vw - 32px);
-  box-shadow: 0 18px 50px rgba(17, 24, 39, 0.2), 0 10px 28px rgba(177, 95, 0, 0.12);
-}
-
-.beta-guide-callout::before {
-  background: #fff;
-  border-left: 1px solid rgba(255, 255, 255, 0.8);
-  border-top: 1px solid rgba(255, 255, 255, 0.8);
-  content: "";
-  height: 10px;
-  position: absolute;
-  transform: rotate(45deg);
-  width: 10px;
-}
-
-.beta-guide-callout--right::before {
-  left: -5px;
-  top: 50%;
-  transform: translateY(-50%) rotate(-45deg);
-}
-
-.beta-guide-callout--bottom::before,
-.beta-guide-callout--mobile-bottom::before {
-  left: 50%;
-  top: -5px;
-  transform: translateX(-50%) rotate(45deg);
-}
-
-.beta-guide-callout--top::before,
-.beta-guide-callout--mobile-top::before {
-  bottom: -5px;
-  left: 50%;
-  transform: translateX(-50%) rotate(225deg);
-}
-
-@media (max-width: 639px) {
-  .beta-guide-callout {
-    border-radius: 1rem;
-  }
-
-  .beta-guide-callout::before {
-    height: 9px;
-    width: 9px;
-  }
-}
-
 #hero .premium-btn:first-child,
 #hero .glow-pulse {
   box-shadow: 0 16px 38px rgba(177, 95, 0, 0.3), 0 8px 18px rgba(17, 24, 39, 0.1);
@@ -753,11 +693,6 @@ main section:not(#hero) .glow-pulse {
 @media (prefers-reduced-motion: reduce) {
   #hero .glow-pulse {
     animation: none;
-  }
-
-  .beta-guide-target,
-  .beta-guide-callout button {
-    transition: none !important;
   }
 
   #beta-signal .liquid-glass:hover,
