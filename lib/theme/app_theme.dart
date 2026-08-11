@@ -36,7 +36,7 @@ class AppColors {
 class AppTypography {
   AppTypography._();
 
-  static const String fontFamily = 'Proxima Nova';
+  static const String fontFamily = 'Poppins';
 
   static TextStyle style({
     required double fontSize,

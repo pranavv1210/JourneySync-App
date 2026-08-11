@@ -22,6 +22,7 @@ import {
 } from './components/GrowthSections';
 import { useLandingRuntime } from './hooks/useLandingRuntime';
 import { JoinBetaModal } from './components/JoinBetaModal';
+import { JoinBetaGuide } from './components/JoinBetaGuide';
 import { InfoModal } from './components/InfoModal';
 
 const BetaDownloadPage = lazy(() => import('./pages/BetaDownloadPage.jsx'));
@@ -115,6 +116,13 @@ export default function App() {
   return (
     <>
       <LandingPage />
+      <JoinBetaGuide
+        isBetaOpen={isBetaOpen}
+        onJoin={() => {
+          setActiveInfoModal(null);
+          setIsBetaOpen(true);
+        }}
+      />
       <JoinBetaModal isOpen={isBetaOpen} onClose={() => setIsBetaOpen(false)} />
       <InfoModal modalKey={activeInfoModal} onClose={() => setActiveInfoModal(null)} />
     </>

@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/app_version.dart';
 import '../services/feedback_prompt_service.dart';
@@ -56,10 +55,19 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cachedUserId = (prefs.getString('userId') ?? '').trim();
-      final authUserId =
-          (Supabase.instance.client.auth.currentUser?.id ?? '').trim();
-      final userId = authUserId.isNotEmpty ? authUserId : cachedUserId;
+      var userId = (prefs.getString('userId') ?? '').trim();
+      if (userId.isEmpty) {
+        final profile = await _supabaseService.fetchOrCreateCurrentUserProfile(
+          cachedUserId: userId,
+          cachedPhone: prefs.getString('userPhone') ?? '',
+          cachedName: prefs.getString('userName') ?? 'Rider',
+          cachedBike: prefs.getString('userBike') ?? 'No bike added',
+        );
+        userId = (profile?['id'] ?? '').toString().trim();
+        if (userId.isNotEmpty) {
+          await prefs.setString('userId', userId);
+        }
+      }
 
       await _supabaseService.submitFeedback(
         userId: userId,
@@ -121,7 +129,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'Thanks for riding with us ❤️',
+              'Thanks for riding with us',
               textAlign: TextAlign.center,
               style: AppTypography.headlineSmall.copyWith(
                 color: AppColors.forest,

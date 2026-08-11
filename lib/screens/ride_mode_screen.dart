@@ -192,7 +192,14 @@ class _RideModeScreenState extends State<RideModeScreen>
       final ride = await _supabaseService.fetchRideById(widget.rideId);
       if (ride == null) throw Exception('Ride not found');
 
-      _leaderId = (ride['host_id'] ?? '').toString().trim();
+      _leaderId =
+          (ride['host_id'] ??
+                  ride['profile_id'] ??
+                  ride['creator_id'] ??
+                  ride['user_id'] ??
+                  '')
+              .toString()
+              .trim();
       _rideData = ride;
 
       // ── Start timer ──────────────────────────────────────────────────────
@@ -941,7 +948,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w900,
-                                  fontFamily: 'Proxima Nova',
+                                  fontFamily: AppTypography.fontFamily,
                                   fontSize: 13,
                                   letterSpacing: 1.0,
                                 ),
@@ -951,7 +958,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                                 "Leader is more than 2 km ahead. Increase speed.",
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontFamily: 'Proxima Nova',
+                                  fontFamily: AppTypography.fontFamily,
                                   fontSize: 11,
                                 ),
                               ),
@@ -1659,7 +1666,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                         'CRITICAL SOS ALERT',
                         style: TextStyle(
                           color: Colors.red,
-                          fontFamily: 'Proxima Nova',
+                          fontFamily: AppTypography.fontFamily,
                           fontWeight: FontWeight.w900,
                           fontSize: 20,
                           letterSpacing: 1.5,
@@ -1671,7 +1678,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontFamily: 'Proxima Nova',
+                          fontFamily: AppTypography.fontFamily,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -1711,7 +1718,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                             'Emergency contacts',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.86),
-                              fontFamily: 'Proxima Nova',
+                              fontFamily: AppTypography.fontFamily,
                               fontWeight: FontWeight.w900,
                               fontSize: 13,
                             ),
@@ -1743,7 +1750,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                                         contact['name'] ?? 'Emergency contact',
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontFamily: 'Proxima Nova',
+                                          fontFamily: AppTypography.fontFamily,
                                           fontWeight: FontWeight.w800,
                                         ),
                                       ),
@@ -1753,7 +1760,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                                           color: Colors.white.withValues(
                                             alpha: 0.62,
                                           ),
-                                          fontFamily: 'Proxima Nova',
+                                          fontFamily: AppTypography.fontFamily,
                                           fontWeight: FontWeight.w600,
                                           fontSize: 12,
                                         ),
@@ -1835,7 +1842,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                             'Acknowledge / Dismiss',
                             style: TextStyle(
                               color: Colors.white70,
-                              fontFamily: 'Proxima Nova',
+                              fontFamily: AppTypography.fontFamily,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1863,7 +1870,7 @@ class _RideModeScreenState extends State<RideModeScreen>
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.5),
               fontSize: 13,
-              fontFamily: 'Proxima Nova',
+              fontFamily: AppTypography.fontFamily,
             ),
           ),
           Text(
@@ -1871,7 +1878,7 @@ class _RideModeScreenState extends State<RideModeScreen>
             style: const TextStyle(
               color: Colors.white,
               fontSize: 13,
-              fontFamily: 'Proxima Nova',
+              fontFamily: AppTypography.fontFamily,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -2059,7 +2066,7 @@ class _SOSActionButton extends StatelessWidget {
         label: Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Proxima Nova',
+            fontFamily: AppTypography.fontFamily,
             fontWeight: FontWeight.bold,
             fontSize: 13,
           ),

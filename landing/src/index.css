@@ -548,6 +548,52 @@ body.modal-open .app-modal-header {
   transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
+.beta-guide-target {
+  isolation: isolate;
+  position: relative !important;
+  z-index: 2147482600 !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.82), 0 0 0 8px rgba(217, 119, 6, 0.22), 0 18px 46px rgba(177, 95, 0, 0.42) !important;
+}
+
+.beta-guide-spotlight {
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 1.15rem;
+  box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.38), 0 0 44px rgba(217, 119, 6, 0.32);
+}
+
+.beta-guide-callout {
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.26), 0 14px 36px rgba(177, 95, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+.beta-guide-callout::before {
+  background: rgba(255, 255, 255, 0.92);
+  border-left: 1px solid rgba(255, 255, 255, 0.7);
+  border-top: 1px solid rgba(255, 255, 255, 0.7);
+  content: "";
+  height: 14px;
+  position: absolute;
+  transform: rotate(45deg);
+  width: 14px;
+}
+
+.beta-guide-callout--right::before {
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.beta-guide-callout--bottom::before {
+  left: 50%;
+  top: -7px;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.beta-guide-callout--top::before {
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%) rotate(225deg);
+}
+
 #hero .premium-btn:first-child,
 #hero .glow-pulse {
   box-shadow: 0 16px 38px rgba(177, 95, 0, 0.3), 0 8px 18px rgba(17, 24, 39, 0.1);
@@ -693,6 +739,11 @@ main section:not(#hero) .glow-pulse {
 @media (prefers-reduced-motion: reduce) {
   #hero .glow-pulse {
     animation: none;
+  }
+
+  .beta-guide-target,
+  .beta-guide-callout button {
+    transition: none !important;
   }
 
   #beta-signal .liquid-glass:hover,

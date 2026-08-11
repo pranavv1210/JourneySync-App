@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_navigation.dart';
 import '../services/ride_service.dart';
+import '../theme/app_theme.dart';
 import '../models/ride_record.dart';
 import 'ride_lobby_screen.dart';
 import 'ride_summary_screen.dart';
@@ -271,7 +272,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontFamily: 'Proxima Nova',
+                                        fontFamily: AppTypography.fontFamily,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                         color: forest,
@@ -283,7 +284,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontFamily: 'Proxima Nova',
+                                        fontFamily: AppTypography.fontFamily,
                                         fontSize: 12,
                                         color: Colors.grey,
                                       ),
@@ -297,7 +298,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                   Text(
                                     dateLabel,
                                     style: const TextStyle(
-                                      fontFamily: 'Proxima Nova',
+                                      fontFamily: AppTypography.fontFamily,
                                       fontSize: 11,
                                       color: Colors.grey,
                                     ),
@@ -315,7 +316,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                     child: Text(
                                       statusLabel,
                                       style: TextStyle(
-                                        fontFamily: 'Proxima Nova',
+                                        fontFamily: AppTypography.fontFamily,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w800,
                                         color: statusColors.fg,
@@ -341,7 +342,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                 style: TextButton.styleFrom(
                                   foregroundColor: forest,
                                   textStyle: const TextStyle(
-                                    fontFamily: 'Proxima Nova',
+                                    fontFamily: AppTypography.fontFamily,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
                                   ),
@@ -394,7 +395,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     textStyle: const TextStyle(
-                                      fontFamily: 'Proxima Nova',
+                                      fontFamily: AppTypography.fontFamily,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 13,
                                     ),
@@ -545,7 +546,7 @@ class _ReplayRouteDialogState extends State<_ReplayRouteDialog>
                             'Replaying: ${widget.title}',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontFamily: 'Proxima Nova',
+                              fontFamily: AppTypography.fontFamily,
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),
@@ -592,7 +593,7 @@ class _ReplayRouteDialogState extends State<_ReplayRouteDialog>
                           'Replay speed: 10x',
                           style: TextStyle(
                             color: Colors.white54,
-                            fontFamily: 'Proxima Nova',
+                            fontFamily: AppTypography.fontFamily,
                             fontSize: 12,
                           ),
                         ),
@@ -604,7 +605,7 @@ class _ReplayRouteDialogState extends State<_ReplayRouteDialog>
                               '$pct%',
                               style: const TextStyle(
                                 color: Color(0xFFFF6A00),
-                                fontFamily: 'Proxima Nova',
+                                fontFamily: AppTypography.fontFamily,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                               ),

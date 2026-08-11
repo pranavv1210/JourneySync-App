@@ -19,6 +19,12 @@ class SupabaseService {
 
   static const String _rideColumnsWithHost =
       'id,host_id,title,start_location,end_location,created_at,status,ride_visibility,ride_mode';
+  static const List<String> _rideCreatorColumns = <String>[
+    'host_id',
+    'profile_id',
+    'creator_id',
+    'user_id',
+  ];
 
   Future<Map<String, dynamic>?> fetchUserByPhone(String phone) async {
     final normalized = phone.trim();
@@ -290,12 +296,10 @@ class SupabaseService {
 
     final byId = <String, Map<String, dynamic>>{};
 
-    final hostRows = await _client
-        .from('rides')
-        .select()
-        .eq('host_id', normalized)
-        .order('created_at', ascending: false)
-        .limit(limit * 3);
+    final hostRows = await _selectRidesByCreator(
+      creatorId: normalized,
+      limit: limit * 3,
+    );
     for (final row in List<Map<String, dynamic>>.from(hostRows)) {
       final id = (row['id'] ?? '').toString().trim();
       if (id.isEmpty) continue;
@@ -350,12 +354,10 @@ class SupabaseService {
                 .select()
                 .order('created_at', ascending: false)
                 .limit(limit)
-            : await _client
-                .from('rides')
-                .select()
-                .not('host_id', 'eq', excludeCreatorId.trim())
-                .order('created_at', ascending: false)
-                .limit(limit);
+            : await _selectNearbyRidesExcludingCreator(
+              creatorId: excludeCreatorId.trim(),
+              limit: limit,
+            );
     return List<Map<String, dynamic>>.from(rows);
   }
 
@@ -389,11 +391,11 @@ class SupabaseService {
     };
     final payload = <String, dynamic>{...basePayload, ...optionalPayload};
     try {
-      return await _client
-          .from('rides')
-          .insert({...payload, 'host_id': creatorId.trim()})
-          .select(_rideColumnsWithHost)
-          .single();
+      return await _insertRideWithCreator(
+        payload: payload,
+        creatorId: creatorId,
+        preferredSelect: _rideColumnsWithHost,
+      );
     } on PostgrestException catch (error) {
       if (_isMissingRideColumn(error, 'end_location')) {
         return _createRideWithLegacyDestinationFallback(
@@ -404,17 +406,15 @@ class SupabaseService {
         );
       }
       if (_isMissingRideOptionalColumns(error) && optionalPayload.isNotEmpty) {
-        return await _client
-            .from('rides')
-            .insert({
-              ...basePayload,
-              'host_id': creatorId.trim(),
-              'status': status.trim().isEmpty ? 'scheduled' : status.trim(),
-            })
-            .select(
+        return _insertRideWithCreator(
+          payload: {
+            ...basePayload,
+            'status': status.trim().isEmpty ? 'scheduled' : status.trim(),
+          },
+          creatorId: creatorId,
+          preferredSelect:
               'id,host_id,title,start_location,end_location,created_at,status',
-            )
-            .single();
+        );
       }
       rethrow;
     }
@@ -431,10 +431,9 @@ class SupabaseService {
           ..remove('end_location')
           ..['destination'] = endLocation.trim();
     final attempts = <Map<String, dynamic>>[
-      {...legacyBase, ...optionalPayload, 'host_id': creatorId.trim()},
+      {...legacyBase, ...optionalPayload},
       {
         ...legacyBase,
-        'host_id': creatorId.trim(),
         'status':
             (optionalPayload['status'] ?? 'scheduled').toString().trim().isEmpty
                 ? 'scheduled'
@@ -445,7 +444,10 @@ class SupabaseService {
     Object? lastError;
     for (final attempt in attempts) {
       try {
-        return await _client.from('rides').insert(attempt).select().single();
+        return await _insertRideWithCreator(
+          payload: attempt,
+          creatorId: creatorId,
+        );
       } on PostgrestException catch (error) {
         lastError = error;
         if (!_isMissingColumnError(error)) rethrow;
@@ -455,16 +457,158 @@ class SupabaseService {
     final minimalPayload = Map<String, dynamic>.from(basePayload)
       ..remove('end_location');
     try {
-      final row =
-          await _client
-              .from('rides')
-              .insert({...minimalPayload, 'host_id': creatorId.trim()})
-              .select()
-              .single();
+      final row = await _insertRideWithCreator(
+        payload: minimalPayload,
+        creatorId: creatorId,
+      );
       return {...Map<String, dynamic>.from(row), 'end_location': endLocation};
     } on PostgrestException {
       throw lastError ?? Exception('Could not create ride.');
     }
+  }
+
+  Future<Map<String, dynamic>> _insertRideWithCreator({
+    required Map<String, dynamic> payload,
+    required String creatorId,
+    String preferredSelect = '*',
+  }) async {
+    final normalizedCreatorId = creatorId.trim();
+    Object? lastCreatorColumnError;
+
+    for (final creatorColumn in _rideCreatorColumns) {
+      final attempt = <String, dynamic>{
+        ...payload,
+        if (normalizedCreatorId.isNotEmpty) creatorColumn: normalizedCreatorId,
+      };
+      try {
+        final selectColumns =
+            creatorColumn == 'host_id' ? preferredSelect : '*';
+        return await _client
+            .from('rides')
+            .insert(attempt)
+            .select(selectColumns)
+            .single();
+      } on PostgrestException catch (error) {
+        final missingAttemptColumn = _isMissingRideColumn(error, creatorColumn);
+        final missingPreferredSelectHost =
+            creatorColumn == 'host_id' &&
+            preferredSelect.contains('host_id') &&
+            _isMissingRideColumn(error, 'host_id');
+        if (missingAttemptColumn || missingPreferredSelectHost) {
+          lastCreatorColumnError = error;
+          continue;
+        }
+        rethrow;
+      }
+    }
+
+    try {
+      return await _client.from('rides').insert(payload).select().single();
+    } on PostgrestException catch (error) {
+      throw lastCreatorColumnError ?? error;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _selectRidesByCreator({
+    required String creatorId,
+    required int limit,
+  }) async {
+    Object? lastError;
+    for (final creatorColumn in _rideCreatorColumns) {
+      try {
+        final rows = await _client
+            .from('rides')
+            .select()
+            .eq(creatorColumn, creatorId)
+            .order('created_at', ascending: false)
+            .limit(limit);
+        return List<Map<String, dynamic>>.from(rows);
+      } on PostgrestException catch (error) {
+        if (_isMissingRideColumn(error, creatorColumn)) {
+          lastError = error;
+          continue;
+        }
+        rethrow;
+      }
+    }
+    if (lastError != null) return <Map<String, dynamic>>[];
+    return <Map<String, dynamic>>[];
+  }
+
+  Future<List<Map<String, dynamic>>> _selectNearbyRidesExcludingCreator({
+    required String creatorId,
+    required int limit,
+  }) async {
+    for (final creatorColumn in _rideCreatorColumns) {
+      try {
+        final rows = await _client
+            .from('rides')
+            .select()
+            .not(creatorColumn, 'eq', creatorId)
+            .order('created_at', ascending: false)
+            .limit(limit);
+        return List<Map<String, dynamic>>.from(rows);
+      } on PostgrestException catch (error) {
+        if (_isMissingRideColumn(error, creatorColumn)) continue;
+        rethrow;
+      }
+    }
+
+    final rows = await _client
+        .from('rides')
+        .select()
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> _deleteRideWithCreatorFilter({
+    required String rideId,
+    required String creatorId,
+  }) async {
+    Object? lastError;
+    for (final creatorColumn in _rideCreatorColumns) {
+      try {
+        await _client
+            .from('rides')
+            .delete()
+            .eq('id', rideId)
+            .eq(creatorColumn, creatorId);
+        return;
+      } on PostgrestException catch (error) {
+        if (_isMissingRideColumn(error, creatorColumn)) {
+          lastError = error;
+          continue;
+        }
+        rethrow;
+      }
+    }
+    if (lastError is PostgrestException) throw lastError;
+  }
+
+  Future<void> _updateRideWithCreatorFilter({
+    required String rideId,
+    required String creatorId,
+    required Map<String, dynamic> payload,
+  }) async {
+    Object? lastError;
+    for (final creatorColumn in _rideCreatorColumns) {
+      try {
+        await _client
+            .from('rides')
+            .update(payload)
+            .eq('id', rideId)
+            .eq(creatorColumn, creatorId);
+        return;
+      } on PostgrestException catch (error) {
+        if (_isMissingRideColumn(error, creatorColumn)) {
+          lastError = error;
+          continue;
+        }
+        rethrow;
+      }
+    }
+    if (lastError is PostgrestException) throw lastError;
   }
 
   Future<void> addParticipant({
@@ -525,11 +669,10 @@ class SupabaseService {
     }
 
     await _client.from('ride_members').delete().eq('ride_id', normalizedRideId);
-    await _client
-        .from('rides')
-        .delete()
-        .eq('id', normalizedRideId)
-        .eq('host_id', normalizedCreatorId);
+    await _deleteRideWithCreatorFilter(
+      rideId: normalizedRideId,
+      creatorId: normalizedCreatorId,
+    );
   }
 
   Future<void> archiveCompletedRideAsCreator({
@@ -542,13 +685,12 @@ class SupabaseService {
       throw Exception('Ride archive failed: invalid ride/user id.');
     }
 
-    Future<void> updateWithHostFilter(Map<String, dynamic> payload) async {
-      await _client
-          .from('rides')
-          .update(payload)
-          .eq('id', normalizedRideId)
-          .eq('host_id', normalizedCreatorId);
-    }
+    Future<void> updateWithHostFilter(Map<String, dynamic> payload) =>
+        _updateRideWithCreatorFilter(
+          rideId: normalizedRideId,
+          creatorId: normalizedCreatorId,
+          payload: payload,
+        );
 
     final payloads = <Map<String, dynamic>>[
       {'archived_at': DateTime.now().toIso8601String()},
@@ -646,7 +788,14 @@ class SupabaseService {
     if (normalizedRideId.isEmpty) return <RideMember>[];
 
     final ride = await fetchRideById(normalizedRideId);
-    final hostId = (ride?['host_id'] ?? '').toString().trim();
+    final hostId =
+        (ride?['host_id'] ??
+                ride?['profile_id'] ??
+                ride?['creator_id'] ??
+                ride?['user_id'] ??
+                '')
+            .toString()
+            .trim();
     final memberRows = await fetchParticipantsByRideIds(<String>[
       normalizedRideId,
     ]);
@@ -769,7 +918,29 @@ class SupabaseService {
       'stops': stops.map((stop) => stop.toJson()).toList(),
       'updated_at': DateTime.now().toIso8601String(),
     };
-    await _client.from('ride_routes').upsert(payload, onConflict: 'ride_id');
+    try {
+      await _client.from('ride_routes').upsert(payload, onConflict: 'ride_id');
+    } on PostgrestException catch (error) {
+      if (!_isMissingRideColumn(error, 'host_id')) rethrow;
+      final fallbackPayload =
+          Map<String, dynamic>.from(payload)
+            ..remove('host_id')
+            ..['profile_id'] = hostId.trim();
+      try {
+        await _client
+            .from('ride_routes')
+            .upsert(fallbackPayload, onConflict: 'ride_id');
+      } on PostgrestException catch (fallbackError) {
+        if (_isMissingRideColumn(fallbackError, 'profile_id')) {
+          fallbackPayload.remove('profile_id');
+          await _client
+              .from('ride_routes')
+              .upsert(fallbackPayload, onConflict: 'ride_id');
+          return;
+        }
+        rethrow;
+      }
+    }
   }
 
   Future<RideRoute?> fetchRideRoute(String rideId) async {
@@ -825,9 +996,16 @@ class SupabaseService {
       throw ArgumentError.value(rating, 'rating', 'Must be between 1 and 5.');
     }
 
+    var profileId = normalizedUserId;
+    final profile = await fetchUserById(normalizedUserId);
+    final resolvedProfileId = (profile?['id'] ?? '').toString().trim();
+    if (resolvedProfileId.isNotEmpty) {
+      profileId = resolvedProfileId;
+    }
+
     final trimmedFeedback = improvementFeedback.trim();
     await _client.from('app_feedback').insert({
-      'user_id': normalizedUserId,
+      'user_id': profileId,
       'rating': rating,
       'improvement_feedback': trimmedFeedback.isEmpty ? null : trimmedFeedback,
       'app_version': appVersion.trim(),

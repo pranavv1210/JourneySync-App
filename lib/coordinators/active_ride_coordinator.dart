@@ -226,7 +226,13 @@ class ActiveRideCoordinator extends ChangeNotifier {
   }
 
   String _hostIdFromRide(Map<String, dynamic> ride) {
-    return (ride['host_id'] ?? ride['profile_id'] ?? '').toString().trim();
+    return (ride['host_id'] ??
+            ride['profile_id'] ??
+            ride['creator_id'] ??
+            ride['user_id'] ??
+            '')
+        .toString()
+        .trim();
   }
 
   ActiveRideStatus _statusFromRide(Map<String, dynamic> ride) {

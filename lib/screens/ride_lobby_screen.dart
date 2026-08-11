@@ -473,7 +473,13 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   }
 
   String _hostIdFromRow(Map<String, dynamic> row) {
-    return (row['host_id'] ?? row['profile_id'] ?? '').toString().trim();
+    return (row['host_id'] ??
+            row['profile_id'] ??
+            row['creator_id'] ??
+            row['user_id'] ??
+            '')
+        .toString()
+        .trim();
   }
 
   String _rideCode(String id) {

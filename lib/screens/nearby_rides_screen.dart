@@ -10,7 +10,6 @@ import '../widgets/app_toast.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/haptic_button.dart';
 import '../services/ride_service.dart';
-import '../widgets/empty_state_card.dart';
 import '../widgets/ride_loading_indicator.dart';
 import 'dart:ui' show ImageFilter;
 import '../theme/app_theme.dart';
@@ -505,7 +504,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                               Text(
                                 _weatherSnapshot!.displayText,
                                 style: TextStyle(
-                                  fontFamily: 'Proxima Nova',
+                                  fontFamily: AppTypography.fontFamily,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
                                   color: forest,
@@ -515,7 +514,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                               Text(
                                 "WEATHER INTEL",
                                 style: TextStyle(
-                                  fontFamily: 'Proxima Nova',
+                                  fontFamily: AppTypography.fontFamily,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 9,
                                   color: primary,
@@ -540,7 +539,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                      fontFamily: 'Proxima Nova',
+                                      fontFamily: AppTypography.fontFamily,
                                       fontSize: 11,
                                       color: Colors.redAccent,
                                       fontWeight: FontWeight.w600,
@@ -553,7 +552,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                             Text(
                               "Temp: ${_weatherSnapshot!.temperature.round()}°C  •  Rain: ${_weatherSnapshot!.rainChance}%  •  Wind: ${_weatherSnapshot!.windSpeed.round()} km/h",
                               style: TextStyle(
-                                fontFamily: 'Proxima Nova',
+                                fontFamily: AppTypography.fontFamily,
                                 fontSize: 11,
                                 color: forest.withValues(alpha: 0.6),
                               ),
@@ -656,16 +655,6 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
-              ),
-            ],
-            if (showFallback) ...[
-              const SizedBox(height: 16),
-              EmptyStateCard(
-                title: 'No active rides yet',
-                message:
-                    'Nearby group rides will appear here when someone starts one.',
-                icon: Icons.radar_rounded,
-                foreground: forest,
               ),
             ],
           ],

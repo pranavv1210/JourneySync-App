@@ -7,6 +7,7 @@ import 'dart:ui' as ui;
 import '../widgets/app_toast.dart';
 import '../widgets/premium/glass_card.dart';
 import '../services/ride_analytics_engine.dart';
+import '../theme/app_theme.dart';
 
 class RideSummaryScreen extends StatefulWidget {
   const RideSummaryScreen({super.key, required this.rideId});
@@ -204,7 +205,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF1F4A33),
-                      fontFamily: 'Proxima Nova',
+                      fontFamily: AppTypography.fontFamily,
                     ),
                   ),
                   const Spacer(),
@@ -277,7 +278,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w800,
-            fontFamily: 'Proxima Nova',
+            fontFamily: AppTypography.fontFamily,
           ),
         ),
         const SizedBox(height: 6),
@@ -286,7 +287,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
           style: const TextStyle(
             color: Colors.grey,
             fontWeight: FontWeight.w600,
-            fontFamily: 'Proxima Nova',
+            fontFamily: AppTypography.fontFamily,
           ),
         ),
       ],
@@ -461,7 +462,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        fontFamily: 'Proxima Nova',
+                        fontFamily: AppTypography.fontFamily,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -798,7 +799,14 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
               .where((id) => id.isNotEmpty)
               .toSet();
 
-      final creatorId = (rideRow['host_id'] ?? '').toString().trim();
+      final creatorId =
+          (rideRow['host_id'] ??
+                  rideRow['profile_id'] ??
+                  rideRow['creator_id'] ??
+                  rideRow['user_id'] ??
+                  '')
+              .toString()
+              .trim();
       if (creatorId.isNotEmpty) {
         userIds.add(creatorId);
       }
@@ -886,7 +894,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
-                fontFamily: 'Proxima Nova',
+                fontFamily: AppTypography.fontFamily,
               ),
             ),
           ),
@@ -916,7 +924,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
-                    fontFamily: 'Proxima Nova',
+                    fontFamily: AppTypography.fontFamily,
                   ),
                 ),
                 SizedBox(width: 8),
@@ -976,7 +984,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                               'JOURNEYSYNC SHARE POSTER',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontFamily: 'Proxima Nova',
+                                fontFamily: AppTypography.fontFamily,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                                 letterSpacing: 1.2,
@@ -1006,7 +1014,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontFamily: 'Proxima Nova',
+                                  fontFamily: AppTypography.fontFamily,
                                   fontSize: 18,
                                 ),
                               ),
@@ -1099,7 +1107,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                                 label: const Text(
                                   'Share Text',
                                   style: TextStyle(
-                                    fontFamily: 'Proxima Nova',
+                                    fontFamily: AppTypography.fontFamily,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -1133,7 +1141,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                                 label: const Text(
                                   'Save Card',
                                   style: TextStyle(
-                                    fontFamily: 'Proxima Nova',
+                                    fontFamily: AppTypography.fontFamily,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
