@@ -132,11 +132,14 @@ export default function BetaDownloadPage() {
                         <span className="material-icons-round text-2xl">android</span>
                       </span>
                       <span className="rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-green-600">
-                        v1.1.0
+                        v1.1.1
                       </span>
                     </div>
                     <h3 className="mb-1 text-lg font-extrabold text-gray-900">Android Beta</h3>
-                    <p className="mb-6 text-sm font-medium text-gray-500">Requires Android 8.0+</p>
+                    <p className="mb-2 text-sm font-medium text-gray-500">Requires Android 8.0+</p>
+                    <p className="mb-6 text-xs font-semibold leading-relaxed text-gray-500">
+                      If Gmail stalls at 100%, open this page in Chrome and install from there.
+                    </p>
                   </div>
                   <a
                     href="/journeysync.apk"
@@ -182,20 +185,20 @@ export default function BetaDownloadPage() {
               <div className="mt-8 rounded-2xl p-5 text-left" style={infoPill}>
                 <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
                   <span className="material-icons-round text-primary text-base">new_releases</span>
-                  What's new in v1.1.0
+                  What's new in v1.1.1
                 </h4>
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li className="flex items-start gap-2">
                     <span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary/60 shrink-0" />
-                    Improved Ride Radar accuracy and battery consumption.
+                    Updated Android beta package for more reliable installation.
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary/60 shrink-0" />
-                    Added manual SOS triggers for offline scenarios.
+                    Ride Radar, ride creation, and in-app feedback improvements.
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="mt-1 block h-1.5 w-1.5 rounded-full bg-primary/60 shrink-0" />
-                    UI polish for night mode visibility.
+                    Latest APK is always available from this landing page.
                   </li>
                 </ul>
               </div>
