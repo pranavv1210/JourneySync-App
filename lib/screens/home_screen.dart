@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
+import '../services/feedback_prompt_service.dart';
 import 'create_ride_screen.dart';
 import 'explore_solo_screen.dart';
 import 'explore_screen.dart';
@@ -23,6 +24,7 @@ import 'ride_lobby_screen.dart';
 import 'ride_summary_screen.dart';
 import 'ride_mode_screen.dart';
 import '../widgets/empty_state_card.dart';
+import '../widgets/feedback_sheet.dart';
 import '../widgets/ride_loading_indicator.dart';
 import '../models/ride_record.dart';
 import '../coordinators/active_ride_coordinator.dart';
@@ -53,10 +55,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   String rideActionLoadingId = '';
   List<RideRecord> recentRides = [];
   List<RideRecord> nearbyRides = [];
+  bool _feedbackPromptShowing = false;
 
   @override
   void initState() {
     super.initState();
+    unawaited(FeedbackPromptService.instance.recordHomeSession());
     _hydrateFromCache();
     _loadHomeData();
   }
@@ -205,6 +209,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           loading = false;
           refreshingHome = false;
         });
+        unawaited(_maybeShowFeedbackPrompt());
       }
     }
   }
@@ -462,10 +467,14 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 context,
                 buildAppRoute(RideModeScreen(rideId: activeSnapshot.rideId)),
               )
-              : () => Navigator.push(
-                context,
-                buildAppRoute(const NearbyRidesScreen()),
-              ),
+              : () async {
+                unawaited(_recordFeedbackFeature('radar'));
+                await Navigator.push(
+                  context,
+                  buildAppRoute(const NearbyRidesScreen()),
+                );
+                await _loadHomeData();
+              },
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
@@ -623,6 +632,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         // Create Ride Card
         GestureDetector(
           onTap: () async {
+            unawaited(_recordFeedbackFeature('create_ride'));
             await Navigator.push(
               context,
               buildAppRoute(const CreateRideScreen()),
@@ -722,6 +732,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         // Nearby Rides Card
         GestureDetector(
           onTap: () async {
+            unawaited(_recordFeedbackFeature('radar'));
             await Navigator.push(
               context,
               buildAppRoute(const NearbyRidesScreen()),
@@ -1300,6 +1311,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             label: 'Explore',
             active: false,
             onTap: () {
+              unawaited(_recordFeedbackFeature('explore'));
               Navigator.push(context, buildAppRoute(const ExploreScreen()));
             },
           ),
@@ -1309,6 +1321,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             label: 'My Rides',
             active: false,
             onTap: () {
+              unawaited(_recordFeedbackFeature('my_rides'));
               Navigator.push(context, buildAppRoute(const MyRidesScreen()));
             },
           ),
@@ -1317,6 +1330,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             label: 'Profile',
             active: false,
             onTap: () {
+              unawaited(_recordFeedbackFeature('settings'));
               Navigator.push(context, buildAppRoute(const SettingsScreen()));
             },
           ),
@@ -1365,6 +1379,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   Future<void> _showCreateRideSheet() async {
+    unawaited(_recordFeedbackFeature('ride_launcher'));
     final selected = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1415,6 +1430,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       },
     );
     if (selected == null || !mounted) return;
+    unawaited(_recordFeedbackFeature(selected));
     final screen = switch (selected) {
       'ride_now' => const RideNowScreen(),
       'plan_together' => const PlanTogetherScreen(),
@@ -1423,6 +1439,31 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     };
     await Navigator.push(context, buildAppRoute(screen));
     await _loadHomeData();
+  }
+
+  Future<void> _recordFeedbackFeature(String feature) {
+    return FeedbackPromptService.instance.recordFeatureUse(feature);
+  }
+
+  Future<void> _maybeShowFeedbackPrompt() async {
+    if (_feedbackPromptShowing || !mounted) return;
+    final hasActiveRide = ActiveRideCoordinator.instance.snapshot.hasActiveRide;
+    final shouldShow = await FeedbackPromptService.instance
+        .shouldShowAutomaticPrompt(hasActiveRide: hasActiveRide);
+    if (!shouldShow || !mounted) return;
+
+    _feedbackPromptShowing = true;
+    await FeedbackPromptService.instance.markPromptShown();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        _feedbackPromptShowing = false;
+        return;
+      }
+      await showJourneySyncFeedbackSheet(context);
+      if (mounted) {
+        _feedbackPromptShowing = false;
+      }
+    });
   }
 
   Widget _createOption(

@@ -8,6 +8,7 @@ import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/feedback_sheet.dart';
 import '../services/app_navigation.dart';
 import '../services/app_version.dart';
 import '../services/auth_service.dart';
@@ -181,6 +182,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     _buildSection('Support', [
                       _buildSettingTile(
+                        icon: Icons.star_outline_rounded,
+                        title: 'Give Feedback',
+                        subtitle: 'Rate JourneySync and share one note',
+                        onTap: _openFeedback,
+                      ),
+                      _buildSettingTile(
                         icon: Icons.notifications_outlined,
                         title: 'Notifications',
                         subtitle: 'Ride alerts and updates',
@@ -249,6 +256,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (updated == true) {
       _loadProfile();
     }
+  }
+
+  Future<void> _openFeedback() {
+    return showJourneySyncFeedbackSheet(context);
   }
 
   Widget _buildProfileHeroCard() {

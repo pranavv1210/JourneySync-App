@@ -810,6 +810,31 @@ class SupabaseService {
         .order('created_at', ascending: false);
   }
 
+  Future<void> submitFeedback({
+    required String userId,
+    required int rating,
+    required String improvementFeedback,
+    required String appVersion,
+    required String platform,
+  }) async {
+    final normalizedUserId = userId.trim();
+    if (normalizedUserId.isEmpty) {
+      throw Exception('Sign in again to send feedback.');
+    }
+    if (rating < 1 || rating > 5) {
+      throw ArgumentError.value(rating, 'rating', 'Must be between 1 and 5.');
+    }
+
+    final trimmedFeedback = improvementFeedback.trim();
+    await _client.from('app_feedback').insert({
+      'user_id': normalizedUserId,
+      'rating': rating,
+      'improvement_feedback': trimmedFeedback.isEmpty ? null : trimmedFeedback,
+      'app_version': appVersion.trim(),
+      'platform': platform.trim(),
+    });
+  }
+
   Future<Map<String, dynamic>?> _fetchUserSingle({
     required String eqColumn,
     required String eqValue,
