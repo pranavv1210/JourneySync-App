@@ -567,6 +567,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
       child: JourneyHeader(
+        surface: true,
         leading: const JourneyBackButton(),
         eyebrow: 'RIDE RADAR',
         title: 'Nearby Rides',

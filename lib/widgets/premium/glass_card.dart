@@ -32,7 +32,7 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = borderRadius ?? AppRadius.xl;
+    final radius = borderRadius ?? AppRadius.xxl;
     final bgColor = customColor ?? AppColors.surface;
 
     Widget card = Container(
@@ -50,7 +50,9 @@ class GlassCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: bgColor.withValues(alpha: opacity),
               borderRadius: BorderRadius.circular(radius),
-              border: customBorder ?? Border.all(color: AppColors.glassBorder),
+              border:
+                  customBorder ??
+                  Border.all(color: Colors.white.withValues(alpha: 0.56)),
             ),
             child: DefaultTextStyle.merge(
               style: const TextStyle(color: AppColors.textPrimary),
@@ -95,7 +97,7 @@ class PremiumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = borderRadius ?? AppRadius.lg;
+    final radius = borderRadius ?? AppRadius.xxl;
 
     Widget card = Container(
       padding: padding ?? const EdgeInsets.all(AppSpacing.lg),
@@ -103,8 +105,8 @@ class PremiumCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color ?? AppColors.surface,
         borderRadius: BorderRadius.circular(radius),
-        border: borderColor != null ? Border.all(color: borderColor!) : null,
-        boxShadow: AppShadows.md,
+        border: Border.all(color: borderColor ?? AppColors.divider),
+        boxShadow: AppShadows.sm,
       ),
       child: child,
     );

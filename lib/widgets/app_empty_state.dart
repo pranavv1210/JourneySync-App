@@ -23,7 +23,7 @@ class AppEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       elevated: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -36,13 +36,13 @@ class AppEmptyState extends StatelessWidget {
               return Transform.scale(scale: scale, child: child);
             },
             child: Container(
-              width: 64,
-              height: 64,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppRadius.xl),
               ),
-              child: Icon(icon, color: AppColors.primary, size: 30),
+              child: Icon(icon, color: AppColors.primary, size: 24),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),

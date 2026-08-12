@@ -188,33 +188,47 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.lg),
               Center(
                 child: Semantics(
                   label: 'Star rating',
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(5, (index) {
-                      final value = index + 1;
-                      final selected = value <= _rating;
-                      return IconButton(
-                        tooltip: '$value star${value == 1 ? '' : 's'}',
-                        onPressed:
-                            _submitting
-                                ? null
-                                : () => setState(() => _rating = value),
-                        icon: Icon(
-                          selected
-                              ? Icons.star_rounded
-                              : Icons.star_border_rounded,
-                          color:
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceAlt.withValues(alpha: 0.78),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(5, (index) {
+                        final value = index + 1;
+                        final selected = value <= _rating;
+                        return IconButton(
+                          tooltip: '$value star${value == 1 ? '' : 's'}',
+                          onPressed:
+                              _submitting
+                                  ? null
+                                  : () => setState(() => _rating = value),
+                          icon: AnimatedScale(
+                            scale: selected ? 1.08 : 1,
+                            duration: AppDurations.fast,
+                            child: Icon(
                               selected
-                                  ? AppColors.primary
-                                  : AppColors.textTertiary,
-                          size: 36,
-                        ),
-                      );
-                    }),
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              color:
+                                  selected
+                                      ? AppColors.primary
+                                      : AppColors.textTertiary,
+                              size: 32,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
                   ),
                 ),
               ),

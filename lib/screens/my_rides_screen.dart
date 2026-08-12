@@ -99,6 +99,7 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
                   children: [
                     const JourneyHeader(
+                      surface: true,
                       leading: JourneyBackButton(),
                       eyebrow: 'RIDE JOURNAL',
                       title: 'My Rides',

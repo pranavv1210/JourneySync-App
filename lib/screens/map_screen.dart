@@ -230,12 +230,16 @@ class _MapScreenState extends State<MapScreen> {
           Positioned(
             right: 12,
             bottom: 260,
-            child: FloatingActionButton.small(
-              onPressed: _focusMyLocation,
-              heroTag: 'focus-my-location',
-              backgroundColor: AppColors.surface,
-              foregroundColor: AppColors.forest,
-              child: const Icon(Icons.my_location),
+            child: GlassCard(
+              padding: EdgeInsets.zero,
+              opacity: 0.86,
+              borderRadius: AppRadius.xxl,
+              child: IconButton(
+                onPressed: _focusMyLocation,
+                tooltip: 'My location',
+                color: AppColors.forest,
+                icon: const Icon(Icons.my_location_rounded),
+              ),
             ),
           ),
           if (selected != null)
@@ -271,7 +275,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _radarHud() {
     return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       opacity: 0.9,
       child: Row(
         children: [

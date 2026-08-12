@@ -403,6 +403,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
     return const Padding(
       padding: EdgeInsets.fromLTRB(20, 14, 20, 12),
       child: JourneyHeader(
+        surface: true,
         leading: JourneyBackButton(),
         eyebrow: 'ROUTE SETUP',
         title: 'Create Ride',

@@ -18,7 +18,7 @@ Future<bool?> showAppConfirmDialog(
     context: context,
     barrierDismissible: true,
     barrierLabel: title,
-    transitionDuration: AppDurations.normal,
+    transitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (context, _, __) {
       return Center(
         child: _AppDialogSurface(
@@ -38,7 +38,7 @@ Future<bool?> showAppConfirmDialog(
       return FadeTransition(
         opacity: curved,
         child: ScaleTransition(
-          scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
+          scale: Tween<double>(begin: 0.96, end: 1.0).animate(curved),
           child: child,
         ),
       );
@@ -60,7 +60,7 @@ Future<String?> showAppInputDialog(
     context: context,
     barrierDismissible: true,
     barrierLabel: title,
-    transitionDuration: AppDurations.normal,
+    transitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (context, _, __) {
       return Center(
         child: _AppInputDialogSurface(
@@ -82,7 +82,7 @@ Future<String?> showAppInputDialog(
       return FadeTransition(
         opacity: curved,
         child: ScaleTransition(
-          scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
+          scale: Tween<double>(begin: 0.96, end: 1.0).animate(curved),
           child: child,
         ),
       );
@@ -110,7 +110,7 @@ class _AppDialogSurface extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        borderRadius: BorderRadius.circular(AppRadius.xxxl),
         child: BackdropFilter(
           filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Material(
@@ -118,8 +118,8 @@ class _AppDialogSurface extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(AppSpacing.xl),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.xxl),
-                border: Border.all(color: AppColors.glassBorder),
+                borderRadius: BorderRadius.circular(AppRadius.xxxl),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.64)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -192,7 +192,7 @@ class _AppInputDialogSurface extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        borderRadius: BorderRadius.circular(AppRadius.xxxl),
         child: BackdropFilter(
           filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Material(
@@ -200,8 +200,8 @@ class _AppInputDialogSurface extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(AppSpacing.xl),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.xxl),
-                border: Border.all(color: AppColors.glassBorder),
+                borderRadius: BorderRadius.circular(AppRadius.xxxl),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.64)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

@@ -79,6 +79,7 @@ class _ExploreSoloScreenState extends State<ExploreSoloScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const JourneyHeader(
+            surface: true,
             leading: JourneyBackButton(),
             eyebrow: 'PRIVATE RIDE',
             title: 'Explore Solo',

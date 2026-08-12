@@ -208,6 +208,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                     return const Padding(
                       padding: EdgeInsets.only(bottom: AppSpacing.xl),
                       child: JourneyHeader(
+                        surface: true,
                         leading: JourneyBackButton(),
                         eyebrow: 'RIDE JOURNAL',
                         title: 'Ride History',

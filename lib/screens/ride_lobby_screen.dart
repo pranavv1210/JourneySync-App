@@ -943,6 +943,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
       child: JourneyHeader(
+        surface: true,
         leading: const JourneyBackButton(),
         eyebrow: 'PRE-RIDE COMMAND',
         title: 'Ride Lobby',

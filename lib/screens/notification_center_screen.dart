@@ -67,6 +67,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     return JourneyHeader(
+                      surface: true,
                       leading: const JourneyBackButton(),
                       eyebrow: 'SIGNAL CENTER',
                       title: 'Notifications',

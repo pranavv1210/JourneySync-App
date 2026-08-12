@@ -41,9 +41,9 @@ class AppColors {
 class AppTypography {
   AppTypography._();
 
-  // No licensed/local Proxima Nova assets are present in the project.
-  // Poppins remains the legal bundled/system fallback with a compact product feel.
-  static const String fontFamily = 'Poppins';
+  // Gilroy is the requested JourneySync UI family. Font binaries must be
+  // supplied through a valid license before adding a pubspec font asset block.
+  static const String fontFamily = 'Gilroy';
 
   static TextStyle style({
     required double fontSize,
@@ -61,17 +61,17 @@ class AppTypography {
   }
 
   static TextStyle get displayLarge =>
-      style(fontSize: 40, fontWeight: FontWeight.w700, height: 1.05);
+      style(fontSize: 38, fontWeight: FontWeight.w800, height: 1.06);
   static TextStyle get displayMedium =>
-      style(fontSize: 34, fontWeight: FontWeight.w700, height: 1.08);
+      style(fontSize: 32, fontWeight: FontWeight.w800, height: 1.08);
   static TextStyle get displaySmall =>
-      style(fontSize: 28, fontWeight: FontWeight.w600, height: 1.12);
+      style(fontSize: 27, fontWeight: FontWeight.w800, height: 1.12);
   static TextStyle get headlineLarge =>
-      style(fontSize: 24, fontWeight: FontWeight.w600, height: 1.2);
+      style(fontSize: 23, fontWeight: FontWeight.w800, height: 1.16);
   static TextStyle get headlineMedium =>
-      style(fontSize: 20, fontWeight: FontWeight.w600, height: 1.25);
+      style(fontSize: 20, fontWeight: FontWeight.w800, height: 1.22);
   static TextStyle get headlineSmall =>
-      style(fontSize: 18, fontWeight: FontWeight.w600, height: 1.3);
+      style(fontSize: 18, fontWeight: FontWeight.w700, height: 1.26);
   static TextStyle get titleLarge =>
       style(fontSize: 16, fontWeight: FontWeight.w600, height: 1.35);
   static TextStyle get titleMedium =>
@@ -126,9 +126,10 @@ class AppRadius {
 
   static const double sm = 6;
   static const double md = 8;
-  static const double lg = 12;
-  static const double xl = 16;
-  static const double xxl = 20;
+  static const double lg = 14;
+  static const double xl = 18;
+  static const double xxl = 22;
+  static const double xxxl = 28;
   static const double pill = 999;
 }
 
@@ -174,9 +175,9 @@ class AppShadows {
 
   static List<BoxShadow> get glass => [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.06),
-      blurRadius: 20,
-      offset: const Offset(0, 8),
+      color: Colors.black.withValues(alpha: 0.08),
+      blurRadius: 28,
+      offset: const Offset(0, 14),
     ),
   ];
 
@@ -342,21 +343,21 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: AppColors.surface.withValues(alpha: 0.88),
         contentPadding: const EdgeInsets.symmetric(
-          vertical: 18,
+          vertical: 16,
           horizontal: 16,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          borderSide: const BorderSide(color: AppColors.divider, width: 1.5),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          borderSide: const BorderSide(color: AppColors.divider, width: 1.2),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
         labelStyle: AppTypography.labelMedium.copyWith(

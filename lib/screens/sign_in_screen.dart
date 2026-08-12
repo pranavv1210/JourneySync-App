@@ -301,6 +301,7 @@ class _AuthShell extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   JourneyHeader(
+                    surface: true,
                     eyebrow: eyebrow,
                     title: title,
                     subtitle: subtitle,

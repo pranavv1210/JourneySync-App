@@ -166,6 +166,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: const JourneyHeader(
+                surface: true,
                 leading: JourneyBackButton(),
                 eyebrow: 'RIDE COMPLETE',
                 title: 'Ride Summary',

@@ -14,7 +14,7 @@ Future<void> showLegalDocumentDialog({
     context: context,
     barrierDismissible: true,
     barrierLabel: title,
-    transitionDuration: AppDurations.normal,
+    transitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (context, _, __) {
       return Center(
         child: Material(
@@ -25,9 +25,9 @@ Future<void> showLegalDocumentDialog({
             padding: const EdgeInsets.all(AppSpacing.xl),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.xl),
-              border: Border.all(color: AppColors.divider),
-              boxShadow: AppShadows.lg,
+              borderRadius: BorderRadius.circular(AppRadius.xxxl),
+              border: Border.all(color: AppColors.glassBorder),
+              boxShadow: AppShadows.glass,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

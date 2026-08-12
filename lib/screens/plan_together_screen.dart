@@ -119,6 +119,7 @@ class _PlanTogetherScreenState extends State<PlanTogetherScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const JourneyHeader(
+            surface: true,
             leading: JourneyBackButton(),
             eyebrow: 'GROUP PLANNER',
             title: 'Plan Together',

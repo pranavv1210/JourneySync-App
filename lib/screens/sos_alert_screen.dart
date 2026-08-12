@@ -404,7 +404,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
       backgroundColor: background,
       body: Column(
         children: [
-          _banner(danger, forest),
+          _banner(danger, dangerDark, forest),
           Expanded(
             child: Stack(
               children: [
@@ -420,9 +420,15 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
     );
   }
 
-  Widget _banner(Color danger, Color forest) {
+  Widget _banner(Color danger, Color dangerDark, Color forest) {
     return Container(
-      color: danger,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [dangerDark, danger],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
       padding: const EdgeInsets.fromLTRB(16, 42, 16, 16),
       child: Row(
         children: [

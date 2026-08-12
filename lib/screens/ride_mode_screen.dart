@@ -873,6 +873,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     }
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           // ── MAP LAYER ────────────────────────────────────────────────────

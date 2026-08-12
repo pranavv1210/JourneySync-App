@@ -26,14 +26,42 @@ class JourneyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget content = Padding(
-      padding: padding,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: child,
+    Widget content = Stack(
+      children: [
+        Positioned(
+          right: -96,
+          top: -72,
+          child: Container(
+            width: 220,
+            height: 220,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.primary.withValues(alpha: 0.035),
+            ),
+          ),
         ),
-      ),
+        Positioned(
+          left: -120,
+          bottom: -80,
+          child: Container(
+            width: 240,
+            height: 240,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.forest.withValues(alpha: 0.035),
+            ),
+          ),
+        ),
+        Padding(
+          padding: padding,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 540),
+              child: child,
+            ),
+          ),
+        ),
+      ],
     );
     if (scrollable) {
       content = SingleChildScrollView(child: content);
@@ -60,6 +88,7 @@ class JourneyHeader extends StatelessWidget {
     this.leading,
     this.trailing,
     this.centerTitle = false,
+    this.surface = false,
   });
 
   final String title;
@@ -68,6 +97,7 @@ class JourneyHeader extends StatelessWidget {
   final Widget? leading;
   final Widget? trailing;
   final bool centerTitle;
+  final bool surface;
 
   @override
   Widget build(BuildContext context) {
@@ -112,21 +142,34 @@ class JourneyHeader extends StatelessWidget {
       ],
     );
 
-    if (leading == null && trailing == null) return text;
+    final content =
+        leading == null && trailing == null
+            ? text
+            : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (leading != null) ...[
+                  leading!,
+                  const SizedBox(width: AppSpacing.md),
+                ],
+                Expanded(child: text),
+                if (trailing != null) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  trailing!,
+                ],
+              ],
+            );
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (leading != null) ...[
-          leading!,
-          const SizedBox(width: AppSpacing.md),
-        ],
-        Expanded(child: text),
-        if (trailing != null) ...[
-          const SizedBox(width: AppSpacing.md),
-          trailing!,
-        ],
-      ],
+    if (!surface) return content;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.84),
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        border: Border.all(color: AppColors.glassBorder),
+        boxShadow: AppShadows.sm,
+      ),
+      child: content,
     );
   }
 }
@@ -139,16 +182,16 @@ class JourneyBackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
+      color: AppColors.surface.withValues(alpha: 0.9),
+      borderRadius: BorderRadius.circular(AppRadius.xl),
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         onTap: onPressed ?? () => Navigator.maybePop(context),
         child: Container(
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
             border: Border.all(color: AppColors.divider),
             boxShadow: AppShadows.sm,
           ),
@@ -183,9 +226,9 @@ class JourneyHeroBand extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
+        borderRadius: BorderRadius.circular(AppRadius.xxxl),
         border: Border.all(color: color.withValues(alpha: 0.14)),
-        boxShadow: AppShadows.md,
+        boxShadow: AppShadows.glass,
       ),
       child: Stack(
         children: [

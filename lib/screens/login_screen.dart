@@ -33,11 +33,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: AppDurations.slow)
-      ..forward();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    )..forward();
     _fade = CurvedAnimation(parent: _controller, curve: AppCurves.easeOutCubic);
     _slide = Tween<Offset>(
-      begin: const Offset(0, 0.04),
+      begin: const Offset(0, 0.025),
       end: Offset.zero,
     ).animate(_fade);
   }
@@ -89,7 +91,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
+              borderRadius: BorderRadius.circular(AppRadius.xxl),
               boxShadow: AppShadows.primary,
             ),
             clipBehavior: Clip.antiAlias,

@@ -94,6 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 AppSpacing.sm,
               ),
               child: const JourneyHeader(
+                surface: true,
                 leading: JourneyBackButton(),
                 eyebrow: 'CONTROL CENTER',
                 title: 'Settings',

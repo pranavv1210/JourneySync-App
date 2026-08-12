@@ -25,7 +25,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _introController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2800),
+      duration: const Duration(milliseconds: 1800),
     );
     _introController.forward();
     _decideNavigation();
@@ -35,7 +35,7 @@ class _SplashScreenState extends State<SplashScreen>
     Object? initError;
     try {
       await Future.wait([
-        Future.delayed(const Duration(milliseconds: 2800)),
+        Future.delayed(const Duration(milliseconds: 1400)),
         widget.initializationFuture ?? Future.value(),
       ]);
     } catch (error) {
@@ -94,7 +94,7 @@ class _SplashScreenState extends State<SplashScreen>
                     textAlign: TextAlign.center,
                     style: AppTypography.caption.copyWith(
                       color: AppColors.textTertiary,
-                      letterSpacing: 1.2,
+                      letterSpacing: 0.8,
                     ),
                   ),
                 ),
@@ -262,7 +262,7 @@ class JourneyIntroAnimation extends StatelessWidget {
                         style: AppTypography.bodyMedium.copyWith(
                           color: AppColors.textSecondary,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
+                          letterSpacing: 0,
                         ),
                       ),
                     ],

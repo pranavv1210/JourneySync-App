@@ -261,6 +261,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
         children: [
           const JourneyHeader(
+            surface: true,
             leading: JourneyBackButton(),
             eyebrow: 'DISCOVER',
             title: 'Explore Rides',

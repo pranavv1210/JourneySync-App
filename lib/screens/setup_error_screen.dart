@@ -21,6 +21,7 @@ class SetupErrorScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const JourneyHeader(
+              surface: true,
               eyebrow: 'CONFIGURATION',
               title: 'App setup required',
               subtitle:

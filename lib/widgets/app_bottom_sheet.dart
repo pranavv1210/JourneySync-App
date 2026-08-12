@@ -14,17 +14,17 @@ Future<T?> showAppBottomSheet<T>(
     backgroundColor: Colors.transparent,
     builder: (context) {
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppRadius.xxl),
+            top: Radius.circular(AppRadius.xxxl),
           ),
           child: BackdropFilter(
             filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: AppSurfaces.glass,
-                border: Border.all(color: AppColors.glassBorder),
+                color: AppColors.surface.withValues(alpha: 0.88),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.68)),
                 boxShadow: AppShadows.lg,
               ),
               child: SafeArea(
@@ -40,7 +40,7 @@ Future<T?> showAppBottomSheet<T>(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 42,
+                        width: 44,
                         height: 4,
                         margin: const EdgeInsets.only(bottom: AppSpacing.lg),
                         decoration: BoxDecoration(

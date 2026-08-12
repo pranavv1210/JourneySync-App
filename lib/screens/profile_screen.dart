@@ -843,6 +843,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 AppSpacing.sm,
               ),
               child: JourneyHeader(
+                surface: true,
                 leading: JourneyBackButton(
                   onPressed: () => Navigator.pop(context, true),
                 ),

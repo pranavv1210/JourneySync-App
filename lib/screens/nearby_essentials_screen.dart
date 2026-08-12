@@ -154,6 +154,7 @@ class _NearbyEssentialsScreenState extends State<NearbyEssentialsScreen> {
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     return JourneyHeader(
+                      surface: true,
                       leading: const JourneyBackButton(),
                       eyebrow: 'NEARBY ESSENTIALS',
                       title: widget.type.title,

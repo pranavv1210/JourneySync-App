@@ -27,6 +27,7 @@ import '../widgets/empty_state_card.dart';
 import '../widgets/feedback_sheet.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/app_bottom_sheet.dart';
+import '../widgets/journey_bottom_nav.dart';
 import '../widgets/ride_loading_indicator.dart';
 import '../models/ride_record.dart';
 import '../coordinators/active_ride_coordinator.dart';
@@ -316,8 +317,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           ),
                         _buildHeader(),
                         const SizedBox(height: 14),
-                        _buildRideCommandCard(),
-                        const SizedBox(height: 20),
                         _buildQuickStatus(),
                         const SizedBox(height: 24),
                         _buildPrimaryActions(),
@@ -336,8 +335,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         ],
       ),
       bottomNavigationBar: _buildBottomNav(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: _buildCenterRideButton(),
     );
   }
 
@@ -456,76 +453,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           },
         ),
       ],
-    );
-  }
-
-  Widget _buildRideCommandCard() {
-    final activeSnapshot = ActiveRideCoordinator.instance.snapshot;
-    final hasActiveRide = activeSnapshot.hasActiveRide;
-    return PremiumCard(
-      onTap:
-          hasActiveRide
-              ? () => Navigator.push(
-                context,
-                buildAppRoute(RideModeScreen(rideId: activeSnapshot.rideId)),
-              )
-              : () async {
-                unawaited(_recordFeedbackFeature('radar'));
-                await Navigator.push(
-                  context,
-                  buildAppRoute(const NearbyRidesScreen()),
-                );
-                await _loadHomeData();
-              },
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.forest.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Icon(
-              hasActiveRide ? Icons.play_arrow_rounded : Icons.radar_rounded,
-              color: AppColors.forest,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hasActiveRide ? 'Resume live ride' : 'Find riders nearby',
-                  style: AppTypography.titleMedium.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  hasActiveRide
-                      ? 'Return to tracking, group status, and route sync.'
-                      : 'Open Ride Radar to discover active group rides.',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.textTertiary,
-          ),
-        ],
-      ),
     );
   }
 
@@ -1278,92 +1205,40 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   Widget _buildBottomNav() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.divider)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, -6),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _navItem(icon: Icons.home_rounded, label: 'Home', active: true),
-          _navItem(
-            icon: Icons.explore_outlined,
-            label: 'Explore',
-            active: false,
-            onTap: () {
-              unawaited(_recordFeedbackFeature('explore'));
-              Navigator.push(context, buildAppRoute(const ExploreScreen()));
-            },
-          ),
-          const SizedBox(width: 46),
-          _navItem(
-            icon: Icons.two_wheeler_rounded,
-            label: 'My Rides',
-            active: false,
-            onTap: () {
-              unawaited(_recordFeedbackFeature('my_rides'));
-              Navigator.push(context, buildAppRoute(const MyRidesScreen()));
-            },
-          ),
-          _navItem(
-            icon: Icons.person_outline_rounded,
-            label: 'Profile',
-            active: false,
-            onTap: () {
-              unawaited(_recordFeedbackFeature('settings'));
-              Navigator.push(context, buildAppRoute(const SettingsScreen()));
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem({
-    required IconData icon,
-    required String label,
-    required bool active,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: active ? AppColors.primary : AppColors.textTertiary,
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: AppTypography.caption.copyWith(
-              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-              color: active ? AppColors.primary : AppColors.textTertiary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCenterRideButton() {
-    return FloatingActionButton(
-      backgroundColor: AppColors.primary,
-      elevation: 8,
-      onPressed: _showCreateRideSheet,
-      shape: const CircleBorder(),
-      child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
+    return JourneyBottomNav(
+      onCreate: _showCreateRideSheet,
+      destinations: [
+        const JourneyBottomNavDestination(
+          icon: Icons.home_rounded,
+          label: 'Home',
+          active: true,
+          onTap: null,
+        ),
+        JourneyBottomNavDestination(
+          icon: Icons.explore_outlined,
+          label: 'Explore',
+          onTap: () {
+            unawaited(_recordFeedbackFeature('explore'));
+            Navigator.push(context, buildAppRoute(const ExploreScreen()));
+          },
+        ),
+        JourneyBottomNavDestination(
+          icon: Icons.two_wheeler_rounded,
+          label: 'Rides',
+          onTap: () {
+            unawaited(_recordFeedbackFeature('my_rides'));
+            Navigator.push(context, buildAppRoute(const MyRidesScreen()));
+          },
+        ),
+        JourneyBottomNavDestination(
+          icon: Icons.person_outline_rounded,
+          label: 'Profile',
+          onTap: () {
+            unawaited(_recordFeedbackFeature('settings'));
+            Navigator.push(context, buildAppRoute(const SettingsScreen()));
+          },
+        ),
+      ],
     );
   }
 

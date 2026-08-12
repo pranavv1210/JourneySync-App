@@ -74,6 +74,7 @@ class _RideNowScreenState extends State<RideNowScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const JourneyHeader(
+            surface: true,
             leading: JourneyBackButton(),
             eyebrow: 'FAST START',
             title: 'Ride Now',

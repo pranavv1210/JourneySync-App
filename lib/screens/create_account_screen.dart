@@ -39,6 +39,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const JourneyHeader(
+            surface: true,
             leading: JourneyBackButton(),
             eyebrow: 'NEW RIDER',
             title: 'Create your rider profile',

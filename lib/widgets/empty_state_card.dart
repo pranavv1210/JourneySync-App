@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 class EmptyStateCard extends StatelessWidget {
   const EmptyStateCard({
     super.key,
@@ -20,33 +22,41 @@ class EmptyStateCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 34, color: foreground),
-            const SizedBox(height: 12),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: foreground.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppRadius.xl),
+              ),
+              child: Icon(icon, size: 22, color: foreground),
+            ),
+            const SizedBox(height: AppSpacing.md),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: AppTypography.titleMedium.copyWith(
                 color: foreground,
-                fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: AppTypography.bodySmall.copyWith(
                 color: foreground.withValues(alpha: 0.72),
-                fontSize: 13,
                 fontWeight: FontWeight.w600,
-                height: 1.4,
               ),
             ),
-            if (action != null) ...[const SizedBox(height: 16), action!],
+            if (action != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              action!,
+            ],
           ],
         ),
       ),

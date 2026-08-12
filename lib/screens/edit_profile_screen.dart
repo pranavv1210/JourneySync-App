@@ -220,6 +220,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 AppSpacing.sm,
               ),
               child: const JourneyHeader(
+                surface: true,
                 leading: JourneyBackButton(),
                 eyebrow: 'RIDER DETAILS',
                 title: 'Edit Profile',
