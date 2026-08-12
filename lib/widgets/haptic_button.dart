@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../theme/app_theme.dart';
+import 'ride_loading_indicator.dart';
+
 /// Premium button with haptic feedback, scale animation, gradient accents,
 /// and comprehensive states (loading, disabled, pressed).
 ///
@@ -122,8 +125,8 @@ class _HapticButtonState extends State<HapticButton>
                       SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                        child: RideLoadingIndicator(
+                          compact: true,
                           color: spec.textColor,
                         ),
                       )
@@ -135,10 +138,10 @@ class _HapticButtonState extends State<HapticButton>
                       Text(
                         widget.label,
                         style: TextStyle(
+                          fontFamily: AppTypography.fontFamily,
                           color: spec.textColor,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                           fontSize: fontSize,
-                          letterSpacing: 0.3,
                         ),
                       ),
                     ],
@@ -156,12 +159,12 @@ class _HapticButtonState extends State<HapticButton>
     return switch (variant) {
       HapticButtonVariant.primary => _HapticButtonSpec(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1E3A2F), Color(0xFF2D5A4A)],
+          colors: [AppColors.primary, AppColors.primaryDark],
         ),
-        textColor: Colors.white,
+        textColor: AppColors.textOnDark,
         shadow: [
           BoxShadow(
-            color: const Color(0xFF1E3A2F).withValues(alpha: 0.25),
+            color: AppColors.primary.withValues(alpha: 0.24),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -174,7 +177,7 @@ class _HapticButtonState extends State<HapticButton>
             Colors.white.withValues(alpha: 0.7),
           ],
         ),
-        textColor: const Color(0xFF1E3A2F),
+        textColor: AppColors.forest,
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.5),
           width: 1.5,
@@ -189,12 +192,12 @@ class _HapticButtonState extends State<HapticButton>
       ),
       HapticButtonVariant.danger => _HapticButtonSpec(
         gradient: const LinearGradient(
-          colors: [Color(0xFFDC2626), Color(0xFFEF4444)],
+          colors: [AppColors.emergency, AppColors.error],
         ),
-        textColor: Colors.white,
+        textColor: AppColors.textOnDark,
         shadow: [
           BoxShadow(
-            color: const Color(0xFFDC2626).withValues(alpha: 0.3),
+            color: AppColors.error.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -204,9 +207,9 @@ class _HapticButtonState extends State<HapticButton>
         gradient: const LinearGradient(
           colors: [Colors.transparent, Colors.transparent],
         ),
-        textColor: const Color(0xFF1E3A2F),
+        textColor: AppColors.forest,
         border: Border.all(
-          color: const Color(0xFF1E3A2F).withValues(alpha: 0.15),
+          color: AppColors.forest.withValues(alpha: 0.15),
           width: 1.5,
         ),
       ),

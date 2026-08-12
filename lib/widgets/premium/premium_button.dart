@@ -277,11 +277,29 @@ class _PremiumButtonState extends State<PremiumButton>
                   : AppColors.textPrimary,
           shadowColor: Colors.black.withValues(alpha: 0.06),
         );
+      case PremiumButtonVariant.danger:
+        return _ButtonColors(
+          gradient:
+              disabled
+                  ? LinearGradient(
+                    colors: [
+                      AppColors.error.withValues(alpha: 0.4),
+                      AppColors.emergency.withValues(alpha: 0.4),
+                    ],
+                  )
+                  : const LinearGradient(
+                    colors: [AppColors.emergency, AppColors.error],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+          textColor: AppColors.textOnDark,
+          shadowColor: AppColors.error.withValues(alpha: 0.24),
+        );
     }
   }
 }
 
-enum PremiumButtonVariant { primary, secondary, outline, glass }
+enum PremiumButtonVariant { primary, secondary, outline, glass, danger }
 
 enum PremiumButtonSize { small, medium, large }
 

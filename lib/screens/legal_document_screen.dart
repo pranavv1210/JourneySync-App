@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 Future<void> showLegalDocumentDialog({
   required BuildContext context,
   required String title,
@@ -12,11 +14,22 @@ Future<void> showLegalDocumentDialog({
     context: context,
     builder: (context) {
       return AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.xxl,
+        ),
         title: Text(title, style: titleStyle),
         content: SizedBox(
           width: double.maxFinite,
           child: SingleChildScrollView(
-            child: Text(content, style: contentStyle),
+            child: Text(
+              content,
+              style:
+                  contentStyle ??
+                  AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
           ),
         ),
         actions: [

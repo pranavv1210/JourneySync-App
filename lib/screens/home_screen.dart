@@ -25,6 +25,7 @@ import 'ride_summary_screen.dart';
 import 'ride_mode_screen.dart';
 import '../widgets/empty_state_card.dart';
 import '../widgets/feedback_sheet.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/ride_loading_indicator.dart';
 import '../models/ride_record.dart';
 import '../coordinators/active_ride_coordinator.dart';
@@ -1137,26 +1138,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       );
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Delete Ride?', style: AppTypography.headlineSmall),
-            content: const Text(
-              'This will permanently delete this ride for everyone.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text('Cancel', style: AppTypography.buttonMedium),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Delete ride?',
+      message: 'This permanently deletes this ride for everyone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      destructive: true,
     );
     if (confirmed != true) return;
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'premium/premium_button.dart';
 
-enum AppButtonVariant { primary, secondary, outline, glass }
+enum AppButtonVariant { primary, secondary, outline, glass, danger }
 
 enum AppButtonSize { small, medium, large }
 
@@ -45,6 +45,7 @@ class AppButton extends StatelessWidget {
         AppButtonVariant.secondary => PremiumButtonVariant.secondary,
         AppButtonVariant.outline => PremiumButtonVariant.outline,
         AppButtonVariant.glass => PremiumButtonVariant.glass,
+        AppButtonVariant.danger => PremiumButtonVariant.danger,
       },
       size: switch (size) {
         AppButtonSize.small => PremiumButtonSize.small,

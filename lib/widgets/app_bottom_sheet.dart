@@ -13,22 +13,45 @@ Future<T?> showAppBottomSheet<T>(
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (context) {
-      return ClipRRect(
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppRadius.xxl),
-        ),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.surface.withValues(alpha: 0.94),
-              border: Border.all(color: AppColors.glassBorder),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: builder(context),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xxl),
+          ),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppSurfaces.glass,
+                border: Border.all(color: AppColors.glassBorder),
+                boxShadow: AppShadows.lg,
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    AppSpacing.md,
+                    AppSpacing.xl,
+                    AppSpacing.xl,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.divider,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                      ),
+                      Flexible(child: builder(context)),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

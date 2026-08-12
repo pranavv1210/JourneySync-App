@@ -151,7 +151,7 @@ class _AppDialogSurface extends StatelessWidget {
                           size: AppButtonSize.medium,
                           variant:
                               destructive
-                                  ? AppButtonVariant.primary
+                                  ? AppButtonVariant.danger
                                   : AppButtonVariant.primary,
                           onPressed: () => Navigator.pop(context, true),
                         ),
