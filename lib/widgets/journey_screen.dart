@@ -89,6 +89,8 @@ class JourneyHeader extends StatelessWidget {
     this.trailing,
     this.centerTitle = false,
     this.surface = false,
+    this.showEyebrow = false,
+    this.showSubtitle = false,
   });
 
   final String title;
@@ -98,6 +100,8 @@ class JourneyHeader extends StatelessWidget {
   final Widget? trailing;
   final bool centerTitle;
   final bool surface;
+  final bool showEyebrow;
+  final bool showSubtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +109,7 @@ class JourneyHeader extends StatelessWidget {
       crossAxisAlignment:
           centerTitle ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
-        if (eyebrow != null) ...[
+        if (showEyebrow && eyebrow != null) ...[
           Text(
             eyebrow!,
             maxLines: 1,
@@ -127,7 +131,7 @@ class JourneyHeader extends StatelessWidget {
             fontWeight: FontWeight.w900,
           ),
         ),
-        if (subtitle != null) ...[
+        if (showSubtitle && subtitle != null) ...[
           const SizedBox(height: AppSpacing.xs),
           Text(
             subtitle!,
@@ -146,7 +150,7 @@ class JourneyHeader extends StatelessWidget {
         leading == null && trailing == null
             ? text
             : Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (leading != null) ...[
                   leading!,
@@ -162,12 +166,13 @@ class JourneyHeader extends StatelessWidget {
 
     if (!surface) return content;
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.84),
-        borderRadius: BorderRadius.circular(AppRadius.xxl),
-        border: Border.all(color: AppColors.glassBorder),
-        boxShadow: AppShadows.sm,
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
       child: content,
     );

@@ -148,7 +148,7 @@ class _PremiumButtonState extends State<PremiumButton>
                     fontWeight: FontWeight.w800,
                     color:
                         effectiveDisabled
-                            ? colors.textColor.withValues(alpha: 0.5)
+                            ? colors.textColor.withValues(alpha: 0.72)
                             : colors.textColor,
                     letterSpacing: 0.3,
                   ),
@@ -221,8 +221,8 @@ class _PremiumButtonState extends State<PremiumButton>
               disabled
                   ? LinearGradient(
                     colors: [
-                      AppColors.primary.withValues(alpha: 0.4),
-                      AppColors.primaryDark.withValues(alpha: 0.4),
+                      AppColors.primary.withValues(alpha: 0.58),
+                      AppColors.primaryDark.withValues(alpha: 0.58),
                     ],
                   )
                   : const LinearGradient(

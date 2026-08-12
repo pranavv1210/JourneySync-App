@@ -259,7 +259,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               ],
               const SizedBox(height: AppSpacing.xl),
               AppButton(
-                label: 'Submit',
+                label: 'Submit feedback',
                 icon: Icons.arrow_forward_rounded,
                 loading: _submitting,
                 disabled: _rating == 0,

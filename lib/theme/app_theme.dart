@@ -41,9 +41,9 @@ class AppColors {
 class AppTypography {
   AppTypography._();
 
-  // Gilroy is the requested JourneySync UI family. Font binaries must be
-  // supplied through a valid license before adding a pubspec font asset block.
-  static const String fontFamily = 'Gilroy';
+  // Manrope is bundled from Google Fonts under the SIL Open Font License.
+  // It is used as the closest legally shippable Gilroy-like UI family found.
+  static const String fontFamily = 'Manrope';
 
   static TextStyle style({
     required double fontSize,

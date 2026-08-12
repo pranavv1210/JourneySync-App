@@ -364,50 +364,77 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 120),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildRideNameField(),
-                        const SizedBox(height: 24),
-                        _buildDestinationSection(),
-                        const SizedBox(height: 20),
-                        _buildVehicleSection(),
-                        const SizedBox(height: 20),
-                        _buildLogisticsSection(),
-                        const SizedBox(height: 20),
-                        _buildStopsSection(),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  ),
+      resizeToAvoidBottomInset: true,
+      bottomNavigationBar: _buildFooterAction(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildRideNameField(),
+                    const SizedBox(height: 18),
+                    _buildDestinationSection(),
+                    const SizedBox(height: 18),
+                    _buildVehicleSection(),
+                    const SizedBox(height: 18),
+                    _buildLogisticsSection(),
+                    const SizedBox(height: 18),
+                    _buildStopsSection(),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-          _buildFooterAction(),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildHeader() {
     return const Padding(
-      padding: EdgeInsets.fromLTRB(20, 14, 20, 12),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: JourneyHeader(
         surface: true,
         leading: JourneyBackButton(),
-        eyebrow: 'ROUTE SETUP',
         title: 'Create Ride',
-        subtitle: 'Configure destination, crew, visibility, and launch state.',
+      ),
+    );
+  }
+
+  Widget _buildFooterAction() {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          12 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.background.withValues(alpha: 0.96),
+          border: Border(top: BorderSide(color: AppColors.divider)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 18,
+              offset: const Offset(0, -8),
+            ),
+          ],
+        ),
+        child: PremiumButton(
+          label: isCreating ? 'Creating...' : 'Go Live',
+          icon: isCreating ? null : Icons.arrow_forward_rounded,
+          loading: isCreating,
+          onPressed: isCreating ? null : createRide,
+        ),
       ),
     );
   }
@@ -791,33 +818,6 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildFooterAction() {
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.background.withValues(alpha: 0),
-              AppColors.background,
-            ],
-          ),
-        ),
-        child: PremiumButton(
-          label: isCreating ? 'Creating...' : 'Go Live',
-          icon: isCreating ? null : Icons.arrow_forward_rounded,
-          loading: isCreating,
-          onPressed: isCreating ? null : createRide,
-        ),
-      ),
     );
   }
 

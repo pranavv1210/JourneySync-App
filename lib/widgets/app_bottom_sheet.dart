@@ -48,7 +48,14 @@ Future<T?> showAppBottomSheet<T>(
                           borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
                       ),
-                      Flexible(child: builder(context)),
+                      Flexible(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.sizeOf(context).height * 0.78,
+                          ),
+                          child: builder(context),
+                        ),
+                      ),
                     ],
                   ),
                 ),

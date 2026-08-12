@@ -89,6 +89,10 @@ flutter:
     - assets/pattern.png
     - assets/profile.png
     - assets/legal/privacy_policy.txt
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-VariableFont_wght.ttf
 
 flutter_launcher_icons:
   android: true
