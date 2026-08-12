@@ -257,39 +257,43 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-        children: [
-          const JourneyHeader(
-            surface: true,
-            leading: JourneyBackButton(),
-            eyebrow: 'DISCOVER',
-            title: 'Explore Rides',
-            subtitle:
-                'Ride-ready destinations, conditions, and essentials around you.',
+      body: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            24 + MediaQuery.viewPaddingOf(context).bottom,
           ),
-          const SizedBox(height: AppSpacing.xl),
-          _conditionsCard(),
-          const SizedBox(height: 24),
-          _sectionTitle('Popular Destinations'),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 176,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _destinations.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemBuilder:
-                  (context, index) => _destinationCard(_destinations[index]),
+          children: [
+            const JourneyHeader(
+              surface: true,
+              leading: JourneyBackButton(),
+              title: 'Explore Rides',
             ),
-          ),
-          const SizedBox(height: 24),
-          _sectionTitle('Nearby Essentials'),
-          const SizedBox(height: 12),
-          _essentialsRow(),
-          const SizedBox(height: 24),
-          _comingSoonCard(),
-        ],
+            const SizedBox(height: 16),
+            _conditionsCard(),
+            const SizedBox(height: 20),
+            _sectionTitle('Popular Destinations'),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 164,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _destinations.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder:
+                    (context, index) => _destinationCard(_destinations[index]),
+              ),
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle('Nearby Essentials'),
+            const SizedBox(height: 12),
+            _essentialsRow(),
+            const SizedBox(height: 20),
+            _comingSoonCard(),
+          ],
+        ),
       ),
     );
   }
@@ -297,13 +301,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget _conditionsCard() {
     return GlassCard(
       onTap: _showWeatherDetails,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       elevated: true,
       child: Row(
         children: [
           Container(
-            width: 58,
-            height: 58,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -311,10 +315,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
             child: const Icon(
               Icons.speed_rounded,
               color: AppColors.primary,
-              size: 30,
+              size: 26,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,7 +375,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return GestureDetector(
       onTap: () => _showDestination(destination),
       child: SizedBox(
-        width: 220,
+        width: 208,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(AppRadius.xl),
           child: Stack(
@@ -454,7 +458,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               context,
               buildAppRoute(NearbyEssentialsScreen(type: type)),
             ),
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: Column(
           children: [
             Icon(type.icon, color: AppColors.primary, size: 24),

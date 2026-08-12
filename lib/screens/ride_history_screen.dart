@@ -200,200 +200,207 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                   foreground: forest,
                 ),
               )
-              : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-                itemCount: allRides.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return const Padding(
-                      padding: EdgeInsets.only(bottom: AppSpacing.xl),
-                      child: JourneyHeader(
-                        surface: true,
-                        leading: JourneyBackButton(),
-                        eyebrow: 'RIDE JOURNAL',
-                        title: 'Ride History',
-                        subtitle:
-                            'Completed rides, scheduled plans, and ride summaries.',
-                      ),
-                    );
-                  }
-                  final ride = allRides[index - 1];
-                  final title =
-                      ride.title.trim().isNotEmpty ? ride.title : "Ride";
-                  final destination =
-                      ride.endLocation.trim().isNotEmpty
-                          ? ride.endLocation
-                          : "Destination";
-                  final dateLabel = _formatDate(ride.createdAt);
-                  final statusLabel = _rideStatusLabel(ride);
-                  final statusColors = _rideStatusColors(statusLabel);
+              : SafeArea(
+                child: ListView.builder(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    12,
+                    16,
+                    24 + MediaQuery.viewPaddingOf(context).bottom,
+                  ),
+                  itemCount: allRides.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return const Padding(
+                        padding: EdgeInsets.only(bottom: 16),
+                        child: JourneyHeader(
+                          surface: true,
+                          leading: JourneyBackButton(),
+                          title: 'Ride History',
+                        ),
+                      );
+                    }
+                    final ride = allRides[index - 1];
+                    final title =
+                        ride.title.trim().isNotEmpty ? ride.title : "Ride";
+                    final destination =
+                        ride.endLocation.trim().isNotEmpty
+                            ? ride.endLocation
+                            : "Destination";
+                    final dateLabel = _formatDate(ride.createdAt);
+                    final statusLabel = _rideStatusLabel(ride);
+                    final statusColors = _rideStatusColors(statusLabel);
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: GlassCard(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              _ridePreviewTile(
-                                primary: primary,
-                                forest: forest,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: GlassCard(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                _ridePreviewTile(
+                                  primary: primary,
+                                  forest: forest,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontFamily: AppTypography.fontFamily,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: forest,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "$destination • ${ride.participantCount} riders",
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontFamily: AppTypography.fontFamily,
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      dateLabel,
                                       style: const TextStyle(
                                         fontFamily: AppTypography.fontFamily,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: forest,
+                                        fontSize: 11,
+                                        color: Colors.grey,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "$destination • ${ride.participantCount} riders",
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontFamily: AppTypography.fontFamily,
-                                        fontSize: 12,
-                                        color: Colors.grey,
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: statusColors.bg,
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        statusLabel,
+                                        style: TextStyle(
+                                          fontFamily: AppTypography.fontFamily,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          color: statusColors.fg,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    dateLabel,
-                                    style: const TextStyle(
-                                      fontFamily: AppTypography.fontFamily,
-                                      fontSize: 11,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: statusColors.bg,
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      statusLabel,
-                                      style: TextStyle(
-                                        fontFamily: AppTypography.fontFamily,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800,
-                                        color: statusColors.fg,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: Colors.black12,
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // View details
-                              TextButton.icon(
-                                style: TextButton.styleFrom(
-                                  foregroundColor: forest,
-                                  textStyle: const TextStyle(
-                                    fontFamily: AppTypography.fontFamily,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  if (statusLabel == 'Live') {
-                                    await Navigator.push(
-                                      context,
-                                      buildAppRoute(
-                                        RideModeScreen(rideId: ride.id),
-                                      ),
-                                    );
-                                  } else if (ride.isCompleted) {
-                                    await Navigator.push(
-                                      context,
-                                      buildAppRoute(
-                                        RideSummaryScreen(rideId: ride.id),
-                                      ),
-                                    );
-                                  } else {
-                                    await Navigator.push(
-                                      context,
-                                      buildAppRoute(
-                                        RideLobbyScreen(rideId: ride.id),
-                                      ),
-                                    );
-                                  }
-                                  _loadHistory();
-                                },
-                                icon: const Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 16,
-                                ),
-                                label: Text(
-                                  statusLabel == 'Live'
-                                      ? 'Join Live Ride'
-                                      : ride.isCompleted
-                                      ? 'View Summary'
-                                      : 'Open Lobby',
-                                ),
-                              ),
-
-                              // Replay Route button (visible if completed)
-                              if (ride.isCompleted)
-                                OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(color: primary),
-                                    foregroundColor: primary,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            const Divider(
+                              height: 1,
+                              thickness: 1,
+                              color: Colors.black12,
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // View details
+                                TextButton.icon(
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: forest,
                                     textStyle: const TextStyle(
                                       fontFamily: AppTypography.fontFamily,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 13,
                                     ),
                                   ),
-                                  onPressed:
-                                      () => _showReplayDialog(context, title),
+                                  onPressed: () async {
+                                    if (statusLabel == 'Live') {
+                                      await Navigator.push(
+                                        context,
+                                        buildAppRoute(
+                                          RideModeScreen(rideId: ride.id),
+                                        ),
+                                      );
+                                    } else if (ride.isCompleted) {
+                                      await Navigator.push(
+                                        context,
+                                        buildAppRoute(
+                                          RideSummaryScreen(rideId: ride.id),
+                                        ),
+                                      );
+                                    } else {
+                                      await Navigator.push(
+                                        context,
+                                        buildAppRoute(
+                                          RideLobbyScreen(rideId: ride.id),
+                                        ),
+                                      );
+                                    }
+                                    _loadHistory();
+                                  },
                                   icon: const Icon(
-                                    Icons.replay_rounded,
+                                    Icons.arrow_forward_rounded,
                                     size: 16,
                                   ),
-                                  label: const Text('Replay Route'),
+                                  label: Text(
+                                    statusLabel == 'Live'
+                                        ? 'Join Live Ride'
+                                        : ride.isCompleted
+                                        ? 'View Summary'
+                                        : 'Open Lobby',
+                                  ),
                                 ),
-                            ],
-                          ),
-                        ],
+
+                                // Replay Route button (visible if completed)
+                                if (ride.isCompleted)
+                                  OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: primary),
+                                      foregroundColor: primary,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontFamily: AppTypography.fontFamily,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    onPressed:
+                                        () => _showReplayDialog(context, title),
+                                    icon: const Icon(
+                                      Icons.replay_rounded,
+                                      size: 16,
+                                    ),
+                                    label: const Text('Replay Route'),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
     );
   }

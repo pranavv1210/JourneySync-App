@@ -90,9 +90,16 @@ flutter:
     - assets/profile.png
     - assets/legal/privacy_policy.txt
   fonts:
-    - family: Manrope
+    - family: Outfit
       fonts:
-        - asset: assets/fonts/Manrope-VariableFont_wght.ttf
+        - asset: assets/fonts/Outfit-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Outfit-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Outfit-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Outfit-Bold.ttf
+          weight: 700
 
 flutter_launcher_icons:
   android: true

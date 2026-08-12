@@ -93,63 +93,67 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
               ? const Center(
                 child: RideLoadingIndicator(label: 'Loading rides'),
               )
-              : RefreshIndicator(
-                onRefresh: _loadRides,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-                  children: [
-                    const JourneyHeader(
-                      surface: true,
-                      leading: JourneyBackButton(),
-                      eyebrow: 'RIDE JOURNAL',
-                      title: 'My Rides',
-                      subtitle:
-                          'Active rides, upcoming plans, and completed journeys in one place.',
+              : SafeArea(
+                child: RefreshIndicator(
+                  onRefresh: _loadRides,
+                  child: ListView(
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      12,
+                      20,
+                      24 + MediaQuery.viewPaddingOf(context).bottom,
                     ),
-                    const SizedBox(height: AppSpacing.xl),
-                    _statsCard(),
-                    const SizedBox(height: 22),
-                    _section(
-                      'Active Ride',
-                      activeSnapshot.hasActiveRide
-                          ? [
-                            _resumeCard(
-                              'Active ride',
-                              activeSnapshot.status.name.toUpperCase(),
-                              activeSnapshot.rideId,
-                            ),
-                          ]
-                          : _activeRides.map(_rideCard).toList(),
-                      emptyTitle: 'No active ride',
-                      emptyMessage:
-                          'Live rides you are tracking will appear here.',
-                      icon: Icons.navigation_rounded,
-                    ),
-                    _section(
-                      'Upcoming Rides',
-                      _upcomingRides.take(4).map(_rideCard).toList(),
-                      emptyTitle: 'No upcoming rides',
-                      emptyMessage:
-                          'Scheduled and joined rides will appear here.',
-                      icon: Icons.event_available_rounded,
-                    ),
-                    _section(
-                      'Ride History',
-                      _history.take(5).map(_rideCard).toList(),
-                      emptyTitle: 'No completed rides',
-                      emptyMessage:
-                          'Finished rides and summaries will appear here.',
-                      icon: Icons.history_rounded,
-                    ),
-                    _section(
-                      'Saved Routes',
-                      const <Widget>[],
-                      emptyTitle: 'No saved routes',
-                      emptyMessage:
-                          'Routes saved from completed rides will appear here.',
-                      icon: Icons.bookmark_border_rounded,
-                    ),
-                  ],
+                    children: [
+                      const JourneyHeader(
+                        surface: true,
+                        leading: JourneyBackButton(),
+                        title: 'My Rides',
+                      ),
+                      const SizedBox(height: 16),
+                      _statsCard(),
+                      const SizedBox(height: 18),
+                      _section(
+                        'Active Ride',
+                        activeSnapshot.hasActiveRide
+                            ? [
+                              _resumeCard(
+                                'Active ride',
+                                activeSnapshot.status.name.toUpperCase(),
+                                activeSnapshot.rideId,
+                              ),
+                            ]
+                            : _activeRides.map(_rideCard).toList(),
+                        emptyTitle: 'No active ride',
+                        emptyMessage:
+                            'Live rides you are tracking will appear here.',
+                        icon: Icons.navigation_rounded,
+                      ),
+                      _section(
+                        'Upcoming Rides',
+                        _upcomingRides.take(4).map(_rideCard).toList(),
+                        emptyTitle: 'No upcoming rides',
+                        emptyMessage:
+                            'Scheduled and joined rides will appear here.',
+                        icon: Icons.event_available_rounded,
+                      ),
+                      _section(
+                        'Ride History',
+                        _history.take(5).map(_rideCard).toList(),
+                        emptyTitle: 'No completed rides',
+                        emptyMessage:
+                            'Finished rides and summaries will appear here.',
+                        icon: Icons.history_rounded,
+                      ),
+                      _section(
+                        'Saved Routes',
+                        const <Widget>[],
+                        emptyTitle: 'No saved routes',
+                        emptyMessage:
+                            'Routes saved from completed rides will appear here.',
+                        icon: Icons.bookmark_border_rounded,
+                      ),
+                    ],
+                  ),
                 ),
               ),
     );
@@ -237,7 +241,7 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
     required IconData icon,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -248,7 +252,7 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
               letterSpacing: 1,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           if (children.isEmpty)
             EmptyStateCard(
               title: emptyTitle,

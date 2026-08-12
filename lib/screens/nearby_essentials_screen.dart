@@ -147,72 +147,77 @@ class _NearbyEssentialsScreenState extends State<NearbyEssentialsScreen> {
                   foreground: AppColors.forest,
                 ),
               )
-              : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-                itemCount: _places.length + 1,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return JourneyHeader(
-                      surface: true,
-                      leading: const JourneyBackButton(),
-                      eyebrow: 'NEARBY ESSENTIALS',
-                      title: widget.type.title,
-                      subtitle: 'Useful stops around your current riding area.',
+              : SafeArea(
+                child: ListView.separated(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    12,
+                    20,
+                    24 + MediaQuery.viewPaddingOf(context).bottom,
+                  ),
+                  itemCount: _places.length + 1,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return JourneyHeader(
+                        surface: true,
+                        leading: const JourneyBackButton(),
+                        title: widget.type.title,
+                      );
+                    }
+                    final place = _places[index - 1];
+                    return GlassCard(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
+                            child: Icon(
+                              widget.type.icon,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  place.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTypography.titleMedium.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${place.distanceKm.toStringAsFixed(1)} km - ${place.subtitle}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _navigate(place),
+                            icon: const Icon(Icons.navigation_rounded),
+                            color: AppColors.forest,
+                          ),
+                        ],
+                      ),
                     );
-                  }
-                  final place = _places[index - 1];
-                  return GlassCard(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
-                          child: Icon(
-                            widget.type.icon,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                place.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.titleMedium.copyWith(
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${place.distanceKm.toStringAsFixed(1)} km - ${place.subtitle}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => _navigate(place),
-                          icon: const Icon(Icons.navigation_rounded),
-                          color: AppColors.forest,
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                  },
+                ),
               ),
     );
   }

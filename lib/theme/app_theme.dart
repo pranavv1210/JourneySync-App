@@ -41,9 +41,8 @@ class AppColors {
 class AppTypography {
   AppTypography._();
 
-  // Manrope is bundled from Google Fonts under the SIL Open Font License.
-  // It is used as the closest legally shippable Gilroy-like UI family found.
-  static const String fontFamily = 'Manrope';
+  // Outfit is bundled from Google Fonts under the SIL Open Font License.
+  static const String fontFamily = 'Outfit';
 
   static TextStyle style({
     required double fontSize,
