@@ -44,7 +44,7 @@ class _ExploreSoloScreenState extends State<ExploreSoloScreen> {
     try {
       final origin = await _rideFlowService.resolveCurrentLocation();
       final ride = await _rideFlowService.createRide(
-        title: 'Solo exploration',
+        title: destination,
         startLocation: origin.coordinateLabel,
         endLocation: destination,
         rideVisibility: 'private',
@@ -113,6 +113,11 @@ class _ExploreSoloScreenState extends State<ExploreSoloScreen> {
               children: [
                 TextField(
                   controller: _destinationController,
+                  cursorColor: AppColors.primary,
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                   decoration: const InputDecoration(
                     hintText: 'Destination',
                     prefixIcon: Icon(Icons.landscape_rounded),

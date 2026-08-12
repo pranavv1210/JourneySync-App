@@ -461,6 +461,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           child: TextField(
             controller: rideNameController,
             textInputAction: TextInputAction.next,
+            cursorColor: AppColors.primary,
             style: AppTypography.titleLarge.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
@@ -590,6 +591,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                         Expanded(
                           child: TextField(
                             controller: destinationController,
+                            cursorColor: AppColors.primary,
                             style: AppTypography.bodyMedium.copyWith(
                               fontWeight: FontWeight.w600,
                               color: AppColors.forest,
@@ -836,6 +838,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           controller: stopsController,
           minLines: 2,
           maxLines: 4,
+          cursorColor: AppColors.primary,
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.forest,
             fontWeight: FontWeight.w600,

@@ -231,6 +231,11 @@ class AppTheme {
       ),
       textTheme: _textTheme,
       primaryTextTheme: _textTheme,
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: AppColors.primary,
+        selectionColor: AppColors.primary.withValues(alpha: 0.22),
+        selectionHandleColor: AppColors.primary,
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -301,6 +306,26 @@ class AppTheme {
         unselectedLabelStyle: AppTypography.labelSmall,
         type: BottomNavigationBarType.fixed,
       ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 10,
+        shadowColor: Colors.black.withValues(alpha: 0.14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: const BorderSide(color: AppColors.divider),
+        ),
+        textStyle: AppTypography.bodyMedium.copyWith(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+        labelTextStyle: WidgetStatePropertyAll(
+          AppTypography.bodyMedium.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
@@ -344,6 +369,9 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface.withValues(alpha: 0.88),
+        floatingLabelStyle: AppTypography.labelMedium.copyWith(
+          color: AppColors.primary,
+        ),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 16,
           horizontal: 16,

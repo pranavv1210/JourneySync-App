@@ -668,7 +668,14 @@ class SupabaseService {
       throw Exception('Ride delete failed: invalid ride/user id.');
     }
 
-    await _client.from('ride_members').delete().eq('ride_id', normalizedRideId);
+    try {
+      await _client
+          .from('ride_members')
+          .delete()
+          .eq('ride_id', normalizedRideId);
+    } on PostgrestException catch (error) {
+      if (!_isMissingRideMembersSchema(error)) rethrow;
+    }
     await _deleteRideWithCreatorFilter(
       rideId: normalizedRideId,
       creatorId: normalizedCreatorId,
@@ -921,6 +928,7 @@ class SupabaseService {
     try {
       await _client.from('ride_routes').upsert(payload, onConflict: 'ride_id');
     } on PostgrestException catch (error) {
+      if (_isMissingRideRoutesSchema(error)) return;
       if (!_isMissingRideColumn(error, 'host_id')) rethrow;
       final fallbackPayload =
           Map<String, dynamic>.from(payload)
@@ -931,11 +939,17 @@ class SupabaseService {
             .from('ride_routes')
             .upsert(fallbackPayload, onConflict: 'ride_id');
       } on PostgrestException catch (fallbackError) {
+        if (_isMissingRideRoutesSchema(fallbackError)) return;
         if (_isMissingRideColumn(fallbackError, 'profile_id')) {
           fallbackPayload.remove('profile_id');
-          await _client
-              .from('ride_routes')
-              .upsert(fallbackPayload, onConflict: 'ride_id');
+          try {
+            await _client
+                .from('ride_routes')
+                .upsert(fallbackPayload, onConflict: 'ride_id');
+          } on PostgrestException catch (minimalError) {
+            if (_isMissingRideRoutesSchema(minimalError)) return;
+            rethrow;
+          }
           return;
         }
         rethrow;

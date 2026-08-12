@@ -237,6 +237,11 @@ class _PlanTogetherScreenState extends State<PlanTogetherScreen> {
     return TextField(
       controller: controller,
       maxLines: maxLines,
+      cursorColor: AppColors.primary,
+      style: AppTypography.bodyLarge.copyWith(
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.w600,
+      ),
       decoration: InputDecoration(hintText: hint, prefixIcon: Icon(icon)),
     );
   }

@@ -6,6 +6,7 @@ import '../models/ride_record.dart';
 import '../services/app_navigation.dart';
 import '../services/ride_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_main_bottom_nav.dart';
 import '../widgets/empty_state_card.dart';
 import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
@@ -101,7 +102,7 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
                       20,
                       12,
                       20,
-                      24 + MediaQuery.viewPaddingOf(context).bottom,
+                      120 + MediaQuery.viewPaddingOf(context).bottom,
                     ),
                     children: [
                       const JourneyHeader(
@@ -156,6 +157,7 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
                   ),
                 ),
               ),
+      bottomNavigationBar: const AppMainBottomNav(currentTab: AppMainTab.rides),
     );
   }
 

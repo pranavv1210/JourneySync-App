@@ -182,10 +182,11 @@ class RideService {
     try {
       await _supabaseService.addParticipant(rideId: rideId, userId: userId);
     } catch (error) {
-      if (suppressDuplicate &&
-          error is PostgrestException &&
-          (error.code ?? '') == '23505') {
-        return;
+      if (suppressDuplicate && error is PostgrestException) {
+        if ((error.code ?? '') == '23505' ||
+            _isMissingRideMembersSchema(error)) {
+          return;
+        }
       }
       rethrow;
     }
@@ -538,6 +539,15 @@ class RideService {
 
   bool _isDuplicateRow(PostgrestException error) {
     return (error.code ?? '').trim() == '23505';
+  }
+
+  bool _isMissingRideMembersSchema(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    final text = '${error.message} $error'.toLowerCase();
+    return code == '42P01' ||
+        code == '42703' ||
+        code == 'PGRST204' ||
+        text.contains('ride_members');
   }
 
   // ==================== ROUTE SYNC METHODS ====================

@@ -5,6 +5,7 @@ import '../services/app_navigation.dart';
 import '../services/weather_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_sheet.dart';
+import '../widgets/app_main_bottom_nav.dart';
 import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
@@ -263,7 +264,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             20,
             12,
             20,
-            24 + MediaQuery.viewPaddingOf(context).bottom,
+            120 + MediaQuery.viewPaddingOf(context).bottom,
           ),
           children: [
             const JourneyHeader(
@@ -294,6 +295,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
             _comingSoonCard(),
           ],
         ),
+      ),
+      bottomNavigationBar: const AppMainBottomNav(
+        currentTab: AppMainTab.explore,
       ),
     );
   }

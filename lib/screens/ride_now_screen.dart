@@ -37,7 +37,11 @@ class _RideNowScreenState extends State<RideNowScreen> {
       final origin = await _rideFlowService.resolveCurrentLocation();
       final destination = _destinationController.text.trim();
       final title =
-          _publicRide ? '${session.userName} is riding now' : 'Private ride';
+          destination.isNotEmpty
+              ? destination
+              : _publicRide
+              ? '${session.userName} is riding now'
+              : 'Private ride';
       final ride = await _rideFlowService.createRide(
         title: title,
         startLocation: origin.coordinateLabel,
@@ -121,6 +125,11 @@ class _RideNowScreenState extends State<RideNowScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 TextField(
                   controller: _destinationController,
+                  cursorColor: AppColors.primary,
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                   decoration: const InputDecoration(
                     hintText: 'Where are you heading?',
                     prefixIcon: Icon(Icons.flag_rounded),

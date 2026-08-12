@@ -924,7 +924,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           : 'Destination';
                   final dateLabel = _formatDate(ride.createdAt);
                   final isBusy = rideActionLoadingId == ride.id;
-                  final canDelete = ride.isScheduled || ride.isCompleted;
+                  const canDelete = true;
                   final statusLabel = _rideStatusLabel(ride);
                   final statusColors = _rideStatusColors(statusLabel);
                   return InkWell(
@@ -1031,7 +1031,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                         if (canDelete)
                                           const PopupMenuItem(
                                             value: 'delete',
-                                            child: Text('Delete Permanently'),
+                                            child: Text(
+                                              'Delete Permanently',
+                                              style: TextStyle(
+                                                color: AppColors.textPrimary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
                                           ),
                                       ],
                                 ),
@@ -1083,14 +1089,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   Future<void> _confirmPermanentDeleteRide(RideRecord ride) async {
-    if (!ride.isScheduled && !ride.isCompleted) {
-      showPremiumToast(
-        context,
-        'Only scheduled/completed rides can be deleted.',
-        type: PremiumToastType.error,
-      );
-      return;
-    }
     final confirmed = await showAppConfirmDialog(
       context,
       title: 'Delete ride?',
@@ -1179,10 +1177,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFFFFF3E8),
-            AppColors.primary.withValues(alpha: 0.16),
-          ],
+          colors: [const Color(0xFFE9F1EA), const Color(0xFFFFF1E4)],
         ),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
       ),
@@ -1195,6 +1190,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 painter: _RidePreviewPainter(
                   lineColor: AppColors.forest.withValues(alpha: 0.5),
                   accentColor: AppColors.primary,
+                  waterColor: const Color(0xFFBBD9D4).withValues(alpha: 0.58),
+                  parkColor: const Color(0xFFBFE1C4).withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -1412,16 +1409,56 @@ class _RidePreviewPainter extends CustomPainter {
   const _RidePreviewPainter({
     required this.lineColor,
     required this.accentColor,
+    required this.waterColor,
+    required this.parkColor,
   });
 
   final Color lineColor;
   final Color accentColor;
+  final Color waterColor;
+  final Color parkColor;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final parkPaint = Paint()..color = parkColor;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.05, size.height * 0.08, 22, 18),
+        const Radius.circular(8),
+      ),
+      parkPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.62, size.height * 0.58, 24, 20),
+        const Radius.circular(9),
+      ),
+      parkPaint,
+    );
+
+    final waterPath =
+        Path()
+          ..moveTo(0, size.height * 0.74)
+          ..quadraticBezierTo(
+            size.width * 0.3,
+            size.height * 0.58,
+            size.width * 0.5,
+            size.height * 0.76,
+          )
+          ..quadraticBezierTo(
+            size.width * 0.72,
+            size.height * 0.94,
+            size.width,
+            size.height * 0.72,
+          )
+          ..lineTo(size.width, size.height)
+          ..lineTo(0, size.height)
+          ..close();
+    canvas.drawPath(waterPath, Paint()..color = waterColor);
+
     final gridPaint =
         Paint()
-          ..color = Colors.white.withValues(alpha: 0.45)
+          ..color = Colors.white.withValues(alpha: 0.58)
           ..strokeWidth = 1;
     for (double dx = 10; dx < size.width; dx += 16) {
       canvas.drawLine(Offset(dx, 0), Offset(dx, size.height), gridPaint);
@@ -1429,6 +1466,28 @@ class _RidePreviewPainter extends CustomPainter {
     for (double dy = 10; dy < size.height; dy += 16) {
       canvas.drawLine(Offset(0, dy), Offset(size.width, dy), gridPaint);
     }
+
+    final roadPaint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.88)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(0, size.height * 0.22),
+      Offset(size.width, size.height * 0.34),
+      roadPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.25, 0),
+      Offset(size.width * 0.1, size.height),
+      roadPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.82, 0),
+      Offset(size.width * 0.72, size.height),
+      roadPaint,
+    );
 
     final path =
         Path()

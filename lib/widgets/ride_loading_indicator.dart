@@ -22,17 +22,15 @@ class _RideLoadingIndicatorState extends State<RideLoadingIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _pulse;
-  late final Animation<double> _sweep;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
     _pulse = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
-    _sweep = Tween<double>(begin: 0, end: 1).animate(_controller);
   }
 
   @override
@@ -44,7 +42,8 @@ class _RideLoadingIndicatorState extends State<RideLoadingIndicator>
   @override
   Widget build(BuildContext context) {
     final primary = widget.color ?? AppColors.primary;
-    final size = widget.compact ? 28.0 : 46.0;
+    final dotSize = widget.compact ? 7.0 : 10.0;
+    final spacing = widget.compact ? 5.0 : 7.0;
     final label = widget.label;
 
     return Semantics(
@@ -54,56 +53,39 @@ class _RideLoadingIndicatorState extends State<RideLoadingIndicator>
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: size,
-            height: size,
+            width: (dotSize * 3) + (spacing * 2) + 16,
+            height: widget.compact ? 18 : 26,
             child: AnimatedBuilder(
               animation: _controller,
               builder: (context, _) {
-                final glow = 0.65 + (0.35 * _pulse.value);
-                return Transform.rotate(
-                  angle: _sweep.value * 6.28318,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: SweepGradient(
-                        colors: [
-                          primary.withValues(alpha: 0.04),
-                          primary.withValues(alpha: glow),
-                          AppColors.forest.withValues(alpha: 0.86),
-                          primary.withValues(alpha: 0.04),
-                        ],
-                        stops: const [0, 0.36, 0.68, 1],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: primary.withValues(alpha: 0.18),
-                          blurRadius: widget.compact ? 10 : 18,
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(widget.compact ? 3 : 5),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.background,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.84),
-                          ),
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: widget.compact ? 7 : 10,
-                            height: widget.compact ? 7 : 10,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: primary,
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(3, (index) {
+                    final phase = (_pulse.value + (index * 0.28)) % 1.0;
+                    final scale = 0.72 + (0.48 * (1 - (phase - 0.5).abs() * 2));
+                    return Padding(
+                      padding: EdgeInsets.only(right: index == 2 ? 0 : spacing),
+                      child: Transform.scale(
+                        scale: scale,
+                        child: Container(
+                          width: dotSize,
+                          height: dotSize,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: primary.withValues(
+                              alpha: 0.46 + (0.48 * scale.clamp(0.0, 1.0)),
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: primary.withValues(alpha: 0.18),
+                                blurRadius: widget.compact ? 6 : 10,
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                 );
               },
             ),
