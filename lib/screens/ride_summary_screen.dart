@@ -5,7 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:ui' as ui;
 
 import '../widgets/app_toast.dart';
+import '../widgets/app_error_state.dart';
+import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
+import '../widgets/ride_loading_indicator.dart';
 import '../services/ride_analytics_engine.dart';
 import '../theme/app_theme.dart';
 
@@ -136,28 +139,22 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFFFF6A00);
+    const primary = AppColors.primary;
     const secondaryBlue = Color(0xFF0056B3);
     const vibrantTeal = Color(0xFF00C2CB);
-    const background = Color(0xFFF8F7F5);
+    const background = AppColors.background;
 
     if (loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: RideLoadingIndicator(label: 'Building summary')),
+      );
     }
 
     if (loadError.isNotEmpty) {
-      return Scaffold(
-        backgroundColor: background,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              loadError,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
+      return JourneyScreen(
+        scrollable: false,
+        child: AppErrorState(message: loadError, onRetry: _load),
       );
     }
 
@@ -166,51 +163,13 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Top nav bar with back button
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.grey.shade200,
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: Color(0xFF1F4A33),
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  const Text(
-                    'Ride Summary',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1F4A33),
-                      fontFamily: AppTypography.fontFamily,
-                    ),
-                  ),
-                  const Spacer(),
-                  const SizedBox(width: 40),
-                ],
+              child: const JourneyHeader(
+                leading: JourneyBackButton(),
+                eyebrow: 'RIDE COMPLETE',
+                title: 'Ride Summary',
+                subtitle: 'Distance, riders, route, and completion details.',
               ),
             ),
             Expanded(

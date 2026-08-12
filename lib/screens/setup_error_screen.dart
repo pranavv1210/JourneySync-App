@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+import '../widgets/app_button.dart';
+import '../widgets/journey_screen.dart';
+
 class SetupErrorScreen extends StatelessWidget {
   const SetupErrorScreen({super.key, required this.errorMessage});
 
@@ -7,73 +11,56 @@ class SetupErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F7F5),
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF1E2D24), width: 1),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'App setup required',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1E2D24),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Required app configuration is missing or invalid. Update the in-app config (or provide build-time overrides) and rebuild.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF4A3F35),
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF4EFEA),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        errorMessage,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontFamily: 'monospace',
-                          color: Color(0xFF4A3F35),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Optional override example:\nflutter build apk --release --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF4A3F35),
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+    return JourneyScreen(
+      scrollable: false,
+      child: JourneyHeroBand(
+        icon: Icons.build_circle_outlined,
+        color: AppColors.error,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const JourneyHeader(
+              eyebrow: 'CONFIGURATION',
+              title: 'App setup required',
+              subtitle:
+                  'Required app configuration is missing or invalid. Update the build-time configuration and rebuild.',
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 180),
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: AppColors.divider),
+              ),
+              child: SingleChildScrollView(
+                child: Text(
+                  errorMessage,
+                  style: AppTypography.bodySmall.copyWith(
+                    fontFamily: 'monospace',
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ),
-          ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Optional override:\nflutter build apk --release --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            AppButton(
+              label: 'Close',
+              icon: Icons.close_rounded,
+              variant: AppButtonVariant.secondary,
+              onPressed: () => Navigator.maybePop(context),
+            ),
+          ],
         ),
       ),
     );

@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
+import '../widgets/journey_screen.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
@@ -399,48 +400,13 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.divider.withValues(alpha: 0.6),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.divider, width: 1.5),
-                boxShadow: AppShadows.sm,
-              ),
-              child: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: AppColors.forest,
-                size: 18,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              'New Ride',
-              textAlign: TextAlign.center,
-              style: AppTypography.headlineMedium.copyWith(
-                color: AppColors.forest,
-              ),
-            ),
-          ),
-          const SizedBox(width: 40),
-        ],
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(20, 14, 20, 12),
+      child: JourneyHeader(
+        leading: JourneyBackButton(),
+        eyebrow: 'ROUTE SETUP',
+        title: 'Create Ride',
+        subtitle: 'Configure destination, crew, visibility, and launch state.',
       ),
     );
   }

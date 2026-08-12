@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../widgets/journey_screen.dart';
 import '../widgets/ride_flow_map_preview.dart';
 import 'ride_lobby_screen.dart';
 
@@ -113,126 +114,116 @@ class _PlanTogetherScreenState extends State<PlanTogetherScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(context),
-              const SizedBox(height: AppSpacing.xxxl),
-              Text(
-                'Plan Together',
-                style: AppTypography.displaySmall.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
+    return JourneyScreen(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const JourneyHeader(
+            leading: JourneyBackButton(),
+            eyebrow: 'GROUP PLANNER',
+            title: 'Plan Together',
+            subtitle:
                 'Schedule a future group ride, invite riders, and keep details editable until it starts.',
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.textSecondary,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          JourneyHeroBand(
+            icon: Icons.groups_rounded,
+            color: AppColors.forest,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Build the ride before the crew arrives.',
+                  style: AppTypography.headlineSmall.copyWith(
+                    color: AppColors.forest,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              const RideFlowMapPreview(
-                title: 'Plan from the map',
-                subtitle:
-                    'Use the map context while choosing meeting and destination points.',
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              GlassCard(
-                elevated: true,
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Set the meeting point, route, schedule, visibility, and rider capacity in one plan.',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+          const RideFlowMapPreview(
+            title: 'Plan from the map',
+            subtitle:
+                'Use the map context while choosing meeting and destination points.',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          GlassCard(
+            elevated: true,
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              children: [
+                _field(_nameController, 'Ride name', Icons.badge_rounded),
+                const SizedBox(height: AppSpacing.md),
+                Row(
                   children: [
-                    _field(_nameController, 'Ride name', Icons.badge_rounded),
-                    const SizedBox(height: AppSpacing.md),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _pickerTile(
-                            'Date',
-                            '${_date.day}/${_date.month}/${_date.year}',
-                            Icons.event_rounded,
-                            _pickDate,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: _pickerTile(
-                            'Time',
-                            _time.format(context),
-                            Icons.schedule_rounded,
-                            _pickTime,
-                          ),
-                        ),
-                      ],
+                    Expanded(
+                      child: _pickerTile(
+                        'Date',
+                        '${_date.day}/${_date.month}/${_date.year}',
+                        Icons.event_rounded,
+                        _pickDate,
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    _field(
-                      _meetingController,
-                      'Meeting point',
-                      Icons.location_on_rounded,
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: _pickerTile(
+                        'Time',
+                        _time.format(context),
+                        Icons.schedule_rounded,
+                        _pickTime,
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    _field(
-                      _destinationController,
-                      'Destination',
-                      Icons.flag_rounded,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    _field(
-                      _stopsController,
-                      'Optional stops',
-                      Icons.alt_route_rounded,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    _field(
-                      _descriptionController,
-                      'Ride description',
-                      Icons.notes_rounded,
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    _plannerControls(),
                   ],
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              PremiumButton(
-                label: _saving ? 'Creating plan...' : 'Create Ride Plan',
-                icon: Icons.calendar_month_rounded,
-                loading: _saving,
-                disabled: _saving,
-                onPressed: _savePlan,
-              ),
-            ],
+                const SizedBox(height: AppSpacing.md),
+                _field(
+                  _meetingController,
+                  'Meeting point',
+                  Icons.location_on_rounded,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _field(
+                  _destinationController,
+                  'Destination',
+                  Icons.flag_rounded,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _field(
+                  _stopsController,
+                  'Optional stops',
+                  Icons.alt_route_rounded,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _field(
+                  _descriptionController,
+                  'Ride description',
+                  Icons.notes_rounded,
+                  maxLines: 3,
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                _plannerControls(),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: AppSpacing.xxl),
+          PremiumButton(
+            label: _saving ? 'Creating plan...' : 'Create Ride Plan',
+            icon: Icons.calendar_month_rounded,
+            loading: _saving,
+            disabled: _saving,
+            onPressed: _savePlan,
+          ),
+        ],
       ),
-    );
-  }
-
-  Widget _header(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        const Spacer(),
-        Text(
-          'GROUP PLANNER',
-          style: AppTypography.labelSmall.copyWith(
-            color: AppColors.primary,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
     );
   }
 

@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../widgets/journey_screen.dart';
 import '../widgets/ride_flow_map_preview.dart';
 import 'ride_mode_screen.dart';
 
@@ -73,97 +74,75 @@ class _ExploreSoloScreenState extends State<ExploreSoloScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(context),
-              const SizedBox(height: AppSpacing.xxxl),
-              Text(
-                'Explore Solo',
-                style: AppTypography.displaySmall.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
+    return JourneyScreen(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const JourneyHeader(
+            leading: JourneyBackButton(),
+            eyebrow: 'PRIVATE RIDE',
+            title: 'Explore Solo',
+            subtitle:
                 'A private ride journal for navigation, SOS, stats, achievements, and memories.',
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              const RideFlowMapPreview(
-                title: 'Private route preview',
-                subtitle:
-                    'Your solo ride stays private while navigation and stats remain active.',
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              GlassCard(
-                elevated: true,
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: _destinationController,
-                      decoration: const InputDecoration(
-                        hintText: 'Destination',
-                        prefixIcon: Icon(Icons.landscape_rounded),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    _soloPromise(
-                      Icons.visibility_off_rounded,
-                      'Never appears on public radar',
-                    ),
-                    _soloPromise(
-                      Icons.query_stats_rounded,
-                      'Records distance, duration, and ride stats',
-                    ),
-                    _soloPromise(
-                      Icons.sos_rounded,
-                      'Keeps emergency SOS available',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              PremiumButton(
-                label: _starting ? 'Starting solo ride...' : 'Start Solo Ride',
-                icon: Icons.navigation_rounded,
-                loading: _starting,
-                disabled: _starting,
-                onPressed: _startSoloRide,
-              ),
-            ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _header(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        const Spacer(),
-        Text(
-          'PRIVATE JOURNAL',
-          style: AppTypography.labelSmall.copyWith(
+          const SizedBox(height: AppSpacing.xl),
+          JourneyHeroBand(
+            icon: Icons.landscape_rounded,
             color: AppColors.forest,
-            fontWeight: FontWeight.w900,
+            child: Text(
+              'Pick a destination and ride at your own pace. This route stays off public radar.',
+              style: AppTypography.bodyLarge.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.xxl),
+          const RideFlowMapPreview(
+            title: 'Private route preview',
+            subtitle:
+                'Your solo ride stays private while navigation and stats remain active.',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          GlassCard(
+            elevated: true,
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: _destinationController,
+                  decoration: const InputDecoration(
+                    hintText: 'Destination',
+                    prefixIcon: Icon(Icons.landscape_rounded),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                _soloPromise(
+                  Icons.visibility_off_rounded,
+                  'Never appears on public radar',
+                ),
+                _soloPromise(
+                  Icons.query_stats_rounded,
+                  'Records distance, duration, and ride stats',
+                ),
+                _soloPromise(
+                  Icons.sos_rounded,
+                  'Keeps emergency SOS available',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+          PremiumButton(
+            label: _starting ? 'Starting solo ride...' : 'Start Solo Ride',
+            icon: Icons.navigation_rounded,
+            loading: _starting,
+            disabled: _starting,
+            onPressed: _startSoloRide,
+          ),
+        ],
+      ),
     );
   }
 

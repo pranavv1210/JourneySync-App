@@ -3,7 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../coordinators/notification_coordinator.dart';
 import '../models/app_notification.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
+import '../widgets/journey_screen.dart';
 import '../widgets/ride_loading_indicator.dart';
 
 /// Premium notification center with glassmorphism design.
@@ -43,40 +45,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4EFEA),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          'Notifications',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          AnimatedBuilder(
-            animation: _coordinator,
-            builder: (context, _) {
-              if (_coordinator.notifications.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return PopupMenuButton<String>(
-                icon: const Icon(Icons.more_horiz_rounded),
-                onSelected: (value) {
-                  if (value == 'read') _coordinator.markAllRead();
-                  if (value == 'clear') _coordinator.clearAll();
-                },
-                itemBuilder:
-                    (context) => const [
-                      PopupMenuItem(
-                        value: 'read',
-                        child: Text('Mark all read'),
-                      ),
-                      PopupMenuItem(value: 'clear', child: Text('Clear all')),
-                    ],
-              );
-            },
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: AnimatedBuilder(
           animation: _coordinator,
@@ -92,17 +61,27 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             return RefreshIndicator(
               onRefresh: _coordinator.refresh,
               child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-                itemCount: _coordinator.notifications.length + 1,
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                itemCount: _coordinator.notifications.length + 2,
                 separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   if (index == 0) {
+                    return JourneyHeader(
+                      leading: const JourneyBackButton(),
+                      eyebrow: 'SIGNAL CENTER',
+                      title: 'Notifications',
+                      subtitle:
+                          'Ride invites, SOS alerts, route changes, and weather updates.',
+                      trailing: _NotificationMenu(coordinator: _coordinator),
+                    );
+                  }
+                  if (index == 1) {
                     return _NotificationSummary(
                       unreadCount: _coordinator.unreadCount,
                       totalCount: _coordinator.notifications.length,
                     );
                   }
-                  final item = _coordinator.notifications[index - 1];
+                  final item = _coordinator.notifications[index - 2];
                   return _NotificationCard(notification: item);
                 },
               ),
@@ -126,11 +105,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
               height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [const Color(0xFFF4EFEA), const Color(0xFFE8E0D8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: AppColors.surface,
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.6),
                   width: 2,
@@ -146,27 +121,23 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
               child: Icon(
                 Icons.notifications_active_outlined,
                 size: 48,
-                color: const Color(0xFF1E3A2F).withValues(alpha: 0.4),
+                color: AppColors.forest.withValues(alpha: 0.4),
               ),
             ),
             const SizedBox(height: 24),
             Text(
               'All clear',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF1E3A2F),
+              style: AppTypography.headlineSmall.copyWith(
+                fontWeight: FontWeight.w900,
+                color: AppColors.forest,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'No notifications yet.\nRide invites, SOS alerts, route changes, and weather updates will land here.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF1E3A2F).withValues(alpha: 0.55),
-                height: 1.4,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 24),
@@ -179,6 +150,29 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _NotificationMenu extends StatelessWidget {
+  const _NotificationMenu({required this.coordinator});
+
+  final NotificationCoordinator coordinator;
+
+  @override
+  Widget build(BuildContext context) {
+    if (coordinator.notifications.isEmpty) return const SizedBox.shrink();
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_horiz_rounded, color: AppColors.forest),
+      onSelected: (value) {
+        if (value == 'read') coordinator.markAllRead();
+        if (value == 'clear') coordinator.clearAll();
+      },
+      itemBuilder:
+          (context) => const [
+            PopupMenuItem(value: 'read', child: Text('Mark all read')),
+            PopupMenuItem(value: 'clear', child: Text('Clear all')),
+          ],
     );
   }
 }
@@ -197,19 +191,10 @@ class _NotificationSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.8),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: AppColors.divider),
+        boxShadow: AppShadows.md,
       ),
       child: Row(
         children: [
@@ -219,7 +204,7 @@ class _NotificationSummary extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [const Color(0xFF1E3A2F), const Color(0xFF2D5A4A)],
+                colors: [AppColors.forest, AppColors.forestLight],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -230,7 +215,7 @@ class _NotificationSummary extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF1E3A2F).withValues(alpha: 0.2),
+                  color: AppColors.forest.withValues(alpha: 0.2),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -249,19 +234,17 @@ class _NotificationSummary extends StatelessWidget {
               children: [
                 Text(
                   'Ride signal center',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: const Color(0xFF1E3A2F),
+                  style: AppTypography.titleMedium.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.forest,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '$unreadCount unread of $totalCount total',
-                  style: TextStyle(
-                    color: const Color(0xFF1E3A2F).withValues(alpha: 0.55),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
                   ),
                 ),
               ],
@@ -297,14 +280,12 @@ class _NotificationCard extends StatelessWidget {
       decoration: BoxDecoration(
         color:
             isUnread
-                ? Colors.white.withValues(alpha: 0.95)
-                : Colors.white.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(20),
+                ? AppColors.surface
+                : AppColors.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(
           color:
-              isUnread
-                  ? spec.color.withValues(alpha: 0.15)
-                  : Colors.white.withValues(alpha: 0.5),
+              isUnread ? spec.color.withValues(alpha: 0.15) : AppColors.divider,
           width: 1.5,
         ),
         boxShadow: [
@@ -349,10 +330,9 @@ class _NotificationCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         notification.title,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          color: const Color(0xFF1E3A2F),
+                        style: AppTypography.titleMedium.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.forest,
                         ),
                       ),
                     ),
@@ -376,11 +356,10 @@ class _NotificationCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   notification.body,
-                  style: TextStyle(
-                    color: const Color(0xFF1E3A2F).withValues(alpha: 0.62),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
                     height: 1.25,
-                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -388,9 +367,8 @@ class _NotificationCard extends StatelessWidget {
                   children: [
                     Text(
                       _relativeTime(notification.createdAt),
-                      style: TextStyle(
-                        color: const Color(0xFF1E3A2F).withValues(alpha: 0.42),
-                        fontSize: 12,
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.textTertiary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

@@ -266,26 +266,9 @@ class _WelcomeBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Positioned(
-          top: -80,
-          right: -80,
-          child: _blurCircle(AppColors.primary.withValues(alpha: 0.12), 260),
-        ),
-        Positioned(
-          bottom: -90,
-          left: -80,
-          child: _blurCircle(AppColors.forest.withValues(alpha: 0.12), 280),
-        ),
         Positioned.fill(child: CustomPaint(painter: _RouteGridPainter())),
+        Positioned.fill(child: CustomPaint(painter: _JourneyLinePainter())),
       ],
-    );
-  }
-
-  Widget _blurCircle(Color color, double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
   }
 }
@@ -303,6 +286,41 @@ class _RouteGridPainter extends CustomPainter {
     for (double y = 0; y < size.height; y += 32) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _JourneyLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = AppColors.primary.withValues(alpha: 0.08)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4
+          ..strokeCap = StrokeCap.round;
+    final path =
+        Path()
+          ..moveTo(size.width * 0.08, size.height * 0.18)
+          ..cubicTo(
+            size.width * 0.30,
+            size.height * 0.10,
+            size.width * 0.24,
+            size.height * 0.48,
+            size.width * 0.54,
+            size.height * 0.42,
+          )
+          ..cubicTo(
+            size.width * 0.82,
+            size.height * 0.36,
+            size.width * 0.70,
+            size.height * 0.76,
+            size.width * 0.93,
+            size.height * 0.72,
+          );
+    canvas.drawPath(path, paint);
   }
 
   @override

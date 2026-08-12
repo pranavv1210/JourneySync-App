@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_toast_premium.dart';
+import '../widgets/journey_screen.dart';
 import 'create_account_screen.dart';
 import 'home_screen.dart';
 import 'legal_document_screen.dart';
@@ -276,68 +277,57 @@ class _AuthShell extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back_rounded),
-              ),
-              const Spacer(),
-              Hero(
-                tag: 'journeysync-logo',
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.xl),
-                  child: Image.asset(
-                    'assets/logo.png',
-                    width: 76,
-                    height: 76,
-                    fit: BoxFit.cover,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const JourneyBackButton(),
+                  const SizedBox(height: AppSpacing.xxl),
+                  Hero(
+                    tag: 'journeysync-logo',
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.xl),
+                      child: Image.asset(
+                        'assets/logo.png',
+                        width: 76,
+                        height: 76,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: AppSpacing.xl),
+                  JourneyHeader(
+                    eyebrow: eyebrow,
+                    title: title,
+                    subtitle: subtitle,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  GlassCard(
+                    padding: const EdgeInsets.all(AppSpacing.xxl),
+                    elevated: true,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppVersion.label,
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xxl),
+                        action,
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Center(child: footer),
+                ],
               ),
-              const SizedBox(height: AppSpacing.xl),
-              GlassCard(
-                padding: const EdgeInsets.all(AppSpacing.xxl),
-                elevated: true,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      eyebrow,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      title,
-                      style: AppTypography.displaySmall.copyWith(
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      subtitle,
-                      style: AppTypography.bodyLarge.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'v${AppVersion.version}',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                    const SizedBox(height: AppSpacing.xxl),
-                    action,
-                  ],
-                ),
-              ),
-              const Spacer(),
-              Center(child: footer),
-            ],
+            ),
           ),
         ),
       ),

@@ -10,40 +10,84 @@ Future<void> showLegalDocumentDialog({
   TextStyle? titleStyle,
   Color? actionColor,
 }) {
-  return showDialog<void>(
+  return showGeneralDialog<void>(
     context: context,
-    builder: (context) {
-      return AlertDialog(
-        insetPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.xxl,
-        ),
-        title: Text(title, style: titleStyle),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Text(
-              content,
-              style:
-                  contentStyle ??
-                  AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
+    barrierDismissible: true,
+    barrierLabel: title,
+    transitionDuration: AppDurations.normal,
+    pageBuilder: (context, _, __) {
+      return Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 520, maxHeight: 640),
+            margin: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              border: Border.all(color: AppColors.divider),
+              boxShadow: AppShadows.lg,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style:
+                      titleStyle ??
+                      AppTypography.headlineSmall.copyWith(
+                        color: AppColors.forest,
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Text(
+                      content,
+                      style:
+                          contentStyle ??
+                          AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                            height: 1.55,
+                          ),
+                    ),
                   ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Close',
+                      style: AppTypography.buttonMedium.copyWith(
+                        color:
+                            actionColor ??
+                            Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Close',
-              style: TextStyle(
-                color: actionColor ?? Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
+      );
+    },
+    transitionBuilder: (context, animation, _, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: AppCurves.easeInOutCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
+          child: child,
+        ),
       );
     },
   );

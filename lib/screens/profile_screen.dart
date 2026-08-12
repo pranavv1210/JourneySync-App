@@ -10,6 +10,8 @@ import '../services/supabase_service.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/journey_screen.dart';
+import '../widgets/ride_loading_indicator.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -824,7 +826,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (_loading) {
       return const Scaffold(
         backgroundColor: AppColors.background,
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: RideLoadingIndicator(label: 'Loading profile')),
       );
     }
 
@@ -833,7 +835,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // Custom Header
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.xl,
@@ -841,37 +842,28 @@ class _ProfileScreenState extends State<ProfileScreen>
                 AppSpacing.xl,
                 AppSpacing.sm,
               ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    color: AppColors.textPrimary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Garage & Achievements',
-                    style: AppTypography.headlineMedium.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () async {
-                      final updated = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const EditProfileScreen(),
-                        ),
-                      );
-                      if (updated == true) {
-                        _loadProfileData();
-                      }
-                    },
-                    icon: const Icon(Icons.edit_rounded),
-                    color: AppColors.primary,
-                  ),
-                ],
+              child: JourneyHeader(
+                leading: JourneyBackButton(
+                  onPressed: () => Navigator.pop(context, true),
+                ),
+                eyebrow: 'RIDER IDENTITY',
+                title: 'Profile',
+                subtitle: 'Garage, stats, badges, and rider details.',
+                trailing: IconButton(
+                  onPressed: () async {
+                    final updated = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const EditProfileScreen(),
+                      ),
+                    );
+                    if (updated == true) {
+                      _loadProfileData();
+                    }
+                  },
+                  icon: const Icon(Icons.edit_rounded),
+                  color: AppColors.primary,
+                ),
               ),
             ),
 

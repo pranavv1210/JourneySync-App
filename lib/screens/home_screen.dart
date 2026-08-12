@@ -26,6 +26,7 @@ import 'ride_mode_screen.dart';
 import '../widgets/empty_state_card.dart';
 import '../widgets/feedback_sheet.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_bottom_sheet.dart';
 import '../widgets/ride_loading_indicator.dart';
 import '../models/ride_record.dart';
 import '../coordinators/active_ride_coordinator.dart';
@@ -1368,52 +1369,43 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
   Future<void> _showCreateRideSheet() async {
     unawaited(_recordFeedbackFeature('ride_launcher'));
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
+    final selected = await showAppBottomSheet<String>(
+      context,
       builder: (context) {
-        return Material(
-          color: AppColors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'What do you want to do?',
-                  style: AppTypography.headlineSmall.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _createOption(
-                  context,
-                  value: 'ride_now',
-                  icon: Icons.flash_on_rounded,
-                  title: 'Ride Now',
-                  subtitle:
-                      'Start instantly. Nearby riders can join if public.',
-                ),
-                _createOption(
-                  context,
-                  value: 'plan_together',
-                  icon: Icons.event_rounded,
-                  title: 'Plan Together',
-                  subtitle: 'Schedule, invite, and organize with your crew.',
-                ),
-                _createOption(
-                  context,
-                  value: 'explore_solo',
-                  icon: Icons.landscape_rounded,
-                  title: 'Explore Solo',
-                  subtitle: 'Private navigation, stats, and memories.',
-                ),
-              ],
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'What do you want to do?',
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          ),
+            const SizedBox(height: 14),
+            _createOption(
+              context,
+              value: 'ride_now',
+              icon: Icons.flash_on_rounded,
+              title: 'Ride Now',
+              subtitle: 'Start instantly. Nearby riders can join if public.',
+            ),
+            _createOption(
+              context,
+              value: 'plan_together',
+              icon: Icons.event_rounded,
+              title: 'Plan Together',
+              subtitle: 'Schedule, invite, and organize with your crew.',
+            ),
+            _createOption(
+              context,
+              value: 'explore_solo',
+              icon: Icons.landscape_rounded,
+              title: 'Explore Solo',
+              subtitle: 'Private navigation, stats, and memories.',
+            ),
+          ],
         );
       },
     );

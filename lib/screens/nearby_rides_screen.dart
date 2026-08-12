@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../coordinators/realtime_coordinator.dart';
 import '../models/ride_record.dart';
 import '../widgets/app_toast.dart';
+import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/haptic_button.dart';
 import '../services/ride_service.dart';
@@ -413,63 +414,9 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
 
   @override
   Widget build(BuildContext context) {
-    const background = Color(0xFFF8F7F6);
-    const forest = Color(0xFF1E3A2F);
-    const primary = Color(0xFFD46211);
-
     return Scaffold(
-      backgroundColor: background,
-      appBar: AppBar(
-        title: const Text(
-          'Nearby Rides',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-            color: forest,
-          ),
-        ),
-        backgroundColor: background,
-        foregroundColor: forest,
-        elevation: 0,
-        centerTitle: true,
-        leading: Builder(
-          builder:
-              (context) => GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  margin: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFD46211).withValues(alpha: 0.2),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    color: forest,
-                    size: 16,
-                  ),
-                ),
-              ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: joiningByCode ? null : _showJoinByCodeDialog,
-            tooltip: 'Join with access code',
-            icon: const Icon(Icons.key_rounded),
-          ),
-        ],
-      ),
-      body: _content(primary, forest),
+      backgroundColor: AppColors.background,
+      body: SafeArea(child: _content(AppColors.primary, AppColors.forest)),
     );
   }
 
@@ -575,6 +522,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     if (searching || nearbyRides.isEmpty) {
       return Column(
         children: [
+          _screenHeader(),
           weatherWidget,
           Expanded(
             child: _radarExperience(
@@ -589,6 +537,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
 
     return Column(
       children: [
+        _screenHeader(),
         weatherWidget,
         const SizedBox(height: 4),
         _radarSurface(primary, forest, nearbyRides),
@@ -611,6 +560,23 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         const SizedBox(height: 10),
         Expanded(child: _rideList(primary, forest)),
       ],
+    );
+  }
+
+  Widget _screenHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+      child: JourneyHeader(
+        leading: const JourneyBackButton(),
+        eyebrow: 'RIDE RADAR',
+        title: 'Nearby Rides',
+        subtitle: 'Discover public rides broadcasting near your location.',
+        trailing: IconButton(
+          onPressed: joiningByCode ? null : _showJoinByCodeDialog,
+          tooltip: 'Join with access code',
+          icon: const Icon(Icons.key_rounded, color: AppColors.forest),
+        ),
+      ),
     );
   }
 

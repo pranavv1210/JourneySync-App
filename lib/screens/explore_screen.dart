@@ -4,6 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/app_navigation.dart';
 import '../services/weather_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_bottom_sheet.dart';
+import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
 import 'create_ride_screen.dart';
@@ -119,38 +121,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   void _showWeatherDetails() {
     final weather = _weather;
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
+    showAppBottomSheet<void>(
+      context,
       builder: (context) {
-        return Material(
-          color: AppColors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: Padding(
-            padding: const EdgeInsets.all(22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Ride Conditions',
-                  style: AppTypography.headlineSmall.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _detailRow('Ride score', '$_rideScore/100'),
-                _detailRow('Weather', weather?.displayText ?? 'Unavailable'),
-                _detailRow('Rain', '${weather?.rainChance ?? 0}%'),
-                _detailRow('Wind', '${weather?.windSpeed.round() ?? 0} km/h'),
-                _detailRow(
-                  'Visibility',
-                  '${weather?.visibility.round() ?? 0} km',
-                ),
-              ],
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ride Conditions',
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          ),
+            const SizedBox(height: 14),
+            _detailRow('Ride score', '$_rideScore/100'),
+            _detailRow('Weather', weather?.displayText ?? 'Unavailable'),
+            _detailRow('Rain', '${weather?.rainChance ?? 0}%'),
+            _detailRow('Wind', '${weather?.windSpeed.round() ?? 0} km/h'),
+            _detailRow('Visibility', '${weather?.visibility.round() ?? 0} km'),
+          ],
         );
       },
     );
@@ -181,91 +172,82 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _showDestination(_Destination destination) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    showAppBottomSheet<void>(
+      context,
       builder: (context) {
-        return Material(
-          color: AppColors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              child: Image.network(
+                destination.image,
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  child: Image.network(
-                    destination.image,
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
+                Expanded(
+                  child: Text(
+                    destination.name,
+                    style: AppTypography.headlineSmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        destination.name,
-                        style: AppTypography.headlineSmall.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      destination.distance,
-                      style: AppTypography.titleMedium.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
                 Text(
-                  destination.description,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
+                  destination.distance,
+                  style: AppTypography.titleMedium.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w900,
                   ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _openMaps(destination.mapQuery),
-                        icon: const Icon(Icons.navigation_rounded),
-                        label: const Text('Navigate'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            buildAppRoute(
-                              CreateRideScreen(
-                                initialRideName: '${destination.name} ride',
-                                initialDestination: destination.mapQuery,
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text('Create Ride'),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 8),
+            Text(
+              destination.description,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openMaps(destination.mapQuery),
+                    icon: const Icon(Icons.navigation_rounded),
+                    label: const Text('Navigate'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        buildAppRoute(
+                          CreateRideScreen(
+                            initialRideName: '${destination.name} ride',
+                            initialDestination: destination.mapQuery,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Create Ride'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         );
       },
     );
@@ -275,20 +257,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-        title: Text(
-          'Explore',
-          style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
         children: [
+          const JourneyHeader(
+            leading: JourneyBackButton(),
+            eyebrow: 'DISCOVER',
+            title: 'Explore Rides',
+            subtitle:
+                'Ride-ready destinations, conditions, and essentials around you.',
+          ),
+          const SizedBox(height: AppSpacing.xl),
           _conditionsCard(),
           const SizedBox(height: 24),
           _sectionTitle('Popular Destinations'),
@@ -469,7 +448,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget _essentialButton(EssentialType type) {
     return Expanded(
       child: GlassCard(
-        onTap: () => _showComingSoon(_essentialLabel(type)),
+        onTap:
+            () => Navigator.push(
+              context,
+              buildAppRoute(NearbyEssentialsScreen(type: type)),
+            ),
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Column(
           children: [
@@ -538,14 +521,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
             }).toList(),
       ),
     );
-  }
-
-  String _essentialLabel(EssentialType type) {
-    return switch (type) {
-      EssentialType.fuel => 'Fuel',
-      EssentialType.cafes => 'Cafes',
-      EssentialType.mechanics => 'Mechanics',
-    };
   }
 
   void _showComingSoon(String label) {

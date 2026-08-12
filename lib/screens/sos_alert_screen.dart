@@ -6,7 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../theme/app_theme.dart';
+import '../widgets/app_error_state.dart';
 import '../widgets/app_toast.dart';
+import '../widgets/journey_screen.dart';
+import '../widgets/ride_loading_indicator.dart';
 
 class SosAlertScreen extends StatefulWidget {
   const SosAlertScreen({super.key, required this.rideId});
@@ -375,30 +379,24 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const danger = Color(0xFFC72929);
-    const dangerDark = Color(0xFF991B1B);
-    const primary = Color(0xFFD46211);
-    const forest = Color(0xFF1E3A2F);
-    const background = Color(0xFFF8F7F6);
-    const panel = Color(0xFFF4F0EB);
+    const danger = AppColors.error;
+    const dangerDark = AppColors.emergency;
+    const primary = AppColors.primary;
+    const forest = AppColors.forest;
+    const background = AppColors.background;
+    const panel = AppColors.surfaceAlt;
 
     if (loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: RideLoadingIndicator(label: 'Opening SOS')),
+      );
     }
 
     if (loadError.isNotEmpty) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              loadError,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
+      return JourneyScreen(
+        scrollable: false,
+        child: AppErrorState(message: loadError, onRetry: _load),
       );
     }
 

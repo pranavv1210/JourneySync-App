@@ -8,6 +8,8 @@ import 'dart:ui' show ImageFilter;
 import '../theme/app_theme.dart';
 import '../services/weather_service.dart';
 import '../widgets/app_toast.dart';
+import '../widgets/journey_screen.dart';
+import '../widgets/ride_loading_indicator.dart';
 import 'ride_mode_screen.dart';
 import '../services/ride_service.dart';
 import '../services/app_navigation.dart';
@@ -888,14 +890,17 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFFF26C0D);
-    const primaryDark = Color(0xFFC05306);
-    const background = Color(0xFFF8F7F5);
-    const forest = Color(0xFF1F4A33);
-    const sand = Color(0xFFE8E4DB);
+    const primary = AppColors.primary;
+    const primaryDark = AppColors.primaryDark;
+    const background = AppColors.background;
+    const forest = AppColors.forest;
+    const sand = AppColors.surfaceAlt;
 
     if (loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: RideLoadingIndicator(label: 'Opening lobby')),
+      );
     }
 
     return Scaffold(
@@ -937,53 +942,41 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   Widget _topBar(Color primary) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, size: 24),
-          ),
-          Text(
-            "LOBBY",
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 2,
-              color: primary,
-            ),
-          ),
-          PopupMenuButton<String>(
-            tooltip: 'More options',
-            icon: const Icon(Icons.more_vert, size: 24),
-            onSelected: (value) async {
-              switch (value) {
-                case 'copy_code':
-                  await _copyAccessCode();
-                  break;
-                case 'edit_briefing':
-                  await _editBriefing();
-                  break;
-                case 'refresh':
-                  await _reloadLobbyData();
-                  break;
-              }
-            },
-            itemBuilder:
-                (context) => [
+      child: JourneyHeader(
+        leading: const JourneyBackButton(),
+        eyebrow: 'PRE-RIDE COMMAND',
+        title: 'Ride Lobby',
+        subtitle: 'Confirm route, riders, access, and briefing before start.',
+        trailing: PopupMenuButton<String>(
+          tooltip: 'More options',
+          icon: const Icon(Icons.more_vert, size: 24),
+          onSelected: (value) async {
+            switch (value) {
+              case 'copy_code':
+                await _copyAccessCode();
+                break;
+              case 'edit_briefing':
+                await _editBriefing();
+                break;
+              case 'refresh':
+                await _reloadLobbyData();
+                break;
+            }
+          },
+          itemBuilder:
+              (context) => [
+                const PopupMenuItem(
+                  value: 'copy_code',
+                  child: Text('Copy Access Code'),
+                ),
+                if (_isCurrentUserHost())
                   const PopupMenuItem(
-                    value: 'copy_code',
-                    child: Text('Copy Access Code'),
+                    value: 'edit_briefing',
+                    child: Text('Edit Ride Briefing'),
                   ),
-                  if (_isCurrentUserHost())
-                    const PopupMenuItem(
-                      value: 'edit_briefing',
-                      child: Text('Edit Ride Briefing'),
-                    ),
-                  const PopupMenuItem(value: 'refresh', child: Text('Refresh')),
-                ],
-          ),
-        ],
+                const PopupMenuItem(value: 'refresh', child: Text('Refresh')),
+              ],
+        ),
       ),
     );
   }

@@ -5,9 +5,12 @@ import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/ride_record.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_button.dart';
 import '../widgets/app_toast.dart';
 import '../services/ride_service.dart';
 import '../widgets/empty_state_card.dart';
+import '../widgets/premium/glass_card.dart';
 import '../widgets/ride_loading_indicator.dart';
 
 class MapScreen extends StatefulWidget {
@@ -188,27 +191,10 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const background = Color(0xFFF8F7F6);
-    const forest = Color(0xFF1E3A2F);
-    const primary = Color(0xFFD46211);
     final selected = selectedRide;
 
     return Scaffold(
-      backgroundColor: background,
-      appBar: AppBar(
-        title: const Text('Nearby Live Radar'),
-        centerTitle: false,
-        backgroundColor: background,
-        foregroundColor: forest,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: loading ? null : _loadRadarData,
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           Positioned.fill(
@@ -230,16 +216,16 @@ class _MapScreenState extends State<MapScreen> {
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.journeysync.app',
                 ),
-                MarkerLayer(markers: _buildRideMarkers(primary)),
-                MarkerLayer(markers: _buildMyLocationMarker(forest)),
+                MarkerLayer(markers: _buildRideMarkers(AppColors.primary)),
+                MarkerLayer(markers: _buildMyLocationMarker(AppColors.forest)),
               ],
             ),
           ),
           Positioned(
-            top: 12,
-            left: 12,
-            right: 12,
-            child: _statusBanner(primary, forest),
+            top: MediaQuery.paddingOf(context).top + 12,
+            left: 14,
+            right: 14,
+            child: _radarHud(),
           ),
           Positioned(
             right: 12,
@@ -247,8 +233,8 @@ class _MapScreenState extends State<MapScreen> {
             child: FloatingActionButton.small(
               onPressed: _focusMyLocation,
               heroTag: 'focus-my-location',
-              backgroundColor: Colors.white,
-              foregroundColor: forest,
+              backgroundColor: AppColors.surface,
+              foregroundColor: AppColors.forest,
               child: const Icon(Icons.my_location),
             ),
           ),
@@ -257,23 +243,53 @@ class _MapScreenState extends State<MapScreen> {
               left: 14,
               right: 14,
               bottom: 14,
-              child: _rideInfoCard(selected, forest, primary),
+              child: _rideInfoCard(
+                selected,
+                AppColors.forest,
+                AppColors.primary,
+              ),
             )
           else
             Positioned(
               left: 14,
               right: 14,
               bottom: 14,
-              child: _ridesTray(primary, forest),
+              child: _ridesTray(AppColors.primary, AppColors.forest),
             ),
           if (loading)
             Center(
               child: RideLoadingIndicator(
                 label: 'Scanning radar...',
                 compact: true,
-                color: primary,
+                color: AppColors.primary,
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _radarHud() {
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      opacity: 0.9,
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.maybePop(context),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            color: AppColors.forest,
+            tooltip: 'Back',
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(child: _statusBanner(AppColors.primary, AppColors.forest)),
+          const SizedBox(width: AppSpacing.sm),
+          IconButton(
+            onPressed: loading ? null : _loadRadarData,
+            tooltip: 'Refresh',
+            icon: const Icon(Icons.refresh_rounded),
+            color: AppColors.forest,
+          ),
         ],
       ),
     );
@@ -298,7 +314,7 @@ class _MapScreenState extends State<MapScreen> {
             },
             child: Container(
               decoration: BoxDecoration(
-                color: ride.joined ? const Color(0xFF2FA865) : primary,
+                color: ride.joined ? AppColors.success : primary,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
                 boxShadow: [
@@ -360,52 +376,32 @@ class _MapScreenState extends State<MapScreen> {
             : nearbyRides.isEmpty
             ? 'No live rides near you right now.'
             : '${nearbyRides.length} live ride(s) within radar range';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: forest.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            errorText.isNotEmpty ? Icons.error_outline : Icons.radar_rounded,
-            color: errorText.isNotEmpty ? Colors.red : primary,
-            size: 18,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: forest.withValues(alpha: 0.82),
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-              ),
+    return Row(
+      children: [
+        Icon(
+          errorText.isNotEmpty ? Icons.error_outline : Icons.radar_rounded,
+          color: errorText.isNotEmpty ? Colors.red : primary,
+          size: 18,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            message,
+            style: AppTypography.bodySmall.copyWith(
+              color: forest.withValues(alpha: 0.82),
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _rideInfoCard(NearbyRide ride, Color forest, Color primary) {
     final joining = joiningRideId == ride.ride.id;
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: forest.withValues(alpha: 0.1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      opacity: 0.94,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,10 +410,9 @@ class _MapScreenState extends State<MapScreen> {
             ride.ride.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: AppTypography.titleMedium.copyWith(
               color: forest,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 4),
@@ -425,38 +420,18 @@ class _MapScreenState extends State<MapScreen> {
             '${_distanceFromMe(ride)} • Host: ${ride.hostName}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: AppTypography.bodySmall.copyWith(
               color: forest.withValues(alpha: 0.68),
-              fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed:
-                  (ride.joined || joining) ? null : () => _joinRide(ride),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: ride.joined ? Colors.grey.shade300 : primary,
-                foregroundColor: ride.joined ? Colors.black54 : Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child:
-                  joining
-                      ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : Text(
-                        ride.joined ? 'Joined Ride' : 'Join Ride',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-            ),
+          AppButton(
+            label: ride.joined ? 'Joined Ride' : 'Join Ride',
+            icon: ride.joined ? Icons.check_rounded : Icons.add_rounded,
+            loading: joining,
+            disabled: ride.joined || joining,
+            onPressed: (ride.joined || joining) ? null : () => _joinRide(ride),
           ),
         ],
       ),
@@ -465,13 +440,8 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _ridesTray(Color primary, Color forest) {
     if (nearbyRides.isEmpty) {
-      return Container(
+      return GlassCard(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: forest.withValues(alpha: 0.1)),
-        ),
         child: EmptyStateCard(
           title: 'No riders nearby',
           message: 'Ask your group to start a ride and come online.',
@@ -481,23 +451,17 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: forest.withValues(alpha: 0.1)),
-      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Tap any ride marker to view details and join',
-            style: TextStyle(
+            style: AppTypography.bodySmall.copyWith(
               color: forest.withValues(alpha: 0.74),
               fontWeight: FontWeight.w600,
-              fontSize: 12,
             ),
           ),
         ],

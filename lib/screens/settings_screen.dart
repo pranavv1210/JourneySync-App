@@ -9,6 +9,7 @@ import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/feedback_sheet.dart';
+import '../widgets/journey_screen.dart';
 import '../services/app_navigation.dart';
 import '../services/app_version.dart';
 import '../services/auth_service.dart';
@@ -85,7 +86,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.xl,
@@ -93,21 +93,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 AppSpacing.xl,
                 AppSpacing.sm,
               ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    color: AppColors.textPrimary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Profile',
-                    style: AppTypography.headlineMedium.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
+              child: const JourneyHeader(
+                leading: JourneyBackButton(),
+                eyebrow: 'CONTROL CENTER',
+                title: 'Settings',
+                subtitle: 'Account, safety, feedback, legal, and app details.',
               ),
             ),
             Expanded(

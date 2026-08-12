@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../widgets/journey_screen.dart';
 import '../widgets/ride_flow_map_preview.dart';
 import 'ride_mode_screen.dart';
 
@@ -68,94 +69,77 @@ class _RideNowScreenState extends State<RideNowScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(context),
-              const SizedBox(height: AppSpacing.xxxl),
-              Text(
-                'Ride Now',
-                style: AppTypography.displaySmall.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Start riding immediately. Make it public if nearby riders can join.',
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              const RideFlowMapPreview(
-                title: 'Live start point',
-                subtitle: 'Your ride starts from your current location.',
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              GlassCard(
-                elevated: true,
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _sectionLabel('OPTIONAL DESTINATION'),
-                    const SizedBox(height: AppSpacing.sm),
-                    TextField(
-                      controller: _destinationController,
-                      decoration: const InputDecoration(
-                        hintText: 'Where are you heading?',
-                        prefixIcon: Icon(Icons.flag_rounded),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    _visibilityToggle(),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              PremiumButton(
-                label: _starting ? 'Starting ride...' : 'Start Ride Now',
-                icon: Icons.flash_on_rounded,
-                loading: _starting,
-                disabled: _starting,
-                onPressed: _startRide,
-              ),
-            ],
+    return JourneyScreen(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const JourneyHeader(
+            leading: JourneyBackButton(),
+            eyebrow: 'FAST START',
+            title: 'Ride Now',
+            subtitle:
+                'Start immediately. Make it public if nearby riders can join.',
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _header(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-          ),
-          child: Text(
-            'FAST START',
-            style: AppTypography.labelSmall.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w900,
+          const SizedBox(height: AppSpacing.xl),
+          JourneyHeroBand(
+            icon: Icons.flash_on_rounded,
+            color: AppColors.primary,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "You're one tap from going live.",
+                  style: AppTypography.headlineSmall.copyWith(
+                    color: AppColors.forest,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Destination is optional for an open ride. Your current location becomes the start point.',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.xxl),
+          const RideFlowMapPreview(
+            title: 'Live start point',
+            subtitle: 'Your ride starts from your current location.',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          GlassCard(
+            elevated: true,
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _sectionLabel('OPTIONAL DESTINATION'),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: _destinationController,
+                  decoration: const InputDecoration(
+                    hintText: 'Where are you heading?',
+                    prefixIcon: Icon(Icons.flag_rounded),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                _visibilityToggle(),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+          PremiumButton(
+            label: _starting ? 'Starting ride...' : 'Start Ride Now',
+            icon: Icons.flash_on_rounded,
+            loading: _starting,
+            disabled: _starting,
+            onPressed: _startRide,
+          ),
+        ],
+      ),
     );
   }
 

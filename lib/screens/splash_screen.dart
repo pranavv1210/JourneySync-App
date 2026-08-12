@@ -79,42 +79,8 @@ class _SplashScreenState extends State<SplashScreen>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Ambient gradient orbs
-                Positioned(
-                  top: -60,
-                  right: -40,
-                  child: Container(
-                    width: 260,
-                    height: 260,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -40,
-                  left: -60,
-                  child: Container(
-                    width: 240,
-                    height: 240,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.forest.withValues(alpha: 0.08),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 240,
-                  left: -80,
-                  child: Container(
-                    width: 180,
-                    height: 180,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primary.withValues(alpha: 0.05),
-                    ),
-                  ),
+                Positioned.fill(
+                  child: CustomPaint(painter: _SplashTopographyPainter()),
                 ),
 
                 JourneyIntroAnimation(animation: _introController),
@@ -139,6 +105,58 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
   }
+}
+
+class _SplashTopographyPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gridPaint =
+        Paint()
+          ..color = AppColors.forest.withValues(alpha: 0.035)
+          ..strokeWidth = 1;
+    for (double y = 40; y < size.height; y += 44) {
+      final path = Path()..moveTo(0, y);
+      path.cubicTo(
+        size.width * 0.25,
+        y - 18,
+        size.width * 0.65,
+        y + 18,
+        size.width,
+        y - 4,
+      );
+      canvas.drawPath(path, gridPaint);
+    }
+
+    final routePaint =
+        Paint()
+          ..color = AppColors.primary.withValues(alpha: 0.08)
+          ..strokeWidth = 5
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
+    final route =
+        Path()
+          ..moveTo(size.width * 0.12, size.height * 0.18)
+          ..cubicTo(
+            size.width * 0.28,
+            size.height * 0.30,
+            size.width * 0.18,
+            size.height * 0.58,
+            size.width * 0.48,
+            size.height * 0.64,
+          )
+          ..cubicTo(
+            size.width * 0.74,
+            size.height * 0.69,
+            size.width * 0.68,
+            size.height * 0.34,
+            size.width * 0.88,
+            size.height * 0.26,
+          );
+    canvas.drawPath(route, routePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class JourneyIntroAnimation extends StatelessWidget {

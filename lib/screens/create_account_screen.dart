@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_toast_premium.dart';
+import '../widgets/journey_screen.dart';
 import 'home_screen.dart';
 import 'sign_in_screen.dart';
 
@@ -33,135 +34,137 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back_rounded),
+    return JourneyScreen(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const JourneyHeader(
+            leading: JourneyBackButton(),
+            eyebrow: 'NEW RIDER',
+            title: 'Create your rider profile',
+            subtitle:
+                'Google creates the account. These details shape your JourneySync identity.',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Hero(
+            tag: 'journeysync-logo',
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              child: Image.asset(
+                'assets/logo.png',
+                width: 72,
+                height: 72,
+                fit: BoxFit.cover,
               ),
-              const Spacer(),
-              GlassCard(
-                padding: const EdgeInsets.all(AppSpacing.xxl),
-                elevated: true,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'CREATE ACCOUNT',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'Set up your rider profile.',
-                      style: AppTypography.displaySmall.copyWith(
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'Google is the preferred onboarding method. Phone verification can be added later in settings.',
-                      style: AppTypography.bodyLarge.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    TextField(
-                      controller: _nameController,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: InputDecoration(
-                        hintText: 'Your rider name',
-                        labelText: 'FULL NAME',
-                        hintStyle: const TextStyle(
-                          color: AppColors.textTertiary,
-                        ),
-                        labelStyle: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.person_outline_rounded,
-                          color: AppColors.textSecondary,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.surface,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    TextField(
-                      controller: _bikeController,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: InputDecoration(
-                        hintText: 'e.g. Himalayan 450',
-                        labelText: 'BIKE',
-                        hintStyle: const TextStyle(
-                          color: AppColors.textTertiary,
-                        ),
-                        labelStyle: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.two_wheeler_outlined,
-                          color: AppColors.textSecondary,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.surface,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxl),
-                    AppButton(
-                      label:
-                          _loading
-                              ? 'Creating account...'
-                              : 'Create Account with Google',
-                      icon: _loading ? null : null,
-                      customIcon:
-                          _loading
-                              ? null
-                              : SvgPicture.asset(
-                                'assets/google_logo.svg',
-                                width: 24,
-                                height: 24,
-                              ),
-                      loading: _loading,
-                      onPressed: _loading ? null : _createAccount,
-                    ),
-                  ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          GlassCard(
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            elevated: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CREATE ACCOUNT',
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.primary,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Center(
-                child: TextButton(
-                  onPressed:
-                      () => replaceWithAppRoute<void, void>(
-                        context,
-                        const SignInScreen(),
-                      ),
-                  child: Text(
-                    'Already have an account? Sign In',
-                    style: AppTypography.buttonMedium.copyWith(
-                      color: AppColors.primary,
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Set up your rider profile.',
+                  style: AppTypography.displaySmall.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Google is the preferred onboarding method. Phone verification can be added later in settings.',
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                TextField(
+                  controller: _nameController,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Your rider name',
+                    labelText: 'FULL NAME',
+                    hintStyle: const TextStyle(color: AppColors.textTertiary),
+                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    prefixIcon: const Icon(
+                      Icons.person_outline_rounded,
+                      color: AppColors.textSecondary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: AppSpacing.lg),
+                TextField(
+                  controller: _bikeController,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Himalayan 450',
+                    labelText: 'BIKE',
+                    hintStyle: const TextStyle(color: AppColors.textTertiary),
+                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    prefixIcon: const Icon(
+                      Icons.two_wheeler_outlined,
+                      color: AppColors.textSecondary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xxl),
+                AppButton(
+                  label:
+                      _loading
+                          ? 'Creating account...'
+                          : 'Create Account with Google',
+                  icon: _loading ? null : null,
+                  customIcon:
+                      _loading
+                          ? null
+                          : SvgPicture.asset(
+                            'assets/google_logo.svg',
+                            width: 24,
+                            height: 24,
+                          ),
+                  loading: _loading,
+                  onPressed: _loading ? null : _createAccount,
+                ),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: AppSpacing.xl),
+          Center(
+            child: TextButton(
+              onPressed:
+                  () => replaceWithAppRoute<void, void>(
+                    context,
+                    const SignInScreen(),
+                  ),
+              child: Text(
+                'Already have an account? Sign In',
+                style: AppTypography.buttonMedium.copyWith(
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

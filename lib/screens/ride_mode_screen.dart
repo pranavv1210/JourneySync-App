@@ -862,11 +862,11 @@ class _RideModeScreenState extends State<RideModeScreen>
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-        backgroundColor: Color(0xFFF4EFEA),
+        backgroundColor: AppColors.background,
         body: Center(
           child: RideLoadingIndicator(
-            label: 'Starting Ride…',
-            color: Color(0xFFFF6A00),
+            label: 'Starting live ride...',
+            color: AppColors.primary,
           ),
         ),
       );

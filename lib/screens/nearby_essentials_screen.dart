@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/empty_state_card.dart';
+import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/ride_loading_indicator.dart';
 
@@ -133,33 +134,33 @@ class _NearbyEssentialsScreenState extends State<NearbyEssentialsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-        title: Text(
-          widget.type.title,
-          style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ),
       body:
           _loading
               ? const Center(child: RideLoadingIndicator(label: 'Searching'))
               : _error.isNotEmpty
-              ? EmptyStateCard(
-                title: widget.type.title,
-                message: _error,
-                icon: widget.type.icon,
-                foreground: AppColors.forest,
+              ? JourneyScreen(
+                scrollable: false,
+                child: EmptyStateCard(
+                  title: widget.type.title,
+                  message: _error,
+                  icon: widget.type.icon,
+                  foreground: AppColors.forest,
+                ),
               )
               : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
-                itemCount: _places.length,
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                itemCount: _places.length + 1,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final place = _places[index];
+                  if (index == 0) {
+                    return JourneyHeader(
+                      leading: const JourneyBackButton(),
+                      eyebrow: 'NEARBY ESSENTIALS',
+                      title: widget.type.title,
+                      subtitle: 'Useful stops around your current riding area.',
+                    );
+                  }
+                  final place = _places[index - 1];
                   return GlassCard(
                     padding: const EdgeInsets.all(16),
                     child: Row(

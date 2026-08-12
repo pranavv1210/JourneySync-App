@@ -7,6 +7,7 @@ import '../services/app_navigation.dart';
 import '../services/ride_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/empty_state_card.dart';
+import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/ride_loading_indicator.dart';
 import 'ride_lobby_screen.dart';
@@ -87,17 +88,6 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
     final activeSnapshot = ActiveRideCoordinator.instance.snapshot;
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-        title: Text(
-          'My Rides',
-          style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ),
       body:
           _loading
               ? const Center(
@@ -106,8 +96,16 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
               : RefreshIndicator(
                 onRefresh: _loadRides,
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
                   children: [
+                    const JourneyHeader(
+                      leading: JourneyBackButton(),
+                      eyebrow: 'RIDE JOURNAL',
+                      title: 'My Rides',
+                      subtitle:
+                          'Active rides, upcoming plans, and completed journeys in one place.',
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
                     _statsCard(),
                     const SizedBox(height: 22),
                     _section(

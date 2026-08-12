@@ -10,7 +10,9 @@ import 'ride_summary_screen.dart';
 import 'ride_mode_screen.dart';
 import 'package:intl/intl.dart';
 import '../widgets/empty_state_card.dart';
+import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
+import '../widgets/ride_loading_indicator.dart';
 import 'dart:ui' as ui;
 
 class RideHistoryScreen extends StatefulWidget {
@@ -178,67 +180,43 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFFF26C0D);
-    const background = Color(0xFFF8F7F5);
-    const forest = Color(0xFF1F4A33);
-    const sandDarker = Color(0xFFDED0BC);
+    const primary = AppColors.primary;
+    const forest = AppColors.forest;
 
     return Scaffold(
-      backgroundColor: background,
-      appBar: AppBar(
-        title: const Text(
-          'Ride History',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-            color: forest,
-          ),
-        ),
-        backgroundColor: background,
-        foregroundColor: forest,
-        elevation: 0,
-        leading: Builder(
-          builder:
-              (context) => GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  margin: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: sandDarker.withValues(alpha: 0.5),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    color: forest,
-                    size: 16,
-                  ),
-                ),
-              ),
-        ),
-        centerTitle: true,
-      ),
+      backgroundColor: AppColors.background,
       body:
           loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(
+                child: RideLoadingIndicator(label: 'Loading ride journal'),
+              )
               : allRides.isEmpty
-              ? const EmptyStateCard(
-                title: 'No journeys yet',
-                message: 'Finished and scheduled rides will appear here.',
-                icon: Icons.history_rounded,
-                foreground: forest,
+              ? const JourneyScreen(
+                scrollable: false,
+                child: EmptyStateCard(
+                  title: 'No journeys yet',
+                  message: 'Finished and scheduled rides will appear here.',
+                  icon: Icons.history_rounded,
+                  foreground: forest,
+                ),
               )
               : ListView.builder(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                itemCount: allRides.length,
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                itemCount: allRides.length + 1,
                 itemBuilder: (context, index) {
-                  final ride = allRides[index];
+                  if (index == 0) {
+                    return const Padding(
+                      padding: EdgeInsets.only(bottom: AppSpacing.xl),
+                      child: JourneyHeader(
+                        leading: JourneyBackButton(),
+                        eyebrow: 'RIDE JOURNAL',
+                        title: 'Ride History',
+                        subtitle:
+                            'Completed rides, scheduled plans, and ride summaries.',
+                      ),
+                    );
+                  }
+                  final ride = allRides[index - 1];
                   final title =
                       ride.title.trim().isNotEmpty ? ride.title : "Ride";
                   final destination =

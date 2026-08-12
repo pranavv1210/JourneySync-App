@@ -9,6 +9,8 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../widgets/journey_screen.dart';
+import '../widgets/ride_loading_indicator.dart';
 import '../services/supabase_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -210,7 +212,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.xl,
@@ -218,28 +219,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 AppSpacing.xl,
                 AppSpacing.sm,
               ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    color: AppColors.textPrimary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Edit Profile',
-                    style: AppTypography.headlineMedium.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
+              child: const JourneyHeader(
+                leading: JourneyBackButton(),
+                eyebrow: 'RIDER DETAILS',
+                title: 'Edit Profile',
+                subtitle:
+                    'Update your public identity, bike, and contact details.',
               ),
             ),
 
             Expanded(
               child:
                   _loading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const Center(
+                        child: RideLoadingIndicator(label: 'Loading profile'),
+                      )
                       : SingleChildScrollView(
                         padding: const EdgeInsets.all(AppSpacing.xl),
                         child: Column(
