@@ -237,7 +237,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
           'Ride Completed!',
           style: TextStyle(
             fontSize: 28,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             fontFamily: AppTypography.fontFamily,
           ),
         ),
@@ -342,7 +342,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
               label.toUpperCase(),
               style: TextStyle(
                 fontSize: 10,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 letterSpacing: 1.2,
                 color: color,
               ),
@@ -352,7 +352,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
       ],
     );
@@ -365,7 +365,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
           label.toUpperCase(),
           style: const TextStyle(
             fontSize: 9,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             color: Colors.grey,
             letterSpacing: 1.2,
           ),
@@ -407,7 +407,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                     style: TextStyle(
                       color: primary,
                       fontSize: 24,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -421,7 +421,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                       RideAnalyticsEngine.scoreLabelText(data.scoreLabel),
                       style: const TextStyle(
                         fontSize: 20,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         fontFamily: AppTypography.fontFamily,
                       ),
                     ),
@@ -477,7 +477,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
             'RIDE INSIGHTS',
             style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: Colors.grey,
               letterSpacing: 1.5,
             ),
@@ -531,7 +531,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                             achievement,
                             style: const TextStyle(
                               color: Color(0xFF00A8B0),
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w700,
                               fontSize: 11,
                             ),
                           ),
@@ -609,7 +609,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
               'RODE WITH',
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 color: Colors.grey,
                 letterSpacing: 2,
               ),
@@ -625,7 +625,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                 '${participants.length}',
                 style: const TextStyle(
                   fontSize: 10,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   color: Color(0xFF00C2CB),
                 ),
               ),
@@ -666,7 +666,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                     children: [
                       Text(
                         item.name,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       Text(
                         item.bike,
@@ -726,7 +726,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
       child: Text(
         initial,
         style: const TextStyle(
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           color: Color(0xFF00C2CB),
         ),
       ),
@@ -853,7 +853,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
               'Share Ride Progress',
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 fontFamily: AppTypography.fontFamily,
               ),
             ),
@@ -882,7 +882,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                   'View Full History',
                   style: TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     color: Colors.white,
                     fontFamily: AppTypography.fontFamily,
                   ),
@@ -1020,7 +1020,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                                     'JOURNEYSYNC V2',
                                     style: TextStyle(
                                       color: Color(0xFFFF6A00),
-                                      fontWeight: FontWeight.w900,
+                                      fontWeight: FontWeight.w700,
                                       fontSize: 10,
                                       letterSpacing: 1.0,
                                     ),

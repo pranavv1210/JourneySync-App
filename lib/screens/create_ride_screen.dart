@@ -447,7 +447,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
           'RIDE NAME',
           style: AppTypography.labelMedium.copyWith(
             color: AppColors.textSecondary,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 8),
@@ -463,7 +463,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
             textInputAction: TextInputAction.next,
             style: AppTypography.titleLarge.copyWith(
               color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
             ),
             decoration: InputDecoration(
               hintText: 'Sunday breakfast ride',
@@ -1109,7 +1109,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                                       overflow: TextOverflow.ellipsis,
                                       style: AppTypography.titleMedium.copyWith(
                                         color: AppColors.forest,
-                                        fontWeight: FontWeight.w800,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ),

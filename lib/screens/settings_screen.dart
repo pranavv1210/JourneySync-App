@@ -346,7 +346,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         'PROFILE',
                         style: AppTypography.labelSmall.copyWith(
                           color: AppColors.primaryLight,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -357,7 +357,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.displayMedium.copyWith(
                         color: AppColors.textOnDark,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         shadows: [
                           Shadow(
                             color: Colors.black.withValues(alpha: 0.35),
@@ -385,7 +385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               color: AppColors.textOnDark.withValues(
                                 alpha: 0.88,
                               ),
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
@@ -410,7 +410,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         textAlign: TextAlign.center,
                         style: AppTypography.buttonMedium.copyWith(
                           color: AppColors.textOnDark,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -526,7 +526,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: AppTypography.displayLarge.copyWith(
             color: AppColors.primaryLight.withValues(alpha: 0.72),
             fontSize: 92,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -614,7 +614,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               'Emergency Contacts',
                               style: AppTypography.headlineSmall.copyWith(
                                 color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
@@ -648,7 +648,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 'No contacts added',
                                 style: AppTypography.titleLarge.copyWith(
                                   color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                               const SizedBox(height: AppSpacing.xs),
@@ -689,7 +689,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           .toUpperCase(),
                                       style: const TextStyle(
                                         color: AppColors.primary,
-                                        fontWeight: FontWeight.w900,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ),
@@ -705,7 +705,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           style: AppTypography.titleMedium
                                               .copyWith(
                                                 color: AppColors.textPrimary,
-                                                fontWeight: FontWeight.w800,
+                                                fontWeight: FontWeight.w700,
                                               ),
                                         ),
                                         Text(
@@ -784,7 +784,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Add emergency contact',
                     style: AppTypography.headlineSmall.copyWith(
                       color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -921,7 +921,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Privacy Settings',
                     style: AppTypography.headlineSmall.copyWith(
                       color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -979,7 +979,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title,
                     style: AppTypography.titleMedium.copyWith(
                       color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -1011,7 +1011,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title,
               style: AppTypography.headlineSmall.copyWith(
                 color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
               ),
             ),
             content: Text(

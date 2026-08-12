@@ -340,7 +340,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           isEditing ? 'Edit vehicle' : 'Add vehicle',
                           style: AppTypography.headlineSmall.copyWith(
                             color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: AppSpacing.xs),
@@ -404,7 +404,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                           'Change photo',
                                           style: TextStyle(
                                             color: Colors.white,
-                                            fontWeight: FontWeight.w800,
+                                            fontWeight: FontWeight.w700,
                                           ),
                                         ),
                                       ),
@@ -424,7 +424,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                           style: AppTypography.titleMedium
                                               .copyWith(
                                                 color: AppColors.textPrimary,
-                                                fontWeight: FontWeight.w800,
+                                                fontWeight: FontWeight.w700,
                                               ),
                                         ),
                                       ],
@@ -680,7 +680,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.displayMedium.copyWith(
                           color: AppColors.textOnDark,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                           height: 1.02,
                           shadows: [
                             Shadow(
@@ -726,7 +726,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                               overflow: TextOverflow.ellipsis,
                               style: AppTypography.titleSmall.copyWith(
                                 color: AppColors.textOnDark,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
@@ -779,7 +779,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               style: AppTypography.displayLarge.copyWith(
                 color: AppColors.primary.withValues(alpha: 0.62),
                 fontSize: 96,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -812,7 +812,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               label,
               style: AppTypography.labelSmall.copyWith(
                 color: AppColors.textOnDark,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -1110,7 +1110,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   'No vehicle added',
                   style: AppTypography.titleLarge.copyWith(
                     color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),

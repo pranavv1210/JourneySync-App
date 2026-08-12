@@ -427,7 +427,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     style: AppTypography.displayLarge.copyWith(
                       color: AppColors.primaryLight.withValues(alpha: 0.72),
                       fontSize: 80,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -474,7 +474,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 'Profile photo',
                 style: AppTypography.headlineSmall.copyWith(
                   color: AppColors.textOnDark,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),

@@ -133,7 +133,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               textAlign: TextAlign.center,
               style: AppTypography.headlineSmall.copyWith(
                 color: AppColors.forest,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -169,7 +169,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                       'How are you liking JourneySync?',
                       style: AppTypography.headlineSmall.copyWith(
                         color: AppColors.forest,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -273,7 +273,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     'Maybe later',
                     style: AppTypography.buttonMedium.copyWith(
                       color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),

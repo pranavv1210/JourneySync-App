@@ -948,7 +948,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                                 "YOU'RE FALLING BEHIND",
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w700,
                                   fontFamily: AppTypography.fontFamily,
                                   fontSize: 13,
                                   letterSpacing: 1.0,
@@ -1668,7 +1668,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                         style: TextStyle(
                           color: Colors.red,
                           fontFamily: AppTypography.fontFamily,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                           fontSize: 20,
                           letterSpacing: 1.5,
                         ),
@@ -1720,7 +1720,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.86),
                               fontFamily: AppTypography.fontFamily,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w700,
                               fontSize: 13,
                             ),
                           ),
@@ -1752,7 +1752,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontFamily: AppTypography.fontFamily,
-                                          fontWeight: FontWeight.w800,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                       Text(

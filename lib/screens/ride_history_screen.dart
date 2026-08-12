@@ -303,7 +303,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                         style: TextStyle(
                                           fontFamily: AppTypography.fontFamily,
                                           fontSize: 10,
-                                          fontWeight: FontWeight.w800,
+                                          fontWeight: FontWeight.w700,
                                           color: statusColors.fg,
                                         ),
                                       ),

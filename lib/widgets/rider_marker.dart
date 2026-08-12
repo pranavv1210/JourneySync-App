@@ -536,7 +536,7 @@ class _RiderAvatar extends StatelessWidget {
                 name.isNotEmpty ? name[0].toUpperCase() : '?',
                 style: const TextStyle(
                   color: Color(0xFFFF6A00),
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                   fontSize: 16,
                 ),
               )

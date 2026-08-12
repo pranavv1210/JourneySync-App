@@ -6,21 +6,26 @@ final RouteObserver<ModalRoute<void>> appRouteObserver =
 Route<T> buildAppRoute<T>(Widget page) {
   return PageRouteBuilder<T>(
     pageBuilder: (context, animation, secondaryAnimation) => page,
-    transitionDuration: const Duration(milliseconds: 240),
-    reverseTransitionDuration: const Duration(milliseconds: 200),
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 240),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final fade = CurvedAnimation(
+      final curve = CurvedAnimation(
         parent: animation,
-        curve: Curves.easeInOutCubic,
-        reverseCurve: Curves.easeInOutCubic,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
       );
+      final fade = Tween<double>(begin: 0, end: 1).animate(curve);
       final slide = Tween<Offset>(
-        begin: const Offset(0.018, 0.012),
+        begin: const Offset(0.025, 0.018),
         end: Offset.zero,
-      ).animate(fade);
+      ).animate(curve);
+      final scale = Tween<double>(begin: 0.985, end: 1).animate(curve);
       return FadeTransition(
         opacity: fade,
-        child: SlideTransition(position: slide, child: child),
+        child: SlideTransition(
+          position: slide,
+          child: ScaleTransition(scale: scale, child: child),
+        ),
       );
     },
   );

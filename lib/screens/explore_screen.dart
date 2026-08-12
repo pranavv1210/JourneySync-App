@@ -132,7 +132,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               'Ride Conditions',
               style: AppTypography.headlineSmall.copyWith(
                 color: AppColors.textPrimary,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 14),
@@ -163,7 +163,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             value,
             style: AppTypography.titleSmall.copyWith(
               color: AppColors.textPrimary,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -196,7 +196,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     destination.name,
                     style: AppTypography.headlineSmall.copyWith(
                       color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -204,7 +204,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   destination.distance,
                   style: AppTypography.titleMedium.copyWith(
                     color: AppColors.primary,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
@@ -329,7 +329,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       : '$_rideScore Ride Score',
                   style: AppTypography.headlineSmall.copyWith(
                     color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -346,7 +346,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.labelMedium.copyWith(
                     color: AppColors.primary,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
@@ -405,7 +405,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       destination.name,
                       style: AppTypography.titleLarge.copyWith(
                         color: Colors.white,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -471,7 +471,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   : 'Mechanics',
               style: AppTypography.labelMedium.copyWith(
                 color: AppColors.textPrimary,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -516,7 +516,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         item.$2,
                         style: AppTypography.labelMedium.copyWith(
                           color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],

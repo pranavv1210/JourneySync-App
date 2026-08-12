@@ -137,7 +137,7 @@ class _PlanTogetherScreenState extends State<PlanTogetherScreen> {
                   'Build the ride before the crew arrives.',
                   style: AppTypography.headlineSmall.copyWith(
                     color: AppColors.forest,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -303,7 +303,7 @@ class _PlanTogetherScreenState extends State<PlanTogetherScreen> {
             _publicRide ? 'Community ride' : 'Invite-only ride',
             style: AppTypography.titleMedium.copyWith(
               color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
             ),
           ),
           subtitle: Text(

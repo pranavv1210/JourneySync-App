@@ -92,7 +92,7 @@ class _RideNowScreenState extends State<RideNowScreen> {
                   "You're one tap from going live.",
                   style: AppTypography.headlineSmall.copyWith(
                     color: AppColors.forest,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -171,7 +171,7 @@ class _RideNowScreenState extends State<RideNowScreen> {
           _publicRide ? 'Public radar ride' : 'Private instant ride',
           style: AppTypography.titleMedium.copyWith(
             color: AppColors.textPrimary,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
           ),
         ),
         subtitle: Text(
@@ -191,7 +191,7 @@ class _RideNowScreenState extends State<RideNowScreen> {
       label,
       style: AppTypography.labelSmall.copyWith(
         color: AppColors.primary,
-        fontWeight: FontWeight.w900,
+        fontWeight: FontWeight.w700,
       ),
     );
   }

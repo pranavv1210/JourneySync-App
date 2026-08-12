@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -28,6 +30,21 @@ class JourneyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget content = Stack(
       children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  backgroundColor,
+                  AppColors.surfaceAlt.withValues(alpha: 0.42),
+                  backgroundColor,
+                ],
+              ),
+            ),
+          ),
+        ),
         Positioned(
           right: -96,
           top: -72,
@@ -116,7 +133,7 @@ class JourneyHeader extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: AppTypography.labelSmall.copyWith(
               color: AppColors.primary,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -128,7 +145,7 @@ class JourneyHeader extends StatelessWidget {
           textAlign: centerTitle ? TextAlign.center : TextAlign.start,
           style: AppTypography.headlineLarge.copyWith(
             color: AppColors.forest,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
           ),
         ),
         if (showSubtitle && subtitle != null) ...[
@@ -165,16 +182,23 @@ class JourneyHeader extends StatelessWidget {
             );
 
     if (!surface) return content;
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.xxl),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(AppRadius.xxl),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.46)),
+          ),
+          child: content,
+        ),
       ),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-      ),
-      child: content,
     );
   }
 }
@@ -186,24 +210,30 @@ class JourneyBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface.withValues(alpha: 0.9),
+    return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.xl),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        onTap: onPressed ?? () => Navigator.maybePop(context),
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Material(
+          color: AppColors.surface.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          child: InkWell(
             borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(color: AppColors.divider),
-            boxShadow: AppShadows.sm,
-          ),
-          child: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 17,
-            color: AppColors.forest,
+            onTap: onPressed ?? () => Navigator.maybePop(context),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.xl),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.62)),
+                boxShadow: AppShadows.sm,
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 17,
+                color: AppColors.forest,
+              ),
+            ),
           ),
         ),
       ),

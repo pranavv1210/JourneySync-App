@@ -670,7 +670,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               children: [
                 const Text(
                   'Invite Riders',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -692,7 +692,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                     code,
                     style: const TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -1054,7 +1054,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                       _rideTitle(),
                       style: TextStyle(
                         fontSize: 22,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
                     ),
@@ -1227,7 +1227,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
             "RIDE ACCESS CODE",
             style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               letterSpacing: 1.6,
               color: primary.withValues(alpha: 0.8),
             ),
@@ -1238,7 +1238,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
             children: [
               Text(
                 code,
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
               ),
               const SizedBox(width: 10),
               IconButton(
@@ -1282,7 +1282,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                     const SizedBox(width: 8),
                     Text(
                       "Join Requests",
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
@@ -1299,7 +1299,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                     "${pendingRequests.length} Pending",
                     style: TextStyle(
                       fontSize: 10,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       color: primary,
                     ),
                   ),
@@ -1393,7 +1393,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           children: [
             Text(
               "The Crew",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             Text(
               "${crew.length}/$maxRiders",
@@ -1474,7 +1474,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(displayName, style: TextStyle(fontWeight: FontWeight.w800)),
+          Text(displayName, style: TextStyle(fontWeight: FontWeight.w700)),
           Text(
             member.bike,
             maxLines: 1,
@@ -1498,7 +1498,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                 style: TextStyle(
                   fontSize: 9,
                   color: Colors.white,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   letterSpacing: 1,
                 ),
               ),
@@ -1601,7 +1601,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                   children: [
                     Text(
                       "Ride Briefing",
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     if (_isCurrentUserHost()) ...[
                       const SizedBox(height: 2),
@@ -1665,7 +1665,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                   icon: const Icon(Icons.add_road),
                   label: const Text(
                     "SYNC ROUTE FROM GOOGLE MAPS",
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: primary,
@@ -1700,7 +1700,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                     Text(
                       "START RIDE",
                       style: TextStyle(
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         fontSize: 16,
                         color: Colors.white,
                       ),
@@ -1715,7 +1715,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                 "EDIT RIDE DETAILS",
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   color: Colors.grey.shade600,
                   letterSpacing: 0.5,
                 ),

@@ -41,8 +41,8 @@ class AppColors {
 class AppTypography {
   AppTypography._();
 
-  // Outfit is bundled from Google Fonts under the SIL Open Font License.
-  static const String fontFamily = 'Outfit';
+  // Google Sans is bundled from the Google Fonts served truetype assets.
+  static const String fontFamily = 'Google Sans';
 
   static TextStyle style({
     required double fontSize,
@@ -60,15 +60,15 @@ class AppTypography {
   }
 
   static TextStyle get displayLarge =>
-      style(fontSize: 38, fontWeight: FontWeight.w800, height: 1.06);
+      style(fontSize: 38, fontWeight: FontWeight.w700, height: 1.06);
   static TextStyle get displayMedium =>
-      style(fontSize: 32, fontWeight: FontWeight.w800, height: 1.08);
+      style(fontSize: 32, fontWeight: FontWeight.w700, height: 1.08);
   static TextStyle get displaySmall =>
-      style(fontSize: 27, fontWeight: FontWeight.w800, height: 1.12);
+      style(fontSize: 27, fontWeight: FontWeight.w700, height: 1.12);
   static TextStyle get headlineLarge =>
-      style(fontSize: 23, fontWeight: FontWeight.w800, height: 1.16);
+      style(fontSize: 23, fontWeight: FontWeight.w700, height: 1.16);
   static TextStyle get headlineMedium =>
-      style(fontSize: 20, fontWeight: FontWeight.w800, height: 1.22);
+      style(fontSize: 20, fontWeight: FontWeight.w700, height: 1.22);
   static TextStyle get headlineSmall =>
       style(fontSize: 18, fontWeight: FontWeight.w700, height: 1.26);
   static TextStyle get titleLarge =>
@@ -100,9 +100,9 @@ class AppTypography {
   static TextStyle get overline =>
       style(fontSize: 10, fontWeight: FontWeight.w600, height: 1.3);
   static TextStyle get numeric =>
-      style(fontSize: 28, fontWeight: FontWeight.w800, height: 1.0);
+      style(fontSize: 28, fontWeight: FontWeight.w700, height: 1.0);
   static TextStyle get telemetry =>
-      style(fontSize: 20, fontWeight: FontWeight.w800, height: 1.05);
+      style(fontSize: 20, fontWeight: FontWeight.w700, height: 1.05);
 }
 
 class AppSpacing {
@@ -142,7 +142,8 @@ class AppSurfaces {
   static Color success = AppColors.success.withValues(alpha: 0.12);
   static Color warning = AppColors.warning.withValues(alpha: 0.14);
   static Color danger = AppColors.error.withValues(alpha: 0.1);
-  static Color glass = AppColors.surface.withValues(alpha: 0.88);
+  static Color glass = AppColors.surface.withValues(alpha: 0.82);
+  static Color glassStrong = AppColors.surface.withValues(alpha: 0.9);
 }
 
 class AppShadows {
@@ -256,7 +257,7 @@ class AppTheme {
         ),
         titleTextStyle: AppTypography.headlineSmall.copyWith(
           color: AppColors.forest,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
         ),
         contentTextStyle: AppTypography.bodyMedium.copyWith(
           color: AppColors.textSecondary,
@@ -308,7 +309,7 @@ class AppTheme {
           minimumSize: const Size(48, 52),
           padding: const EdgeInsets.symmetric(horizontal: 20),
           textStyle: AppTypography.buttonMedium.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -321,7 +322,7 @@ class AppTheme {
           minimumSize: const Size(48, 52),
           padding: const EdgeInsets.symmetric(horizontal: 20),
           textStyle: AppTypography.buttonMedium.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
           ),
           side: const BorderSide(color: AppColors.divider, width: 1.2),
           shape: RoundedRectangleBorder(
@@ -333,7 +334,7 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
           textStyle: AppTypography.buttonMedium.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),

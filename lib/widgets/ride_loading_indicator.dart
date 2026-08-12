@@ -21,21 +21,18 @@ class RideLoadingIndicator extends StatefulWidget {
 class _RideLoadingIndicatorState extends State<RideLoadingIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<double> _position;
-  late final Animation<double> _tilt;
+  late final Animation<double> _pulse;
+  late final Animation<double> _sweep;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1350),
-    )..repeat(reverse: true);
-    _position = CurvedAnimation(
-      parent: _controller,
-      curve: AppCurves.easeInOutCubic,
-    );
-    _tilt = Tween<double>(begin: -0.05, end: 0.05).animate(_position);
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+    _pulse = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    _sweep = Tween<double>(begin: 0, end: 1).animate(_controller);
   }
 
   @override
@@ -47,9 +44,7 @@ class _RideLoadingIndicatorState extends State<RideLoadingIndicator>
   @override
   Widget build(BuildContext context) {
     final primary = widget.color ?? AppColors.primary;
-    final width = widget.compact ? 56.0 : 132.0;
-    final trackHeight = widget.compact ? 3.0 : 4.0;
-    final bikeSize = widget.compact ? 18.0 : 28.0;
+    final size = widget.compact ? 28.0 : 46.0;
     final label = widget.label;
 
     return Semantics(
@@ -59,54 +54,56 @@ class _RideLoadingIndicatorState extends State<RideLoadingIndicator>
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: width,
-            height: widget.compact ? 24 : 38,
+            width: size,
+            height: size,
             child: AnimatedBuilder(
               animation: _controller,
               builder: (context, _) {
-                final left = (width - bikeSize) * _position.value;
-                return Stack(
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: widget.compact ? 5 : 7,
-                      child: Container(
-                        height: trackHeight,
-                        decoration: BoxDecoration(
-                          color: AppColors.divider,
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                        ),
+                final glow = 0.65 + (0.35 * _pulse.value);
+                return Transform.rotate(
+                  angle: _sweep.value * 6.28318,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: SweepGradient(
+                        colors: [
+                          primary.withValues(alpha: 0.04),
+                          primary.withValues(alpha: glow),
+                          AppColors.forest.withValues(alpha: 0.86),
+                          primary.withValues(alpha: 0.04),
+                        ],
+                        stops: const [0, 0.36, 0.68, 1],
                       ),
-                    ),
-                    Positioned(
-                      left: left,
-                      bottom: widget.compact ? 8 : 12,
-                      child: Transform.rotate(
-                        angle: _tilt.value,
-                        child: Icon(
-                          Icons.two_wheeler_rounded,
-                          size: bikeSize,
-                          color: primary,
+                      boxShadow: [
+                        BoxShadow(
+                          color: primary.withValues(alpha: 0.18),
+                          blurRadius: widget.compact ? 10 : 18,
                         ),
-                      ),
+                      ],
                     ),
-                    Positioned(
-                      left: 0,
-                      bottom: widget.compact ? 5 : 7,
-                      child: Container(
-                        width: left + (bikeSize / 2),
-                        height: trackHeight,
+                    child: Padding(
+                      padding: EdgeInsets.all(widget.compact ? 3 : 5),
+                      child: DecoratedBox(
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [primary, AppColors.forest],
+                          shape: BoxShape.circle,
+                          color: AppColors.background,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.84),
                           ),
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: widget.compact ? 7 : 10,
+                            height: widget.compact ? 7 : 10,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: primary,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 );
               },
             ),

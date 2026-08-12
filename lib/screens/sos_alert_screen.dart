@@ -461,7 +461,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                   isSelfAlert ? "Alert Active" : "Rider Down",
                   style: const TextStyle(
                     fontSize: 24,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: Colors.white,
                     letterSpacing: 0.4,
                   ),
@@ -620,7 +620,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
           label.toUpperCase(),
           style: TextStyle(
             fontSize: 10,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             letterSpacing: 1.1,
             color: Colors.grey.shade600,
           ),
@@ -631,7 +631,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
           textAlign: alignEnd ? TextAlign.right : TextAlign.left,
           style: const TextStyle(
             fontSize: 13,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             color: Colors.black87,
           ),
         ),
@@ -735,7 +735,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                       _alertName(),
                       style: const TextStyle(
                         fontSize: 17,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -781,7 +781,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                     _distanceLabel(),
                     style: const TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
@@ -888,7 +888,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
         initial,
         style: const TextStyle(
           fontSize: 28,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           color: Colors.black54,
         ),
       ),
@@ -907,7 +907,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
         label,
         style: TextStyle(
           fontSize: 10,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           color: color,
         ),
       ),
@@ -930,7 +930,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: highlight ?? Colors.black87,
               ),
             ),
@@ -970,7 +970,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
           elevation: 0,
         ),
         icon: Icon(icon),
-        label: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
     );
   }

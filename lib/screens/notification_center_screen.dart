@@ -129,7 +129,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             Text(
               'All clear',
               style: AppTypography.headlineSmall.copyWith(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.forest,
               ),
             ),
@@ -236,7 +236,7 @@ class _NotificationSummary extends StatelessWidget {
                 Text(
                   'Ride signal center',
                   style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.forest,
                   ),
                 ),
@@ -332,7 +332,7 @@ class _NotificationCard extends StatelessWidget {
                       child: Text(
                         notification.title,
                         style: AppTypography.titleMedium.copyWith(
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                           color: AppColors.forest,
                         ),
                       ),
@@ -389,7 +389,7 @@ class _NotificationCard extends StatelessWidget {
                         style: TextStyle(
                           color: spec.color,
                           fontSize: 10,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),

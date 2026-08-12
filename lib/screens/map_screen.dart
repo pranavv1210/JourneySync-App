@@ -416,7 +416,7 @@ class _MapScreenState extends State<MapScreen> {
             overflow: TextOverflow.ellipsis,
             style: AppTypography.titleMedium.copyWith(
               color: forest,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),

@@ -90,15 +90,15 @@ flutter:
     - assets/profile.png
     - assets/legal/privacy_policy.txt
   fonts:
-    - family: Outfit
+    - family: Google Sans
       fonts:
-        - asset: assets/fonts/Outfit-Regular.ttf
+        - asset: assets/fonts/GoogleSans-Regular.ttf
           weight: 400
-        - asset: assets/fonts/Outfit-Medium.ttf
+        - asset: assets/fonts/GoogleSans-Medium.ttf
           weight: 500
-        - asset: assets/fonts/Outfit-SemiBold.ttf
+        - asset: assets/fonts/GoogleSans-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Outfit-Bold.ttf
+        - asset: assets/fonts/GoogleSans-Bold.ttf
           weight: 700
 
 flutter_launcher_icons:

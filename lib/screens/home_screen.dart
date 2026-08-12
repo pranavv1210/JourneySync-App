@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
@@ -257,6 +258,19 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     debugPrint(stackTrace.toString());
   }
 
+  Future<void> _confirmExitApp() async {
+    final shouldExit = await showAppConfirmDialog(
+      context,
+      title: 'Exit JourneySync?',
+      message: 'Your active sync state stays saved. Close the app now?',
+      confirmLabel: 'Exit',
+      cancelLabel: 'Stay',
+      destructive: true,
+    );
+    if (!mounted || shouldExit != true) return;
+    SystemNavigator.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading && recentRides.isEmpty && nearbyRides.isEmpty) {
@@ -271,70 +285,81 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 120),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (loadError.isNotEmpty)
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              border: Border.all(
-                                color: AppColors.primary.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.info_outline_rounded,
-                                  color: AppColors.primary,
-                                  size: 16,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        unawaited(_confirmExitApp());
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Stack(
+          children: [
+            SafeArea(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 120),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (loadError.isNotEmpty)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    loadError,
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: AppColors.forest,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.2,
                                   ),
                                 ),
-                              ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline_rounded,
+                                    color: AppColors.primary,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      loadError,
+                                      style: AppTypography.bodySmall.copyWith(
+                                        color: AppColors.forest,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        _buildHeader(),
-                        const SizedBox(height: 14),
-                        _buildQuickStatus(),
-                        const SizedBox(height: 24),
-                        _buildPrimaryActions(),
-                        const SizedBox(height: 16),
-                        _buildResumeRideCard(),
-                        const SizedBox(height: 24),
-                        _buildRecentJourneys(),
-                        const SizedBox(height: 16),
-                      ],
+                          _buildHeader(),
+                          const SizedBox(height: 14),
+                          _buildQuickStatus(),
+                          const SizedBox(height: 24),
+                          _buildPrimaryActions(),
+                          const SizedBox(height: 16),
+                          _buildResumeRideCard(),
+                          const SizedBox(height: 24),
+                          _buildRecentJourneys(),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+        bottomNavigationBar: _buildBottomNav(),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -442,7 +467,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -824,7 +849,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       'Resume Ride',
                       style: AppTypography.titleMedium.copyWith(
                         color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
@@ -938,7 +963,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.titleMedium.copyWith(
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -1255,7 +1280,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               'What do you want to do?',
               style: AppTypography.headlineSmall.copyWith(
                 color: AppColors.textPrimary,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 14),
@@ -1359,7 +1384,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                     title,
                     style: AppTypography.titleMedium.copyWith(
                       color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 2),

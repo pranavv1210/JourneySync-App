@@ -140,7 +140,7 @@ class _HapticButtonState extends State<HapticButton>
                         style: TextStyle(
                           fontFamily: AppTypography.fontFamily,
                           color: spec.textColor,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                           fontSize: fontSize,
                         ),
                       ),

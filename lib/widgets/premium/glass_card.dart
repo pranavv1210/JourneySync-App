@@ -39,7 +39,7 @@ class GlassCard extends StatelessWidget {
       margin: margin ?? EdgeInsets.zero,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        boxShadow: elevated ? AppShadows.glass : AppShadows.sm,
+        boxShadow: elevated ? AppShadows.glass : AppShadows.md,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
@@ -52,13 +52,26 @@ class GlassCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(radius),
               border:
                   customBorder ??
-                  Border.all(color: Colors.white.withValues(alpha: 0.56)),
+                  Border.all(color: Colors.white.withValues(alpha: 0.66)),
             ),
-            child: DefaultTextStyle.merge(
-              style: const TextStyle(color: AppColors.textPrimary),
-              child: IconTheme.merge(
-                data: const IconThemeData(color: AppColors.textPrimary),
-                child: child,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withValues(alpha: 0.2),
+                    Colors.white.withValues(alpha: 0.02),
+                  ],
+                ),
+              ),
+              child: DefaultTextStyle.merge(
+                style: const TextStyle(color: AppColors.textPrimary),
+                child: IconTheme.merge(
+                  data: const IconThemeData(color: AppColors.textPrimary),
+                  child: child,
+                ),
               ),
             ),
           ),

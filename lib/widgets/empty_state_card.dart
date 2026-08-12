@@ -41,7 +41,7 @@ class EmptyStateCard extends StatelessWidget {
               textAlign: TextAlign.center,
               style: AppTypography.titleMedium.copyWith(
                 color: foreground,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: AppSpacing.xs),

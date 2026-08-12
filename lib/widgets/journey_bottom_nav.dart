@@ -117,7 +117,7 @@ class _NavItem extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: AppTypography.labelSmall.copyWith(
                   color: active ? AppColors.primary : AppColors.textTertiary,
-                  fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w700,
                 ),
               ),
             ],

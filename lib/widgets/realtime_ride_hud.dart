@@ -593,7 +593,7 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                                 style: AppTypography.labelSmall.copyWith(
                                   color: Colors.white,
                                   fontSize: 8,
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
@@ -614,7 +614,7 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                                 style: AppTypography.labelSmall.copyWith(
                                   color: Colors.white,
                                   fontSize: 8,
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),

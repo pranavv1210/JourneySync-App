@@ -281,7 +281,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                     'Join with access code',
                     style: AppTypography.headlineSmall.copyWith(
                       color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -298,7 +298,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                     textCapitalization: TextCapitalization.characters,
                     style: AppTypography.titleLarge.copyWith(
                       color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                     ),
                     decoration: InputDecoration(
                       labelText: 'Access code',
@@ -551,7 +551,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                 style: TextStyle(
                   color: forest,
                   fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -603,7 +603,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                 style: TextStyle(
                   color: forest,
                   fontSize: 16,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                 ),
               )
             else
@@ -684,7 +684,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
               style: TextStyle(
                 color: forest,
                 fontSize: 14,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 4),
@@ -740,7 +740,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
               textAlign: TextAlign.center,
               style: AppTypography.labelMedium.copyWith(
                 color: forest,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -831,7 +831,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                       'LIVE',
                       style: AppTypography.labelSmall.copyWith(
                         color: AppColors.success,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -1428,7 +1428,7 @@ class _RadarCenterMarker extends StatelessWidget {
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 13,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -1483,7 +1483,7 @@ class _RadarAvatar extends StatelessWidget {
                         color: const Color(0xFF8A3B08),
                         fontSize: radius * 0.75,
                         height: 1,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),

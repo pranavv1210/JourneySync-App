@@ -93,7 +93,7 @@ class PremiumEmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 22,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 color: foregroundColor,
                 height: 1.2,
               ),

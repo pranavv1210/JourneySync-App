@@ -125,7 +125,7 @@ class _RideFlowMapPreviewState extends State<RideFlowMapPreview> {
                     widget.title,
                     style: AppTypography.titleMedium.copyWith(
                       color: AppColors.textOnDark,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),

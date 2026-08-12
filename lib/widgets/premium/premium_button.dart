@@ -144,13 +144,14 @@ class _PremiumButtonState extends State<PremiumButton>
                 Text(
                   widget.label,
                   style: TextStyle(
+                    fontFamily: AppTypography.fontFamily,
                     fontSize: sizeConfig.fontSize,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     color:
                         effectiveDisabled
                             ? colors.textColor.withValues(alpha: 0.72)
                             : colors.textColor,
-                    letterSpacing: 0.3,
+                    letterSpacing: 0,
                   ),
                 ),
                 if (widget.trailing != null) ...[

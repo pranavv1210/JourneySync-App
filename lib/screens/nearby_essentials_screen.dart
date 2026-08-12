@@ -193,7 +193,7 @@ class _NearbyEssentialsScreenState extends State<NearbyEssentialsScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.titleMedium.copyWith(
                                     color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 const SizedBox(height: 2),

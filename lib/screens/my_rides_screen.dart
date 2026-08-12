@@ -215,7 +215,7 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
             textAlign: TextAlign.center,
             style: AppTypography.titleLarge.copyWith(
               color: AppColors.textPrimary,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 3),
@@ -289,7 +289,7 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
                   title,
                   style: AppTypography.titleMedium.copyWith(
                     color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 Text(
@@ -350,7 +350,7 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.titleMedium.copyWith(
                       color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 2),

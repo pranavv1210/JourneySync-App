@@ -38,7 +38,7 @@ Future<void> showLegalDocumentDialog({
                       titleStyle ??
                       AppTypography.headlineSmall.copyWith(
                         color: AppColors.forest,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -66,7 +66,7 @@ Future<void> showLegalDocumentDialog({
                         color:
                             actionColor ??
                             Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
