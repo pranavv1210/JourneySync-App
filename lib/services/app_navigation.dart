@@ -38,3 +38,9 @@ Future<T?> pushAppRoute<T>(BuildContext context, Widget page) {
 Future<T?> replaceWithAppRoute<T, TO>(BuildContext context, Widget page) {
   return Navigator.of(context).pushReplacement<T, TO>(buildAppRoute<T>(page));
 }
+
+Future<T?> replaceAllWithAppRoute<T>(BuildContext context, Widget page) {
+  return Navigator.of(
+    context,
+  ).pushAndRemoveUntil<T>(buildAppRoute<T>(page), (_) => false);
+}

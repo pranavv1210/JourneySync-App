@@ -197,7 +197,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         jwtToken: result.idToken,
       );
       if (!mounted) return;
-      replaceWithAppRoute(context, const HomeScreen());
+      replaceAllWithAppRoute(context, const HomeScreen());
     } catch (error) {
       if (!mounted) return;
       final rlsBlocked =

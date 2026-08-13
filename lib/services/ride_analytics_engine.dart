@@ -507,6 +507,52 @@ class RideAnalyticsEngine {
     return snapshots;
   }
 
+  static Future<void> deleteSnapshot(String rideId) async {
+    final normalizedRideId = rideId.trim();
+    if (normalizedRideId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key(normalizedRideId));
+    await prefs.remove('$_destinationPrefix$normalizedRideId');
+    final index = prefs.getStringList(_indexKey) ?? <String>[];
+    index.removeWhere((id) => id == normalizedRideId);
+    await prefs.setStringList(_indexKey, index);
+    final stats = await aggregateProfileStats();
+    await prefs.setInt('statTotalRides', stats.totalRides);
+    await prefs.setDouble('statTotalDistance', stats.totalDistanceKm);
+    await prefs.setDouble('statLongestRide', stats.longestRideKm);
+    await prefs.setDouble('statHoursRidden', stats.totalRidingHours);
+    await prefs.setDouble('statFastestRide', stats.fastestRideKmh);
+    await prefs.setDouble('statAverageRideScore', stats.averageRideScore);
+    await prefs.setInt('statGroupRidesCompleted', stats.groupRidesCompleted);
+    await prefs.setString('statFavoriteRoute', stats.favoriteDestination);
+    await prefs.setString('statFrequentDay', stats.frequentDay);
+  }
+
+  static Future<RideProfileStats> aggregateProfileStatsForRideIds(
+    Set<String> rideIds,
+  ) async {
+    final normalized =
+        rideIds.map((id) => id.trim()).where((id) => id.isNotEmpty).toSet();
+    if (normalized.isEmpty) {
+      return const RideProfileStats(
+        totalRides: 0,
+        totalDistanceKm: 0,
+        totalRidingHours: 0,
+        longestRideKm: 0,
+        fastestRideKmh: 0,
+        averageRideScore: 0,
+        groupRidesCompleted: 0,
+        favoriteDestination: 'No favorite route yet',
+        frequentDay: '--',
+      );
+    }
+    final snapshots =
+        (await loadAll())
+            .where((snapshot) => normalized.contains(snapshot.rideId))
+            .toList();
+    return _aggregateSnapshots(snapshots);
+  }
+
   Future<void> _updateProfileStats() async {
     final stats = await aggregateProfileStats();
     final prefs = await SharedPreferences.getInstance();
@@ -529,6 +575,12 @@ class RideAnalyticsEngine {
 
   static Future<RideProfileStats> aggregateProfileStats() async {
     final snapshots = await loadAll();
+    return _aggregateSnapshots(snapshots);
+  }
+
+  static Future<RideProfileStats> _aggregateSnapshots(
+    List<RideAnalyticsSnapshot> snapshots,
+  ) async {
     if (snapshots.isEmpty) {
       return const RideProfileStats(
         totalRides: 0,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
 import '../services/app_navigation.dart';
 import '../services/app_version.dart';
 import '../theme/app_theme.dart';
@@ -54,10 +56,15 @@ class _SplashScreenState extends State<SplashScreen>
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     final loggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final hasAuthSession = Supabase.instance.client.auth.currentSession != null;
 
-    if (loggedIn) {
+    if (loggedIn && hasAuthSession) {
       replaceWithAppRoute(context, const HomeScreen());
       return;
+    }
+    if (loggedIn && !hasAuthSession) {
+      await AuthService().clearSession();
+      if (!mounted) return;
     }
     replaceWithAppRoute(context, const LoginScreen());
   }

@@ -8,7 +8,9 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
+import '../services/auth_service.dart';
 import '../services/feedback_prompt_service.dart';
+import 'login_screen.dart';
 import 'create_ride_screen.dart';
 import 'explore_solo_screen.dart';
 import 'explore_screen.dart';
@@ -33,6 +35,7 @@ import '../widgets/ride_loading_indicator.dart';
 import '../models/ride_record.dart';
 import '../coordinators/active_ride_coordinator.dart';
 import '../coordinators/notification_coordinator.dart';
+import '../services/ride_analytics_engine.dart';
 import 'notification_center_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -91,6 +94,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
   Future<void> _loadHomeData({bool showBlockingLoader = false}) async {
     if (!mounted) return;
+    if (Supabase.instance.client.auth.currentSession == null) {
+      await AuthService().clearSession();
+      if (!mounted) return;
+      replaceAllWithAppRoute(context, const LoginScreen());
+      return;
+    }
     setState(() {
       if (showBlockingLoader) {
         loading = true;
@@ -1106,6 +1115,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           rideId: ride.id,
           creatorId: userId,
         );
+        await RideAnalyticsEngine.deleteSnapshot(ride.id);
       },
       successMessage: 'Ride deleted.',
       failureMessage: 'Could not delete ride.',

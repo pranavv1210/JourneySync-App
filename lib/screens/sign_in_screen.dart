@@ -110,7 +110,7 @@ class _SignInScreenState extends State<SignInScreen> {
         jwtToken: result.idToken,
       );
       if (!mounted) return;
-      replaceWithAppRoute(context, const HomeScreen());
+      replaceAllWithAppRoute(context, const HomeScreen());
     } catch (error) {
       if (!mounted) return;
       final message = error.toString();

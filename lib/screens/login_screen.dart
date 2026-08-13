@@ -201,7 +201,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           ),
           onPressed: () => pushAppRoute(context, const SignInScreen()),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.sm),
         AppButton(
           label: 'Continue with Phone',
           icon: Icons.phone_iphone_rounded,
@@ -209,46 +209,92 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           size: AppButtonSize.medium,
           onPressed: () => _showPhoneLater(context),
         ),
-        const SizedBox(height: AppSpacing.xl),
-        Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: AppSpacing.sm,
-          children: [
-            Text(
-              'Already have an account?',
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            TextButton(
-              onPressed: () => pushAppRoute(context, const SignInScreen()),
-              child: Text(
-                'Sign In',
-                style: AppTypography.buttonMedium.copyWith(
-                  color: AppColors.primary,
+        const SizedBox(height: AppSpacing.lg),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.78),
+            borderRadius: BorderRadius.circular(AppRadius.xxl),
+            border: Border.all(color: AppColors.divider),
+            boxShadow: AppShadows.sm,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _accountAction(
+                  label: 'Sign In',
+                  caption: 'Existing account',
+                  icon: Icons.login_rounded,
+                  onTap: () => pushAppRoute(context, const SignInScreen()),
                 ),
               ),
-            ),
-            Text(
-              'New user?',
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            TextButton(
-              onPressed:
-                  () => pushAppRoute(context, const CreateAccountScreen()),
-              child: Text(
-                'Create Account',
-                style: AppTypography.buttonMedium.copyWith(
-                  color: AppColors.primary,
+              Container(width: 1, height: 44, color: AppColors.divider),
+              Expanded(
+                child: _accountAction(
+                  label: 'Create Account',
+                  caption: 'New rider',
+                  icon: Icons.person_add_alt_1_rounded,
+                  onTap:
+                      () => pushAppRoute(context, const CreateAccountScreen()),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _accountAction({
+    required String label,
+    required String caption,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.md,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 18, color: AppColors.primary),
+                  const SizedBox(width: AppSpacing.xs),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.labelLarge.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                caption,
+                textAlign: TextAlign.center,
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

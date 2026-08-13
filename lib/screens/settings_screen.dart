@@ -68,7 +68,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       await AuthService().clearSession();
       if (!mounted) return;
-      replaceWithAppRoute(context, const LoginScreen());
+      replaceAllWithAppRoute(context, const LoginScreen());
     } catch (e) {
       if (!mounted) return;
       showPremiumToast(

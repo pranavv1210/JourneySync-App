@@ -7,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_config.dart';
 import 'supabase_service.dart';
+import '../coordinators/active_ride_coordinator.dart';
+import '../coordinators/notification_coordinator.dart';
 
 class PhoneIdentity {
   const PhoneIdentity({
@@ -288,17 +290,51 @@ class AuthService {
 
   Future<void> clearSession() async {
     try {
+      await ActiveRideCoordinator.instance.clear();
+    } catch (_) {}
+    try {
+      await NotificationCoordinator.instance.stop();
+    } catch (_) {}
+    try {
       await Supabase.instance.client.auth.signOut();
     } catch (_) {}
 
     final prefs = await SharedPreferences.getInstance();
+    final rideAnalyticsIds = prefs.getStringList('rideAnalyticsIndex') ?? [];
     await prefs.setBool('isLoggedIn', false);
-    await prefs.remove('userId');
-    await prefs.remove('userPhone');
-    await prefs.remove('userEmail');
-    await prefs.remove('userName');
-    await prefs.remove('userBike');
-    await prefs.remove('userAvatarUrl');
+    for (final key in <String>[
+      'userId',
+      'userPhone',
+      'userEmail',
+      'userName',
+      'userBike',
+      'userAvatarUrl',
+      'localAvatarPath',
+      'userBio',
+      'userExperienceLevel',
+      'garageBikes',
+      'userActiveBikeId',
+      'emergencyContacts',
+      'rideAnalyticsIndex',
+      'unlockedRideAchievements',
+      'statTotalRides',
+      'statTotalDistance',
+      'statLongestRide',
+      'statHoursRidden',
+      'statFastestRide',
+      'statAverageRideScore',
+      'statGroupRidesCompleted',
+      'statFavoriteRoute',
+      'statFrequentDay',
+    ]) {
+      await prefs.remove(key);
+    }
+    for (final rideId in rideAnalyticsIds) {
+      final normalized = rideId.trim();
+      if (normalized.isEmpty) continue;
+      await prefs.remove('rideAnalytics:$normalized');
+      await prefs.remove('rideDestination:$normalized');
+    }
 
     const storage = FlutterSecureStorage();
     await storage.delete(key: 'phoneEmailAccessToken');

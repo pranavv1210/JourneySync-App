@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/ride_analytics_engine.dart';
+import '../services/ride_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
@@ -25,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final SupabaseService _supabaseService = SupabaseService();
+  final RideService _rideService = RideService();
 
   // Profile data
   String userName = 'Rider';
@@ -120,8 +122,24 @@ class _ProfileScreenState extends State<ProfileScreen>
         }
       } catch (_) {}
     }
-    final analyticsStats = await RideAnalyticsEngine.aggregateProfileStats();
+    var remoteRides = <String>{};
+    if (userId.isNotEmpty) {
+      try {
+        remoteRides =
+            (await _rideService.fetchRecentRides(
+              userId,
+              limit: 100,
+            )).map((ride) => ride.id).toSet();
+      } catch (_) {}
+    }
+    final analyticsStats =
+        userId.isEmpty
+            ? await RideAnalyticsEngine.aggregateProfileStats()
+            : await RideAnalyticsEngine.aggregateProfileStatsForRideIds(
+              remoteRides,
+            );
     final achievements = await RideAnalyticsEngine.unlockedAchievements();
+    final useSignedInRideStats = userId.isNotEmpty;
 
     setState(() {
       _refreshBikeImageCache(loadedBikes);
@@ -132,35 +150,51 @@ class _ProfileScreenState extends State<ProfileScreen>
       profileHeroImage = _imageProviderFor(resolvedAvatar);
 
       totalRides =
-          analyticsStats.totalRides > 0
+          useSignedInRideStats
+              ? analyticsStats.totalRides
+              : analyticsStats.totalRides > 0
               ? analyticsStats.totalRides
               : prefs.getInt('statTotalRides') ?? 0;
       totalDistance =
-          analyticsStats.totalDistanceKm > 0
+          useSignedInRideStats
+              ? analyticsStats.totalDistanceKm
+              : analyticsStats.totalDistanceKm > 0
               ? analyticsStats.totalDistanceKm
               : prefs.getDouble('statTotalDistance') ?? 0;
       longestRide =
-          analyticsStats.longestRideKm > 0
+          useSignedInRideStats
+              ? analyticsStats.longestRideKm
+              : analyticsStats.longestRideKm > 0
               ? analyticsStats.longestRideKm
               : prefs.getDouble('statLongestRide') ?? 0;
       hoursRidden =
-          analyticsStats.totalRidingHours > 0
+          useSignedInRideStats
+              ? analyticsStats.totalRidingHours
+              : analyticsStats.totalRidingHours > 0
               ? analyticsStats.totalRidingHours
               : prefs.getDouble('statHoursRidden') ?? 0;
       favoriteRoute =
-          analyticsStats.favoriteDestination != 'No favorite route yet'
+          useSignedInRideStats
+              ? analyticsStats.favoriteDestination
+              : analyticsStats.favoriteDestination != 'No favorite route yet'
               ? analyticsStats.favoriteDestination
               : prefs.getString('statFavoriteRoute') ?? 'No favorite route yet';
       fastestRide =
-          analyticsStats.fastestRideKmh > 0
+          useSignedInRideStats
+              ? analyticsStats.fastestRideKmh
+              : analyticsStats.fastestRideKmh > 0
               ? analyticsStats.fastestRideKmh
               : prefs.getDouble('statFastestRide') ?? 0;
       averageRideScore =
-          analyticsStats.averageRideScore > 0
+          useSignedInRideStats
+              ? analyticsStats.averageRideScore
+              : analyticsStats.averageRideScore > 0
               ? analyticsStats.averageRideScore
               : prefs.getDouble('statAverageRideScore') ?? 0;
       groupRidesCompleted =
-          analyticsStats.groupRidesCompleted > 0
+          useSignedInRideStats
+              ? analyticsStats.groupRidesCompleted
+              : analyticsStats.groupRidesCompleted > 0
               ? analyticsStats.groupRidesCompleted
               : prefs.getInt('statGroupRidesCompleted') ?? 0;
       frequentRidingDay = analyticsStats.frequentDay;
@@ -955,7 +989,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
             _buildStatCard(
               'Avg Score',
-              averageRideScore > 0 ? averageRideScore.toStringAsFixed(0) : '--',
+              averageRideScore.toStringAsFixed(0),
               Icons.auto_graph_rounded,
               const Color(0xFF00A8B0),
             ),

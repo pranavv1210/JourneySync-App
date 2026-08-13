@@ -125,7 +125,13 @@ class _AppDialogSurface extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTypography.headlineSmall),
+                  Text(
+                    title,
+                    style: AppTypography.headlineSmall.copyWith(
+                      color: destructive ? AppColors.error : AppColors.forest,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     message,
