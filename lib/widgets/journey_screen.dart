@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -122,45 +120,60 @@ class JourneyHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Column(
-      crossAxisAlignment:
-          centerTitle ? CrossAxisAlignment.center : CrossAxisAlignment.start,
-      children: [
-        if (showEyebrow && eyebrow != null) ...[
-          Text(
-            eyebrow!,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.labelSmall.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w700,
+    final text = LayoutBuilder(
+      builder: (context, constraints) {
+        final compactTitle = constraints.maxWidth < 330;
+        final titleStyle =
+            compactTitle
+                ? AppTypography.headlineMedium.copyWith(
+                  color: AppColors.forest,
+                  fontWeight: FontWeight.w700,
+                )
+                : AppTypography.headlineLarge.copyWith(
+                  color: AppColors.forest,
+                  fontWeight: FontWeight.w700,
+                );
+
+        return Column(
+          crossAxisAlignment:
+              centerTitle
+                  ? CrossAxisAlignment.center
+                  : CrossAxisAlignment.start,
+          children: [
+            if (showEyebrow && eyebrow != null) ...[
+              Text(
+                eyebrow!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.labelSmall.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+            ],
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: centerTitle ? TextAlign.center : TextAlign.start,
+              style: titleStyle,
             ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-        ],
-        Text(
-          title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          textAlign: centerTitle ? TextAlign.center : TextAlign.start,
-          style: AppTypography.headlineLarge.copyWith(
-            color: AppColors.forest,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        if (showSubtitle && subtitle != null) ...[
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            subtitle!,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            textAlign: centerTitle ? TextAlign.center : TextAlign.start,
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ],
+            if (showSubtitle && subtitle != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                subtitle!,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                textAlign: centerTitle ? TextAlign.center : TextAlign.start,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
 
     final content =
@@ -182,23 +195,12 @@ class JourneyHeader extends StatelessWidget {
             );
 
     if (!surface) return content;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.xxl),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: AppSpacing.xs,
-          ),
-          decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(AppRadius.xxl),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.46)),
-          ),
-          child: content,
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
       ),
+      child: content,
     );
   }
 }
@@ -210,30 +212,18 @@ class JourneyBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.xl),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Material(
-          color: AppColors.surface.withValues(alpha: 0.72),
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            onTap: onPressed ?? () => Navigator.maybePop(context),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.62)),
-                boxShadow: AppShadows.sm,
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 17,
-                color: AppColors.forest,
-              ),
-            ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        onTap: onPressed ?? () => Navigator.maybePop(context),
+        child: const SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 20,
+            color: AppColors.forest,
           ),
         ),
       ),

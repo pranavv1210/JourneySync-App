@@ -290,6 +290,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   TextField(
                                     controller: _emailController,
                                     readOnly: true,
+                                    enableInteractiveSelection: false,
                                     style: _inputTextStyle(),
                                     decoration: _inputDecoration(
                                       'Signed in with Google',

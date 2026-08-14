@@ -141,17 +141,21 @@ class _PremiumButtonState extends State<PremiumButton>
                   ),
                   SizedBox(width: sizeConfig.iconGap),
                 ],
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontFamily: AppTypography.fontFamily,
-                    fontSize: sizeConfig.fontSize,
-                    fontWeight: FontWeight.w700,
-                    color:
-                        effectiveDisabled
-                            ? colors.textColor.withValues(alpha: 0.72)
-                            : colors.textColor,
-                    letterSpacing: 0,
+                Flexible(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AppTypography.fontFamily,
+                      fontSize: sizeConfig.fontSize,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          effectiveDisabled
+                              ? colors.textColor.withValues(alpha: 0.72)
+                              : colors.textColor,
+                      letterSpacing: 0,
+                    ),
                   ),
                 ),
                 if (widget.trailing != null) ...[
