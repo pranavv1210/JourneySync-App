@@ -112,7 +112,7 @@ class _NearbyEssentialsScreenState extends State<NearbyEssentialsScreen> {
           permission == LocationPermission.deniedForever) {
         return null;
       }
-      return Geolocator.getCurrentPosition(
+      return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
           timeLimit: Duration(seconds: 5),

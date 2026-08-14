@@ -168,7 +168,7 @@ class WeatherService {
           ),
         );
       } catch (_) {
-        return Geolocator.getLastKnownPosition();
+        return await Geolocator.getLastKnownPosition();
       }
     } catch (_) {
       return null;
