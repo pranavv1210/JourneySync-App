@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/explore_screen.dart';
 import '../screens/explore_solo_screen.dart';
+import '../screens/home_screen.dart';
 import '../screens/my_rides_screen.dart';
 import '../screens/plan_together_screen.dart';
 import '../screens/ride_now_screen.dart';
@@ -26,19 +27,31 @@ class AppMainBottomNav extends StatelessWidget {
 
   void _goHome(BuildContext context) {
     if (currentTab == AppMainTab.home) return;
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    Navigator.of(context).pushReplacement(
+      buildHorizontalAppRoute(const HomeScreen(), forward: false),
+    );
   }
 
   void _goExplore(BuildContext context) {
     if (currentTab == AppMainTab.explore) return;
     _record('explore');
-    Navigator.of(context).pushReplacement(buildAppRoute(const ExploreScreen()));
+    Navigator.of(context).pushReplacement(
+      buildHorizontalAppRoute(
+        const ExploreScreen(),
+        forward: currentTab.index < AppMainTab.explore.index,
+      ),
+    );
   }
 
   void _goRides(BuildContext context) {
     if (currentTab == AppMainTab.rides) return;
     _record('my_rides');
-    Navigator.of(context).pushReplacement(buildAppRoute(const MyRidesScreen()));
+    Navigator.of(context).pushReplacement(
+      buildHorizontalAppRoute(
+        const MyRidesScreen(),
+        forward: currentTab.index < AppMainTab.rides.index,
+      ),
+    );
   }
 
   Future<void> _showCreateRideSheet(BuildContext context) async {

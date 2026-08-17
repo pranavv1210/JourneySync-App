@@ -31,6 +31,26 @@ Route<T> buildAppRoute<T>(Widget page) {
   );
 }
 
+Route<T> buildHorizontalAppRoute<T>(Widget page, {bool forward = true}) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 240),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curve = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      final slide = Tween<Offset>(
+        begin: Offset(forward ? 1 : -1, 0),
+        end: Offset.zero,
+      ).animate(curve);
+      return SlideTransition(position: slide, child: child);
+    },
+  );
+}
+
 Future<T?> pushAppRoute<T>(BuildContext context, Widget page) {
   return Navigator.of(context).push<T>(buildAppRoute<T>(page));
 }

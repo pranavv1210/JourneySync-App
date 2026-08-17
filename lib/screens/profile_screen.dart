@@ -321,7 +321,28 @@ class _ProfileScreenState extends State<ProfileScreen>
     final nicknameController = TextEditingController(
       text: initialBike?['nickname'] ?? '',
     );
+    final brandFocus = FocusNode();
+    final modelFocus = FocusNode();
+    final ccFocus = FocusNode();
+    final nicknameFocus = FocusNode();
+    final brandKey = GlobalKey();
+    final modelKey = GlobalKey();
+    final ccKey = GlobalKey();
+    final nicknameKey = GlobalKey();
     var imagePath = initialBike?['imagePath'] ?? '';
+
+    void scrollFieldIntoView(GlobalKey key) {
+      Future<void>.delayed(const Duration(milliseconds: 280), () {
+        final targetContext = key.currentContext;
+        if (targetContext == null || !targetContext.mounted) return;
+        Scrollable.ensureVisible(
+          targetContext,
+          duration: const Duration(milliseconds: 260),
+          curve: AppCurves.easeOutCubic,
+          alignment: 0.28,
+        );
+      });
+    }
 
     Future<String> saveBikeImage(XFile picked) async {
       final directory = await getApplicationDocumentsDirectory();
@@ -346,14 +367,14 @@ class _ProfileScreenState extends State<ProfileScreen>
           builder: (context, setSheetState) {
             final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
             return Padding(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 AppSpacing.xl,
                 0,
                 AppSpacing.xl,
-                AppSpacing.xl,
+                AppSpacing.xl + keyboardInset,
               ),
               child: FractionallySizedBox(
-                heightFactor: 0.82,
+                heightFactor: keyboardInset > 0 ? 0.9 : 0.82,
                 child: Material(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(AppRadius.xxl),
@@ -365,7 +386,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       AppSpacing.xl,
                       AppSpacing.xl,
                       AppSpacing.xl,
-                      AppSpacing.xl + keyboardInset,
+                      AppSpacing.xl,
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -468,28 +489,40 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         _VehicleField(
+                          fieldKey: brandKey,
                           controller: brandController,
+                          focusNode: brandFocus,
                           label: 'Brand',
                           hint: 'Royal Enfield',
+                          onTap: () => scrollFieldIntoView(brandKey),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _VehicleField(
+                          fieldKey: modelKey,
                           controller: modelController,
+                          focusNode: modelFocus,
                           label: 'Model',
                           hint: 'Continental GT 650',
+                          onTap: () => scrollFieldIntoView(modelKey),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _VehicleField(
+                          fieldKey: ccKey,
                           controller: ccController,
+                          focusNode: ccFocus,
                           label: 'Engine CC',
                           hint: '650',
                           keyboardType: TextInputType.number,
+                          onTap: () => scrollFieldIntoView(ccKey),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _VehicleField(
+                          fieldKey: nicknameKey,
                           controller: nicknameController,
+                          focusNode: nicknameFocus,
                           label: 'Nickname',
                           hint: 'Weekend machine',
+                          onTap: () => scrollFieldIntoView(nicknameKey),
                         ),
                         const SizedBox(height: AppSpacing.xl),
                         Row(
@@ -553,6 +586,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     modelController.dispose();
     ccController.dispose();
     nicknameController.dispose();
+    brandFocus.dispose();
+    modelFocus.dispose();
+    ccFocus.dispose();
+    nicknameFocus.dispose();
     return result;
   }
 
@@ -1497,22 +1534,31 @@ class _ProfileScreenState extends State<ProfileScreen>
 
 class _VehicleField extends StatelessWidget {
   const _VehicleField({
+    required this.fieldKey,
     required this.controller,
+    required this.focusNode,
     required this.label,
     required this.hint,
     this.keyboardType,
+    this.onTap,
   });
 
+  final Key fieldKey;
   final TextEditingController controller;
+  final FocusNode focusNode;
   final String label;
   final String hint;
   final TextInputType? keyboardType;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      key: fieldKey,
       controller: controller,
+      focusNode: focusNode,
       keyboardType: keyboardType,
+      onTap: onTap,
       style: AppTypography.bodyLarge.copyWith(
         color: AppColors.textPrimary,
         fontWeight: FontWeight.w600,

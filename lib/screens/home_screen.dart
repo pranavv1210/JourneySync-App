@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -56,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   String userId = '';
   String loadError = '';
   String weatherText = 'Weather unavailable';
+  String activeBikeImagePath = '';
 
   bool loading = false;
   bool refreshingHome = false;
@@ -115,6 +117,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       final cachedPhone = prefs.getString('userPhone') ?? '';
       final cachedName = prefs.getString('userName') ?? 'Rider';
       final cachedBike = prefs.getString('userBike') ?? 'No bike added';
+      final cachedBikeImagePath = _resolveActiveBikeImagePath(prefs);
 
       var resolvedId = cachedUserId.trim();
       var resolvedPhone = cachedPhone.trim();
@@ -202,6 +205,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       setState(() {
         name = resolvedName.isNotEmpty ? resolvedName : 'Rider';
         bike = resolvedBike.isNotEmpty ? resolvedBike : 'No bike added';
+        activeBikeImagePath = cachedBikeImagePath;
         userId = resolvedId;
         userPhone = resolvedPhone;
         recentRides = fetchedRecent;
@@ -235,7 +239,28 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       userPhone = (prefs.getString('userPhone') ?? '').trim();
       name = (prefs.getString('userName') ?? 'Rider').trim();
       bike = (prefs.getString('userBike') ?? 'No bike added').trim();
+      activeBikeImagePath = _resolveActiveBikeImagePath(prefs);
     });
+  }
+
+  String _resolveActiveBikeImagePath(SharedPreferences prefs) {
+    final activeId = (prefs.getString('userActiveBikeId') ?? '').trim();
+    final rows = prefs.getStringList('garageBikes') ?? const <String>[];
+    Map<String, String>? fallbackBike;
+    for (final row in rows) {
+      final parts = row.split('|');
+      if (parts.length < 7) continue;
+      final bike = {'id': parts[0], 'imagePath': parts[6]};
+      fallbackBike ??= bike;
+      if (bike['id'] == activeId) {
+        final path = bike['imagePath'] ?? '';
+        return path.isNotEmpty && File(path).existsSync() ? path : '';
+      }
+    }
+    final fallbackPath = fallbackBike?['imagePath'] ?? '';
+    return fallbackPath.isNotEmpty && File(fallbackPath).existsSync()
+        ? fallbackPath
+        : '';
   }
 
   Future<Map<String, dynamic>?> _loadProfileWithRetry({
@@ -543,16 +568,28 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  clipBehavior: Clip.antiAlias,
+                  width: 46,
+                  height: 46,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.18),
+                    ),
                   ),
-                  child: Icon(
-                    Icons.two_wheeler_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
+                  child:
+                      activeBikeImagePath.isNotEmpty
+                          ? Image.file(
+                            File(activeBikeImagePath),
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.medium,
+                          )
+                          : const Icon(
+                            Icons.two_wheeler_rounded,
+                            color: AppColors.primary,
+                            size: 22,
+                          ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -616,25 +653,14 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             ),
             child: Stack(
               children: [
-                Positioned.fill(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.xxl),
-                    child: Image.network(
-                      'https://images.unsplash.com/photo-1558980664-10ea9b4b3bd3?auto=format&fit=crop&w=1200&q=80',
-                      fit: BoxFit.cover,
-                      errorBuilder:
-                          (_, __, ___) => Container(
-                            color: AppColors.primaryDark.withValues(
-                              alpha: 0.45,
-                            ),
-                            alignment: Alignment.center,
-                            child: Icon(
-                              Icons.two_wheeler,
-                              size: 68,
-                              color: Colors.white.withValues(alpha: 0.35),
-                            ),
-                          ),
-                    ),
+                Positioned(
+                  right: -16,
+                  top: 24,
+                  bottom: 20,
+                  width: 220,
+                  child: Opacity(
+                    opacity: 0.14,
+                    child: CustomPaint(painter: _CreateRideRouteMarkPainter()),
                   ),
                 ),
                 Positioned.fill(
@@ -666,9 +692,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: const Icon(
-                          Icons.add_rounded,
+                          Icons.route_rounded,
                           color: Colors.white,
-                          size: 26,
+                          size: 24,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -1251,7 +1277,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           label: 'Explore',
           onTap: () {
             unawaited(_recordFeedbackFeature('explore'));
-            Navigator.push(context, buildAppRoute(const ExploreScreen()));
+            Navigator.pushReplacement(
+              context,
+              buildHorizontalAppRoute(const ExploreScreen()),
+            );
           },
         ),
         JourneyBottomNavDestination(
@@ -1259,7 +1288,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           label: 'Rides',
           onTap: () {
             unawaited(_recordFeedbackFeature('my_rides'));
-            Navigator.push(context, buildAppRoute(const MyRidesScreen()));
+            Navigator.pushReplacement(
+              context,
+              buildHorizontalAppRoute(const MyRidesScreen()),
+            );
           },
         ),
         JourneyBottomNavDestination(
@@ -1413,6 +1445,56 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       ),
     );
   }
+}
+
+class _CreateRideRouteMarkPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final routePaint =
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 16
+          ..strokeCap = StrokeCap.round;
+    final dotPaint =
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.fill;
+
+    final path =
+        Path()
+          ..moveTo(size.width * 0.12, size.height * 0.78)
+          ..cubicTo(
+            size.width * 0.28,
+            size.height * 0.48,
+            size.width * 0.58,
+            size.height * 0.72,
+            size.width * 0.66,
+            size.height * 0.38,
+          )
+          ..cubicTo(
+            size.width * 0.72,
+            size.height * 0.16,
+            size.width * 0.86,
+            size.height * 0.2,
+            size.width * 0.94,
+            size.height * 0.06,
+          );
+    canvas.drawPath(path, routePaint);
+    canvas.drawCircle(
+      Offset(size.width * 0.12, size.height * 0.78),
+      13,
+      dotPaint,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.94, size.height * 0.06),
+      13,
+      dotPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _RidePreviewPainter extends CustomPainter {

@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../widgets/app_dialog.dart';
 import '../widgets/journey_screen.dart';
 import '../widgets/ride_loading_indicator.dart';
 import '../services/supabase_service.dart';
@@ -30,11 +31,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _loading = true;
   bool _saving = false;
   String _localAvatarPath = '';
+  String _initialName = '';
+  String _initialBike = '';
+  String _initialPhone = '';
+  String _initialAvatarPath = '';
+
+  bool get _hasUnsavedChanges {
+    if (_loading) return false;
+    return _nameController.text.trim() != _initialName ||
+        _bikeController.text.trim() != _initialBike ||
+        _phoneController.text.trim() != _initialPhone ||
+        _localAvatarPath != _initialAvatarPath;
+  }
 
   @override
   void initState() {
     super.initState();
+    _nameController.addListener(_onProfileFieldChanged);
+    _bikeController.addListener(_onProfileFieldChanged);
+    _phoneController.addListener(_onProfileFieldChanged);
     _loadProfile();
+  }
+
+  void _onProfileFieldChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadProfile() async {
@@ -56,6 +76,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               : (prefs.getString('userEmail') ?? '').trim().toLowerCase();
       _phoneController.text = cachedPhone.contains('@') ? '' : cachedPhone;
       _localAvatarPath = prefs.getString('localAvatarPath') ?? '';
+      _initialName = _nameController.text.trim();
+      _initialBike = _bikeController.text.trim();
+      _initialPhone = _phoneController.text.trim();
+      _initialAvatarPath = _localAvatarPath;
       _loading = false;
     });
   }
@@ -79,10 +103,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final savedPath =
           '${profileDir.path}/avatar_${DateTime.now().millisecondsSinceEpoch}.$extension';
       await File(image.path).copy(savedPath);
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('localAvatarPath', savedPath);
-      await prefs.setString('userAvatarUrl', '');
 
       if (!mounted) return;
       setState(() => _localAvatarPath = savedPath);
@@ -123,6 +143,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         await prefs.setString('userEmail', email);
       }
       await prefs.setString('userPhone', phone);
+      if (_localAvatarPath.isNotEmpty) {
+        await prefs.setString('localAvatarPath', _localAvatarPath);
+        await prefs.setString('userAvatarUrl', '');
+      }
 
       final userId = prefs.getString('userId') ?? '';
       if (userId.isNotEmpty) {
@@ -149,6 +173,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
 
       if (!mounted) return;
+      setState(() {
+        _initialName = name;
+        _initialBike = bike;
+        _initialPhone = phone;
+        _initialAvatarPath = _localAvatarPath;
+      });
       showPremiumToast(
         context,
         phone.isEmpty
@@ -198,6 +228,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   void dispose() {
+    _nameController.removeListener(_onProfileFieldChanged);
+    _bikeController.removeListener(_onProfileFieldChanged);
+    _phoneController.removeListener(_onProfileFieldChanged);
     _nameController.dispose();
     _bikeController.dispose();
     _emailController.dispose();
@@ -207,142 +240,165 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.xl,
-                AppSpacing.lg,
-                AppSpacing.xl,
-                AppSpacing.sm,
+    return PopScope(
+      canPop: !_hasUnsavedChanges || _saving,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop || !_hasUnsavedChanges || _saving) return;
+        final discard = await showAppConfirmDialog(
+          context,
+          title: 'Discard changes?',
+          message:
+              'You have unsaved profile edits. Keep editing or discard them?',
+          confirmLabel: 'Discard',
+          cancelLabel: 'Keep editing',
+          destructive: true,
+        );
+        if (discard == true && context.mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.lg,
+                  AppSpacing.xl,
+                  AppSpacing.sm,
+                ),
+                child: const JourneyHeader(
+                  surface: true,
+                  leading: JourneyBackButton(),
+                  eyebrow: 'RIDER DETAILS',
+                  title: 'Edit Profile',
+                  subtitle:
+                      'Update your public identity, bike, and contact details.',
+                ),
               ),
-              child: const JourneyHeader(
-                surface: true,
-                leading: JourneyBackButton(),
-                eyebrow: 'RIDER DETAILS',
-                title: 'Edit Profile',
-                subtitle:
-                    'Update your public identity, bike, and contact details.',
-              ),
-            ),
 
-            Expanded(
-              child:
-                  _loading
-                      ? const Center(
-                        child: RideLoadingIndicator(label: 'Loading profile'),
-                      )
-                      : SingleChildScrollView(
-                        padding: const EdgeInsets.all(AppSpacing.xl),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            GlassCard(
-                              padding: const EdgeInsets.all(AppSpacing.xl),
-                              elevated: true,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildEditablePhotoHero(),
-                                  const SizedBox(height: AppSpacing.xl),
-                                  Text(
-                                    'Name',
-                                    style: AppTypography.labelMedium.copyWith(
-                                      color: AppColors.textSecondary,
+              Expanded(
+                child:
+                    _loading
+                        ? const Center(
+                          child: RideLoadingIndicator(label: 'Loading profile'),
+                        )
+                        : SingleChildScrollView(
+                          padding: const EdgeInsets.all(AppSpacing.xl),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              GlassCard(
+                                padding: const EdgeInsets.all(AppSpacing.xl),
+                                elevated: true,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildEditablePhotoHero(),
+                                    const SizedBox(height: AppSpacing.xl),
+                                    Text(
+                                      'Name',
+                                      style: AppTypography.labelMedium.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: _nameController,
-                                    style: _inputTextStyle(),
-                                    decoration: _inputDecoration(
-                                      'Enter your name',
+                                    const SizedBox(height: 8),
+                                    TextField(
+                                      controller: _nameController,
+                                      style: _inputTextStyle(),
+                                      decoration: _inputDecoration(
+                                        'Enter your name',
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 20),
+                                    const SizedBox(height: 20),
 
-                                  Text(
-                                    'Vehicle Name',
-                                    style: AppTypography.labelMedium.copyWith(
-                                      color: AppColors.textSecondary,
+                                    Text(
+                                      'Vehicle Name',
+                                      style: AppTypography.labelMedium.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: _bikeController,
-                                    style: _inputTextStyle(),
-                                    decoration: _inputDecoration(
-                                      'E.g. Royal Enfield Classic 350',
+                                    const SizedBox(height: 8),
+                                    TextField(
+                                      controller: _bikeController,
+                                      style: _inputTextStyle(),
+                                      decoration: _inputDecoration(
+                                        'E.g. Royal Enfield Classic 350',
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 20),
+                                    const SizedBox(height: 20),
 
-                                  Text(
-                                    'Email ID',
-                                    style: AppTypography.labelMedium.copyWith(
-                                      color: AppColors.textSecondary,
+                                    Text(
+                                      'Email ID',
+                                      style: AppTypography.labelMedium.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: _emailController,
-                                    readOnly: true,
-                                    enableInteractiveSelection: false,
-                                    style: _inputTextStyle(),
-                                    decoration: _inputDecoration(
-                                      'Signed in with Google',
-                                      suffixIcon: Icons.lock_rounded,
+                                    const SizedBox(height: 8),
+                                    TextField(
+                                      controller: _emailController,
+                                      readOnly: true,
+                                      enableInteractiveSelection: false,
+                                      style: _inputTextStyle(),
+                                      decoration: _inputDecoration(
+                                        'Signed in with Google',
+                                        suffixIcon: Icons.lock_rounded,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'This comes from Google sign-in and cannot be changed here.',
-                                    style: AppTypography.caption.copyWith(
-                                      color: AppColors.textTertiary,
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'This comes from Google sign-in and cannot be changed here.',
+                                      style: AppTypography.caption.copyWith(
+                                        color: AppColors.textTertiary,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 20),
+                                    const SizedBox(height: 20),
 
-                                  Text(
-                                    'Mobile Number Optional',
-                                    style: AppTypography.labelMedium.copyWith(
-                                      color: AppColors.textSecondary,
+                                    Text(
+                                      'Mobile Number Optional',
+                                      style: AppTypography.labelMedium.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: _phoneController,
-                                    keyboardType: TextInputType.phone,
-                                    style: _inputTextStyle(),
-                                    onTap: () {
-                                      showPremiumToast(
-                                        context,
-                                        'OTP verification will be available soon.',
-                                        type: PremiumToastType.info,
-                                      );
-                                    },
-                                    decoration: _inputDecoration(
-                                      'Add mobile number',
-                                      suffixIcon: Icons.sms_outlined,
+                                    const SizedBox(height: 8),
+                                    TextField(
+                                      controller: _phoneController,
+                                      keyboardType: TextInputType.phone,
+                                      style: _inputTextStyle(),
+                                      onTap: () {
+                                        showPremiumToast(
+                                          context,
+                                          'OTP verification will be available soon.',
+                                          type: PremiumToastType.info,
+                                        );
+                                      },
+                                      decoration: _inputDecoration(
+                                        'Add mobile number',
+                                        suffixIcon: Icons.sms_outlined,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 32),
-                            PremiumButton(
-                              label: _saving ? 'Saving...' : 'Save Changes',
-                              onPressed: _saving ? null : _saveProfile,
-                              variant: PremiumButtonVariant.primary,
-                            ),
-                          ],
+                              const SizedBox(height: 32),
+                              PremiumButton(
+                                label: _saving ? 'Saving...' : 'Save Changes',
+                                onPressed:
+                                    _saving || !_hasUnsavedChanges
+                                        ? null
+                                        : _saveProfile,
+                                disabled: !_hasUnsavedChanges,
+                                loading: _saving,
+                                variant: PremiumButtonVariant.primary,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
