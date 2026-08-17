@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -81,7 +82,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       loading = false;
     });
 
-    _loadWeather();
+    unawaited(_loadWeather());
   }
 
   Future<void> _loadWeather() async {
@@ -595,7 +596,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       await _rideService.startRide(widget.rideId);
       if (!mounted) return;
       showAppToast(context, "Ride started", type: AppToastType.success);
-      replaceWithAppRoute(context, RideModeScreen(rideId: widget.rideId));
+      unawaited(
+        replaceWithAppRoute(context, RideModeScreen(rideId: widget.rideId)),
+      );
     } catch (error) {
       if (!mounted) return;
       showAppToast(
@@ -1765,7 +1768,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     );
 
     if (result != null && result.isNotEmpty) {
-      _processRouteLink(result);
+      unawaited(_processRouteLink(result));
     }
   }
 

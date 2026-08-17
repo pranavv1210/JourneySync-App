@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -893,7 +894,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     );
                     if (updated == true) {
-                      _loadProfileData();
+                      unawaited(_loadProfileData());
                     }
                   },
                   icon: const Icon(Icons.edit_rounded),

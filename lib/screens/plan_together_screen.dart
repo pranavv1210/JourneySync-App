@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/app_navigation.dart';
@@ -96,9 +97,14 @@ class _PlanTogetherScreenState extends State<PlanTogetherScreen> {
         'Ride plan created. Invite your crew from the lobby.',
         type: PremiumToastType.success,
       );
-      replaceWithAppRoute(
-        context,
-        RideLobbyScreen(rideId: ride.id, initialMaxRiders: _riderLimit.round()),
+      unawaited(
+        replaceWithAppRoute(
+          context,
+          RideLobbyScreen(
+            rideId: ride.id,
+            initialMaxRiders: _riderLimit.round(),
+          ),
+        ),
       );
     } catch (error) {
       if (!mounted) return;

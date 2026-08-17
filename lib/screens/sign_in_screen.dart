@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -110,7 +111,7 @@ class _SignInScreenState extends State<SignInScreen> {
         jwtToken: result.idToken,
       );
       if (!mounted) return;
-      replaceAllWithAppRoute(context, const HomeScreen());
+      unawaited(replaceAllWithAppRoute(context, const HomeScreen()));
     } catch (error) {
       if (!mounted) return;
       final message = error.toString();
@@ -121,7 +122,9 @@ class _SignInScreenState extends State<SignInScreen> {
           'No JourneySync profile found. Create your account first.',
           type: PremiumToastType.info,
         );
-        replaceWithAppRoute<void, void>(context, const CreateAccountScreen());
+        unawaited(
+          replaceWithAppRoute<void, void>(context, const CreateAccountScreen()),
+        );
         return;
       }
       final rlsBlocked =

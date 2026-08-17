@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -307,7 +308,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         jwtToken: auth.idToken,
       );
       if (!mounted) return;
-      replaceAllWithAppRoute(context, const HomeScreen());
+      unawaited(replaceAllWithAppRoute(context, const HomeScreen()));
     } catch (error) {
       if (!mounted) return;
       final rlsBlocked =

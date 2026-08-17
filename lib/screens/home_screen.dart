@@ -97,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     if (Supabase.instance.client.auth.currentSession == null) {
       await AuthService().clearSession();
       if (!mounted) return;
-      replaceAllWithAppRoute(context, const LoginScreen());
+      unawaited(replaceAllWithAppRoute(context, const LoginScreen()));
       return;
     }
     setState(() {
@@ -277,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       destructive: true,
     );
     if (!mounted || shouldExit != true) return;
-    SystemNavigator.pop();
+    unawaited(SystemNavigator.pop());
   }
 
   @override

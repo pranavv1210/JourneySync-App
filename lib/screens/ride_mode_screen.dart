@@ -13,8 +13,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/rider_location.dart';
 import '../coordinators/active_ride_coordinator.dart';
-import '../coordinators/realtime_coordinator.dart';
-import '../services/live_tracking_service.dart';
+import '../coordinators/realtime_coordinator.dart' hide unawaited;
+import '../services/live_tracking_service.dart' hide unawaited;
 import '../services/fuel_service.dart';
 import '../services/group_ride_intelligence.dart';
 import '../services/navigation_service.dart';
@@ -669,7 +669,7 @@ class _RideModeScreenState extends State<RideModeScreen>
   }
 
   Future<void> _triggerSOS() async {
-    HapticFeedback.heavyImpact();
+    unawaited(HapticFeedback.heavyImpact());
     try {
       _trackingService.setEmergencySync(true);
       _analyticsEngine.recordSos();

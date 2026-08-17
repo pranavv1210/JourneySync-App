@@ -341,11 +341,13 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
         'Ride created successfully',
         type: PremiumToastType.success,
       );
-      replaceWithAppRoute(
-        context,
-        RideLobbyScreen(
-          rideId: createdRide.id,
-          initialMaxRiders: maxRiders.round(),
+      unawaited(
+        replaceWithAppRoute(
+          context,
+          RideLobbyScreen(
+            rideId: createdRide.id,
+            initialMaxRiders: maxRiders.round(),
+          ),
         ),
       );
     } catch (error) {

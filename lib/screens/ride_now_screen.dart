@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/app_navigation.dart';
@@ -58,7 +59,7 @@ class _RideNowScreenState extends State<RideNowScreen> {
         endLabel: destination.isEmpty ? 'Open ride' : destination,
       );
       if (!mounted) return;
-      replaceWithAppRoute(context, RideModeScreen(rideId: ride.id));
+      unawaited(replaceWithAppRoute(context, RideModeScreen(rideId: ride.id)));
     } catch (error) {
       if (!mounted) return;
       showPremiumToast(

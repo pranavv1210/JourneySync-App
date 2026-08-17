@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -898,239 +899,252 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
   }
 
   Future<void> _shareRideProgress() async {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Share',
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (ctx, _, __) {
-        final rideName = _rideName();
-        final destination = _destinationLabel();
-        final date = _dateLabel();
-        final duration = _durationText();
-        final distance = _metric(const ['distance_km', 'distance'], 'km');
-        final avgSpeed = _metric(const ['avg_speed_kmh', 'avg_speed'], 'km/h');
-        final topSpeed = _metric(const ['top_speed_kmh', 'top_speed'], 'km/h');
+    unawaited(
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: 'Share',
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (ctx, _, __) {
+          final rideName = _rideName();
+          final destination = _destinationLabel();
+          final date = _dateLabel();
+          final duration = _durationText();
+          final distance = _metric(const ['distance_km', 'distance'], 'km');
+          final avgSpeed = _metric(const [
+            'avg_speed_kmh',
+            'avg_speed',
+          ], 'km/h');
+          final topSpeed = _metric(const [
+            'top_speed_kmh',
+            'top_speed',
+          ], 'km/h');
 
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Material(
-                  color: Colors.black.withValues(alpha: 0.85),
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: Colors.white24, width: 1.5),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Card Header
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.stars_rounded,
-                              color: Color(0xFFFF6A00),
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'JOURNEYSYNC SHARE POSTER',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontFamily: AppTypography.fontFamily,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Poster Graphic
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF1E3A8A), Color(0xFF0F172A)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white10),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Material(
+                    color: Colors.black.withValues(alpha: 0.85),
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(color: Colors.white24, width: 1.5),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Card Header
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
+                              Icon(
+                                Icons.stars_rounded,
+                                color: Color(0xFFFF6A00),
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
                               Text(
-                                rideName.toUpperCase(),
-                                style: const TextStyle(
+                                'JOURNEYSYNC SHARE POSTER',
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.bold,
                                   fontFamily: AppTypography.fontFamily,
-                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  letterSpacing: 1.2,
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Destination: $destination • $date',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-
-                              // Stats grid inside poster
-                              Row(
-                                children: [
-                                  _posterStat('DISTANCE', distance),
-                                  _posterStat('DURATION', duration),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  _posterStat('AVG SPEED', avgSpeed),
-                                  _posterStat('TOP SPEED', topSpeed),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Branding
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Rider: $userName',
-                                    style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                  const Text(
-                                    'JOURNEYSYNC V2',
-                                    style: TextStyle(
-                                      color: Color(0xFFFF6A00),
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 10,
-                                      letterSpacing: 1.0,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 20),
 
-                        // Share Actions
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const ui.Color(0xFFFF6A00),
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
+                          // Poster Graphic
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF1E3A8A), Color(0xFF0F172A)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white10),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  rideName.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: AppTypography.fontFamily,
+                                    fontSize: 18,
                                   ),
                                 ),
-                                onPressed: () async {
-                                  Navigator.pop(ctx);
-                                  try {
-                                    final text = _shareSummaryText();
-                                    await SharePlus.instance.share(
-                                      ShareParams(text: text),
-                                    );
-                                  } catch (error) {
-                                    if (!mounted) return;
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Destination: $destination • $date',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Stats grid inside poster
+                                Row(
+                                  children: [
+                                    _posterStat('DISTANCE', distance),
+                                    _posterStat('DURATION', duration),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    _posterStat('AVG SPEED', avgSpeed),
+                                    _posterStat('TOP SPEED', topSpeed),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Branding
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Rider: $userName',
+                                      style: const TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    const Text(
+                                      'JOURNEYSYNC V2',
+                                      style: TextStyle(
+                                        color: Color(0xFFFF6A00),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 10,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Share Actions
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const ui.Color(0xFFFF6A00),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    Navigator.pop(ctx);
+                                    try {
+                                      final text = _shareSummaryText();
+                                      await SharePlus.instance.share(
+                                        ShareParams(text: text),
+                                      );
+                                    } catch (error) {
+                                      if (!mounted) return;
+                                      showAppToast(
+                                        context,
+                                        'Could not open share sheet: $error',
+                                        type: AppToastType.error,
+                                      );
+                                    }
+                                  },
+                                  icon: const Icon(
+                                    Icons.share_rounded,
+                                    size: 16,
+                                  ),
+                                  label: const Text(
+                                    'Share Text',
+                                    style: TextStyle(
+                                      fontFamily: AppTypography.fontFamily,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(
+                                      color: Colors.white54,
+                                    ),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
                                     showAppToast(
                                       context,
-                                      'Could not open share sheet: $error',
-                                      type: AppToastType.error,
+                                      'Poster image copied to clipboard!',
+                                      type: AppToastType.info,
                                     );
-                                  }
-                                },
-                                icon: const Icon(Icons.share_rounded, size: 16),
-                                label: const Text(
-                                  'Share Text',
-                                  style: TextStyle(
-                                    fontFamily: AppTypography.fontFamily,
-                                    fontWeight: FontWeight.bold,
+                                  },
+                                  icon: const Icon(
+                                    Icons.save_alt_rounded,
+                                    size: 16,
+                                  ),
+                                  label: const Text(
+                                    'Save Card',
+                                    style: TextStyle(
+                                      fontFamily: AppTypography.fontFamily,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Colors.white54),
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                ),
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  showAppToast(
-                                    context,
-                                    'Poster image copied to clipboard!',
-                                    type: AppToastType.info,
-                                  );
-                                },
-                                icon: const Icon(
-                                  Icons.save_alt_rounded,
-                                  size: 16,
-                                ),
-                                label: const Text(
-                                  'Save Card',
-                                  style: TextStyle(
-                                    fontFamily: AppTypography.fontFamily,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        );
-      },
-      transitionBuilder: (ctx, animation, _, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeInOutCubic,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
-            child: child,
-          ),
-        );
-      },
+          );
+        },
+        transitionBuilder: (ctx, animation, _, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOutCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
     );
   }
 

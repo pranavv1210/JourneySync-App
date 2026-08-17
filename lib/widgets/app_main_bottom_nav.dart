@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../screens/explore_screen.dart';
@@ -41,7 +42,7 @@ class AppMainBottomNav extends StatelessWidget {
   }
 
   Future<void> _showCreateRideSheet(BuildContext context) async {
-    _record('ride_launcher');
+    unawaited(_record('ride_launcher'));
     final selected = await showAppBottomSheet<String>(
       context,
       builder: (context) {
@@ -80,7 +81,7 @@ class AppMainBottomNav extends StatelessWidget {
       },
     );
     if (selected == null || !context.mounted) return;
-    _record(selected);
+    unawaited(_record(selected));
     final screen = switch (selected) {
       'ride_now' => const RideNowScreen(),
       'plan_together' => const PlanTogetherScreen(),

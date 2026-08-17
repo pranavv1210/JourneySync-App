@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -68,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       await AuthService().clearSession();
       if (!mounted) return;
-      replaceAllWithAppRoute(context, const LoginScreen());
+      unawaited(replaceAllWithAppRoute(context, const LoginScreen()));
     } catch (e) {
       if (!mounted) return;
       showPremiumToast(
@@ -129,7 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           );
                           if (updated == true) {
-                            _loadProfile();
+                            unawaited(_loadProfile());
                           }
                         },
                       ),
@@ -245,7 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       MaterialPageRoute(builder: (_) => const EditProfileScreen()),
     );
     if (updated == true) {
-      _loadProfile();
+      unawaited(_loadProfile());
     }
   }
 

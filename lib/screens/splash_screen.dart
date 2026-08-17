@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -46,9 +47,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
     if (initError != null) {
-      replaceWithAppRoute(
-        context,
-        SetupErrorScreen(errorMessage: initError.toString()),
+      unawaited(
+        replaceWithAppRoute(
+          context,
+          SetupErrorScreen(errorMessage: initError.toString()),
+        ),
       );
       return;
     }
@@ -59,14 +62,14 @@ class _SplashScreenState extends State<SplashScreen>
     final hasAuthSession = Supabase.instance.client.auth.currentSession != null;
 
     if (loggedIn && hasAuthSession) {
-      replaceWithAppRoute(context, const HomeScreen());
+      unawaited(replaceWithAppRoute(context, const HomeScreen()));
       return;
     }
     if (loggedIn && !hasAuthSession) {
       await AuthService().clearSession();
       if (!mounted) return;
     }
-    replaceWithAppRoute(context, const LoginScreen());
+    unawaited(replaceWithAppRoute(context, const LoginScreen()));
   }
 
   @override

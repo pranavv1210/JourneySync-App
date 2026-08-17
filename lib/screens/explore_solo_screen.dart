@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/app_navigation.dart';
@@ -59,7 +60,7 @@ class _ExploreSoloScreenState extends State<ExploreSoloScreen> {
         endLabel: destination,
       );
       if (!mounted) return;
-      replaceWithAppRoute(context, RideModeScreen(rideId: ride.id));
+      unawaited(replaceWithAppRoute(context, RideModeScreen(rideId: ride.id)));
     } catch (error) {
       if (!mounted) return;
       showPremiumToast(

@@ -1,0 +1,20 @@
+{
+  "name": "JourneySync",
+  "short_name": "JourneySync",
+  "description": "The operating system for group motorcycle rides with Ride Radar, live rider visibility, SOS context, weather, fuel stops, and ride memory.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["navigation", "travel", "sports"],
+  "background_color": "#f4efea",
+  "theme_color": "#db7706",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

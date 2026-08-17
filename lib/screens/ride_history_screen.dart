@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -355,7 +356,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                         ),
                                       );
                                     }
-                                    _loadHistory();
+                                    unawaited(_loadHistory());
                                   },
                                   icon: const Icon(
                                     Icons.arrow_forward_rounded,
