@@ -133,7 +133,7 @@ class AppMainBottomNav extends StatelessWidget {
           onTap:
               () => Navigator.of(
                 context,
-              ).pushReplacement(buildAppRoute(const SettingsScreen())),
+              ).push(buildAppRoute(const SettingsScreen())),
         ),
       ],
     );

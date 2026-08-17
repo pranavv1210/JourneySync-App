@@ -524,15 +524,16 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  width: 46,
+                  height: 46,
                   decoration: BoxDecoration(
                     color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   child: const Icon(
                     Icons.wb_sunny_rounded,
                     color: Color(0xFF2563EB),
-                    size: 20,
+                    size: 22,
                   ),
                 ),
                 const SizedBox(width: 10),

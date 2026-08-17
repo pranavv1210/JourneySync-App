@@ -1928,18 +1928,25 @@ svg {
   min-height: 100svh;
   display: grid;
   place-items: center;
-  padding: var(--space-xl) 20px;
+  padding: max(20px, env(safe-area-inset-top)) 16px
+    max(20px, env(safe-area-inset-bottom));
   background: var(--js-dark);
   color: white;
 }
 
+.beta-download-shell {
+  width: min(100%, 30rem);
+}
+
 .beta-download-card,
 .not-found-inner {
-  width: min(920px, 100%);
-  padding: var(--space-lg);
+  width: 100%;
+  padding: clamp(1.25rem, 5vw, 2rem);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: var(--radius-2xl);
-  background: rgba(255, 255, 255, 0.06);
+  border-radius: clamp(1.5rem, 7vw, 2.4rem);
+  background:
+    radial-gradient(circle at 16% 0%, rgba(212, 98, 17, 0.28), transparent 13rem),
+    rgba(255, 255, 255, 0.07);
   box-shadow: var(--shadow-deep);
 }
 
@@ -1947,6 +1954,7 @@ svg {
   display: inline-flex;
   align-items: center;
   gap: 0.7rem;
+  color: white;
   font-weight: 900;
 }
 
@@ -1968,45 +1976,64 @@ svg {
 
 .beta-download-card h1,
 .not-found-inner h1 {
-  margin: 0;
-  font-size: clamp(2.5rem, 7vw, 6rem);
-  line-height: 0.95;
-  letter-spacing: -0.06em;
+  margin: clamp(2rem, 8vw, 3.5rem) 0 0;
+  font-size: clamp(2.45rem, 12vw, 4rem);
+  line-height: 0.9;
+  letter-spacing: -0.055em;
 }
 
 .beta-download-card > p,
 .not-found-inner p {
+  margin: 1rem 0 0;
   color: var(--js-dark-muted);
-  font-size: 1.05rem;
-  line-height: 1.6;
+  font-size: clamp(0.96rem, 4vw, 1.08rem);
+  line-height: 1.55;
 }
 
-.beta-download-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-md);
-  margin-top: var(--space-lg);
-}
-
-.beta-download-grid article,
-.beta-release-notes,
-.beta-fallback {
-  padding: var(--space-md);
+.beta-download-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: clamp(1.4rem, 6vw, 2rem) 0 1rem;
+  padding: 0.9rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-lg);
+  border-radius: 1.25rem;
   background: rgba(255, 255, 255, 0.06);
 }
 
-.beta-platform-head {
-  display: flex;
-  justify-content: space-between;
-  color: #ffb36e;
-  font-weight: 900;
+.beta-download-panel > .material-icons-round {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 1rem;
+  color: white;
+  background: var(--js-orange);
 }
 
-.beta-release-notes,
-.beta-fallback {
-  margin-top: var(--space-md);
+.beta-download-panel strong,
+.beta-download-panel small {
+  display: block;
+}
+
+.beta-download-panel small,
+.beta-download-note {
+  color: var(--js-dark-muted);
+}
+
+.beta-download-primary {
+  width: 100%;
+}
+
+.beta-download-note {
+  margin: 1rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.beta-download-note a {
+  color: #ffb36e;
+  font-weight: 900;
 }
 
 @keyframes shimmer {
