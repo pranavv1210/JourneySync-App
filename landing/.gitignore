@@ -8,9 +8,18 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.next
 dist
 dist-ssr
+src/src
 *.local
+
+# Unused default Next starter assets.
+public/file.svg
+public/globe.svg
+public/next.svg
+public/vercel.svg
+public/window.svg
 
 # Editor directories and files
 .vscode/*

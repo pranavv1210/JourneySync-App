@@ -11,7 +11,7 @@
   "theme_color": "#db7706",
   "icons": [
     {
-      "src": "/assets/logo.png",
+      "src": "/logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

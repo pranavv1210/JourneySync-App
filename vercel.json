@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "npm install",
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
+  "installCommand": "npm --prefix landing install",
+  "buildCommand": "npm --prefix landing run build",
+  "outputDirectory": "landing/.next",
   "headers": [
     {
       "source": "/journeysync.apk",
