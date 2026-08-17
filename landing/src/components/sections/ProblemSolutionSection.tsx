@@ -19,7 +19,7 @@ export function ProblemSolutionSection() {
           <div className="story-route-card" aria-hidden="true">
             <svg viewBox="0 0 360 420" preserveAspectRatio="none">
               <motion.path
-                d="M54 380 C 90 310, 44 245, 126 220 C 205 196, 148 96, 238 80 C 294 70, 312 44, 332 20"
+                d="M74 348 C 110 296, 72 244, 140 216 C 214 186, 160 112, 238 92 C 286 80, 300 54, 318 34"
                 initial={reduceMotion ? undefined : { pathLength: 0 }}
                 whileInView={{ pathLength: 1 }}
                 viewport={{ once: true, amount: 0.3 }}

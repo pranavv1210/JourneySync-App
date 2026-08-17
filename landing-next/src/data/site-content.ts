@@ -298,15 +298,6 @@ export const faqs: FaqItem[] = [
 
 export const footerGroups = [
   {
-    title: 'Product',
-    links: [
-      { label: 'Ride Layer', href: '#features' },
-      { label: 'Download', href: '#download' },
-      { label: 'Demo', href: '#demo' },
-      { label: 'Safety', href: '#safety' },
-    ],
-  },
-  {
     title: 'Company',
     links: [
       { label: 'About Us', infoKey: 'about' },

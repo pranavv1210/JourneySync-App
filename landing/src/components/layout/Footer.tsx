@@ -1,5 +1,9 @@
 import { appVersion, footerGroups } from '@/data/site-content';
 
+type FooterLink =
+  | { label: string; href: string }
+  | { label: string; infoKey: string };
+
 export function Footer({ onInfo }: { onInfo: (key: string) => void }) {
   return (
     <footer className="site-footer">
@@ -37,14 +41,14 @@ export function Footer({ onInfo }: { onInfo: (key: string) => void }) {
           <div key={group.title} className="footer-group">
             <h4>{group.title}</h4>
             <ul>
-              {group.links.map((link) => (
+              {(group.links as readonly FooterLink[]).map((link) => (
                 <li key={link.label}>
-                  {'infoKey' in link ? (
+                  {'href' in link ? (
+                    <a href={link.href}>{link.label}</a>
+                  ) : (
                     <button type="button" onClick={() => onInfo(link.infoKey)}>
                       {link.label}
                     </button>
-                  ) : (
-                    <a href={link.href}>{link.label}</a>
                   )}
                 </li>
               ))}

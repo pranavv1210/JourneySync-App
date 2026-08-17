@@ -461,11 +461,13 @@ svg {
 
 .product-orbit {
   position: absolute;
-  inset: 4% 4% auto auto;
+  top: 1.35rem;
+  left: calc(50% - min(180px, 39vw) + 1.35rem);
+  right: calc(50% - min(180px, 39vw) + 1.35rem);
   display: flex;
   gap: 0.45rem;
   flex-wrap: wrap;
-  max-width: 12rem;
+  justify-content: flex-end;
   z-index: 2;
 }
 
@@ -651,7 +653,8 @@ svg {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  width: min(18rem, 76vw);
+  width: min(15rem, calc(78vw - 2.2rem));
+  max-width: calc(360px - 2.2rem);
   padding: 0.9rem;
   border: 1px solid rgba(255, 255, 255, 0.62);
   border-radius: 1.4rem;
@@ -661,13 +664,14 @@ svg {
 }
 
 .floating-command.radar {
-  left: -3rem;
-  top: 20%;
+  left: calc(50% - min(180px, 39vw) + 1.1rem);
+  top: 21%;
 }
 
 .floating-command.sos {
-  right: -2rem;
-  bottom: 18%;
+  left: calc(50% - min(180px, 39vw) + 1.1rem);
+  right: auto;
+  bottom: 16%;
 }
 
 .floating-command .material-icons-round {
@@ -811,6 +815,13 @@ svg {
   background-size: 28px 28px;
 }
 
+.story-route-card svg {
+  position: absolute;
+  inset: 1.2rem;
+  width: calc(100% - 2.4rem);
+  height: calc(100% - 2.4rem);
+}
+
 .story-route-card path {
   fill: none;
   stroke: var(--js-orange);
@@ -829,10 +840,10 @@ svg {
   box-shadow: var(--shadow-soft);
 }
 
-.node-a { left: 9%; bottom: 8%; }
-.node-b { left: 34%; top: 48%; }
-.node-c { right: 23%; top: 24%; }
-.node-d { right: 7%; top: 7%; }
+.node-a { left: 10%; bottom: 10%; }
+.node-b { left: 35%; top: 48%; }
+.node-c { right: 24%; top: 25%; }
+.node-d { right: 8%; top: 9%; }
 
 .story-steps {
   display: grid;
@@ -1045,13 +1056,13 @@ svg {
 }
 
 .feature-puck.one {
-  top: 22%;
-  right: 12%;
+  top: 24%;
+  right: 15%;
 }
 
 .feature-puck.two {
-  left: 11%;
-  bottom: 27%;
+  left: 12%;
+  bottom: 30%;
   background: var(--js-orange);
 }
 
@@ -1234,11 +1245,25 @@ svg {
   overflow: hidden;
   border-radius: var(--radius-2xl);
   background:
-    linear-gradient(rgba(20, 61, 49, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(20, 61, 49, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(20, 61, 49, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 61, 49, 0.12) 1px, transparent 1px),
+    linear-gradient(rgba(11, 18, 14, 0.36), rgba(11, 18, 14, 0.58)),
+    url("/map_bg.png") center / cover,
     var(--js-dark);
-  background-size: 32px 32px;
+  background-size: 32px 32px, 32px 32px, auto, cover, auto;
+  background-position: center;
   box-shadow: var(--shadow-deep);
+}
+
+.built-route {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.built-route svg {
+  width: 100%;
+  height: 100%;
 }
 
 .built-route path {
@@ -1250,6 +1275,7 @@ svg {
 
 .built-badge {
   position: absolute;
+  z-index: 2;
   left: var(--space-md);
   right: var(--space-md);
   bottom: var(--space-md);
@@ -1497,7 +1523,7 @@ svg {
 .chapter-faq .section-heading {
   max-width: 58rem;
   margin-inline: auto;
-  margin-bottom: clamp(2.4rem, 4.5vw, 4rem);
+  margin-bottom: clamp(1.9rem, 3.2vw, 3rem);
   text-align: center;
 }
 
@@ -1695,7 +1721,7 @@ svg {
 
 .footer-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 0.7fr));
+  grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 0.7fr));
   gap: var(--space-lg);
 }
 
