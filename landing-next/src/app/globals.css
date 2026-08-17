@@ -48,12 +48,16 @@
 html {
   scroll-behavior: smooth;
   background: var(--js-bg);
-  scrollbar-color: rgba(212, 98, 17, 0.5) transparent;
+  max-width: 100%;
+  overflow-x: hidden;
+  scrollbar-width: none;
 }
 
 body {
   margin: 0;
   min-height: 100svh;
+  max-width: 100%;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 12% 4%, rgba(212, 98, 17, 0.18), transparent 28rem),
     radial-gradient(circle at 82% 10%, rgba(20, 61, 49, 0.1), transparent 26rem),
@@ -62,6 +66,19 @@ body {
   font-family: var(--font-outfit), Outfit, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 body.menu-open,
@@ -1077,6 +1094,11 @@ svg {
   text-align: center;
 }
 
+.chapter-testimonials .section-heading {
+  margin-inline: auto;
+  text-align: center;
+}
+
 .chapter-light {
   background: rgba(255, 253, 248, 0.42);
 }
@@ -1372,8 +1394,14 @@ svg {
   display: flex;
   gap: var(--space-md);
   overflow-x: auto;
+  overflow-y: hidden;
   scroll-snap-type: x mandatory;
   padding: 0.4rem 0 var(--space-md);
+  scrollbar-width: none;
+}
+
+.testimonial-track-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 .testimonial-slide {

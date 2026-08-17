@@ -5,6 +5,14 @@ import { trackEvent } from '@/lib/tracking';
 
 export function useLandingRuntime() {
   useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
+    if (!window.location.hash || window.location.hash === '#top') {
+      window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 0);
+    }
+
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const progress = document.getElementById('scroll-progress');
     const header = document.querySelector<HTMLElement>('.site-header');

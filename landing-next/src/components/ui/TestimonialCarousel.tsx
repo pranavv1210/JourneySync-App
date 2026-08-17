@@ -29,7 +29,13 @@ export function TestimonialCarousel({ items }: { items: Testimonial[] }) {
     const node = trackRef.current;
     if (!node) return;
     const card = node.children[active] as HTMLElement | undefined;
-    card?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', inline: 'center', block: 'nearest' });
+    if (!card) return;
+
+    const nextLeft = card.offsetLeft - (node.clientWidth - card.clientWidth) / 2;
+    node.scrollTo({
+      left: Math.max(0, nextLeft),
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
   }, [active, reduceMotion]);
 
   return (
