@@ -7,14 +7,9 @@ import { CtaButton } from '@/components/ui/CtaButton';
 
 export function DownloadSection({ onDownload }: { onDownload: () => void }) {
   const reduceMotion = useReducedMotion();
-  const [qrSrc, setQrSrc] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    const apkUrl = new URL('/journeysync.apk', window.location.origin).href;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=${encodeURIComponent(apkUrl)}`;
-  });
+  const [qrSrc, setQrSrc] = useState('');
 
   useEffect(() => {
-    if (qrSrc) return;
     const id = window.setTimeout(() => {
       const apkUrl = new URL('/journeysync.apk', window.location.origin).href;
       setQrSrc(
@@ -22,7 +17,7 @@ export function DownloadSection({ onDownload }: { onDownload: () => void }) {
       );
     }, 0);
     return () => window.clearTimeout(id);
-  }, [qrSrc]);
+  }, []);
 
   return (
     <section id="download" className="chapter-download">
