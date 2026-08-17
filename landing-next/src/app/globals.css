@@ -1096,7 +1096,17 @@ svg {
 
 .chapter-testimonials .section-heading {
   margin-inline: auto;
+  margin-bottom: clamp(2rem, 4vw, 3.2rem);
   text-align: center;
+}
+
+.chapter-testimonials .section-heading h2 {
+  max-width: 15ch;
+  margin-inline: auto;
+}
+
+.chapter-testimonials .section-heading p {
+  margin-inline: auto;
 }
 
 .chapter-light {
@@ -1387,6 +1397,8 @@ svg {
 }
 
 .testimonial-carousel {
+  max-width: min(100%, 82rem);
+  margin-inline: auto;
   overflow: hidden;
 }
 
@@ -1472,11 +1484,26 @@ svg {
 
 .faq-container {
   max-width: 900px;
+  margin-inline: auto;
 }
 
 .faq-stack {
   display: grid;
   gap: 0.8rem;
+  max-width: 72rem;
+  margin-inline: auto;
+}
+
+.chapter-faq .section-heading {
+  max-width: 58rem;
+  margin-inline: auto;
+  margin-bottom: clamp(2.4rem, 4.5vw, 4rem);
+  text-align: center;
+}
+
+.chapter-faq .section-heading h2 {
+  max-width: 16ch;
+  margin-inline: auto;
 }
 
 .faq-card {
@@ -1622,15 +1649,34 @@ svg {
 }
 
 .chapter-final {
-  min-height: 70svh;
+  min-height: clamp(34rem, 66svh, 46rem);
   display: grid;
   place-items: center;
+  padding-block: clamp(5rem, 9vw, 8rem);
   text-align: center;
   overflow: hidden;
 }
 
 .final-inner {
-  max-width: 840px;
+  display: grid;
+  width: 100%;
+  max-width: 920px;
+  min-height: clamp(24rem, 42svh, 32rem);
+  place-items: center;
+}
+
+.final-inner > div {
+  width: min(100%, 860px);
+  margin-inline: auto;
+}
+
+.final-inner h2 {
+  max-width: 13ch;
+  margin-inline: auto;
+}
+
+.final-inner p {
+  margin-inline: auto;
 }
 
 .final-actions {
