@@ -165,7 +165,7 @@ class _CreateRideButtonState extends State<_CreateRideButton> {
             boxShadow: AppShadows.primary,
           ),
           child: const Icon(
-            Icons.add_road_rounded,
+            Icons.near_me_rounded,
             color: Colors.white,
             size: 30,
           ),

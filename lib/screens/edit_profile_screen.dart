@@ -100,8 +100,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         profileDir.createSync(recursive: true);
       }
       final extension = image.path.split('.').last;
-      final savedPath =
-          '${profileDir.path}/avatar_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      for (final entity in profileDir.listSync()) {
+        if (entity is File && entity.path.contains('avatar.')) {
+          await entity.delete();
+        }
+      }
+      final savedPath = '${profileDir.path}/avatar.$extension';
       await File(image.path).copy(savedPath);
 
       if (!mounted) return;

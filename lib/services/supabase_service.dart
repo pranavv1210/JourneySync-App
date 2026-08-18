@@ -225,6 +225,76 @@ class SupabaseService {
     }
   }
 
+  Future<void> saveEmergencyContacts({
+    required String userId,
+    required List<Map<String, String>> contacts,
+  }) async {
+    final normalized = userId.trim();
+    if (normalized.isEmpty) return;
+    final payload = <String, dynamic>{
+      'emergency_contacts':
+          contacts.map((contact) => Map<String, String>.from(contact)).toList(),
+    };
+
+    Future<void> updateBy(String column) {
+      return _client.from('profiles').update(payload).eq(column, normalized);
+    }
+
+    try {
+      if (await _profileColumnExists('auth_user_id')) {
+        await updateBy('auth_user_id');
+        return;
+      }
+      await updateBy('id');
+    } on PostgrestException catch (error) {
+      if (_isMissingColumnError(error)) return;
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, String>>?> fetchEmergencyContacts({
+    required String userId,
+  }) async {
+    final normalized = userId.trim();
+    if (normalized.isEmpty) return null;
+
+    Future<Map<String, dynamic>?> fetchBy(String column) {
+      return _client
+          .from('profiles')
+          .select('emergency_contacts')
+          .eq(column, normalized)
+          .maybeSingle();
+    }
+
+    try {
+      Map<String, dynamic>? row;
+      if (await _profileColumnExists('auth_user_id')) {
+        row = await fetchBy('auth_user_id');
+      }
+      row ??= await fetchBy('id');
+      if (row == null) return null;
+      final source =
+          row['emergency_contacts'] is List
+              ? row['emergency_contacts'] as List
+              : const [];
+      return source
+          .whereType<Map>()
+          .map((item) {
+            final map = Map<String, dynamic>.from(item);
+            return <String, String>{
+              'name': (map['name'] ?? '').toString(),
+              'phone': (map['phone'] ?? '').toString(),
+              'relation': (map['relation'] ?? '').toString(),
+            };
+          })
+          .where((contact) => (contact['phone'] ?? '').trim().isNotEmpty)
+          .toList(growable: false);
+    } on PostgrestException catch (error) {
+      if (_isMissingColumnError(error)) return null;
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> updateUserAvatar({
     required String userId,
     required String avatarUrl,
@@ -264,8 +334,7 @@ class SupabaseService {
     String contentType = 'image/jpeg',
   }) async {
     final bucket = _avatarBucket.trim().isEmpty ? 'avatars' : _avatarBucket;
-    final path =
-        'user_${userId.trim().isEmpty ? 'unknown' : userId.trim()}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final path = 'profiles/${_storageSafeId(userId)}/avatar.jpg';
     try {
       await _client.storage
           .from(bucket)
@@ -283,6 +352,49 @@ class SupabaseService {
       }
       rethrow;
     }
+  }
+
+  Future<String> uploadBikePhoto({
+    required String userId,
+    required String bikeId,
+    required Uint8List bytes,
+    String contentType = 'image/jpeg',
+  }) async {
+    final bucket = _avatarBucket.trim().isEmpty ? 'avatars' : _avatarBucket;
+    final path =
+        'profiles/${_storageSafeId(userId)}/bikes/${_storageSafeId(bikeId)}.jpg';
+    try {
+      await _client.storage
+          .from(bucket)
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
+          );
+      return _client.storage.from(bucket).getPublicUrl(path);
+    } on StorageException catch (error) {
+      if (error.message.toLowerCase().contains('bucket not found')) {
+        throw Exception(
+          'Storage bucket "$bucket" not found. Create this bucket in Supabase Storage or pass --dart-define=SUPABASE_AVATAR_BUCKET=<bucket-name>.',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchAdminFeedback({
+    int limit = 50,
+  }) async {
+    final rows = await _client
+        .from('app_feedback')
+        .select()
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<int> countRows(String table) async {
+    return _client.from(table).count(CountOption.exact);
   }
 
   Future<List<Map<String, dynamic>>> fetchRecentRidesByCreator({
@@ -1314,6 +1426,11 @@ class SupabaseService {
           };
         })
         .toList(growable: false);
+  }
+
+  String _storageSafeId(String value) {
+    final normalized = value.trim().isEmpty ? 'unknown' : value.trim();
+    return normalized.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
   }
 
   Future<bool> _profileColumnExists(String column) async {

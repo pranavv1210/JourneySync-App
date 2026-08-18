@@ -14,6 +14,7 @@ import '../widgets/journey_screen.dart';
 import '../services/app_navigation.dart';
 import '../services/app_version.dart';
 import '../services/auth_service.dart';
+import '../services/supabase_service.dart';
 import 'edit_profile_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
@@ -32,6 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String localAvatarPath = '';
   String avatarUrl = '';
   List<Map<String, String>> emergencyContacts = const <Map<String, String>>[];
+  final SupabaseService _supabaseService = SupabaseService();
 
   @override
   void initState() {
@@ -52,6 +54,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         prefs.getStringList('emergencyContacts') ?? const <String>[],
       );
     });
+    final userId = (prefs.getString('userId') ?? '').trim();
+    if (userId.isEmpty) return;
+    try {
+      final remoteContacts = await _supabaseService.fetchEmergencyContacts(
+        userId: userId,
+      );
+      if (remoteContacts != null) {
+        await _saveEmergencyContacts(remoteContacts, syncCloud: false);
+      }
+    } catch (_) {}
   }
 
   Future<void> _logout() async {
@@ -549,8 +561,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveEmergencyContacts(
-    List<Map<String, String>> contacts,
-  ) async {
+    List<Map<String, String>> contacts, {
+    bool syncCloud = true,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     String clean(String value) => value.replaceAll('|', ' ').trim();
     await prefs.setStringList(
@@ -562,6 +575,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           )
           .toList(),
     );
+    if (syncCloud) {
+      final userId = (prefs.getString('userId') ?? '').trim();
+      if (userId.isNotEmpty) {
+        try {
+          await _supabaseService.saveEmergencyContacts(
+            userId: userId,
+            contacts: contacts,
+          );
+        } catch (_) {
+          if (mounted) {
+            showPremiumToast(
+              context,
+              'Could not sync emergency contacts.',
+              type: PremiumToastType.error,
+            );
+          }
+        }
+      }
+    }
     if (!mounted) return;
     setState(() => emergencyContacts = contacts);
   }

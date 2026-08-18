@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/ride_analytics_engine.dart';
@@ -274,8 +273,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         context,
         synced
             ? '${newBike['nickname']} added to your garage!'
-            : '${newBike['nickname']} saved on this device. Cloud sync will retry later.',
-        type: synced ? PremiumToastType.success : PremiumToastType.info,
+            : 'Could not sync ${newBike['nickname']} to cloud. Try again.',
+        type: synced ? PremiumToastType.success : PremiumToastType.error,
       );
     }
   }
@@ -301,8 +300,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         context,
         synced
             ? '${updatedBike['nickname']} updated.'
-            : '${updatedBike['nickname']} updated on this device. Cloud sync will retry later.',
-        type: synced ? PremiumToastType.success : PremiumToastType.info,
+            : 'Could not sync ${updatedBike['nickname']} to cloud. Try again.',
+        type: synced ? PremiumToastType.success : PremiumToastType.error,
       );
     }
   }
@@ -345,16 +344,21 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     Future<String> saveBikeImage(XFile picked) async {
-      final directory = await getApplicationDocumentsDirectory();
-      final garageDir = Directory('${directory.path}/garage');
-      if (!garageDir.existsSync()) {
-        await garageDir.create(recursive: true);
+      final prefs = await SharedPreferences.getInstance();
+      final userId = (prefs.getString('userId') ?? '').trim();
+      final bikeId =
+          (initialBike?['id'] ??
+                  'bike_${DateTime.now().millisecondsSinceEpoch}')
+              .trim();
+      if (userId.isEmpty) {
+        throw Exception('Sign in again before uploading a bike photo.');
       }
-      final extension =
-          picked.path.contains('.') ? picked.path.split('.').last : 'jpg';
-      final target =
-          '${garageDir.path}/bike_${DateTime.now().millisecondsSinceEpoch}.$extension';
-      return File(picked.path).copy(target).then((file) => file.path);
+      final bytes = await picked.readAsBytes();
+      return _supabaseService.uploadBikePhoto(
+        userId: userId,
+        bikeId: bikeId,
+        bytes: bytes,
+      );
     }
 
     final result = await showModalBottomSheet<Map<String, String>>(
@@ -417,9 +421,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                               imageQuality: 82,
                             );
                             if (picked == null) return;
-                            final saved = await saveBikeImage(picked);
-                            imagePath = saved;
-                            setSheetState(() {});
+                            try {
+                              final saved = await saveBikeImage(picked);
+                              imagePath = saved;
+                              setSheetState(() {});
+                            } catch (_) {
+                              if (!context.mounted) return;
+                              showPremiumToast(
+                                context,
+                                'Could not upload bike photo.',
+                                type: PremiumToastType.error,
+                              );
+                            }
                           },
                           child: Container(
                             height: 132,
@@ -429,17 +442,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                               borderRadius: BorderRadius.circular(AppRadius.lg),
                               border: Border.all(color: AppColors.divider),
                               image:
-                                  imagePath.isNotEmpty &&
-                                          File(imagePath).existsSync()
+                                  _imageProviderFor(imagePath) != null
                                       ? DecorationImage(
-                                        image: FileImage(File(imagePath)),
+                                        image: _imageProviderFor(imagePath)!,
                                         fit: BoxFit.cover,
                                       )
                                       : null,
                             ),
                             child:
-                                imagePath.isNotEmpty &&
-                                        File(imagePath).existsSync()
+                                _imageProviderFor(imagePath) != null
                                     ? Align(
                                       alignment: Alignment.bottomRight,
                                       child: Container(
@@ -596,19 +607,14 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _selectActiveBike(String id, {bool showToast = true}) async {
     final prefs = await SharedPreferences.getInstance();
     final selectedBike = bikes.firstWhere((b) => b['id'] == id);
-    final bikeNameString = '${selectedBike['brand']} ${selectedBike['model']}';
+    final bikeNameString =
+        '${selectedBike['brand']} ${selectedBike['model']}'.trim();
 
     await prefs.setString('userActiveBikeId', id);
-    await prefs.setString('userBike', bikeNameString);
 
     final userId = prefs.getString('userId') ?? '';
     if (userId.isNotEmpty) {
       try {
-        await _supabaseService.updateUserProfile(
-          userId: userId,
-          name: userName,
-          bike: bikeNameString,
-        );
         await _supabaseService.saveGarage(
           userId: userId,
           bikes: bikes,
@@ -624,7 +630,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (mounted && showToast) {
       showPremiumToast(
         context,
-        'Active ride vehicle set to: $bikeNameString',
+        'Active garage vehicle set to: $bikeNameString',
         type: PremiumToastType.success,
       );
     }
@@ -651,14 +657,6 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userActiveBikeId', activeBikeId);
-    if (activeBikeId.isEmpty) {
-      await prefs.setString('userBike', 'No bike added');
-    } else {
-      final selectedBike = bikes.firstWhere((b) => b['id'] == activeBikeId);
-      final bikeNameString =
-          '${selectedBike['brand']} ${selectedBike['model']}';
-      await prefs.setString('userBike', bikeNameString);
-    }
     await _persistGarage();
   }
 

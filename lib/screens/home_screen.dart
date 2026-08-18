@@ -58,6 +58,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   String loadError = '';
   String weatherText = 'Weather unavailable';
   String activeBikeImagePath = '';
+  WeatherSnapshot? weatherSnapshot;
+  Map<String, String>? activeGarageBike;
 
   bool loading = false;
   bool refreshingHome = false;
@@ -117,8 +119,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       final cachedPhone = prefs.getString('userPhone') ?? '';
       final cachedName = prefs.getString('userName') ?? 'Rider';
       final cachedBike = prefs.getString('userBike') ?? 'No bike added';
-      final cachedBikeImagePath = _resolveActiveBikeImagePath(prefs);
-
       var resolvedId = cachedUserId.trim();
       var resolvedPhone = cachedPhone.trim();
       var resolvedName = cachedName.trim();
@@ -128,6 +128,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       var fetchedNearby = <RideRecord>[];
       var weatherValue = 'Weather unavailable';
       var fetchedProfileFromServer = false;
+      Map<String, String>? fetchedActiveBike;
 
       Map<String, dynamic>? userRow;
       try {
@@ -159,6 +160,23 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       if (resolvedId.isNotEmpty) {
         await prefs.setString('userId', resolvedId);
         unawaited(NotificationCoordinator.instance.start(resolvedId));
+        try {
+          final remoteGarage = await _supabaseService.fetchGarage(
+            userId: resolvedId,
+          );
+          if (remoteGarage != null && remoteGarage.bikes.isNotEmpty) {
+            await prefs.setStringList(
+              'garageBikes',
+              remoteGarage.bikes.map(_encodeGarageBike).toList(),
+            );
+            if (remoteGarage.activeBikeId.trim().isNotEmpty) {
+              await prefs.setString(
+                'userActiveBikeId',
+                remoteGarage.activeBikeId,
+              );
+            }
+          }
+        } catch (_) {}
       }
       if (resolvedPhone.isNotEmpty) {
         await prefs.setString('userPhone', resolvedPhone);
@@ -196,16 +214,20 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         final weather = await weatherFuture;
         if (weather != null && weather.displayText.trim().isNotEmpty) {
           weatherValue = weather.displayText.trim();
+          weatherSnapshot = weather;
         }
       } catch (error) {
         debugPrint('Weather fetch failed: $error');
       }
+      final updatedBikeImagePath = _resolveActiveBikeImagePath(prefs);
+      fetchedActiveBike = _resolveActiveBikeDetails(prefs);
 
       if (!mounted) return;
       setState(() {
         name = resolvedName.isNotEmpty ? resolvedName : 'Rider';
         bike = resolvedBike.isNotEmpty ? resolvedBike : 'No bike added';
-        activeBikeImagePath = cachedBikeImagePath;
+        activeBikeImagePath = updatedBikeImagePath;
+        activeGarageBike = fetchedActiveBike;
         userId = resolvedId;
         userPhone = resolvedPhone;
         recentRides = fetchedRecent;
@@ -240,6 +262,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       name = (prefs.getString('userName') ?? 'Rider').trim();
       bike = (prefs.getString('userBike') ?? 'No bike added').trim();
       activeBikeImagePath = _resolveActiveBikeImagePath(prefs);
+      activeGarageBike = _resolveActiveBikeDetails(prefs);
     });
   }
 
@@ -254,13 +277,45 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       fallbackBike ??= bike;
       if (bike['id'] == activeId) {
         final path = bike['imagePath'] ?? '';
-        return path.isNotEmpty && File(path).existsSync() ? path : '';
+        return _isRenderableImagePath(path) ? path : '';
       }
     }
     final fallbackPath = fallbackBike?['imagePath'] ?? '';
-    return fallbackPath.isNotEmpty && File(fallbackPath).existsSync()
-        ? fallbackPath
-        : '';
+    return _isRenderableImagePath(fallbackPath) ? fallbackPath : '';
+  }
+
+  Map<String, String>? _resolveActiveBikeDetails(SharedPreferences prefs) {
+    final activeId = (prefs.getString('userActiveBikeId') ?? '').trim();
+    final rows = prefs.getStringList('garageBikes') ?? const <String>[];
+    Map<String, String>? fallbackBike;
+    for (final row in rows) {
+      final parts = row.split('|');
+      if (parts.length < 7) continue;
+      final bike = {
+        'id': parts[0],
+        'brand': parts[1],
+        'model': parts[2],
+        'cc': parts[3],
+        'nickname': parts[4],
+        'fuelType': parts[5],
+        'imagePath': parts[6],
+      };
+      fallbackBike ??= bike;
+      if (bike['id'] == activeId) return bike;
+    }
+    return fallbackBike;
+  }
+
+  String _encodeGarageBike(Map<String, String> bike) {
+    String clean(String? value) => (value ?? '').replaceAll('|', ' ');
+    return '${clean(bike['id'])}|${clean(bike['brand'])}|${clean(bike['model'])}|${clean(bike['cc'])}|${clean(bike['nickname'])}|${clean(bike['fuelType'])}|${clean(bike['imagePath'])}';
+  }
+
+  bool _isRenderableImagePath(String? path) {
+    final value = (path ?? '').trim();
+    if (value.isEmpty) return false;
+    if (value.startsWith('http')) return true;
+    return File(value).existsSync();
   }
 
   Future<Map<String, dynamic>?> _loadProfileWithRetry({
@@ -519,106 +574,197 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     return Row(
       children: [
         Expanded(
-          child: PremiumCard(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+          child: GestureDetector(
+            onTap: _showWeatherDetails,
+            child: PremiumCard(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: const Icon(
+                      Icons.wb_sunny_rounded,
+                      color: Color(0xFF2563EB),
+                      size: 22,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.wb_sunny_rounded,
-                    color: Color(0xFF2563EB),
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Weather',
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.textTertiary,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Weather',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
                         ),
-                      ),
-                      Text(
-                        weatherText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.titleMedium.copyWith(
-                          color: AppColors.textPrimary,
+                        Text(
+                          weatherText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: PremiumCard(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  clipBehavior: Clip.antiAlias,
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.18),
+          child: GestureDetector(
+            onTap: _showBikeDetails,
+            child: PremiumCard(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    clipBehavior: Clip.antiAlias,
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.18),
+                      ),
+                    ),
+                    child:
+                        activeBikeImagePath.isNotEmpty
+                            ? activeBikeImagePath.startsWith('http')
+                                ? Image.network(
+                                  activeBikeImagePath,
+                                  fit: BoxFit.cover,
+                                  filterQuality: FilterQuality.medium,
+                                )
+                                : Image.file(
+                                  File(activeBikeImagePath),
+                                  fit: BoxFit.cover,
+                                  filterQuality: FilterQuality.medium,
+                                )
+                            : const Icon(
+                              Icons.two_wheeler_rounded,
+                              color: AppColors.primary,
+                              size: 22,
+                            ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'My Bike',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                        Text(
+                          bike,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child:
-                      activeBikeImagePath.isNotEmpty
-                          ? Image.file(
-                            File(activeBikeImagePath),
-                            fit: BoxFit.cover,
-                            filterQuality: FilterQuality.medium,
-                          )
-                          : const Icon(
-                            Icons.two_wheeler_rounded,
-                            color: AppColors.primary,
-                            size: 22,
-                          ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'My Bike',
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                      Text(
-                        bike,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.titleMedium.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showWeatherDetails() {
+    final weather = weatherSnapshot;
+    return showAppBottomSheet<void>(
+      context,
+      builder: (context) {
+        return _DetailSheet(
+          title: 'Weather',
+          icon: Icons.wb_sunny_rounded,
+          rows: [
+            _DetailRow('Conditions', weatherText),
+            if (weather != null) ...[
+              _DetailRow('Temperature', '${weather.temperature.round()}°C'),
+              _DetailRow('Rain chance', '${weather.rainChance}%'),
+              _DetailRow('Wind', '${weather.windSpeed.round()} km/h'),
+              _DetailRow(
+                'Visibility',
+                '${weather.visibility.toStringAsFixed(1)} km',
+              ),
+              _DetailRow('Sunrise', weather.sunrise),
+              _DetailRow('Sunset', weather.sunset),
+              _DetailRow(
+                'Ride notes',
+                weather.alerts.isEmpty
+                    ? 'Good to ride.'
+                    : weather.alerts.join(' '),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showBikeDetails() {
+    final garageBike = activeGarageBike;
+    final vehicleName = bike.trim().isEmpty ? 'No bike added' : bike.trim();
+    return showAppBottomSheet<void>(
+      context,
+      builder: (context) {
+        return _DetailSheet(
+          title: 'My Bike',
+          icon: Icons.two_wheeler_rounded,
+          rows: [
+            _DetailRow('Vehicle name', vehicleName),
+            if (garageBike != null) ...[
+              _DetailRow(
+                'Model',
+                '${garageBike['brand'] ?? ''} ${garageBike['model'] ?? ''}'
+                    .trim(),
+              ),
+              _DetailRow(
+                'CC',
+                (garageBike['cc'] ?? '').trim().isEmpty
+                    ? '-'
+                    : '${garageBike['cc']} CC',
+              ),
+              _DetailRow(
+                'Nickname',
+                (garageBike['nickname'] ?? '').trim().isEmpty
+                    ? '-'
+                    : garageBike['nickname']!,
+              ),
+              _DetailRow(
+                'Fuel',
+                (garageBike['fuelType'] ?? '').trim().isEmpty
+                    ? '-'
+                    : garageBike['fuelType']!,
+              ),
+            ] else
+              const _DetailRow(
+                'Garage details',
+                'Add a vehicle in Garage to show model, CC, and nickname.',
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -1444,6 +1590,87 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _DetailRow {
+  const _DetailRow(this.label, this.value);
+
+  final String label;
+  final String value;
+}
+
+class _DetailSheet extends StatelessWidget {
+  const _DetailSheet({
+    required this.title,
+    required this.icon,
+    required this.rows,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<_DetailRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        ...rows.map(
+          (row) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 104,
+                  child: Text(
+                    row.label,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textTertiary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    row.value,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

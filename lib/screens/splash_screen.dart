@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/app_navigation.dart';
 import '../services/app_version.dart';
 import '../theme/app_theme.dart';
+import 'admin_dashboard_screen.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'setup_error_screen.dart';
@@ -62,7 +63,21 @@ class _SplashScreenState extends State<SplashScreen>
     final hasAuthSession = Supabase.instance.client.auth.currentSession != null;
 
     if (loggedIn && hasAuthSession) {
-      unawaited(replaceWithAppRoute(context, const HomeScreen()));
+      final email =
+          (Supabase.instance.client.auth.currentUser?.email ??
+                  prefs.getString('userEmail') ??
+                  '')
+              .toString()
+              .trim()
+              .toLowerCase();
+      unawaited(
+        replaceWithAppRoute(
+          context,
+          isJourneySyncAdminEmail(email)
+              ? const AdminDashboardScreen()
+              : const HomeScreen(),
+        ),
+      );
       return;
     }
     if (loggedIn && !hasAuthSession) {

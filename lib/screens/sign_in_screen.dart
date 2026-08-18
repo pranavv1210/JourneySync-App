@@ -13,6 +13,7 @@ import '../widgets/app_card.dart';
 import '../widgets/app_toast_premium.dart';
 import '../widgets/journey_screen.dart';
 import 'create_account_screen.dart';
+import 'admin_dashboard_screen.dart';
 import 'home_screen.dart';
 import 'legal_document_screen.dart';
 
@@ -111,7 +112,19 @@ class _SignInScreenState extends State<SignInScreen> {
         jwtToken: result.idToken,
       );
       if (!mounted) return;
-      unawaited(replaceAllWithAppRoute(context, const HomeScreen()));
+      final email =
+          (Supabase.instance.client.auth.currentUser?.email ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+      unawaited(
+        replaceAllWithAppRoute(
+          context,
+          isJourneySyncAdminEmail(email)
+              ? const AdminDashboardScreen()
+              : const HomeScreen(),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
       final message = error.toString();
