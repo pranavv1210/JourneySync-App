@@ -30,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String userName = 'Rider';
   String userBike = 'No bike added';
   String userPhone = '';
+  String userEmail = '';
   String localAvatarPath = '';
   String avatarUrl = '';
   List<Map<String, String>> emergencyContacts = const <Map<String, String>>[];
@@ -48,6 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       userName = prefs.getString('userName') ?? 'Rider';
       userBike = prefs.getString('userBike') ?? 'No bike added';
       userPhone = prefs.getString('userPhone') ?? '';
+      userEmail = prefs.getString('userEmail') ?? '';
       localAvatarPath = prefs.getString('localAvatarPath') ?? '';
       avatarUrl = prefs.getString('userAvatarUrl') ?? '';
       emergencyContacts = _decodeEmergencyContacts(
@@ -583,14 +585,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             userId: userId,
             contacts: contacts,
           );
-        } catch (_) {
-          if (mounted) {
-            showPremiumToast(
-              context,
-              'Could not sync emergency contacts.',
-              type: PremiumToastType.error,
-            );
-          }
+        } catch (error) {
+          debugPrint('Emergency contact cloud sync failed: $error');
         }
       }
     }
@@ -660,7 +656,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'These contacts stay on this phone and are shown first when SOS is triggered during a ride.',
+                        'These contacts are saved to your profile and shown first when SOS is triggered during a ride.',
                         style: AppTypography.bodyMedium.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -1071,20 +1067,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _showDeleteAccountDialog() async {
     final confirmed = await showAppConfirmDialog(
       context,
-      title: 'Delete Account',
+      title: 'Request account deletion?',
       message:
-          'Are you sure you want to delete your account? This action cannot be undone.',
-      confirmLabel: 'Delete',
+          'This sends a deletion request to JourneySync support. If approved, your rider profile and linked ride data will be permanently erased from the database.',
+      confirmLabel: 'Request',
       cancelLabel: 'Cancel',
       destructive: true,
     );
 
     if (confirmed == true) {
-      if (mounted) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await _supabaseService.requestAccountDeletion(
+          userId: prefs.getString('userId') ?? '',
+          email: userEmail,
+          riderName: userName,
+        );
+        if (!mounted) return;
         showPremiumToast(
           context,
-          'Account deletion request submitted.',
+          'Account deletion request sent.',
           type: PremiumToastType.info,
+        );
+      } catch (error) {
+        if (!mounted) return;
+        showPremiumToast(
+          context,
+          'Could not send deletion request.',
+          type: PremiumToastType.error,
         );
       }
     }

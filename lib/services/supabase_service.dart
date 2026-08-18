@@ -334,7 +334,8 @@ class SupabaseService {
     String contentType = 'image/jpeg',
   }) async {
     final bucket = _avatarBucket.trim().isEmpty ? 'avatars' : _avatarBucket;
-    final path = 'profiles/${_storageSafeId(userId)}/avatar.jpg';
+    final ownerId = (_client.auth.currentUser?.id ?? userId).trim();
+    final path = 'profiles/${_storageSafeId(ownerId)}/avatar.jpg';
     try {
       await _client.storage
           .from(bucket)
@@ -361,8 +362,9 @@ class SupabaseService {
     String contentType = 'image/jpeg',
   }) async {
     final bucket = _avatarBucket.trim().isEmpty ? 'avatars' : _avatarBucket;
+    final ownerId = (_client.auth.currentUser?.id ?? userId).trim();
     final path =
-        'profiles/${_storageSafeId(userId)}/bikes/${_storageSafeId(bikeId)}.jpg';
+        'profiles/${_storageSafeId(ownerId)}/bikes/${_storageSafeId(bikeId)}.jpg';
     try {
       await _client.storage
           .from(bucket)
@@ -391,6 +393,80 @@ class SupabaseService {
         .order('created_at', ascending: false)
         .limit(limit);
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchAccountDeletionRequests({
+    int limit = 50,
+  }) async {
+    final rows = await _client
+        .from('account_deletion_requests')
+        .select()
+        .eq('status', 'pending')
+        .order('requested_at', ascending: false)
+        .limit(limit);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> requestAccountDeletion({
+    required String userId,
+    required String email,
+    required String riderName,
+  }) async {
+    final normalizedUserId = userId.trim();
+    if (normalizedUserId.isEmpty) {
+      throw Exception('Sign in again to request account deletion.');
+    }
+
+    var profileId = normalizedUserId;
+    final profile = await fetchUserById(normalizedUserId);
+    final resolvedProfileId =
+        (profile?['profile_row_id'] ?? profile?['id'] ?? '').toString().trim();
+    if (resolvedProfileId.isNotEmpty) {
+      profileId = resolvedProfileId;
+    }
+
+    final authUserId = (_client.auth.currentUser?.id ?? '').trim();
+    final payload = <String, dynamic>{
+      'user_id': profileId,
+      if (authUserId.isNotEmpty) 'auth_user_id': authUserId,
+      'email': email.trim().toLowerCase(),
+      'rider_name': riderName.trim().isEmpty ? 'Rider' : riderName.trim(),
+      'status': 'pending',
+    };
+
+    try {
+      await _client.from('account_deletion_requests').insert(payload);
+    } on PostgrestException catch (error) {
+      if ((error.code ?? '').trim() == '23505') return;
+      if (_isMissingColumnError(error) && payload.containsKey('auth_user_id')) {
+        payload.remove('auth_user_id');
+        try {
+          await _client.from('account_deletion_requests').insert(payload);
+        } on PostgrestException catch (fallbackError) {
+          if ((fallbackError.code ?? '').trim() == '23505') return;
+          rethrow;
+        }
+        return;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> approveAccountDeletionRequest(String requestId) async {
+    await _client.rpc(
+      'admin_approve_account_deletion_request',
+      params: {'p_request_id': requestId.trim()},
+    );
+  }
+
+  Future<void> rejectAccountDeletionRequest(String requestId) async {
+    await _client
+        .from('account_deletion_requests')
+        .update({
+          'status': 'rejected',
+          'reviewed_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', requestId.trim());
   }
 
   Future<int> countRows(String table) async {

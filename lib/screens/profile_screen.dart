@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/ride_analytics_engine.dart';
@@ -328,6 +329,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     final modelKey = GlobalKey();
     final ccKey = GlobalKey();
     final nicknameKey = GlobalKey();
+    final formBikeId =
+        initialBike?['id'] ?? 'bike_${DateTime.now().millisecondsSinceEpoch}';
     var imagePath = initialBike?['imagePath'] ?? '';
 
     void scrollFieldIntoView(GlobalKey key) {
@@ -346,19 +349,29 @@ class _ProfileScreenState extends State<ProfileScreen>
     Future<String> saveBikeImage(XFile picked) async {
       final prefs = await SharedPreferences.getInstance();
       final userId = (prefs.getString('userId') ?? '').trim();
-      final bikeId =
-          (initialBike?['id'] ??
-                  'bike_${DateTime.now().millisecondsSinceEpoch}')
-              .trim();
       if (userId.isEmpty) {
         throw Exception('Sign in again before uploading a bike photo.');
       }
       final bytes = await picked.readAsBytes();
-      return _supabaseService.uploadBikePhoto(
-        userId: userId,
-        bikeId: bikeId,
-        bytes: bytes,
-      );
+      try {
+        return await _supabaseService.uploadBikePhoto(
+          userId: userId,
+          bikeId: formBikeId,
+          bytes: bytes,
+        );
+      } catch (error) {
+        debugPrint('Bike photo upload failed, saving local copy: $error');
+        final directory = await getApplicationDocumentsDirectory();
+        final garageDir = Directory('${directory.path}/garage');
+        if (!garageDir.existsSync()) {
+          await garageDir.create(recursive: true);
+        }
+        final extension =
+            picked.path.contains('.') ? picked.path.split('.').last : 'jpg';
+        final target = '${garageDir.path}/$formBikeId.$extension';
+        final saved = await File(picked.path).copy(target);
+        return saved.path;
+      }
     }
 
     final result = await showModalBottomSheet<Map<String, String>>(
@@ -566,9 +579,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     return;
                                   }
                                   Navigator.pop(context, {
-                                    'id':
-                                        initialBike?['id'] ??
-                                        'bike_${DateTime.now().millisecondsSinceEpoch}',
+                                    'id': formBikeId,
                                     'brand': brand,
                                     'model': model,
                                     'cc': cc,
