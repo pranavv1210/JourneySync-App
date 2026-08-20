@@ -66,6 +66,7 @@ class _RideModeScreenState extends State<RideModeScreen>
   String _currentUserId = '';
   String _currentUserName = 'Rider';
   String _currentBikeName = 'No bike added';
+  String _currentUserAvatarUrl = '';
   String? _leaderId;
   Map<String, dynamic>? _rideData;
 
@@ -182,6 +183,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       final prefs = await SharedPreferences.getInstance();
       _currentUserId = (prefs.getString('userId') ?? '').trim();
       _currentUserName = (prefs.getString('userName') ?? 'Rider').trim();
+      _currentUserAvatarUrl = (prefs.getString('userAvatarUrl') ?? '').trim();
       _currentBikeName =
           (prefs.getString('userBike') ?? 'No bike added').trim();
       _emergencyContacts = _decodeEmergencyContacts(
@@ -690,11 +692,162 @@ class _RideModeScreenState extends State<RideModeScreen>
       if (mounted) {
         showAppToast(
           context,
-          'Failed to send SOS: $e',
+          'Could not send SOS. Please try again.',
           type: AppToastType.error,
         );
       }
     }
+  }
+
+  void _showRidersSheet() {
+    final riders = [..._riderLocations];
+    if (!riders.any((rider) => rider.userId == _currentUserId) &&
+        _currentPosition != null) {
+      riders.insert(
+        0,
+        RiderLocation(
+          userId: _currentUserId,
+          rideId: widget.rideId,
+          latitude: _currentPosition!.latitude,
+          longitude: _currentPosition!.longitude,
+          updatedAt: DateTime.now(),
+          userName: _currentUserName,
+          bikeName: _currentBikeName,
+          isLeader: _leaderId == _currentUserId,
+          heading:
+              _currentPosition!.heading >= 0 ? _currentPosition!.heading : null,
+          speed: _currentSpeed / 3.6,
+          avatarUrl: _currentUserAvatarUrl,
+        ),
+      );
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Material(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(26),
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.divider,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Live Riders',
+                      style: AppTypography.headlineSmall.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (riders.isEmpty)
+                      Text(
+                        'No riders are broadcasting yet.',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      )
+                    else
+                      ...riders.map((rider) {
+                        final isYou = rider.userId == _currentUserId;
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: CircleAvatar(
+                            backgroundImage:
+                                rider.avatarUrl?.trim().isNotEmpty == true
+                                    ? NetworkImage(rider.avatarUrl!.trim())
+                                    : null,
+                            backgroundColor: AppColors.primary.withValues(
+                              alpha: 0.12,
+                            ),
+                            child:
+                                rider.avatarUrl?.trim().isNotEmpty == true
+                                    ? null
+                                    : Text(
+                                      (isYou
+                                              ? 'Y'
+                                              : rider.userName.trim().isEmpty
+                                              ? 'R'
+                                              : rider.userName.trim()[0])
+                                          .toUpperCase(),
+                                      style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                          ),
+                          title: Text(
+                            isYou ? 'You' : rider.userName,
+                            style: AppTypography.titleMedium.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          subtitle: Text(
+                            rider.bikeName,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.my_location_rounded),
+                            color: AppColors.primary,
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _animateCamera(
+                                center: LatLng(rider.latitude, rider.longitude),
+                                zoom: 16,
+                                bearing: rider.heading,
+                              );
+                            },
+                          ),
+                        );
+                      }),
+                    if (riders.length > 1) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            setState(() {
+                              _fitGroupMode = true;
+                              _followMe = false;
+                              _followingLeader = false;
+                              _smartAutoMode = false;
+                            });
+                            _fitRiders(riders);
+                          },
+                          icon: const Icon(Icons.groups_rounded),
+                          label: const Text('Fit all riders on map'),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   LatLng? _getDestinationCoords() {
@@ -1028,22 +1181,8 @@ class _RideModeScreenState extends State<RideModeScreen>
                 const SizedBox(height: 12),
                 _CircleButton(
                   icon: Icons.groups_rounded,
-                  color:
-                      _riderLocations.length > 1
-                          ? const Color(0xFF6D28D9)
-                          : Colors.grey,
-                  onTap:
-                      _riderLocations.length > 1
-                          ? () {
-                            setState(() {
-                              _fitGroupMode = true;
-                              _followMe = false;
-                              _followingLeader = false;
-                              _smartAutoMode = false;
-                            });
-                            _fitRiders(_riderLocations);
-                          }
-                          : null,
+                  color: const Color(0xFF6D28D9),
+                  onTap: _showRidersSheet,
                 ),
                 const SizedBox(height: 12),
                 _CircleButton(
@@ -1339,20 +1478,33 @@ class _RideModeScreenState extends State<RideModeScreen>
               _currentPosition!.latitude,
               _currentPosition!.longitude,
             ),
-            width: 60,
-            height: 60,
-            child: CurrentUserMarker(
-              heading:
-                  _currentPosition!.heading >= 0
-                      ? _currentPosition!.heading
-                      : null,
-              isOffline: _isOffline,
+            width: 86,
+            height: 104,
+            child: RiderMarker(
+              location: RiderLocation(
+                userId: _currentUserId,
+                rideId: widget.rideId,
+                latitude: _currentPosition!.latitude,
+                longitude: _currentPosition!.longitude,
+                updatedAt: DateTime.now(),
+                userName: _currentUserName,
+                bikeName: _currentBikeName,
+                isLeader: _leaderId == _currentUserId,
+                heading:
+                    _currentPosition!.heading >= 0
+                        ? _currentPosition!.heading
+                        : null,
+                speed: _currentSpeed / 3.6,
+                avatarUrl: _currentUserAvatarUrl,
+              ),
+              isCurrentUser: true,
               status:
                   _isOffline
                       ? RiderLiveStatus.offline
                       : _currentSpeed > 1
                       ? RiderLiveStatus.moving
                       : RiderLiveStatus.stopped,
+              detailLabel: 'You',
             ),
           ),
         );
@@ -1462,23 +1614,19 @@ class _RideModeScreenState extends State<RideModeScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Timer pill
           _HUDPill(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
-                  Icons.timer_rounded,
+                  Icons.near_me_rounded,
                   color: Color(0xFFFF6A00),
                   size: 16,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  _formatDuration(_secondsElapsed),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                const Text(
+                  'LIVE RIDE',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                 ),
               ],
             ),
@@ -1892,6 +2040,7 @@ class _RideModeScreenState extends State<RideModeScreen>
   // HELPERS
   // ─────────────────────────────────────────────────────────────────────────
 
+  // ignore: unused_element
   String _formatDuration(int s) {
     final h = s ~/ 3600;
     final m = (s % 3600) ~/ 60;

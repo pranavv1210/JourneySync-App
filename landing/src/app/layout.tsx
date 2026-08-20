@@ -1,14 +1,7 @@
 import type { Metadata, Viewport } from 'next';
-import { Outfit } from 'next/font/google';
 import Script from 'next/script';
 import { analyticsConfig } from '@/lib/tracking';
 import './globals.css';
-
-const outfit = Outfit({
-  subsets: ['latin'],
-  variable: '--font-outfit',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: 'JourneySync | Never Lose Your Riding Group Again',
@@ -71,7 +64,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/icon?family=Material+Icons+Round"
         />
       </head>
-      <body className={`${outfit.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         <div id="scroll-progress" aria-hidden="true" />
         {children}
         <Script

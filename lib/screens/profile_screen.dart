@@ -265,6 +265,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (shouldSetActive) activeBikeId = newBike['id']!;
     });
     final synced = await _persistGarage();
+    if (!synced) {
+      debugPrint('Garage cloud sync pending after adding ${newBike['id']}.');
+    }
     if (shouldSetActive) {
       await _selectActiveBike(newBike['id']!, showToast: false);
     }
@@ -272,10 +275,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (mounted) {
       showPremiumToast(
         context,
-        synced
-            ? '${newBike['nickname']} added to your garage!'
-            : 'Could not sync ${newBike['nickname']} to cloud. Try again.',
-        type: synced ? PremiumToastType.success : PremiumToastType.error,
+        '${newBike['nickname']} added to your garage!',
+        type: PremiumToastType.success,
       );
     }
   }
@@ -292,6 +293,11 @@ class _ProfileScreenState extends State<ProfileScreen>
       _refreshBikeImageCache(bikes);
     });
     final synced = await _persistGarage();
+    if (!synced) {
+      debugPrint(
+        'Garage cloud sync pending after editing ${updatedBike['id']}.',
+      );
+    }
     if (activeBikeId == updatedBike['id']) {
       await _selectActiveBike(updatedBike['id']!, showToast: false);
     }
@@ -299,10 +305,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (mounted) {
       showPremiumToast(
         context,
-        synced
-            ? '${updatedBike['nickname']} updated.'
-            : 'Could not sync ${updatedBike['nickname']} to cloud. Try again.',
-        type: synced ? PremiumToastType.success : PremiumToastType.error,
+        '${updatedBike['nickname']} updated.',
+        type: PremiumToastType.success,
       );
     }
   }

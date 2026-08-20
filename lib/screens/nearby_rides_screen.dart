@@ -231,11 +231,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       showAppToast(context, message, type: AppToastType.success);
     } catch (error) {
       if (!mounted) return;
-      showAppToast(
-        context,
-        'Could not join ride: $error',
-        type: AppToastType.error,
-      );
+      showAppToast(context, _joinErrorMessage(error), type: AppToastType.error);
     } finally {
       if (mounted) {
         setState(() {
@@ -398,11 +394,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       await _loadNearbyRides();
     } catch (error) {
       if (!mounted) return;
-      showAppToast(
-        context,
-        'Could not join via code: $error',
-        type: AppToastType.error,
-      );
+      showAppToast(context, _joinErrorMessage(error), type: AppToastType.error);
     } finally {
       if (mounted) {
         setState(() {
@@ -410,6 +402,20 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         });
       }
     }
+  }
+
+  String _joinErrorMessage(Object error) {
+    final lower = error.toString().toLowerCase();
+    if (lower.contains('ride_members') ||
+        lower.contains('join request') ||
+        lower.contains('pgrst') ||
+        lower.contains('postgrest')) {
+      return 'Could not join this ride. Please try again after sync.';
+    }
+    if (lower.contains('not found')) {
+      return 'This ride is no longer available.';
+    }
+    return 'Could not join this ride. Please try again.';
   }
 
   @override
@@ -541,24 +547,22 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         weatherWidget,
         const SizedBox(height: 4),
         _radarSurface(primary, forest, nearbyRides),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
+        _radarStatusChip(primary, forest),
+        const SizedBox(height: 12),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: Row(
-            children: [
-              Text(
-                '${nearbyRides.length} nearby ride${nearbyRides.length == 1 ? '' : 's'} found',
-                style: TextStyle(
-                  color: forest,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Text(
+            '${nearbyRides.length} nearby ride${nearbyRides.length == 1 ? '' : 's'} found on radar',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: forest,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
-        const SizedBox(height: 10),
-        Expanded(child: _rideList(primary, forest)),
+        const Spacer(),
       ],
     );
   }
@@ -670,6 +674,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                         xFactor: node.xFactor,
                         yFactor: node.yFactor,
                         visible: rides.isNotEmpty,
+                        onTap: () => _showRidePreview(node.ride),
                       ),
                     _RadarCenterMarker(avatarUrl: currentUserAvatarUrl),
                   ],
@@ -689,7 +694,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
             ),
             const SizedBox(height: 4),
             Text(
-              'Tap Join Ride below to connect with one of them.',
+              'Tap a rider on the radar to view ride details.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: forest.withValues(alpha: 0.7),
@@ -773,7 +778,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   }
 
   String _estimateDuration(double? distanceKm) {
-    if (distanceKm == null) return "35m";
+    if (distanceKm == null) return "--";
     final mins = (distanceKm / 50.0 * 60).round();
     if (mins < 5) return "5m";
     if (mins < 60) return "${mins}m";
@@ -782,6 +787,173 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     return m == 0 ? "${h}h" : "${h}h ${m}m";
   }
 
+  Future<void> _showRidePreview(NearbyRide ride) async {
+    final joining = joiningRideId == ride.ride.id;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Material(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(28),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.divider,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        _RadarAvatar(
+                          avatarUrl: ride.hostAvatarUrl,
+                          label: ride.hostName,
+                          radius: 24,
+                          borderColor: AppColors.primary.withValues(
+                            alpha: 0.32,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                ride.ride.title.trim().isEmpty
+                                    ? 'Nearby ride'
+                                    : ride.ride.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.headlineSmall.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                'Hosted by ${ride.hostName}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'LIVE',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    _previewRow(
+                      Icons.navigation_rounded,
+                      'Destination',
+                      ride.ride.endLocation.trim().isEmpty
+                          ? 'Destination pending'
+                          : ride.ride.endLocation,
+                    ),
+                    _previewRow(
+                      Icons.people_alt_rounded,
+                      'Riders',
+                      '${ride.ride.participantCount}',
+                    ),
+                    _previewRow(
+                      Icons.two_wheeler_rounded,
+                      'Bike',
+                      ride.hostBike.trim().isEmpty
+                          ? 'Not added'
+                          : ride.hostBike,
+                    ),
+                    const SizedBox(height: 18),
+                    HapticButton(
+                      label: ride.joined ? 'Joined' : 'Join Ride',
+                      icon:
+                          ride.joined ? Icons.check_rounded : Icons.add_rounded,
+                      loading: joining,
+                      disabled: ride.joined,
+                      variant:
+                          ride.joined
+                              ? HapticButtonVariant.outline
+                              : HapticButtonVariant.primary,
+                      onPressed:
+                          ride.joined
+                              ? null
+                              : () async {
+                                Navigator.pop(sheetContext);
+                                await _joinRide(ride);
+                              },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _previewRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.primary),
+          const SizedBox(width: 10),
+          Text(
+            '$label:',
+            style: AppTypography.labelMedium.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ignore: unused_element
   Widget _rideList(Color primary, Color forest) {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -1327,12 +1499,14 @@ class _RadarRideMarker extends StatelessWidget {
     required this.xFactor,
     required this.yFactor,
     required this.visible,
+    required this.onTap,
   });
 
   final NearbyRide ride;
   final double xFactor;
   final double yFactor;
   final bool visible;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1340,37 +1514,40 @@ class _RadarRideMarker extends StatelessWidget {
       translation: const Offset(-0.5, -0.5),
       child: Align(
         alignment: Alignment(xFactor * 2 - 1, yFactor * 2 - 1),
-        child: AnimatedScale(
-          duration: const Duration(milliseconds: 320),
-          scale: visible ? 1 : 0.7,
-          child: AnimatedOpacity(
+        child: GestureDetector(
+          onTap: visible ? onTap : null,
+          child: AnimatedScale(
             duration: const Duration(milliseconds: 320),
-            opacity: visible ? 1 : 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _RadarAvatar(
-                  avatarUrl: ride.hostAvatarUrl,
-                  label: ride.hostName,
-                  radius: 23,
-                  borderColor: Colors.white,
-                ),
-                const SizedBox(height: 6),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 88),
-                  child: Text(
-                    ride.hostName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+            scale: visible ? 1 : 0.7,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 320),
+              opacity: visible ? 1 : 0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _RadarAvatar(
+                    avatarUrl: ride.hostAvatarUrl,
+                    label: ride.hostName,
+                    radius: 23,
+                    borderColor: const Color(0xFFFF8A1C),
+                  ),
+                  const SizedBox(height: 6),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 88),
+                    child: Text(
+                      ride.hostName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

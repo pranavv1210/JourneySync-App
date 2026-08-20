@@ -611,7 +611,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
 
   Future<void> _approveJoinRequest(_LobbyRequest request) async {
     if (!joinRequestFeatureAvailable) {
-      _showInfo("Join requests are not configured in database.");
+      _showInfo("No join requests are available yet.");
       return;
     }
     try {
@@ -621,13 +621,13 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           .eq('id', request.id);
       await _reloadLobbyData();
     } catch (error) {
-      _showInfo("Could not approve request: $error");
+      _showInfo("Could not approve this request. Please try again.");
     }
   }
 
   Future<void> _rejectJoinRequest(_LobbyRequest request) async {
     if (!joinRequestFeatureAvailable) {
-      _showInfo("Join requests are not configured in database.");
+      _showInfo("No join requests are available yet.");
       return;
     }
     try {
@@ -637,7 +637,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           .eq('id', request.id);
       await _reloadLobbyData();
     } catch (error) {
-      _showInfo("Could not reject request: $error");
+      _showInfo("Could not reject this request. Please try again.");
     }
   }
 
@@ -663,53 +663,95 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     final code = _rideCode(widget.rideId);
     await showModalBottomSheet<void>(
       context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Invite Riders',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Share this access code. Riders can join from Nearby Active Rides -> key icon.',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 12),
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
+                  width: 44,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8F7F5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    code,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    color: Colors.white.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      await _copyAccessCode();
-                      if (!context.mounted) return;
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.content_copy),
-                    label: const Text('Copy access code'),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.14),
+                        blurRadius: 28,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Invite Riders',
+                        style: AppTypography.headlineSmall.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Share this code with your riding group. Riders can enter it from Nearby Rides or tap your radar card.',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 18,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.18),
+                          ),
+                        ),
+                        child: Text(
+                          code,
+                          textAlign: TextAlign.center,
+                          style: AppTypography.displaySmall.copyWith(
+                            color: AppColors.forest,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            await _copyAccessCode();
+                            if (!context.mounted) return;
+                            Navigator.pop(context);
+                          },
+                          icon: const Icon(Icons.content_copy_rounded),
+                          label: const Text('Copy access code'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -908,36 +950,33 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
 
     return Scaffold(
       backgroundColor: background,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                _topBar(primary),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 140),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _rideDetailsCard(primary, forest, sand),
-                        const SizedBox(height: 16),
-                        _joinCode(primary),
-                        const SizedBox(height: 16),
-                        _joinRequests(primary),
-                        const SizedBox(height: 16),
-                        _participants(primary, forest),
-                        const SizedBox(height: 16),
-                        _briefing(forest),
-                      ],
-                    ),
-                  ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _topBar(primary),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _rideDetailsCard(primary, forest, sand),
+                    const SizedBox(height: 16),
+                    _joinCode(primary),
+                    const SizedBox(height: 16),
+                    _rideActionPanel(primary, primaryDark),
+                    const SizedBox(height: 16),
+                    _joinRequests(primary),
+                    const SizedBox(height: 16),
+                    _participants(primary, forest),
+                    const SizedBox(height: 16),
+                    _briefing(forest),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-          _bottomActions(primary, primaryDark),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1241,7 +1280,12 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
             children: [
               Text(
                 code,
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.forest,
+                  letterSpacing: 0.8,
+                ),
               ),
               const SizedBox(width: 10),
               IconButton(
@@ -1315,7 +1359,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
               child: Text(
-                "Join requests are not configured in database yet.",
+                "No join requests yet.",
                 style: TextStyle(
                   color: Colors.grey,
                   fontWeight: FontWeight.w600,
@@ -1396,7 +1440,11 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           children: [
             Text(
               "The Crew",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: forest,
+              ),
             ),
             Text(
               "${crew.length}/$maxRiders",
@@ -1646,6 +1694,89 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     );
   }
 
+  Widget _rideActionPanel(Color primary, Color primaryDark) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          if (_isCurrentUserHost()) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _addRouteDialog,
+                    icon: const Icon(Icons.near_me_rounded),
+                    label: const Text('Sync route'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: primary,
+                      side: BorderSide(color: primary, width: 1.6),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _editRideDetailsDialog,
+                    icon: const Icon(Icons.edit_rounded),
+                    label: const Text('Edit details'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: primaryDark,
+                      side: BorderSide(color: primary.withValues(alpha: 0.24)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _startRide,
+              icon: const Icon(Icons.two_wheeler_rounded, color: Colors.white),
+              label: const Text('Start ride'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 6,
+                shadowColor: primary.withValues(alpha: 0.22),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ignore: unused_element
   Widget _bottomActions(Color primary, Color primaryDark) {
     return Positioned(
       left: 0,

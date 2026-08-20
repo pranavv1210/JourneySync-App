@@ -40,6 +40,11 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
       final userId = (prefs.getString('userId') ?? '').trim();
       if (userId.isEmpty) return;
       final rides = await _rideService.fetchRecentRides(userId, limit: 80);
+      final activeSnapshot = ActiveRideCoordinator.instance.snapshot;
+      if (activeSnapshot.hasActiveRide &&
+          !rides.any((ride) => ride.id == activeSnapshot.rideId)) {
+        await ActiveRideCoordinator.instance.clear();
+      }
       if (!mounted) return;
       setState(() => _rides = rides);
     } finally {
@@ -82,6 +87,24 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
         buildAppRoute(RideLobbyScreen(rideId: ride.id)),
       );
     }
+  }
+
+  Future<void> _openActiveRide(String rideId) async {
+    if (rideId.isEmpty) return;
+    if (!_rides.any((ride) => ride.id == rideId)) {
+      await ActiveRideCoordinator.instance.clear();
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This ride is no longer available.')),
+      );
+      return;
+    }
+    await Navigator.push(
+      context,
+      buildAppRoute(RideModeScreen(rideId: rideId)),
+    );
+    await _loadRides();
   }
 
   @override
@@ -271,13 +294,7 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
 
   Widget _resumeCard(String title, String subtitle, String rideId) {
     return GlassCard(
-      onTap:
-          rideId.isEmpty
-              ? null
-              : () => Navigator.push(
-                context,
-                buildAppRoute(RideModeScreen(rideId: rideId)),
-              ),
+      onTap: rideId.isEmpty ? null : () => _openActiveRide(rideId),
       padding: const EdgeInsets.all(18),
       child: Row(
         children: [
