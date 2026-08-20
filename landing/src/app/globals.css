@@ -467,24 +467,27 @@ svg {
 
 .product-orbit {
   position: absolute;
-  top: 1.35rem;
-  left: calc(50% - min(180px, 39vw) + 1.35rem);
-  right: calc(50% - min(180px, 39vw) + 1.35rem);
+  top: 1.55rem;
+  left: calc(50% - min(180px, 39vw) + 2.25rem);
+  right: calc(50% - min(180px, 39vw) + 2.25rem);
   display: flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
   justify-content: flex-end;
-  z-index: 2;
+  z-index: 6;
+  pointer-events: none;
 }
 
 .product-orbit span {
   border: 1px solid rgba(20, 61, 49, 0.12);
   border-radius: 999px;
-  padding: 0.45rem 0.65rem;
-  background: rgba(255, 253, 248, 0.64);
+  padding: 0.34rem 0.58rem;
+  background: rgba(255, 253, 248, 0.9);
   color: var(--js-forest);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .hero-phone {
@@ -586,19 +589,19 @@ svg {
 }
 
 .rider-marker.lead {
-  top: 38%;
+  top: 41%;
   left: 48%;
   background: var(--js-orange);
 }
 
 .rider-marker.wing {
-  top: 24%;
+  top: 27%;
   right: 14%;
   background: var(--js-forest);
 }
 
 .rider-marker.sweep {
-  bottom: 24%;
+  bottom: 19%;
   left: 18%;
   background: #20251f;
 }
@@ -617,8 +620,8 @@ svg {
 }
 
 .phone-status {
-  top: 1.1rem;
-  padding: 1rem;
+  top: 4.15rem;
+  padding: 0.9rem 1rem;
 }
 
 .phone-status span,
@@ -643,14 +646,16 @@ svg {
   bottom: 1.1rem;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  padding: 0.9rem;
+  gap: 0.65rem;
+  padding: 0.85rem;
 }
 
 .phone-bottom-sheet strong {
   display: block;
   margin-top: 0.25rem;
   color: var(--js-forest);
-  font-size: 1rem;
+  font-size: 0.95rem;
+  line-height: 1.05;
 }
 
 .floating-command {
@@ -671,13 +676,13 @@ svg {
 
 .floating-command.radar {
   left: calc(50% - min(180px, 39vw) + 1.1rem);
-  top: 21%;
+  top: 11.5rem;
 }
 
 .floating-command.sos {
   left: calc(50% - min(180px, 39vw) + 1.1rem);
   right: auto;
-  bottom: 16%;
+  bottom: 8.25rem;
 }
 
 .floating-command .material-icons-round {

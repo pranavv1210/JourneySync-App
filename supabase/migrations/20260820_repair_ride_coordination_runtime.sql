@@ -93,9 +93,10 @@ begin
       and table_name = 'ride_members'
       and column_name = 'user_id'
   ) then
-    execute 'update public.ride_members set member_id = user_id where member_id is null and user_id is not null';
+    execute 'update public.ride_members rm set member_id = p.id from public.profiles p where rm.member_id is null and rm.user_id is not null and p.id::text = rm.user_id::text';
   end if;
 
+  execute 'delete from public.ride_members where member_id is null';
   execute 'alter table public.ride_members alter column member_id set not null';
 
   if not exists (
@@ -189,7 +190,7 @@ begin
       and table_name = 'live_locations'
       and column_name = 'user_id'
   ) then
-    execute 'update public.live_locations set profile_id = user_id where profile_id is null and user_id is not null';
+    execute 'update public.live_locations ll set profile_id = p.id from public.profiles p where ll.profile_id is null and ll.user_id is not null and p.id::text = ll.user_id::text';
   end if;
 
   if not exists (
@@ -265,7 +266,7 @@ begin
       and table_name = 'ride_alerts'
       and column_name = 'user_id'
   ) then
-    execute 'update public.ride_alerts set profile_id = user_id where profile_id is null and user_id is not null';
+    execute 'update public.ride_alerts ra set profile_id = p.id from public.profiles p where ra.profile_id is null and ra.user_id is not null and p.id::text = ra.user_id::text';
   end if;
 
   if not exists (
