@@ -64,3 +64,6 @@ keys/
 **/ios/Flutter/ephemeral/
 **/android/sentry.properties
 **/ios/sentry.properties
+
+# Font source archives
+*.zip

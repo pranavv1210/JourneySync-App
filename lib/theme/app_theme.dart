@@ -41,8 +41,11 @@ class AppColors {
 class AppTypography {
   AppTypography._();
 
-  // Google Sans is bundled from the Google Fonts served truetype assets.
-  static const String fontFamily = 'Google Sans';
+  // Gilroy is the JourneySync primary UI typeface.
+  // The supplied package contains Gilroy Light (300) and Gilroy ExtraBold (800).
+  // Intermediate weights resolve to the nearest registered Gilroy weight via
+  // Flutter's font engine (400/500 → Light, 600/700 → ExtraBold).
+  static const String fontFamily = 'Gilroy';
 
   static TextStyle style({
     required double fontSize,
@@ -59,50 +62,71 @@ class AppTypography {
     );
   }
 
+  // Hero / major screen headings — Gilroy ExtraBold (800).
+  static TextStyle get displayHero =>
+      style(fontSize: 44, fontWeight: FontWeight.w800, height: 1.02);
   static TextStyle get displayLarge =>
-      style(fontSize: 38, fontWeight: FontWeight.w700, height: 1.06);
+      style(fontSize: 38, fontWeight: FontWeight.w800, height: 1.06);
   static TextStyle get displayMedium =>
-      style(fontSize: 32, fontWeight: FontWeight.w700, height: 1.08);
+      style(fontSize: 32, fontWeight: FontWeight.w800, height: 1.08);
   static TextStyle get displaySmall =>
-      style(fontSize: 27, fontWeight: FontWeight.w700, height: 1.12);
+      style(fontSize: 27, fontWeight: FontWeight.w800, height: 1.12);
+
+  // Section headings — Gilroy ExtraBold (800).
   static TextStyle get headlineLarge =>
-      style(fontSize: 23, fontWeight: FontWeight.w700, height: 1.16);
+      style(fontSize: 23, fontWeight: FontWeight.w800, height: 1.16);
   static TextStyle get headlineMedium =>
-      style(fontSize: 20, fontWeight: FontWeight.w700, height: 1.22);
+      style(fontSize: 20, fontWeight: FontWeight.w800, height: 1.22);
   static TextStyle get headlineSmall =>
-      style(fontSize: 18, fontWeight: FontWeight.w700, height: 1.26);
+      style(fontSize: 18, fontWeight: FontWeight.w800, height: 1.26);
+
+  // Titles / key destination titles — Gilroy ExtraBold (800).
   static TextStyle get titleLarge =>
-      style(fontSize: 16, fontWeight: FontWeight.w600, height: 1.35);
+      style(fontSize: 16, fontWeight: FontWeight.w800, height: 1.35);
   static TextStyle get titleMedium =>
-      style(fontSize: 14, fontWeight: FontWeight.w600, height: 1.4);
+      style(fontSize: 14, fontWeight: FontWeight.w800, height: 1.4);
   static TextStyle get titleSmall =>
-      style(fontSize: 12, fontWeight: FontWeight.w600, height: 1.4);
+      style(fontSize: 12, fontWeight: FontWeight.w800, height: 1.4);
+
+  // Body copy — resolves to Gilroy Light (300) via nearest-weight matching.
   static TextStyle get bodyLarge =>
       style(fontSize: 16, fontWeight: FontWeight.w400, height: 1.5);
   static TextStyle get bodyMedium =>
       style(fontSize: 14, fontWeight: FontWeight.w400, height: 1.5);
   static TextStyle get bodySmall =>
       style(fontSize: 12, fontWeight: FontWeight.w400, height: 1.5);
+
+  // Labels / metadata — resolves to Gilroy ExtraBold (800).
   static TextStyle get labelLarge =>
       style(fontSize: 14, fontWeight: FontWeight.w600, height: 1.3);
   static TextStyle get labelMedium =>
       style(fontSize: 12, fontWeight: FontWeight.w600, height: 1.3);
   static TextStyle get labelSmall =>
       style(fontSize: 10, fontWeight: FontWeight.w600, height: 1.3);
+
+  // Buttons / CTA — resolves to Gilroy ExtraBold (800).
   static TextStyle get buttonLarge =>
       style(fontSize: 16, fontWeight: FontWeight.w600, height: 1.2);
   static TextStyle get buttonMedium =>
       style(fontSize: 14, fontWeight: FontWeight.w600, height: 1.2);
+
+  // Inputs / captions — resolves to Gilroy Light (300).
   static TextStyle get inputText =>
       style(fontSize: 13, fontWeight: FontWeight.w500, height: 1.4);
   static TextStyle get caption =>
       style(fontSize: 11, fontWeight: FontWeight.w500, height: 1.4);
   static TextStyle get overline =>
       style(fontSize: 10, fontWeight: FontWeight.w600, height: 1.3);
+
+  // Large supporting / secondary hero text — Gilroy Light (300).
+  static TextStyle get heroSupport =>
+      style(fontSize: 20, fontWeight: FontWeight.w300, height: 1.4);
+
+  // Large numerical statistics / telemetry — Gilroy ExtraBold (800).
   static TextStyle get numeric =>
-      style(fontSize: 28, fontWeight: FontWeight.w700, height: 1.0);
+      style(fontSize: 28, fontWeight: FontWeight.w800, height: 1.0);
   static TextStyle get telemetry =>
-      style(fontSize: 20, fontWeight: FontWeight.w700, height: 1.05);
+      style(fontSize: 20, fontWeight: FontWeight.w800, height: 1.05);
 }
 
 class AppSpacing {
