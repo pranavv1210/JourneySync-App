@@ -105,6 +105,25 @@ class NotificationCoordinator extends ChangeNotifier {
     }
   }
 
+  Future<void> markRead(String id) async {
+    if (_profileId.isEmpty) return;
+    _notifications = _notifications.map((item) {
+      if (item.id == id) return item.copyWith(read: true);
+      return item;
+    }).toList();
+    notifyListeners();
+    try {
+      await _client
+          .from('notifications')
+          .update({'read': true})
+          .eq('profile_id', _profileId)
+          .eq('id', id);
+    } catch (error) {
+      debugPrint('[NotificationCoordinator] mark read failed: $error');
+      unawaited(refresh());
+    }
+  }
+
   Future<void> clearAll() async {
     if (_profileId.isEmpty) return;
     _notifications = const <AppNotification>[];

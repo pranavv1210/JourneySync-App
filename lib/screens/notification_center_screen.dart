@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/journey_screen.dart';
 import '../widgets/ride_loading_indicator.dart';
+import 'sos_alert_screen.dart';
 
 /// Premium notification center with glassmorphism design.
 ///
@@ -274,7 +275,21 @@ class _NotificationCard extends StatelessWidget {
     final spec = _NotificationSpec.fromCategory(notification.category);
     final isUnread = !notification.read;
 
-    return AnimatedContainer(
+    return GestureDetector(
+      onTap: () {
+        if (isUnread) {
+          NotificationCoordinator.instance.markRead(notification.id);
+        }
+        if (notification.category == AppNotificationCategory.sos && notification.rideId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SosAlertScreen(rideId: notification.rideId!),
+            ),
+          );
+        }
+      },
+      child: AnimatedContainer(
       duration: const Duration(milliseconds: 350),
       curve: Curves.easeOutCubic,
       padding: const EdgeInsets.all(16),
@@ -399,6 +414,7 @@ class _NotificationCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../coordinators/realtime_coordinator.dart';
 import '../models/ride_record.dart';
+import '../services/app_navigation.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
@@ -15,6 +16,8 @@ import '../widgets/ride_loading_indicator.dart';
 import 'dart:ui' show ImageFilter;
 import '../theme/app_theme.dart';
 import '../services/weather_service.dart';
+import 'ride_lobby_screen.dart';
+import 'ride_mode_screen.dart';
 
 class NearbyRidesScreen extends StatefulWidget {
   const NearbyRidesScreen({super.key});
@@ -26,6 +29,10 @@ class NearbyRidesScreen extends StatefulWidget {
 class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     with SingleTickerProviderStateMixin {
   static const Duration _emptyStateDelay = Duration(seconds: 12);
+
+  /// Design diameter of the radar. The rendered diameter shrinks on narrow
+  /// screens; every other radar dimension is derived from it by [_RadarLayout].
+  static const double _radarDiameter = 300;
 
   final RideService _rideService = RideService();
   final RealtimeCoordinator _realtimeCoordinator = RealtimeCoordinator.instance;
@@ -44,6 +51,11 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   String currentUserAvatarUrl = '';
   String joiningRideId = '';
   List<NearbyRide> nearbyRides = <NearbyRide>[];
+
+  /// Rides this rider has asked to join and that are awaiting host approval.
+  /// Tracked locally so the sheet/blip reflect the request immediately instead
+  /// of waiting for the next radar refresh.
+  final Set<String> _pendingRideIds = <String>{};
   WeatherSnapshot? _weatherSnapshot;
 
   @override
@@ -105,8 +117,24 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         throw Exception('Missing user session. Please login again.');
       }
 
-      final userName = (prefs.getString('userName') ?? 'You').trim();
-      final userAvatarUrl = (prefs.getString('userAvatarUrl') ?? '').trim();
+      var userName = (prefs.getString('userName') ?? '').trim();
+      var userAvatarUrl = (prefs.getString('userAvatarUrl') ?? '').trim();
+
+      // The cached session predates avatar caching on some installs, so pull the
+      // profile straight from Supabase rather than falling back to an initial.
+      if (userAvatarUrl.isEmpty || userName.isEmpty) {
+        final profile = await _rideService.fetchProfileSummary(userId);
+        if (profile != null) {
+          if (userAvatarUrl.isEmpty && profile.avatarUrl.isNotEmpty) {
+            userAvatarUrl = profile.avatarUrl;
+            await prefs.setString('userAvatarUrl', userAvatarUrl);
+          }
+          if (userName.isEmpty && profile.name.isNotEmpty) {
+            userName = profile.name;
+            await prefs.setString('userName', userName);
+          }
+        }
+      }
 
       await _realtimeCoordinator.startRideRadar(
         profileId: userId,
@@ -184,49 +212,95 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     return 'Could not search nearby rides right now. Please try again.';
   }
 
+  /// Opens the host's own ride from its radar blip: the live map if it is
+  /// already running, otherwise the lobby.
+  Future<void> _openOwnRide(NearbyRide ride) async {
+    final rideId = ride.ride.id.trim();
+    if (rideId.isEmpty) return;
+    await pushAppRoute<void>(
+      context,
+      ride.ride.isActive
+          ? RideModeScreen(rideId: rideId)
+          : RideLobbyScreen(rideId: rideId),
+    );
+    if (!mounted) return;
+    // Membership or status may have changed while the host was in there.
+    await _loadNearbyRides();
+  }
+
   Future<void> _joinRide(NearbyRide ride) async {
     if (joiningRideId.isNotEmpty) return;
     if (ride.joined) return;
 
+    final rideId = ride.ride.id.trim();
+    if (rideId.isEmpty) {
+      showAppToast(
+        context,
+        'This ride is no longer available.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+
+    // The radar can be tapped before the session finished loading, so make sure
+    // we have an id rather than sending an empty one to Supabase.
+    final userId = await _resolveCurrentUserId();
+    if (!mounted) return;
+    if (userId.isEmpty) {
+      showAppToast(
+        context,
+        'Missing user session. Please login again.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+
     setState(() {
-      joiningRideId = ride.ride.id;
+      joiningRideId = rideId;
+      currentUserId = userId;
     });
 
     try {
       final status = await _rideService.requestJoinRide(
-        rideId: ride.ride.id,
-        userId: currentUserId,
+        rideId: rideId,
+        userId: userId,
       );
 
       if (!mounted) return;
 
       final message = switch (status) {
-        JoinByCodeStatus.requested => 'Join request sent.',
+        JoinByCodeStatus.requested =>
+          'Join request sent. The host will approve it shortly.',
         JoinByCodeStatus.joinedDirectly => 'Joined successfully.',
-        JoinByCodeStatus.alreadyRequested => 'You already requested to join.',
+        JoinByCodeStatus.alreadyRequested =>
+          'Your join request is already waiting for host approval.',
         JoinByCodeStatus.alreadyJoined => 'You are already part of this ride.',
       };
 
-      if (status == JoinByCodeStatus.joinedDirectly) {
-        setState(() {
+      final joinedNow =
+          status == JoinByCodeStatus.joinedDirectly ||
+          status == JoinByCodeStatus.alreadyJoined;
+
+      setState(() {
+        if (joinedNow) {
+          _pendingRideIds.remove(rideId);
           nearbyRides =
               nearbyRides.map((existing) {
-                if (existing.ride.id != ride.ride.id) return existing;
+                if (existing.ride.id != rideId) return existing;
                 return existing.copyWith(
                   joined: true,
-                  ride: RideRecord(
-                    id: existing.ride.id,
-                    creatorId: existing.ride.creatorId,
-                    title: existing.ride.title,
-                    startLocation: existing.ride.startLocation,
-                    endLocation: existing.ride.endLocation,
-                    createdAt: existing.ride.createdAt,
-                    participantCount: existing.ride.participantCount + 1,
+                  ride: existing.ride.copyWith(
+                    participantCount:
+                        status == JoinByCodeStatus.joinedDirectly
+                            ? existing.ride.participantCount + 1
+                            : existing.ride.participantCount,
                   ),
                 );
               }).toList();
-        });
-      }
+        } else {
+          _pendingRideIds.add(rideId);
+        }
+      });
 
       showAppToast(context, message, type: AppToastType.success);
     } catch (error) {
@@ -359,8 +433,8 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   Future<void> _joinRideByCode(String rawCode) async {
     if (joiningByCode) return;
     final userId = await _resolveCurrentUserId();
+    if (!mounted) return;
     if (userId.isEmpty) {
-      if (!mounted) return;
       showAppToast(
         context,
         'Missing user session. Please login again.',
@@ -406,14 +480,29 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
 
   String _joinErrorMessage(Object error) {
     final lower = error.toString().toLowerCase();
-    if (lower.contains('ride_members') ||
-        lower.contains('join request') ||
-        lower.contains('pgrst') ||
-        lower.contains('postgrest')) {
-      return 'Could not join this ride. Please try again after sync.';
+    // Only report a specific cause when we can actually identify one - the old
+    // catch-all matched every Postgrest error and hid real problems behind
+    // "try again after sync", which is not something a rider can act on.
+    if (lower.contains('login again') || lower.contains('user session')) {
+      return 'Missing user session. Please login again.';
     }
-    if (lower.contains('not found')) {
+    if (lower.contains('no longer available') || lower.contains('not found')) {
       return 'This ride is no longer available.';
+    }
+    if (lower.contains('own ride')) {
+      return 'This is your own ride.';
+    }
+    if (lower.contains('42501') ||
+        lower.contains('row-level security') ||
+        lower.contains('permission denied')) {
+      return 'You do not have permission to join this ride.';
+    }
+    if (lower.contains('socketexception') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('timeout') ||
+        lower.contains('clientexception') ||
+        lower.contains('connection')) {
+      return 'No internet connection. Check your network and try again.';
     }
     return 'Could not join this ride. Please try again.';
   }
@@ -642,42 +731,73 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       child: Column(
         children: [
           SizedBox(
-            width: 300,
-            height: 300,
+            width: _radarDiameter,
+            height: _radarDiameter,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final size = math.min(
+                final rawSize = math.min(
                   constraints.maxWidth,
                   constraints.maxHeight,
                 );
-                final nodes = _buildRadarNodes(rides);
-                return Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.center,
-                  children: [
-                    AnimatedBuilder(
-                      animation: _radarController,
-                      builder: (context, _) {
-                        final sweepAngle = _radarController.value * 2 * math.pi;
-                        return CustomPaint(
-                          size: Size.square(size),
-                          painter: _RadarPainter(
-                            sweepAngle: sweepAngle,
-                            primary: primary,
+                // An unbounded parent would make this infinite, and every
+                // dimension in _RadarLayout scales off it - one non-finite value
+                // here is enough to fling blips off the rings. Fall back to the
+                // design diameter instead.
+                final size =
+                    (rawSize.isFinite && rawSize > 0)
+                        ? rawSize
+                        : _radarDiameter;
+                final layout = _RadarLayout(size);
+                final nodes = _buildRadarNodes(rides, layout);
+                final centre = size / 2;
+                // The Stack must be exactly square: a narrow screen makes the
+                // available box shorter than it is tall, and a non-square Stack
+                // would centre the painted circle somewhere other than
+                // (centre, centre), pushing every blip off the rings.
+                return Center(
+                  child: SizedBox.square(
+                    dimension: size,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        AnimatedBuilder(
+                          animation: _radarController,
+                          builder: (context, _) {
+                            final sweepAngle =
+                                _radarController.value * 2 * math.pi;
+                            return CustomPaint(
+                              size: Size.square(size),
+                              painter: _RadarPainter(
+                                sweepAngle: sweepAngle,
+                                primary: primary,
+                              ),
+                            );
+                          },
+                        ),
+                        for (final node in nodes)
+                          Positioned(
+                            left: centre + node.dx - layout.blipWidth / 2,
+                            top: centre + node.dy - layout.blipHeight / 2,
+                            width: layout.blipWidth,
+                            height: layout.blipHeight,
+                            child: _RadarRideMarker(
+                              ride: node.ride,
+                              layout: layout,
+                              visible: rides.isNotEmpty,
+                              pending: _pendingRideIds.contains(
+                                node.ride.ride.id,
+                              ),
+                              onTap: () => _showRidePreview(node.ride),
+                            ),
                           ),
-                        );
-                      },
+                        _RadarCenterMarker(
+                          avatarUrl: currentUserAvatarUrl,
+                          label: currentUserName,
+                          layout: layout,
+                        ),
+                      ],
                     ),
-                    for (final node in nodes)
-                      _RadarRideMarker(
-                        ride: node.ride,
-                        xFactor: node.xFactor,
-                        yFactor: node.yFactor,
-                        visible: rides.isNotEmpty,
-                        onTap: () => _showRidePreview(node.ride),
-                      ),
-                    _RadarCenterMarker(avatarUrl: currentUserAvatarUrl),
-                  ],
+                  ),
                 );
               },
             ),
@@ -754,24 +874,74 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     );
   }
 
-  List<_RadarNode> _buildRadarNodes(List<NearbyRide> rides) {
+  /// Places each nearby ride on the radar as a polar offset from the centre.
+  ///
+  /// The radial distance is bounded on both sides by [_RadarLayout] so the whole
+  /// marker - photo and name - always renders inside the outer radar ring and
+  /// never lands on the centre "You" marker.
+  ///
+  /// Every offset is finally clamped to [_RadarLayout.maxBlipDistance]. That
+  /// clamp is the actual containment guarantee: it holds whatever the ring and
+  /// clearance arithmetic above it produces, including when a degenerate layout
+  /// makes an intermediate value non-finite. A blip that lands outside the rings
+  /// - as one did, over the weather card - is the single worst failure this
+  /// widget can have, so it is worth proving rather than deriving.
+  List<_RadarNode> _buildRadarNodes(
+    List<NearbyRide> rides,
+    _RadarLayout layout,
+  ) {
     if (rides.isEmpty) return const <_RadarNode>[];
 
-    const ringFactors = <double>[0.28, 0.44, 0.6, 0.77];
+    const goldenAngle = 2.399963229728653;
+    const ringFactors = <double>[0.0, 0.52, 1.0];
+    final maxDistance = layout.maxBlipDistance;
+    final minGap = layout.blipWidth * 0.9;
+
+    Offset positionFor(double angle, double ring) {
+      final sine = math.sin(angle);
+      final minDistance = layout.minBlipDistance(sine);
+      var distance = minDistance + (maxDistance - minDistance) * ring;
+      // Guards the whole chain at once: a non-finite or over-long distance
+      // becomes the largest radius that still fits the marker inside the rings.
+      if (!distance.isFinite || distance > maxDistance) distance = maxDistance;
+      if (distance < 0) distance = 0;
+      return Offset(math.cos(angle) * distance, sine * distance);
+    }
+
+    final placed = <Offset>[];
     final nodes = <_RadarNode>[];
-    for (int index = 0; index < rides.length; index++) {
-      final ride = rides[index];
-      final hash = ride.ride.id.hashCode.abs() + index * 53;
-      final angle = ((hash % 360) / 180) * math.pi;
-      final ring = ringFactors[hash % ringFactors.length];
-      final x = 0.5 + math.cos(angle) * ring * 0.38;
-      final y = 0.5 + math.sin(angle) * ring * 0.38;
+    for (final ride in rides) {
+      // Derived from the ride id so a blip keeps its spot across refreshes.
+      final hash = ride.ride.id.hashCode.abs();
+      var angle = ((hash % 997) / 997) * 2 * math.pi;
+      final ringSeed = (hash ~/ 997) % ringFactors.length;
+
+      // Two ride ids can hash to the same spot, and a narrow radar squeezes the
+      // usable band - walk the golden angle across all three rings and take the
+      // first slot that clears the blips already placed, or the roomiest one.
+      var bestOffset = positionFor(angle, ringFactors[ringSeed]);
+      var bestClearance = double.negativeInfinity;
+      for (var attempt = 0; attempt < 36; attempt++) {
+        final ring =
+            ringFactors[(ringSeed + attempt ~/ 12) % ringFactors.length];
+        final candidate = positionFor(angle, ring);
+        final clearance =
+            placed.isEmpty
+                ? double.infinity
+                : placed
+                    .map((other) => (other - candidate).distance)
+                    .reduce(math.min);
+        if (clearance > bestClearance) {
+          bestClearance = clearance;
+          bestOffset = candidate;
+        }
+        if (clearance >= minGap) break;
+        angle = (angle + goldenAngle) % (2 * math.pi);
+      }
+
+      placed.add(bestOffset);
       nodes.add(
-        _RadarNode(
-          ride: ride,
-          xFactor: x.clamp(0.15, 0.85),
-          yFactor: y.clamp(0.15, 0.85),
-        ),
+        _RadarNode(ride: ride, dx: bestOffset.dx, dy: bestOffset.dy),
       );
     }
     return nodes;
@@ -788,7 +958,34 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   }
 
   Future<void> _showRidePreview(NearbyRide ride) async {
-    final joining = joiningRideId == ride.ride.id;
+    // Resolve against the live list so a blip tapped right after a join/refresh
+    // reflects current membership instead of the captured value.
+    final current = nearbyRides.firstWhere(
+      (candidate) => candidate.ride.id == ride.ride.id,
+      orElse: () => ride,
+    );
+    final joining = joiningRideId == current.ride.id;
+    final pending = _pendingRideIds.contains(current.ride.id);
+    final isLive = current.ride.isActive;
+    final badgeLabel = isLive ? 'LIVE' : 'SCHEDULED';
+    final badgeColor = isLive ? AppColors.success : AppColors.primary;
+
+    final String buttonLabel;
+    if (current.isOwnRide) {
+      // A host tapping their own blip wants the ride, not a join request. Their
+      // ride is on the radar as confirmation it is broadcasting, so the action
+      // has to go somewhere useful rather than sitting disabled on "Joined".
+      buttonLabel = isLive ? 'Open live ride' : 'Open ride lobby';
+    } else if (current.joined) {
+      buttonLabel = 'Joined';
+    } else if (pending) {
+      buttonLabel = 'Request sent';
+    } else {
+      buttonLabel = 'Join Ride';
+    }
+    final buttonLocked =
+        !current.isOwnRide && (current.joined || pending);
+
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -820,8 +1017,8 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                     Row(
                       children: [
                         _RadarAvatar(
-                          avatarUrl: ride.hostAvatarUrl,
-                          label: ride.hostName,
+                          avatarUrl: current.hostAvatarUrl,
+                          label: current.hostName,
                           radius: 24,
                           borderColor: AppColors.primary.withValues(
                             alpha: 0.32,
@@ -833,9 +1030,9 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                ride.ride.title.trim().isEmpty
+                                current.ride.title.trim().isEmpty
                                     ? 'Nearby ride'
-                                    : ride.ride.title,
+                                    : current.ride.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: AppTypography.headlineSmall.copyWith(
@@ -844,7 +1041,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                                 ),
                               ),
                               Text(
-                                'Hosted by ${ride.hostName}',
+                                'Hosted by ${current.hostName}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: AppTypography.bodySmall.copyWith(
@@ -860,13 +1057,13 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.success.withValues(alpha: 0.12),
+                            color: badgeColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            'LIVE',
+                            badgeLabel,
                             style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.success,
+                              color: badgeColor,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -877,41 +1074,61 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                     _previewRow(
                       Icons.navigation_rounded,
                       'Destination',
-                      ride.ride.endLocation.trim().isEmpty
+                      current.ride.endLocation.trim().isEmpty
                           ? 'Destination pending'
-                          : ride.ride.endLocation,
+                          : current.ride.endLocation,
                     ),
                     _previewRow(
                       Icons.people_alt_rounded,
                       'Riders',
-                      '${ride.ride.participantCount}',
+                      '${current.ride.participantCount}',
                     ),
                     _previewRow(
                       Icons.two_wheeler_rounded,
                       'Bike',
-                      ride.hostBike.trim().isEmpty
+                      current.hostBike.trim().isEmpty
                           ? 'Not added'
-                          : ride.hostBike,
+                          : current.hostBike,
                     ),
                     const SizedBox(height: 18),
                     HapticButton(
-                      label: ride.joined ? 'Joined' : 'Join Ride',
+                      label: buttonLabel,
                       icon:
-                          ride.joined ? Icons.check_rounded : Icons.add_rounded,
+                          current.isOwnRide
+                              ? Icons.arrow_forward_rounded
+                              : current.joined
+                              ? Icons.check_rounded
+                              : pending
+                              ? Icons.hourglass_top_rounded
+                              : Icons.add_rounded,
                       loading: joining,
-                      disabled: ride.joined,
+                      disabled: buttonLocked,
                       variant:
-                          ride.joined
+                          buttonLocked
                               ? HapticButtonVariant.outline
                               : HapticButtonVariant.primary,
                       onPressed:
-                          ride.joined
+                          buttonLocked
                               ? null
                               : () async {
                                 Navigator.pop(sheetContext);
-                                await _joinRide(ride);
+                                if (current.isOwnRide) {
+                                  await _openOwnRide(current);
+                                  return;
+                                }
+                                await _joinRide(current);
                               },
                     ),
+                    if (pending && !current.joined) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        'Waiting for the host to approve your request.',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1484,71 +1701,161 @@ class _RadarPainter extends CustomPainter {
 class _RadarNode {
   const _RadarNode({
     required this.ride,
-    required this.xFactor,
-    required this.yFactor,
+    required this.dx,
+    required this.dy,
   });
 
   final NearbyRide ride;
-  final double xFactor;
-  final double yFactor;
+
+  /// Offset in logical pixels from the centre of the radar.
+  final double dx;
+  final double dy;
+}
+
+/// Every radar dimension derives from the rendered diameter, so the layout stays
+/// geometrically similar at any size. That similarity is what carries the
+/// containment guarantees - no marker outside the outer ring, no marker on top of
+/// the centre avatar - from the 300px design width down to the narrowest phone.
+class _RadarLayout {
+  _RadarLayout(this.size)
+    : scale = size / _NearbyRidesScreenState._radarDiameter;
+
+  final double size;
+  final double scale;
+
+  double get radius => size / 2;
+
+  // A blip is a profile photo above a single-line name.
+  double get blipAvatarRadius => 17 * scale;
+  double get blipBorderWidth => 2 * scale;
+  double get blipGap => 4 * scale;
+  double get blipLabelHeight => 14 * scale;
+  double get blipLabelFontSize => 11 * scale;
+  double get blipWidth => 62 * scale;
+  double get blipHeight =>
+      (blipAvatarRadius + blipBorderWidth) * 2 + blipGap + blipLabelHeight;
+
+  /// Bounding-circle radius of the blip box, measured from its centre.
+  double get blipReach {
+    final halfWidth = blipWidth / 2;
+    final halfHeight = blipHeight / 2;
+    return math.sqrt(halfWidth * halfWidth + halfHeight * halfHeight);
+  }
+
+  // The centre "You" marker.
+  double get centreBox => 112 * scale;
+  double get centreRingTop => 19 * scale;
+  double get centreRingBox => 74 * scale;
+  double get centreRingPadding => 4 * scale;
+  double get centreAvatarRadius => 31 * scale;
+  double get centreLabelTop => 95 * scale;
+  double get centreLabelInset => 14 * scale;
+  double get centreLabelFontSize => 13 * scale;
+
+  /// How far the centre marker reaches from the radar centre: its avatar ring in
+  /// every direction, and further downward where its name label sits.
+  double get centreAvatarReach => 37 * scale;
+  double get centreLabelReach => 55 * scale;
+
+  /// Furthest a blip centre may sit from the radar centre while its whole box
+  /// stays inside the outer ring.
+  double get maxBlipDistance => math.max(0.0, radius - blipReach - 3 * scale);
+
+  /// Nearest a blip centre may sit to the radar centre without touching the
+  /// centre marker. [sine] is sin(angle); screen y grows downward, so a positive
+  /// value points at the centre marker's name label and needs more room.
+  double minBlipDistance(double sine) {
+    final clearance =
+        centreAvatarReach +
+        (sine > 0 ? (centreLabelReach - centreAvatarReach) * sine : 0.0);
+    return math.min(maxBlipDistance, clearance + blipReach + 5 * scale);
+  }
 }
 
 class _RadarRideMarker extends StatelessWidget {
   const _RadarRideMarker({
     required this.ride,
-    required this.xFactor,
-    required this.yFactor,
+    required this.layout,
     required this.visible,
+    required this.pending,
     required this.onTap,
   });
 
   final NearbyRide ride;
-  final double xFactor;
-  final double yFactor;
+  final _RadarLayout layout;
   final bool visible;
+  final bool pending;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return FractionalTranslation(
-      translation: const Offset(-0.5, -0.5),
-      child: Align(
-        alignment: Alignment(xFactor * 2 - 1, yFactor * 2 - 1),
-        child: GestureDetector(
-          onTap: visible ? onTap : null,
-          child: AnimatedScale(
-            duration: const Duration(milliseconds: 320),
-            scale: visible ? 1 : 0.7,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 320),
-              opacity: visible ? 1 : 0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _RadarAvatar(
-                    avatarUrl: ride.hostAvatarUrl,
-                    label: ride.hostName,
-                    radius: 23,
-                    borderColor: const Color(0xFFFF8A1C),
-                  ),
-                  const SizedBox(height: 6),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 88),
-                    child: Text(
-                      ride.hostName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+    // Own rides get the app's forest tone so the host can pick their own ride
+    // out at a glance without reading the label.
+    final ringColor =
+        ride.isOwnRide
+            ? AppColors.forest
+            : ride.joined
+            ? const Color(0xFF2E9E5B)
+            : pending
+            ? const Color(0xFFF2A93B)
+            : const Color(0xFFFF8A1C);
+
+    // A host already knows their own name; the ride's name is the useful label
+    // on their own blip, and it is what confirms the ride is broadcasting.
+    final rideTitle = ride.ride.title.trim();
+    final label =
+        ride.isOwnRide
+            ? (rideTitle.isEmpty ? 'Your ride' : rideTitle)
+            : (ride.hostName.trim().isEmpty ? 'Rider' : ride.hostName.trim());
+
+    // The parent Positioned already fixes this marker's box, so the layout only
+    // has to fill it - no fractional translation, which is what used to push
+    // markers half a radar-width off target.
+    return GestureDetector(
+      onTap: visible ? onTap : null,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 320),
+        scale: visible ? 1 : 0.7,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 320),
+          opacity: visible ? 1 : 0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _RadarAvatar(
+                avatarUrl: ride.hostAvatarUrl,
+                label: ride.hostName,
+                radius: layout.blipAvatarRadius,
+                borderWidth: layout.blipBorderWidth,
+                borderColor: ringColor,
               ),
-            ),
+              SizedBox(height: layout.blipGap),
+              SizedBox(
+                height: layout.blipLabelHeight,
+                width: layout.blipWidth,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  // The radar is a fixed-geometry diagram whose containment is
+                  // guaranteed by _RadarLayout, so the label must not grow with
+                  // the system font scale and push glyphs past the outer ring.
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    color: const Color(0xFF14342B),
+                    fontSize: layout.blipLabelFontSize,
+                    height: 1.25,
+                    fontWeight: FontWeight.w800,
+                    shadows: const [
+                      Shadow(color: Color(0xCCFFFFFF), blurRadius: 3),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1557,24 +1864,35 @@ class _RadarRideMarker extends StatelessWidget {
 }
 
 class _RadarCenterMarker extends StatelessWidget {
-  const _RadarCenterMarker({required this.avatarUrl});
+  const _RadarCenterMarker({
+    required this.avatarUrl,
+    required this.label,
+    required this.layout,
+  });
 
   final String avatarUrl;
+  final String label;
+  final _RadarLayout layout;
 
   @override
   Widget build(BuildContext context) {
+    final trimmed = label.trim();
+    // Keep it short so the centre label never widens past the inner ring.
+    final firstName =
+        trimmed.isEmpty ? 'You' : trimmed.split(RegExp(r'\s+')).first;
+
     return SizedBox(
-      width: 112,
-      height: 112,
+      width: layout.centreBox,
+      height: layout.centreBox,
       child: Stack(
         alignment: Alignment.topCenter,
         children: [
           Positioned(
-            top: 19,
+            top: layout.centreRingTop,
             child: Container(
-              width: 74,
-              height: 74,
-              padding: const EdgeInsets.all(4),
+              width: layout.centreRingBox,
+              height: layout.centreRingBox,
+              padding: EdgeInsets.all(layout.centreRingPadding),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.9),
                 shape: BoxShape.circle,
@@ -1587,25 +1905,31 @@ class _RadarCenterMarker extends StatelessWidget {
               ),
               child: _RadarAvatar(
                 avatarUrl: avatarUrl,
-                label: 'You',
-                radius: 31,
+                label: firstName,
+                radius: layout.centreAvatarRadius,
+                borderWidth: layout.blipBorderWidth,
                 borderColor: const Color(0xFFF7B267),
               ),
             ),
           ),
           Positioned(
-            top: 96,
-            left: 0,
-            right: 0,
+            top: layout.centreLabelTop,
+            left: layout.centreLabelInset,
+            right: layout.centreLabelInset,
             child: Text(
-              'You',
+              firstName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                color: const Color(0xFF14342B),
+                fontSize: layout.centreLabelFontSize,
+                height: 1.2,
+                fontWeight: FontWeight.w800,
+                shadows: const [
+                  Shadow(color: Color(0xCCFFFFFF), blurRadius: 3),
+                ],
               ),
             ),
           ),
@@ -1615,57 +1939,79 @@ class _RadarCenterMarker extends StatelessWidget {
   }
 }
 
+/// Circular profile photo that degrades gracefully: it shows the rider's
+/// initial while the image loads and keeps showing it if the download fails,
+/// so a broken avatar URL never leaves an empty white disc on the radar.
 class _RadarAvatar extends StatelessWidget {
   const _RadarAvatar({
     required this.avatarUrl,
     required this.label,
     required this.radius,
     required this.borderColor,
+    this.borderWidth = 2,
   });
 
   final String avatarUrl;
   final String label;
   final double radius;
   final Color borderColor;
+  final double borderWidth;
 
   @override
   Widget build(BuildContext context) {
     final clean = avatarUrl.trim();
+    final trimmedLabel = label.trim();
     final initial =
-        label.trim().isEmpty ? 'R' : label.trim().substring(0, 1).toUpperCase();
+        trimmedLabel.isEmpty ? 'R' : trimmedLabel.substring(0, 1).toUpperCase();
+    final diameter = radius * 2;
+
+    final fallback = Container(
+      width: diameter,
+      height: diameter,
+      color: Colors.white,
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        textAlign: TextAlign.center,
+        textScaler: TextScaler.noScaling,
+        strutStyle: StrutStyle(
+          fontSize: radius * 0.75,
+          height: 1,
+          forceStrutHeight: true,
+        ),
+        style: TextStyle(
+          color: const Color(0xFF8A3B08),
+          fontSize: radius * 0.75,
+          height: 1,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
 
     return Container(
+      width: diameter + borderWidth * 2,
+      height: diameter + borderWidth * 2,
       decoration: BoxDecoration(
+        color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: borderColor, width: 2),
+        border: Border.all(color: borderColor, width: borderWidth),
       ),
-      child: CircleAvatar(
-        radius: radius,
-        backgroundColor: Colors.white,
-        backgroundImage: clean.isNotEmpty ? NetworkImage(clean) : null,
-        onBackgroundImageError: (_, __) {},
+      child: ClipOval(
         child:
             clean.isEmpty
-                ? SizedBox.expand(
-                  child: Center(
-                    child: Text(
-                      initial,
-                      textAlign: TextAlign.center,
-                      strutStyle: StrutStyle(
-                        fontSize: radius * 0.75,
-                        height: 1,
-                        forceStrutHeight: true,
-                      ),
-                      style: TextStyle(
-                        color: const Color(0xFF8A3B08),
-                        fontSize: radius * 0.75,
-                        height: 1,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                )
-                : null,
+                ? fallback
+                : Image.network(
+                  clean,
+                  width: diameter,
+                  height: diameter,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, __, ___) => fallback,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return fallback;
+                  },
+                ),
       ),
     );
   }

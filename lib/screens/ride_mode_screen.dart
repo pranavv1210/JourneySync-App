@@ -17,10 +17,10 @@ import '../coordinators/realtime_coordinator.dart' hide unawaited;
 import '../services/live_tracking_service.dart' hide unawaited;
 import '../services/fuel_service.dart';
 import '../services/group_ride_intelligence.dart';
-import '../services/navigation_service.dart';
 import '../services/notification_service.dart';
 import '../services/ride_analytics_engine.dart';
 import '../services/ride_engine_core.dart';
+import '../services/ride_geometry_service.dart';
 import '../services/ride_service.dart';
 import '../services/supabase_service.dart';
 import '../services/weather_service.dart';
@@ -60,6 +60,7 @@ class _RideModeScreenState extends State<RideModeScreen>
   late final RideAnalyticsEngine _analyticsEngine;
   final WeatherService _weatherService = WeatherService();
   final FuelService _fuelService = FuelService();
+  final RideGeometryService _geometryService = RideGeometryService();
 
   // ── User / Ride state ──────────────────────────────────────────────────────
   bool _loading = true;
@@ -88,6 +89,7 @@ class _RideModeScreenState extends State<RideModeScreen>
   bool _smartAutoMode = true;
   bool _programmaticCameraMove = false;
   DateTime _autoFollowResumeAt = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastGpsCameraDriveAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   // ── Telemetry V2 (Garmin-Level metrics) ────────────────────────────────────
   double _distanceTravelled = 0.0;
@@ -106,12 +108,32 @@ class _RideModeScreenState extends State<RideModeScreen>
   late AnimationController _sosPulseController;
   List<Map<String, String>> _emergencyContacts = const <Map<String, String>>[];
 
+  /// True between sending my own SOS and standing it down.
+  ///
+  /// The SOS button used to fire on a single tap and confirm with a two-second
+  /// toast, so on a solo ride there was nothing left on screen a moment later
+  /// and the button looked broken. This flag keeps the button visibly latched
+  /// until the rider says they are safe.
+  bool _sosActive = false;
+  bool _sosBusy = false;
+
+  /// When my own SOS overlay was raised locally.
+  ///
+  /// The insert comes back to this device through the same realtime channel as
+  /// everyone else's, so without this the echo would re-open an overlay the
+  /// sender had already acknowledged.
+  DateTime? _ownSosShownAt;
+
   // ── Ride timer ─────────────────────────────────────────────────────────────
   int _secondsElapsed = 0;
   Timer? _rideTimer;
 
   // ── Route sync ─────────────────────────────────────────────────────────────
   List<LatLng> _routePoints = [];
+
+  /// True when [_routePoints] holds real road geometry rather than the handful
+  /// of pit-stop coordinates a host picked.
+  bool _hasRoadRoute = false;
   double? _destinationLat;
   double? _destinationLng;
   RideRoute? _rideRoute;
@@ -190,6 +212,24 @@ class _RideModeScreenState extends State<RideModeScreen>
         prefs.getStringList('emergencyContacts') ?? const <String>[],
       );
 
+      // The cached session predates avatar caching on some installs, so pull
+      // the profile straight from Supabase rather than showing this rider their
+      // own initial on the map for the whole ride.
+      if (_currentUserAvatarUrl.isEmpty && _currentUserId.isNotEmpty) {
+        try {
+          final profile = await _rideService.fetchProfileSummary(
+            _currentUserId,
+          );
+          final resolved = profile?.avatarUrl.trim() ?? '';
+          if (resolved.isNotEmpty) {
+            _currentUserAvatarUrl = resolved;
+            await prefs.setString('userAvatarUrl', resolved);
+          }
+        } catch (e) {
+          debugPrint('[RideMode] Could not resolve own avatar: $e');
+        }
+      }
+
       // ── Fetch ride data ──────────────────────────────────────────────────
       final ride = await _supabaseService.fetchRideById(widget.rideId);
       if (ride == null) throw Exception('Ride not found');
@@ -239,6 +279,11 @@ class _RideModeScreenState extends State<RideModeScreen>
         final routeData = await _rideService.fetchRideRouteMap(widget.rideId);
         if (routeData != null) _onRouteUpdate(routeData);
       } catch (_) {}
+
+      // Resolving the road route needs geocoding and a routing call, so it runs
+      // in the background - the map opens immediately and the line drops in when
+      // it is ready.
+      unawaited(_resolveRoadRoute());
 
       if (mounted) setState(() => _loading = false);
     } catch (e) {
@@ -301,7 +346,23 @@ class _RideModeScreenState extends State<RideModeScreen>
       _analyticsEngine.recordPosition(pos);
       _maybeShowRideIntelligencePrompts(pos);
       _prevPosition = pos;
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      setState(() {});
+
+      // Keeps the map under the rider as they move. The camera used to advance
+      // only when somebody else's position arrived over realtime, so a solo
+      // rider - or anyone whose group had gone quiet - watched their own dot
+      // walk off the edge of the screen. _driveCamera still respects the 20s
+      // pause after a manual pan and every follow-mode toggle.
+      //
+      // Throttled because the camera ease runs for 850ms while fixes arrive
+      // every 3 metres; restarting the ease on each one only burns frames.
+      final now = DateTime.now();
+      if (now.difference(_lastGpsCameraDriveAt) >
+          const Duration(milliseconds: 450)) {
+        _lastGpsCameraDriveAt = now;
+        _driveCamera(_riderLocations);
+      }
     });
   }
 
@@ -598,6 +659,35 @@ class _RideModeScreenState extends State<RideModeScreen>
 
   void _onSosAlert(Map<String, dynamic> alert) {
     if (!mounted) return;
+
+    final fromId =
+        (alert['profile_id'] ?? alert['user_id'] ?? '').toString().trim();
+    final isMine = fromId.isNotEmpty && fromId == _currentUserId;
+
+    // A stand-down row travels the same channel as the SOS it cancels, so it
+    // arrives here too. It must clear the overlay, not raise a new one.
+    if (!RealtimeCoordinator.isSosAlert(alert)) {
+      final activeFrom = _activeSosRiderId();
+      if (isMine || activeFrom.isEmpty || activeFrom == fromId) {
+        _alertDismissTimer?.cancel();
+        setState(() {
+          _activeAlert = null;
+          if (isMine) _sosActive = false;
+        });
+      }
+      return;
+    }
+
+    // My own alert is already on screen - it is raised the instant the insert
+    // returns rather than waiting for this echo. Re-raising it here would undo
+    // an acknowledgement I may have already tapped.
+    if (isMine &&
+        _ownSosShownAt != null &&
+        DateTime.now().difference(_ownSosShownAt!) <
+            const Duration(seconds: 30)) {
+      return;
+    }
+
     HapticFeedback.vibrate();
     Future.delayed(
       const Duration(milliseconds: 300),
@@ -607,8 +697,14 @@ class _RideModeScreenState extends State<RideModeScreen>
       const Duration(milliseconds: 600),
       () => HapticFeedback.vibrate(),
     );
-    setState(() => _activeAlert = alert);
+    setState(() {
+      _activeAlert = alert;
+      if (isMine) _sosActive = true;
+    });
     _alertDismissTimer?.cancel();
+    // My own alert stays put until I stand it down or acknowledge it; someone
+    // else's clears itself so the map is usable again.
+    if (isMine) return;
     _alertDismissTimer = Timer(const Duration(seconds: 15), () {
       if (mounted) setState(() => _activeAlert = null);
     });
@@ -626,7 +722,7 @@ class _RideModeScreenState extends State<RideModeScreen>
 
       final List<dynamic>? pointsRaw = data['route_points'];
       if (pointsRaw != null && pointsRaw.isNotEmpty) {
-        _routePoints =
+        final incoming =
             pointsRaw
                 .map(
                   (p) => LatLng(
@@ -635,6 +731,17 @@ class _RideModeScreenState extends State<RideModeScreen>
                   ),
                 )
                 .toList();
+        final isRoadRoute =
+            incoming.length >= RideGeometryService.minRoadRoutePoints;
+
+        // A handful of points is a pit-stop list, not a road route. Once real
+        // road geometry is on screen, keep it rather than dropping back to a
+        // line that cuts straight across the countryside; the destination
+        // marker above still moves to wherever the host changed it to.
+        if (isRoadRoute || !_hasRoadRoute) {
+          _routePoints = incoming;
+          _hasRoadRoute = isRoadRoute;
+        }
       }
       _analyticsEngine.recordRouteStops(
         _rideRoute?.stops ?? const <RouteStop>[],
@@ -650,6 +757,53 @@ class _RideModeScreenState extends State<RideModeScreen>
     } catch (e) {
       debugPrint('[RideMode] Route parse error: $e');
     }
+  }
+
+  /// Draws the actual road route to the destination.
+  ///
+  /// `ride_routes.route_points` historically held only the pit-stop coordinates
+  /// a host tapped, so the map could offer nothing better than a line straight
+  /// across whatever lay in between. This resolves real road geometry and swaps
+  /// it in when it lands. The result is written back to the same shared row, so
+  /// the first rider to open the ride does the lookup for the whole group.
+  ///
+  /// Never throws: a ride whose endpoints cannot be resolved simply keeps the
+  /// map it already had.
+  Future<void> _resolveRoadRoute() async {
+    final ride = _rideData;
+    if (ride == null) return;
+
+    final geometry = await _geometryService.resolveFor(
+      rideId: widget.rideId,
+      startLabel: (ride['start_location'] ?? ride['start'] ?? '').toString(),
+      endLabel: (ride['end_location'] ?? ride['destination'] ?? '').toString(),
+    );
+    if (!mounted) return;
+
+    final points = geometry.points;
+    // Shorter than what is already drawn means this is the straight-line
+    // fallback and the stored pit stops describe the ride better.
+    final adoptRoute = points.length > 1 && points.length > _routePoints.length;
+    // Only fill a gap here. A destination the host actually pinned outranks a
+    // geocoded guess, and overwriting it would put a second pin a few metres
+    // from the final pit stop instead of on top of it.
+    final destination =
+        (_destinationLat == null || _destinationLng == null)
+            ? geometry.destination
+            : null;
+    if (!adoptRoute && destination == null) return;
+
+    setState(() {
+      if (adoptRoute) {
+        _routePoints = points;
+        _hasRoadRoute =
+            points.length >= RideGeometryService.minRoadRoutePoints;
+      }
+      if (destination != null) {
+        _destinationLat = destination.latitude;
+        _destinationLng = destination.longitude;
+      }
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -670,12 +824,51 @@ class _RideModeScreenState extends State<RideModeScreen>
     }
   }
 
+  /// Number of other riders currently live on this ride.
+  ///
+  /// [_riderLocations] may or may not contain my own row depending on which
+  /// sync landed last, so exclude it explicitly rather than subtracting one.
+  int get _otherRiderCount =>
+      _riderLocations.where((r) => r.userId != _currentUserId).length;
+
+  /// The SOS button's single entry point: raise an alert, or stand down one that
+  /// is already live.
+  Future<void> _onSosPressed() async {
+    if (_sosBusy) return;
+    if (_sosActive) {
+      await _standDownSOS();
+      return;
+    }
+
+    final others = _otherRiderCount;
+    // An emergency broadcast is not something to fire from one stray tap in a
+    // jacket pocket, and the rider should know what it will actually do.
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Send SOS alert?',
+      message:
+          others > 0
+              ? 'Your live location will be sent to $others '
+                  '${others == 1 ? 'rider' : 'riders'} on this ride, and the '
+                  'emergency call options will open.'
+              : 'Nobody else is live on this ride right now, so the alert will '
+                  'be recorded and the emergency call options will open. '
+                  'Riders who come online will see it.',
+      confirmLabel: 'Send SOS',
+      cancelLabel: 'Cancel',
+      destructive: true,
+    );
+    if (confirmed != true) return;
+    await _triggerSOS();
+  }
+
   Future<void> _triggerSOS() async {
     unawaited(HapticFeedback.heavyImpact());
+    setState(() => _sosBusy = true);
     try {
       _trackingService.setEmergencySync(true);
       _analyticsEngine.recordSos();
-      await _realtimeCoordinator.triggerSOS(
+      final alert = await _realtimeCoordinator.triggerSOS(
         rideId: widget.rideId,
         profileId: _currentUserId,
         profileName: _currentUserName,
@@ -687,15 +880,76 @@ class _RideModeScreenState extends State<RideModeScreen>
         status: RiderPresenceStatus.sos,
         currentRideId: widget.rideId,
       );
-      if (mounted) showAppToast(context, 'SOS Alert Sent!');
+      if (!mounted) return;
+      setState(() {
+        _sosBusy = false;
+        _sosActive = true;
+      });
+      // Raise my own alert card straight away. Waiting for the realtime echo
+      // meant that a rider alone on a ride - or on a weak connection - saw a
+      // toast vanish and nothing else, which is why this button read as dead.
+      // The card carries the emergency call buttons, so it is the useful part.
+      _ownSosShownAt = DateTime.now();
+      _alertDismissTimer?.cancel();
+      setState(() => _activeAlert = alert);
     } catch (e) {
-      if (mounted) {
-        showAppToast(
-          context,
-          'Could not send SOS. Please try again.',
-          type: AppToastType.error,
-        );
-      }
+      if (!mounted) return;
+      setState(() => _sosBusy = false);
+      showAppToast(
+        context,
+        'Could not send SOS. Please try again.',
+        type: AppToastType.error,
+      );
+    }
+  }
+
+  /// Cancels my own live SOS and tells the rest of the ride I am safe.
+  Future<void> _standDownSOS() async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Mark yourself safe?',
+      message:
+          'This clears your SOS for everyone on the ride. Only do this if you '
+          'no longer need help.',
+      confirmLabel: "I'm safe",
+      cancelLabel: 'Keep alert on',
+    );
+    if (confirmed != true) return;
+
+    setState(() => _sosBusy = true);
+    try {
+      await _realtimeCoordinator.clearSOS(
+        rideId: widget.rideId,
+        profileId: _currentUserId,
+        profileName: _currentUserName,
+        latitude: _currentPosition?.latitude,
+        longitude: _currentPosition?.longitude,
+      );
+      // Emergency sync burns battery on a much faster upload interval, so it
+      // has to come back down with the alert.
+      _trackingService.setEmergencySync(false);
+      await _realtimeCoordinator.updateMyPresence(
+        profileId: _currentUserId,
+        status: RiderPresenceStatus.tracking,
+        currentRideId: widget.rideId,
+      );
+      if (!mounted) return;
+      _alertDismissTimer?.cancel();
+      _ownSosShownAt = null;
+      setState(() {
+        _sosBusy = false;
+        _sosActive = false;
+        _activeAlert = null;
+      });
+      showAppToast(context, 'SOS cleared. Riders have been told you are safe.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _sosBusy = false);
+      showAppToast(
+        context,
+        'Could not clear the SOS. Your alert is still live.',
+        type: AppToastType.error,
+      );
     }
   }
 
@@ -827,6 +1081,8 @@ class _RideModeScreenState extends State<RideModeScreen>
                         child: OutlinedButton.icon(
                           onPressed: () {
                             Navigator.pop(context);
+                            _autoFollowResumeAt =
+                                DateTime.fromMillisecondsSinceEpoch(0);
                             setState(() {
                               _fitGroupMode = true;
                               _followMe = false;
@@ -919,27 +1175,6 @@ class _RideModeScreenState extends State<RideModeScreen>
         );
       }
     }
-  }
-
-  Future<void> _launchNavigation() async {
-    final dest = _getDestinationCoords();
-    if (dest == null) {
-      if (mounted) {
-        showAppToast(
-          context,
-          'Destination not available',
-          type: AppToastType.error,
-        );
-      }
-      return;
-    }
-    final name = _rideData?['title'] ?? _rideData?['name'] ?? 'Destination';
-    await NavigationService.navigateToDestination(
-      context,
-      dest.latitude,
-      dest.longitude,
-      destinationName: name.toString(),
-    );
   }
 
   Future<void> _endRide() async {
@@ -1036,23 +1271,7 @@ class _RideModeScreenState extends State<RideModeScreen>
           if (_activeAlert != null) _buildSOSOverlay(),
 
           // ── TOP HUD ──────────────────────────────────────────────────────
-          SafeArea(
-            child: Column(
-              children: [
-                _buildTopHUD(),
-                AnimatedBuilder(
-                  animation: _realtimeCoordinator,
-                  builder:
-                      (context, _) => ConnectionStatusBar(
-                        state:
-                            _isOffline
-                                ? RealtimeConnectionState.reconnecting
-                                : _realtimeCoordinator.connectionState,
-                      ),
-                ),
-              ],
-            ),
-          ),
+          SafeArea(child: _buildTopHUD()),
 
           // ── FALLING BEHIND WARNING ────────────────────────────────────────
           if (_isFallingBehind)
@@ -1136,71 +1355,59 @@ class _RideModeScreenState extends State<RideModeScreen>
                 _CircleButton(
                   icon: Icons.my_location_rounded,
                   color: Colors.blue,
-                  onTap: () {
-                    if (_currentPosition != null) {
-                      _animateCamera(
-                        center: LatLng(
-                          _currentPosition!.latitude,
-                          _currentPosition!.longitude,
-                        ),
-                        zoom: 15,
-                        bearing:
-                            _currentPosition!.heading >= 0
-                                ? _currentPosition!.heading
-                                : null,
-                      );
-                    }
-                    setState(() {
-                      _followMe = true;
-                      _followingLeader = false;
-                      _fitGroupMode = false;
-                      _smartAutoMode = false;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                _CircleButton(
-                  icon: Icons.auto_awesome_rounded,
-                  color:
-                      _riderLocations.isNotEmpty
-                          ? const Color(0xFF0F766E)
-                          : Colors.grey,
+                  // Greyed out until there is a fix to centre on, rather than
+                  // looking live and then doing nothing.
                   onTap:
-                      _riderLocations.isNotEmpty
-                          ? () {
+                      _currentPosition == null
+                          ? null
+                          : () {
+                            // Tapping recenter is an explicit ask to be
+                            // followed again, so it ends the pause a manual pan
+                            // started - otherwise the camera would snap here
+                            // once and then sit still for the remainder of
+                            // those 20 seconds.
+                            _autoFollowResumeAt =
+                                DateTime.fromMillisecondsSinceEpoch(0);
+                            _animateCamera(
+                              center: LatLng(
+                                _currentPosition!.latitude,
+                                _currentPosition!.longitude,
+                              ),
+                              zoom: 15,
+                              bearing:
+                                  _currentPosition!.heading >= 0
+                                      ? _currentPosition!.heading
+                                      : null,
+                            );
                             setState(() {
-                              _smartAutoMode = true;
-                              _followMe = false;
+                              _followMe = true;
                               _followingLeader = false;
                               _fitGroupMode = false;
+                              _smartAutoMode = false;
                             });
-                            _driveCamera(_riderLocations);
-                          }
-                          : null,
+                          },
                 ),
                 const SizedBox(height: 12),
+                // Riders. The badge carries the live count so the button says
+                // something before it is even tapped.
                 _CircleButton(
                   icon: Icons.groups_rounded,
                   color: const Color(0xFF6D28D9),
+                  badgeCount: _otherRiderCount,
                   onTap: _showRidersSheet,
                 ),
                 const SizedBox(height: 12),
                 _CircleButton(
-                  icon: Icons.navigation_rounded,
-                  color:
-                      _getDestinationCoords() != null
-                          ? const Color(0xFF4CAF50)
-                          : Colors.grey,
-                  onTap:
-                      _getDestinationCoords() != null
-                          ? _launchNavigation
-                          : null,
-                ),
-                const SizedBox(height: 12),
-                _CircleButton(
-                  icon: Icons.warning_rounded,
+                  icon:
+                      _sosActive
+                          ? Icons.health_and_safety_rounded
+                          : Icons.warning_rounded,
                   color: Colors.red,
-                  onTap: _triggerSOS,
+                  // Latched while my alert is live, so the button reflects a
+                  // state instead of just firing and forgetting.
+                  filled: _sosActive,
+                  busy: _sosBusy,
+                  onTap: _onSosPressed,
                 ),
               ],
             ),
@@ -1226,6 +1433,9 @@ class _RideModeScreenState extends State<RideModeScreen>
               isOffline: _isOffline,
               followingLeader: _followingLeader,
               onFollowLeaderToggled: (val) {
+                // Choosing a follow mode overrides the pause a manual pan left
+                // behind, the same way the recenter button does.
+                _autoFollowResumeAt = DateTime.fromMillisecondsSinceEpoch(0);
                 setState(() {
                   _followingLeader = val;
                   _followMe = !val;
@@ -1313,12 +1523,14 @@ class _RideModeScreenState extends State<RideModeScreen>
         );
       }
       if (upcoming.length > 1) {
+        // Google Maps' navigation blue, with a white casing so the line stays
+        // legible over dark tiles, parks and water.
         polylines.add(
           Polyline(
             points: upcoming,
             strokeWidth: 5.0,
-            color: const Color(0xFFD97706),
-            borderColor: const Color(0xFFFF6A00).withValues(alpha: 0.28),
+            color: AppColors.routeBlue,
+            borderColor: Colors.white.withValues(alpha: 0.85),
             borderStrokeWidth: 2,
           ),
         );
@@ -1326,7 +1538,8 @@ class _RideModeScreenState extends State<RideModeScreen>
     } else if (_destinationLat != null &&
         _destinationLng != null &&
         _currentPosition != null) {
-      // Fallback straight line to destination
+      // Nothing resolved yet, so point at the destination. Deliberately faint:
+      // it shows the direction, not a route anyone should follow.
       polylines.add(
         Polyline(
           points: [
@@ -1334,7 +1547,7 @@ class _RideModeScreenState extends State<RideModeScreen>
             LatLng(_destinationLat!, _destinationLng!),
           ],
           strokeWidth: 4.0,
-          color: const Color(0xFFD97706).withValues(alpha: 0.7),
+          color: AppColors.routeBlue.withValues(alpha: 0.45),
         ),
       );
     }
@@ -1521,9 +1734,19 @@ class _RideModeScreenState extends State<RideModeScreen>
         hasSos: _isSosRider(loc.userId),
       );
 
+      // My own synced row can arrive before the tracking service has finished
+      // its avatar backfill, and I already know my own photo. Without this my
+      // marker would drop to an initial for the first few seconds of every ride.
+      final display =
+          isCurrentUser &&
+                  (loc.avatarUrl ?? '').trim().isEmpty &&
+                  _currentUserAvatarUrl.isNotEmpty
+              ? loc.copyWith(avatarUrl: _currentUserAvatarUrl)
+              : loc;
+
       markers.add(
         _buildAnimatedRiderMarker(
-          location: loc,
+          location: display,
           isCurrentUser: isCurrentUser,
           isLeader: isLeader,
           status: status,
@@ -1606,63 +1829,92 @@ class _RideModeScreenState extends State<RideModeScreen>
   // HUD WIDGETS
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// Riders currently broadcasting a position, counting the local rider.
+  ///
+  /// The stream only carries rows that have reached `live_locations`, so the
+  /// local rider is absent from it until the first upsert round-trips - and
+  /// stays absent if that upsert never lands, whether the phone is offline or
+  /// RLS rejected it. Counting self from the GPS fix instead is what stops this
+  /// reading "0 LIVE" to somebody who is plainly out riding.
+  int get _liveRiderCount {
+    final others =
+        _riderLocations.where((l) => l.userId != _currentUserId).length;
+    final selfIsLive =
+        _currentPosition != null ||
+        _riderLocations.any((l) => l.userId == _currentUserId);
+    return others + (selfIsLive ? 1 : 0);
+  }
+
   Widget _buildTopHUD() {
-    final liveCount = _riderLocations.length;
+    final liveCount = _liveRiderCount;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _HUDPill(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.near_me_rounded,
-                  color: Color(0xFFFF6A00),
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                const Text(
-                  'LIVE RIDE',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-              ],
+          // The connection state is the only status chip up here now. The old
+          // "LIVE RIDE" pill said nothing the screen did not already make
+          // obvious, and stacking it above this bar left three chips competing
+          // to announce the same thing.
+          //
+          // Both chips scale down rather than overflow, so a large system text
+          // size cannot push a yellow-and-black stripe across the map.
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: AnimatedBuilder(
+                animation: _realtimeCoordinator,
+                builder:
+                    (context, _) => ConnectionStatusBar(
+                      compact: true,
+                      state:
+                          _isOffline
+                              ? RealtimeConnectionState.reconnecting
+                              : _realtimeCoordinator.connectionState,
+                    ),
+              ),
             ),
           ),
 
           // Live riders count + tracking dot
-          _HUDPill(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedBuilder(
-                  animation: _trackingPulse,
-                  builder:
-                      (context, _) => Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color.lerp(
-                            const Color(0xFF4CAF50),
-                            const Color(0xFF81C784),
-                            _trackingPulse.value,
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: _HUDPill(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _trackingPulse,
+                      builder:
+                          (context, _) => Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color.lerp(
+                                const Color(0xFF4CAF50),
+                                const Color(0xFF81C784),
+                                _trackingPulse.value,
+                              ),
+                            ),
                           ),
-                        ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$liveCount LIVE',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2E7D32),
                       ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  '$liveCount LIVE',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E7D32),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],
@@ -1744,6 +1996,14 @@ class _RideModeScreenState extends State<RideModeScreen>
     final lng = (_activeAlert!['longitude'] as num?)?.toDouble();
     final timeStr = (_activeAlert!['created_at'] ?? '').toString();
     final time = _formatTime(timeStr);
+    // My own alert reads differently: the useful actions are calling for help
+    // and standing the alert down, not navigating to myself. Both sides must be
+    // non-empty, or an alert row with no profile_id would claim to be mine.
+    final alertFrom = _activeSosRiderId();
+    final isMine =
+        alertFrom.isNotEmpty &&
+        _currentUserId.isNotEmpty &&
+        alertFrom == _currentUserId;
 
     double? distance;
     if (lat != null && lng != null && _currentPosition != null) {
@@ -1811,9 +2071,9 @@ class _RideModeScreenState extends State<RideModeScreen>
                         ),
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'CRITICAL SOS ALERT',
-                        style: TextStyle(
+                      Text(
+                        isMine ? 'YOUR SOS IS LIVE' : 'CRITICAL SOS ALERT',
+                        style: const TextStyle(
                           color: Colors.red,
                           fontFamily: AppTypography.fontFamily,
                           fontWeight: FontWeight.w700,
@@ -1823,7 +2083,14 @@ class _RideModeScreenState extends State<RideModeScreen>
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        '$riderName needs emergency assistance!',
+                        isMine
+                            ? _otherRiderCount > 0
+                                ? 'Sent to $_otherRiderCount '
+                                    '${_otherRiderCount == 1 ? 'rider' : 'riders'} '
+                                    'with your live location.'
+                                : 'Recorded with your live location. Riders who '
+                                    'come online will see it.'
+                            : '$riderName needs emergency assistance!',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white,
@@ -1850,7 +2117,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                                   ? '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}'
                                   : 'Unknown',
                             ),
-                            if (distance != null)
+                            if (!isMine && distance != null)
                               _buildSOSDetailRow(
                                 'Distance Away',
                                 '${distance.toStringAsFixed(2)} km',
@@ -1984,12 +2251,16 @@ class _RideModeScreenState extends State<RideModeScreen>
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          onPressed: () {
-                            setState(() => _activeAlert = null);
-                          },
-                          child: const Text(
-                            'Acknowledge / Dismiss',
-                            style: TextStyle(
+                          // Dismissing my own alert only hides the card - the
+                          // alert stays live and the SOS button stays latched,
+                          // so the way out is to say I am safe.
+                          onPressed:
+                              isMine
+                                  ? (_sosBusy ? null : _standDownSOS)
+                                  : () => setState(() => _activeAlert = null),
+                          child: Text(
+                            isMine ? "I'm safe - clear my SOS" : 'Acknowledge',
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontFamily: AppTypography.fontFamily,
                               fontWeight: FontWeight.bold,
@@ -1997,6 +2268,21 @@ class _RideModeScreenState extends State<RideModeScreen>
                           ),
                         ),
                       ),
+                      if (isMine) ...[
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () => setState(() => _activeAlert = null),
+                          child: Text(
+                            'Hide (alert stays live)',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontFamily: AppTypography.fontFamily,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -2098,18 +2384,17 @@ class _AnimatedRiderMarkerWidgetState
           widget.onPositionUpdate(interpolated);
         });
 
+        // The current user deliberately gets the same photo marker as everyone
+        // else. It used to fall through to CurrentUserMarker - a bare heading
+        // dot with no photo and no name - which meant your own pin silently
+        // changed from a labelled photo to an anonymous dot the moment your
+        // first location sync landed. Same rider, same marker, throughout.
         return widget.isLeader
             ? LeaderMarker(
               location: widget.location,
               isCurrentUser: widget.isCurrentUser,
               status: widget.status,
               detailLabel: widget.detailLabel,
-            )
-            : widget.isCurrentUser
-            ? CurrentUserMarker(
-              heading: widget.location.heading,
-              isOffline: false,
-              status: widget.status,
             )
             : RiderMarker(
               location: widget.location,
@@ -2155,31 +2440,109 @@ class _HUDPill extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _CircleButton extends StatelessWidget {
-  const _CircleButton({required this.icon, required this.color, this.onTap});
+  const _CircleButton({
+    required this.icon,
+    required this.color,
+    this.onTap,
+    this.badgeCount,
+    this.filled = false,
+    this.busy = false,
+  });
 
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
 
+  /// Drawn as a small counter on the corner when greater than zero.
+  ///
+  /// Null means "this button has nothing to count"; zero means "counted, and
+  /// there is nobody" - which is worth saying by omission rather than by
+  /// printing a 0 badge.
+  final int? badgeCount;
+
+  /// Inverts the button - [color] fill, white glyph - for a latched state.
+  final bool filled;
+
+  /// Replaces the glyph with a spinner while the button's action is in flight.
+  final bool busy;
+
   @override
   Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final background =
+        filled ? color : (enabled ? Colors.white : Colors.grey.shade100);
+    final foreground =
+        filled ? Colors.white : (enabled ? color : Colors.grey.shade400);
+    final count = badgeCount ?? 0;
+
     return AnimatedPress(
       onPressed: onTap ?? () {},
-      child: Container(
+      child: SizedBox(
         width: 52,
         height: 52,
-        decoration: BoxDecoration(
-          color: onTap != null ? Colors.white : Colors.grey.shade100,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: background,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: (filled ? color : Colors.black).withValues(
+                      alpha: filled ? 0.34 : 0.12,
+                    ),
+                    blurRadius: filled ? 14 : 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child:
+                  busy
+                      ? Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              foreground,
+                            ),
+                          ),
+                        ),
+                      )
+                      : Icon(icon, color: foreground),
             ),
+            if (count > 0)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 20),
+                  height: 20,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontFamily: AppTypography.fontFamily,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 10,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
-        child: Icon(icon, color: onTap != null ? color : Colors.grey.shade400),
       ),
     );
   }

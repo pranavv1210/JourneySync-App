@@ -219,8 +219,26 @@ class RealtimeCoordinator extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// `ride_alerts.type` for a live emergency.
+  static const String alertTypeSos = 'sos';
+
+  /// `ride_alerts.type` for a rider standing their own SOS down.
+  ///
+  /// Presence is not a shared signal - [updateMyPresence] persists only
+  /// `last_seen_at` and `active_ride_id`, so a rider's SOS state reaches the
+  /// other phones exclusively through this table. A cancel therefore has to be
+  /// a row of its own, or everyone else keeps seeing the alert.
+  static const String alertTypeSafe = 'safe';
+
+  static bool isSosAlert(Map<String, dynamic> alert) =>
+      (alert['type'] ?? '').toString().trim().toLowerCase() != alertTypeSafe;
+
   /// Fires an SOS alert for the given ride.
-  Future<void> triggerSOS({
+  ///
+  /// Returns the row that was sent so the caller can show it immediately
+  /// instead of waiting on the realtime echo: the rider who just pressed the
+  /// button is the one who most needs to see that it worked.
+  Future<Map<String, dynamic>> triggerSOS({
     required String rideId,
     required String profileId,
     required String profileName,
@@ -231,25 +249,68 @@ class RealtimeCoordinator extends ChangeNotifier {
       'ride_id': rideId.trim(),
       'profile_id': profileId.trim(),
       'user_name': profileName.trim().isEmpty ? 'Rider' : profileName.trim(),
-      'type': 'sos',
+      'type': alertTypeSos,
       'message': 'SOS alert triggered',
       'latitude': latitude,
       'longitude': longitude,
       'created_at': DateTime.now().toIso8601String(),
     };
+
+    // Deliberately unguarded: if the insert fails, nobody is alerted and the
+    // caller must say so.
     await _client.from('ride_alerts').insert(payload);
-    await _notificationCoordinator.persist(
-      profileId: profileId,
-      title: 'SOS alert sent',
-      body: 'Emergency alert is live for your ride.',
-      category: AppNotificationCategory.sos,
-      rideId: rideId,
-      data: payload,
-    );
-    await _notificationService.showLocal(
-      title: 'SOS alert sent',
-      body: 'Emergency alert is live for your ride.',
-    );
+
+    // Everything below is bookkeeping, and is guarded individually. The insert
+    // above is what actually reaches the other riders, so a failed notification
+    // must not surface as "could not send SOS" - that message would send
+    // someone in trouble hunting for a phone signal they already have.
+    try {
+      await _notificationCoordinator.persist(
+        profileId: profileId,
+        title: 'SOS alert sent',
+        body: 'Emergency alert is live for your ride.',
+        category: AppNotificationCategory.sos,
+        rideId: rideId,
+        data: payload,
+      );
+    } catch (error) {
+      debugPrint('[Realtime] SOS notification not persisted: $error');
+    }
+
+    try {
+      await _notificationService.showLocal(
+        title: 'SOS alert sent',
+        body: 'Emergency alert is live for your ride.',
+      );
+    } catch (error) {
+      debugPrint('[Realtime] SOS local notification failed: $error');
+    }
+
+    return payload;
+  }
+
+  /// Tells the rest of the ride that [profileId] is safe again.
+  ///
+  /// Sent as a normal alert row so it travels the same realtime channel as the
+  /// SOS it cancels; clients recognise it by [alertTypeSafe] and clear the
+  /// alert rather than raising a new one.
+  Future<void> clearSOS({
+    required String rideId,
+    required String profileId,
+    required String profileName,
+    double? latitude,
+    double? longitude,
+  }) async {
+    await _client.from('ride_alerts').insert(<String, dynamic>{
+      'ride_id': rideId.trim(),
+      'profile_id': profileId.trim(),
+      'user_name': profileName.trim().isEmpty ? 'Rider' : profileName.trim(),
+      'type': alertTypeSafe,
+      'message': 'Rider marked themselves safe',
+      'latitude': latitude,
+      'longitude': longitude,
+      'created_at': DateTime.now().toIso8601String(),
+    });
   }
 
   /// Get presence status for a specific profile (legacy compatibility).
@@ -539,17 +600,30 @@ class RealtimeCoordinator extends ChangeNotifier {
           ),
           callback: (payload) {
             final alert = Map<String, dynamic>.from(payload.newRecord);
-            _lastAlert = alert;
+            final isSos = isSosAlert(alert);
+            // A stand-down must not become _lastAlert: legacyPresenceFor falls
+            // back to it and would report sos for a rider who just said they
+            // are fine.
+            if (isSos) _lastAlert = alert;
 
-            // Update presence for SOS
             final alertProfileId =
                 (alert['profile_id'] ?? alert['user_id'] ?? '')
                     .toString()
                     .trim();
             if (alertProfileId.isNotEmpty) {
+              if (!isSos && _lastAlert != null) {
+                final lastFrom =
+                    (_lastAlert!['profile_id'] ?? _lastAlert!['user_id'] ?? '')
+                        .toString()
+                        .trim();
+                if (lastFrom == alertProfileId) _lastAlert = null;
+              }
               _presenceMap[alertProfileId] = PresenceInfo(
                 profileId: alertProfileId,
-                status: RiderPresenceStatus.sos,
+                status:
+                    isSos
+                        ? RiderPresenceStatus.sos
+                        : RiderPresenceStatus.tracking,
                 lastSeenAt: DateTime.now(),
                 isInRide: true,
                 currentRideId: rideId,
@@ -558,12 +632,14 @@ class RealtimeCoordinator extends ChangeNotifier {
             }
 
             _onAlert?.call(alert);
-            unawaited(
-              _notificationService.showLocal(
-                title: 'Ride SOS alert',
-                body: '${alert['user_name'] ?? 'A rider'} needs help now.',
-              ),
-            );
+            if (isSos) {
+              unawaited(
+                _notificationService.showLocal(
+                  title: 'Ride SOS alert',
+                  body: '${alert['user_name'] ?? 'A rider'} needs help now.',
+                ),
+              );
+            }
             notifyListeners();
           },
         )

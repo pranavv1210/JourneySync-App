@@ -524,23 +524,52 @@ class _RiderAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final url = avatarUrl?.trim() ?? '';
+    final initial = _Initial(name: name);
+
+    if (url.isEmpty) {
+      return CircleAvatar(
+        backgroundColor: const Color(0xFFFFE8D4),
+        child: initial,
+      );
+    }
+
+    // Built by hand rather than with CircleAvatar.backgroundImage so a photo
+    // that fails to load - dead URL, no network, revoked storage object - falls
+    // back to the rider's initial instead of an empty circle.
     return CircleAvatar(
       backgroundColor: const Color(0xFFFFE8D4),
-      backgroundImage:
-          (avatarUrl != null && avatarUrl!.isNotEmpty)
-              ? NetworkImage(avatarUrl!)
-              : null,
-      child:
-          (avatarUrl == null || avatarUrl!.isEmpty)
-              ? Text(
-                name.isNotEmpty ? name[0].toUpperCase() : '?',
-                style: const TextStyle(
-                  color: Color(0xFFFF6A00),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                ),
-              )
-              : null,
+      child: ClipOval(
+        child: Image.network(
+          url,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stack) => Center(child: initial),
+          loadingBuilder:
+              (context, child, progress) =>
+                  progress == null ? child : Center(child: initial),
+        ),
+      ),
+    );
+  }
+}
+
+class _Initial extends StatelessWidget {
+  const _Initial({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = name.trim();
+    return Text(
+      trimmed.isNotEmpty ? trimmed[0].toUpperCase() : '?',
+      style: const TextStyle(
+        color: Color(0xFFFF6A00),
+        fontWeight: FontWeight.w700,
+        fontSize: 16,
+      ),
     );
   }
 }

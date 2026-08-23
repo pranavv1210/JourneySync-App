@@ -11,6 +11,7 @@ import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
 import '../services/auth_service.dart';
 import '../services/feedback_prompt_service.dart';
+import '../services/geocoding_service.dart';
 import 'login_screen.dart';
 import 'create_ride_screen.dart';
 import 'explore_solo_screen.dart';
@@ -33,6 +34,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/app_bottom_sheet.dart';
 import '../widgets/journey_bottom_nav.dart';
 import '../widgets/ride_loading_indicator.dart';
+import '../widgets/ride_map_thumbnail.dart';
 import '../models/ride_record.dart';
 import '../coordinators/active_ride_coordinator.dart';
 import '../coordinators/notification_coordinator.dart';
@@ -1098,12 +1100,11 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           Column(
             children:
                 recentRides.take(3).map((ride) {
-                  final title =
-                      ride.title.trim().isNotEmpty ? ride.title : 'Ride';
-                  final destination =
-                      ride.endLocation.trim().isNotEmpty
-                          ? ride.endLocation
-                          : 'Destination';
+                  final title = _rideDisplayName(ride);
+                  final routeLabel = _rideRouteLabel(ride);
+                  final riderCount = ride.participantCount;
+                  final ridersLabel =
+                      riderCount == 1 ? '1 rider' : '$riderCount riders';
                   final dateLabel = _formatDate(ride.createdAt);
                   final isBusy = rideActionLoadingId == ride.id;
                   const canDelete = true;
@@ -1134,7 +1135,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       margin: const EdgeInsets.only(bottom: 12),
                       child: Row(
                         children: [
-                          _buildRidePreviewTile(ride: ride),
+                          RideMapThumbnail(ride: ride),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -1150,7 +1151,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '$destination - ${ride.participantCount} riders',
+                                  '$routeLabel  ·  $ridersLabel',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.caption.copyWith(
@@ -1235,6 +1236,40 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
+  /// Shortens a stored location to something that fits on a card.
+  ///
+  /// Start locations come from Nominatim as full display names such as
+  /// "Bandra, Mumbai Suburban, Maharashtra, 400050, India", so only the leading
+  /// component is worth showing. A bare "lat, lng" string has no useful name, so
+  /// it is reported as a pinned point instead.
+  String _shortPlace(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return '';
+    if (parseLatLng(trimmed) != null) return 'Pinned location';
+    final first = trimmed.split(',').first.trim();
+    return first.isEmpty ? trimmed : first;
+  }
+
+  /// "Bandra to Mysuru", or whichever half is known.
+  String _rideRouteLabel(RideRecord ride) {
+    final start = _shortPlace(ride.startLocation);
+    final end = _shortPlace(ride.endLocation);
+    if (start.isNotEmpty && end.isNotEmpty) return '$start to $end';
+    if (end.isNotEmpty) return end;
+    if (start.isNotEmpty) return start;
+    return 'Route not set';
+  }
+
+  /// The ride's own name, falling back to its route rather than a bare "Ride"
+  /// so every card is still identifiable when the host left the name blank.
+  String _rideDisplayName(RideRecord ride) {
+    final title = ride.title.trim();
+    if (title.isNotEmpty) return title;
+    final end = _shortPlace(ride.endLocation);
+    if (end.isNotEmpty) return 'Ride to $end';
+    return 'Untitled ride';
+  }
+
   String _rideStatusLabel(RideRecord ride) {
     final raw = ride.status.trim().toLowerCase();
     if (ride.isCompleted) return 'Completed';
@@ -1259,9 +1294,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       );
     }
     if (normalized == 'completed') {
+      // Muted forest rather than the old cyan, which sat outside the app's
+      // orange/forest palette. Deep enough not to be mistaken for the bright
+      // success green on a Live pill, so a finished ride never reads as an
+      // ongoing one.
       return (
-        bg: const Color(0xFF00C2CB).withValues(alpha: 0.12),
-        fg: const Color(0xFF00A8B0),
+        bg: AppColors.forest.withValues(alpha: 0.10),
+        fg: AppColors.forest,
       );
     }
     return (
@@ -1349,64 +1388,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       'Dec',
     ];
     return '${months[(date.month - 1).clamp(0, 11)]} ${date.day}';
-  }
-
-  Widget _buildRidePreviewTile({required RideRecord ride}) {
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [const Color(0xFFE9F1EA), const Color(0xFFFFF1E4)],
-        ),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              child: CustomPaint(
-                painter: _RidePreviewPainter(
-                  lineColor: AppColors.forest.withValues(alpha: 0.5),
-                  accentColor: AppColors.primary,
-                  waterColor: const Color(0xFFBBD9D4).withValues(alpha: 0.58),
-                  parkColor: const Color(0xFFBFE1C4).withValues(alpha: 0.5),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 8,
-            top: 10,
-            child: _mapPin(AppColors.primary.withValues(alpha: 0.9)),
-          ),
-          Positioned(
-            right: 8,
-            bottom: 10,
-            child: _mapPin(AppColors.forest.withValues(alpha: 0.9)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _mapPin(Color color) {
-    return Container(
-      width: 12,
-      height: 12,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 1.5),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4),
-        ],
-      ),
-    );
   }
 
   Widget _buildBottomNav() {
@@ -1723,132 +1704,4 @@ class _CreateRideRouteMarkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _RidePreviewPainter extends CustomPainter {
-  const _RidePreviewPainter({
-    required this.lineColor,
-    required this.accentColor,
-    required this.waterColor,
-    required this.parkColor,
-  });
-
-  final Color lineColor;
-  final Color accentColor;
-  final Color waterColor;
-  final Color parkColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final parkPaint = Paint()..color = parkColor;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * 0.05, size.height * 0.08, 22, 18),
-        const Radius.circular(8),
-      ),
-      parkPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * 0.62, size.height * 0.58, 24, 20),
-        const Radius.circular(9),
-      ),
-      parkPaint,
-    );
-
-    final waterPath =
-        Path()
-          ..moveTo(0, size.height * 0.74)
-          ..quadraticBezierTo(
-            size.width * 0.3,
-            size.height * 0.58,
-            size.width * 0.5,
-            size.height * 0.76,
-          )
-          ..quadraticBezierTo(
-            size.width * 0.72,
-            size.height * 0.94,
-            size.width,
-            size.height * 0.72,
-          )
-          ..lineTo(size.width, size.height)
-          ..lineTo(0, size.height)
-          ..close();
-    canvas.drawPath(waterPath, Paint()..color = waterColor);
-
-    final gridPaint =
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.58)
-          ..strokeWidth = 1;
-    for (double dx = 10; dx < size.width; dx += 16) {
-      canvas.drawLine(Offset(dx, 0), Offset(dx, size.height), gridPaint);
-    }
-    for (double dy = 10; dy < size.height; dy += 16) {
-      canvas.drawLine(Offset(0, dy), Offset(size.width, dy), gridPaint);
-    }
-
-    final roadPaint =
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.88)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
-          ..strokeCap = StrokeCap.round;
-    canvas.drawLine(
-      Offset(0, size.height * 0.22),
-      Offset(size.width, size.height * 0.34),
-      roadPaint,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.25, 0),
-      Offset(size.width * 0.1, size.height),
-      roadPaint,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.82, 0),
-      Offset(size.width * 0.72, size.height),
-      roadPaint,
-    );
-
-    final path =
-        Path()
-          ..moveTo(size.width * 0.18, size.height * 0.28)
-          ..cubicTo(
-            size.width * 0.28,
-            size.height * 0.16,
-            size.width * 0.42,
-            size.height * 0.72,
-            size.width * 0.56,
-            size.height * 0.52,
-          )
-          ..cubicTo(
-            size.width * 0.67,
-            size.height * 0.38,
-            size.width * 0.76,
-            size.height * 0.74,
-            size.width * 0.82,
-            size.height * 0.7,
-          );
-
-    final baseRoutePaint =
-        Paint()
-          ..color = lineColor
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4
-          ..strokeCap = StrokeCap.round;
-    canvas.drawPath(path, baseRoutePaint);
-
-    final accentPaint =
-        Paint()
-          ..color = accentColor.withValues(alpha: 0.7)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..strokeCap = StrokeCap.round;
-    canvas.drawPath(path, accentPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _RidePreviewPainter oldDelegate) {
-    return oldDelegate.lineColor != lineColor ||
-        oldDelegate.accentColor != accentColor;
-  }
 }

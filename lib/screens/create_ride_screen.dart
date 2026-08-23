@@ -14,6 +14,7 @@ import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
 import '../models/ride_route.dart';
 import '../services/ride_service.dart';
+import '../services/ride_geometry_service.dart';
 import '../services/supabase_service.dart';
 import 'ride_lobby_screen.dart';
 
@@ -38,6 +39,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
   final TextEditingController destinationController = TextEditingController();
   final TextEditingController stopsController = TextEditingController();
   final RideService _rideService = RideService();
+  final RideGeometryService _geometryService = RideGeometryService();
   final SupabaseService _supabaseService = SupabaseService();
   final MapController _mapController = MapController();
   bool isCreating = false;
@@ -334,6 +336,22 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
         endLabel: destination,
         stops: routeStops,
       );
+
+      // Both endpoints are already resolved here, so compute the road route now
+      // and store it on the ride. Every rider then draws the same line, and
+      // nothing later has to geocode these labels back into coordinates. Fired
+      // and forgotten: the ride is already created and must not wait on OSRM.
+      final startPoint = currentLatLng;
+      final destinationPoint = destinationLatLng;
+      if (startPoint != null && destinationPoint != null) {
+        unawaited(
+          _geometryService.primeRoute(
+            rideId: createdRide.id,
+            start: startPoint,
+            destination: destinationPoint,
+          ),
+        );
+      }
 
       if (!mounted) return;
       showPremiumToast(

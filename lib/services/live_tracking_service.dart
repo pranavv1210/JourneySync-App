@@ -39,6 +39,24 @@ class LiveTrackingService {
 
   final Map<String, RiderLocation> _locationCache = {};
 
+  /// Profile photo URL per rider id; an empty string means "looked up, has no
+  /// photo". Static so every screen in a session shares one lookup.
+  ///
+  /// `live_locations` denormalises `user_name` and `bike_name` but carries no
+  /// avatar, so without this the map can only ever draw a rider's initial.
+  static final Map<String, String> _avatarUrls = <String, String>{};
+
+  /// Guards against firing a second profile lookup while one is in flight, and
+  /// against retrying a failed one on every realtime tick.
+  static bool _avatarFetchInFlight = false;
+  static DateTime? _avatarFetchFailedAt;
+  static const Duration _avatarRetryCooldown = Duration(seconds: 30);
+
+  /// Set when the deployment has no `profiles.avatar_url` column at all, which
+  /// no amount of retrying will fix. Older installs are in this state until the
+  /// migration runs, and they should fall back to initials quietly.
+  static bool _avatarColumnMissing = false;
+
   /// The current ride being watched.
   String? _watchedRideId;
 
@@ -164,6 +182,7 @@ class LiveTrackingService {
         if (loc != null) _locationCache[loc.userId] = loc;
       }
       _emit();
+      unawaited(_hydrateAvatars());
     } catch (e) {
       debugPrint('[LiveTracking] prime failed: $e');
       _emit(); // emit empty list so UI doesn't hang
@@ -198,6 +217,9 @@ class LiveTrackingService {
               _locationCache[loc.userId] = loc;
             }
             _emit();
+            // A rider who just appeared needs their photo looked up; riders
+            // already known are skipped inside the hydrator.
+            unawaited(_hydrateAvatars());
           },
         )
         .subscribe((status, [error]) {
@@ -233,6 +255,88 @@ class LiveTrackingService {
         _locationCache.values.toList()
           ..sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
     _streamController.add(sorted);
+  }
+
+  /// Looks up profile photos for any rider whose photo is not known yet, then
+  /// re-emits so the map can swap initials for real faces.
+  ///
+  /// One batched query covers every unknown rider. Failures are not cached as
+  /// "no photo" - that would make a transient outage permanent - but they do
+  /// start a short cooldown so a broken lookup is not retried on every incoming
+  /// location update. A deployment with no avatar column stops being asked at
+  /// all.
+  Future<void> _hydrateAvatars() async {
+    if (_avatarFetchInFlight || _avatarColumnMissing) return;
+
+    final failedAt = _avatarFetchFailedAt;
+    if (failedAt != null &&
+        DateTime.now().difference(failedAt) < _avatarRetryCooldown) {
+      return;
+    }
+
+    final missing =
+        _locationCache.keys
+            .where((id) => id.isNotEmpty && !_avatarUrls.containsKey(id))
+            .toSet()
+            .toList(growable: false);
+    if (missing.isEmpty) return;
+
+    _avatarFetchInFlight = true;
+    try {
+      final rows = await _client
+          .from('profiles')
+          .select('id,avatar_url')
+          .inFilter('id', missing);
+
+      for (final row in rows) {
+        final id = (row['id'] ?? '').toString().trim();
+        if (id.isEmpty) continue;
+        _avatarUrls[id] = (row['avatar_url'] ?? '').toString().trim();
+      }
+      // Riders with no profile row still count as resolved, so they are not
+      // looked up again for the rest of the session.
+      for (final id in missing) {
+        _avatarUrls.putIfAbsent(id, () => '');
+      }
+      _avatarFetchFailedAt = null;
+    } catch (e) {
+      debugPrint('[LiveTracking] avatar lookup failed: $e');
+      // A column that does not exist will not appear on the next tick either,
+      // so stop asking. Anything else - offline, timeout, a transient 5xx - is
+      // worth retrying once the cooldown passes, and must not be recorded as
+      // "this rider has no photo".
+      if (e is PostgrestException && _isMissingAvatarColumn(e)) {
+        _avatarColumnMissing = true;
+      } else {
+        _avatarFetchFailedAt = DateTime.now();
+      }
+      return;
+    } finally {
+      _avatarFetchInFlight = false;
+    }
+
+    var changed = false;
+    for (final entry in _locationCache.entries.toList()) {
+      final url = _avatarUrls[entry.key];
+      if (url == null || url.isEmpty) continue;
+      if (entry.value.avatarUrl == url) continue;
+      _locationCache[entry.key] = entry.value.copyWith(avatarUrl: url);
+      changed = true;
+    }
+    if (changed) _emit();
+  }
+
+  /// True when the failure is "there is no avatar_url column", rather than a
+  /// problem that might resolve itself. 42703 is Postgres' undefined column;
+  /// PGRST204 is PostgREST failing to find it in its schema cache.
+  ///
+  /// Mirrors the same check in ride_lobby_screen, which covers installs whose
+  /// profiles table predates the avatar migration.
+  bool _isMissingAvatarColumn(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    return code == '42703' ||
+        code == 'PGRST204' ||
+        error.message.toLowerCase().contains('avatar_url');
   }
 
   // ── Sync (outbound) ────────────────────────────────────────────────────────
@@ -595,6 +699,11 @@ class LiveTrackingService {
         (row['speed'] as num?)?.toDouble() ??
         (row['speed_mps'] as num?)?.toDouble();
 
+    // The row wins if a future migration denormalises the photo onto
+    // live_locations; until then it comes from the profile lookup cache.
+    final rowAvatar = (row['avatar_url'] ?? '').toString().trim();
+    final avatarUrl = rowAvatar.isNotEmpty ? rowAvatar : _avatarUrls[userId];
+
     return RiderLocation(
       userId: userId,
       rideId: rideId,
@@ -614,6 +723,8 @@ class LiveTrackingService {
           (row['signal'] ?? '').toString().trim().isEmpty
               ? null
               : row['signal'].toString().trim(),
+      avatarUrl:
+          (avatarUrl != null && avatarUrl.isNotEmpty) ? avatarUrl : null,
     );
   }
 

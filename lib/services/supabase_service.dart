@@ -802,13 +802,12 @@ class SupabaseService {
   Future<void> addParticipant({
     required String rideId,
     required String userId,
-  }) async {
-    await _client.from('ride_members').upsert({
-      'ride_id': rideId.trim(),
-      'member_id': userId.trim(),
-      'status': 'approved',
-      'role': 'member',
-    }, onConflict: 'ride_id,member_id');
+  }) {
+    return _writeRideMembership(
+      rideId: rideId,
+      userId: userId,
+      status: 'approved',
+    );
   }
 
   Future<void> removeParticipant({
@@ -825,14 +824,132 @@ class SupabaseService {
   Future<void> createJoinRequest({
     required String rideId,
     required String userId,
+  }) {
+    return _writeRideMembership(
+      rideId: rideId,
+      userId: userId,
+      status: 'pending',
+    );
+  }
+
+  /// Returns the caller's membership status for [rideId], or `null` when the
+  /// user is not a member yet. An empty string means the row exists but the
+  /// deployed schema has no `status` column.
+  Future<String?> fetchRideMembershipStatus({
+    required String rideId,
+    required String userId,
   }) async {
-    await _client.from('ride_members').upsert({
-      'ride_id': rideId.trim(),
-      'member_id': userId.trim(),
-      'status': 'pending',
-      'role': 'member',
-      'created_at': DateTime.now().toIso8601String(),
-    }, onConflict: 'ride_id,member_id');
+    final normalizedRideId = rideId.trim();
+    final normalizedUserId = userId.trim();
+    if (normalizedRideId.isEmpty || normalizedUserId.isEmpty) return null;
+
+    Future<Map<String, dynamic>?> read(String columns) {
+      return _client
+          .from('ride_members')
+          .select(columns)
+          .eq('ride_id', normalizedRideId)
+          .eq('member_id', normalizedUserId)
+          .limit(1)
+          .maybeSingle();
+    }
+
+    try {
+      final row = await read('status');
+      if (row == null) return null;
+      return (row['status'] ?? '').toString().trim();
+    } on PostgrestException catch (error) {
+      if (!_isMissingColumnError(error) &&
+          !_isMissingRideMembersSchema(error)) {
+        rethrow;
+      }
+    }
+
+    // Deployed schema may predate `status`; fall back to a bare existence check.
+    try {
+      final row = await read('ride_id');
+      return row == null ? null : '';
+    } on PostgrestException catch (error) {
+      if (!_isMissingRideMembersSchema(error)) rethrow;
+      return null;
+    }
+  }
+
+  /// Creates or refreshes a `ride_members` row.
+  ///
+  /// `ride_members` has drifted across migrations: the original table
+  /// (20260415) used a NOT NULL `user_id` that later migrations never dropped,
+  /// while newer ones use `member_id` plus `status`/`role`. Some deployments
+  /// are also missing the `(ride_id, member_id)` unique constraint, which makes
+  /// an `onConflict` upsert fail with 42P10. Rather than surfacing any of that
+  /// as "could not join", try the payload shapes in order and treat a duplicate
+  /// row as success.
+  Future<void> _writeRideMembership({
+    required String rideId,
+    required String userId,
+    required String status,
+  }) async {
+    final normalizedRideId = rideId.trim();
+    final normalizedUserId = userId.trim();
+    if (normalizedRideId.isEmpty || normalizedUserId.isEmpty) {
+      throw ArgumentError('A ride id and member id are required to join.');
+    }
+
+    final existing = await fetchRideMembershipStatus(
+      rideId: normalizedRideId,
+      userId: normalizedUserId,
+    );
+    if (existing != null) {
+      // Promoting a pending request to approved is the only update worth doing.
+      if (status == 'approved' && existing.isNotEmpty && existing != status) {
+        try {
+          await _client
+              .from('ride_members')
+              .update(<String, dynamic>{'status': status})
+              .eq('ride_id', normalizedRideId)
+              .eq('member_id', normalizedUserId);
+        } on PostgrestException catch (error) {
+          if (!_isMissingColumnError(error)) rethrow;
+        }
+      }
+      return;
+    }
+
+    final base = <String, dynamic>{
+      'ride_id': normalizedRideId,
+      'member_id': normalizedUserId,
+    };
+    final attempts = <Map<String, dynamic>>[
+      {...base, 'status': status, 'role': 'member'},
+      // Legacy table still carries NOT NULL user_id -> send both id columns.
+      {
+        ...base,
+        'status': status,
+        'role': 'member',
+        'user_id': normalizedUserId,
+      },
+      {...base, 'user_id': normalizedUserId},
+      base,
+    ];
+
+    PostgrestException? lastError;
+    for (final payload in attempts) {
+      try {
+        await _client.from('ride_members').insert(payload);
+        return;
+      } on PostgrestException catch (error) {
+        // Someone else (or a retry) already inserted the row - that is a join.
+        if (_isDuplicateRow(error)) return;
+        lastError = error;
+        AppLogger.warning(
+          'ride_members insert rejected (code ${error.code}): ${error.message}',
+        );
+        if (_isMissingColumnError(error) || _isNotNullViolation(error)) {
+          continue;
+        }
+        rethrow;
+      }
+    }
+    if (lastError != null) throw lastError;
   }
 
   Future<List<Map<String, dynamic>>> fetchRecentRidesForCodeLookup({
@@ -1593,6 +1710,16 @@ class SupabaseService {
         code == '42703' ||
         code == 'PGRST204' ||
         error.message.toLowerCase().contains('ride_members');
+  }
+
+  bool _isDuplicateRow(PostgrestException error) {
+    return (error.code ?? '').trim() == '23505';
+  }
+
+  /// True for a NOT NULL violation (23502) - typically a legacy column such as
+  /// `ride_members.user_id` that the current payload does not populate.
+  bool _isNotNullViolation(PostgrestException error) {
+    return (error.code ?? '').trim() == '23502';
   }
 
   bool _isMissingRideRoutesSchema(PostgrestException error) {

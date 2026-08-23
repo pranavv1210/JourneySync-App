@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'dart:ui' as ui;
 
 import '../widgets/app_toast.dart';
@@ -547,15 +552,56 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
   }
 
   Widget _routeThumbnail() {
+    final routePoints = analytics?.routePoints ?? [];
+    final hasRoute = routePoints.length > 1;
+
+    // Calculate map bounds
+    LatLngBounds? bounds;
+    List<LatLng> mapPoints = [];
+    if (hasRoute) {
+      mapPoints = routePoints.map((p) => LatLng(p['lat']!, p['lng']!)).toList();
+      bounds = LatLngBounds.fromPoints(mapPoints);
+    }
+
     return Container(
       height: 150,
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: Colors.grey.shade200,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Stack(
         children: [
-          Positioned.fill(child: Container(color: Colors.grey.shade300)),
+          Positioned.fill(
+            child: hasRoute
+                ? FlutterMap(
+                    options: MapOptions(
+                      initialCameraFit: CameraFit.bounds(
+                        bounds: bounds!,
+                        padding: const EdgeInsets.all(20),
+                      ),
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.none,
+                      ),
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.journeysync',
+                      ),
+                      PolylineLayer(
+                        polylines: [
+                          Polyline(
+                            points: mapPoints,
+                            color: Colors.orange.shade700,
+                            strokeWidth: 4,
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                : Container(color: Colors.grey.shade300),
+          ),
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(

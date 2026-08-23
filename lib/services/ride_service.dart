@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/ride_member.dart';
 import '../models/ride_route.dart';
+import '../utils/app_logger.dart';
 
 import '../models/ride_record.dart';
 
@@ -31,7 +32,10 @@ class RideService {
     int limit = 50,
   }) async {
     final rows = await _supabaseService.fetchNearbyRides(
-      excludeCreatorId: currentUserId,
+      // Deliberately empty: the host's own rides are wanted on the radar so a
+      // freshly created ride confirms itself immediately. searchNearbyRides
+      // tags them instead of dropping them.
+      excludeCreatorId: '',
       limit: limit,
     );
     return rows.map(_toRideRecord).toList();
@@ -60,7 +64,17 @@ class RideService {
       status: status,
     );
     final ride = _toRideRecord(row);
-    await joinRide(rideId: ride.id, userId: creatorId, suppressDuplicate: true);
+    try {
+      await joinRide(
+        rideId: ride.id,
+        userId: creatorId,
+        suppressDuplicate: true,
+      );
+    } catch (error) {
+      // The ride row already exists, so a failed host-membership insert must not
+      // fail creation - the lobby and the repair migration both backfill hosts.
+      AppLogger.warning('Could not add host to new ride: $error');
+    }
     return ride;
   }
 
@@ -85,9 +99,15 @@ class RideService {
 
     final filtered =
         rides.where((ride) {
-          if (ride.creatorId == currentUserId) return false;
-          if (ride.archived || ride.isCompleted) return false;
-          if (!ride.isActive || !ride.isPublic) return false;
+          final isOwn =
+              currentUserId.isNotEmpty && ride.creatorId == currentUserId;
+          // Visible from creation onward - a host does not have to start the
+          // ride before it shows up on someone else's radar.
+          if (!ride.isDiscoverable) return false;
+          // Own rides skip the distance test. The host is standing at their own
+          // start point, but a stale or missing GPS fix would otherwise hide the
+          // one ride they most expect to see.
+          if (isOwn) return true;
           if (origin == null) return true;
 
           final startPoint = _parseLatLng(ride.startLocation);
@@ -125,52 +145,96 @@ class RideService {
     final creatorIds = filtered.map((r) => r.creatorId).toSet().toList();
     final creatorProfiles = await _fetchCreatorProfiles(creatorIds);
 
-    return filtered.map((ride) {
-      final profile =
-          creatorProfiles[ride.creatorId] ?? const <String, String>{};
-      final hostName = (profile['name'] ?? 'Rider').trim();
-      final hostBike = (profile['bike'] ?? 'No bike added').trim();
-      final hostAvatarUrl = (profile['avatar_url'] ?? '').trim();
-      final participantCount = participantCounts[ride.id] ?? 0;
+    final results =
+        filtered.map((ride) {
+          final profile =
+              creatorProfiles[ride.creatorId] ?? const <String, String>{};
+          final hostName = (profile['name'] ?? 'Rider').trim();
+          final hostBike = (profile['bike'] ?? 'No bike added').trim();
+          final hostAvatarUrl = (profile['avatar_url'] ?? '').trim();
+          final participantCount = participantCounts[ride.id] ?? 0;
+          final isOwn =
+              currentUserId.isNotEmpty && ride.creatorId == currentUserId;
 
-      return NearbyRide(
-        ride: RideRecord(
-          id: ride.id,
-          creatorId: ride.creatorId,
-          title: ride.title,
-          startLocation: ride.startLocation,
-          endLocation: ride.endLocation,
-          createdAt: ride.createdAt,
-          status: ride.status,
-          visibility: ride.visibility,
-          rideMode: ride.rideMode,
-          participantCount: participantCount,
-        ),
-        hostName: hostName.isNotEmpty ? hostName : 'Rider',
-        hostBike: hostBike.isNotEmpty ? hostBike : 'No bike added',
-        hostAvatarUrl: hostAvatarUrl,
-        joined:
-            joinedRideIds.contains(ride.id) || ride.creatorId == currentUserId,
-      );
-    }).toList();
+          return NearbyRide(
+            ride: RideRecord(
+              id: ride.id,
+              creatorId: ride.creatorId,
+              title: ride.title,
+              startLocation: ride.startLocation,
+              endLocation: ride.endLocation,
+              createdAt: ride.createdAt,
+              status: ride.status,
+              endedAt: ride.endedAt,
+              archived: ride.archived,
+              visibility: ride.visibility,
+              rideMode: ride.rideMode,
+              participantCount: participantCount,
+            ),
+            hostName: hostName.isNotEmpty ? hostName : 'Rider',
+            hostBike: hostBike.isNotEmpty ? hostBike : 'No bike added',
+            hostAvatarUrl: hostAvatarUrl,
+            joined: joinedRideIds.contains(ride.id) || isOwn,
+            isOwnRide: isOwn,
+          );
+        }).toList();
+
+    // The host's own ride leads, then the most recently created. A host opening
+    // the radar right after creating a ride should find theirs without hunting.
+    results.sort((a, b) {
+      if (a.isOwnRide != b.isOwnRide) return a.isOwnRide ? -1 : 1;
+      final aCreated = a.ride.createdAt;
+      final bCreated = b.ride.createdAt;
+      if (aCreated == null || bCreated == null) return 0;
+      return bCreated.compareTo(aCreated);
+    });
+    return results;
   }
 
   Future<JoinByCodeStatus> requestJoinRide({
     required String rideId,
     required String userId,
   }) async {
+    final normalizedRideId = rideId.trim();
+    final normalizedUserId = userId.trim();
+    if (normalizedRideId.isEmpty) {
+      throw Exception('This ride is no longer available.');
+    }
+    if (normalizedUserId.isEmpty) {
+      throw Exception('Missing user session. Please login again.');
+    }
+
+    // Resolve current membership first so a second tap reports the real state
+    // instead of bubbling up a duplicate-key error.
+    final existing = await _supabaseService.fetchRideMembershipStatus(
+      rideId: normalizedRideId,
+      userId: normalizedUserId,
+    );
+    if (existing != null) {
+      return existing == 'pending'
+          ? JoinByCodeStatus.alreadyRequested
+          : JoinByCodeStatus.alreadyJoined;
+    }
+
     try {
-      await _supabaseService.createJoinRequest(rideId: rideId, userId: userId);
+      await _supabaseService.createJoinRequest(
+        rideId: normalizedRideId,
+        userId: normalizedUserId,
+      );
       return JoinByCodeStatus.requested;
     } on PostgrestException catch (error) {
-      if ((error.code ?? '').trim() == '23505') {
+      if (_isDuplicateRow(error)) {
         return JoinByCodeStatus.alreadyRequested;
       }
       if (!_isMissingJoinRequestSchema(error)) rethrow;
     }
 
-    // fallback if schema missing
-    await joinRide(rideId: rideId, userId: userId, suppressDuplicate: true);
+    // Deployment has no request/approval columns - join outright.
+    await joinRide(
+      rideId: normalizedRideId,
+      userId: normalizedUserId,
+      suppressDuplicate: true,
+    );
     return JoinByCodeStatus.joinedDirectly;
   }
 
@@ -181,13 +245,12 @@ class RideService {
   }) async {
     try {
       await _supabaseService.addParticipant(rideId: rideId, userId: userId);
-    } catch (error) {
-      if (suppressDuplicate && error is PostgrestException) {
-        if ((error.code ?? '') == '23505' ||
-            _isMissingRideMembersSchema(error)) {
-          return;
-        }
-      }
+    } on PostgrestException catch (error) {
+      // A duplicate row means the rider is already a member, which is the
+      // outcome the caller wanted. Everything else - RLS denials, constraint
+      // violations, a missing table - must surface, otherwise the UI reports a
+      // successful join for a row that was never written.
+      if (suppressDuplicate && _isDuplicateRow(error)) return;
       rethrow;
     }
   }
@@ -201,6 +264,28 @@ class RideService {
 
   Future<List<RideMember>> fetchRideMembers(String rideId) {
     return _supabaseService.fetchRideMembers(rideId);
+  }
+
+  /// Name / bike / avatar for a single profile, used when the cached session in
+  /// SharedPreferences is missing the avatar URL. Returns null when the profile
+  /// cannot be resolved so callers can fall back to initials.
+  Future<({String name, String bike, String avatarUrl})?> fetchProfileSummary(
+    String userId,
+  ) async {
+    final normalized = userId.trim();
+    if (normalized.isEmpty) return null;
+    try {
+      final profiles = await _fetchCreatorProfiles(<String>[normalized]);
+      final profile = profiles[normalized];
+      if (profile == null) return null;
+      return (
+        name: (profile['name'] ?? '').trim(),
+        bike: (profile['bike'] ?? '').trim(),
+        avatarUrl: (profile['avatar_url'] ?? '').trim(),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> saveRideRoute({
@@ -531,6 +616,10 @@ class RideService {
 
   bool _isMissingJoinRequestSchema(PostgrestException error) {
     final code = (error.code ?? '').trim();
+    // Only a genuinely absent table/column means "this deployment has no
+    // request-and-approve flow". Matching on message text such as 'status' also
+    // caught check-constraint and RLS failures, which then fell through to a
+    // direct join and reported success for a write that never happened.
     return code == '42P01' ||
         code == '42703' ||
         code == 'PGRST204' ||
@@ -539,15 +628,6 @@ class RideService {
 
   bool _isDuplicateRow(PostgrestException error) {
     return (error.code ?? '').trim() == '23505';
-  }
-
-  bool _isMissingRideMembersSchema(PostgrestException error) {
-    final code = (error.code ?? '').trim();
-    final text = '${error.message} $error'.toLowerCase();
-    return code == '42P01' ||
-        code == '42703' ||
-        code == 'PGRST204' ||
-        text.contains('ride_members');
   }
 
   // ==================== ROUTE SYNC METHODS ====================

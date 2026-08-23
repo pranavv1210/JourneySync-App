@@ -14,6 +14,7 @@ import '../widgets/empty_state_card.dart';
 import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/ride_loading_indicator.dart';
+import '../widgets/ride_map_thumbnail.dart';
 import 'dart:ui' as ui;
 
 class RideHistoryScreen extends StatefulWidget {
@@ -87,70 +88,16 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
       );
     }
     if (normalized == 'completed') {
+      // Matches the home screen's Recent Journeys badge: muted forest, so a
+      // finished ride never reads as a live one.
       return (
-        bg: const Color(0xFF00C2CB).withValues(alpha: 0.12),
-        fg: const Color(0xFF00A8B0),
+        bg: AppColors.forest.withValues(alpha: 0.10),
+        fg: AppColors.forest,
       );
     }
     return (
       bg: const Color(0xFFF26C0D).withValues(alpha: 0.12),
       fg: const Color(0xFFF26C0D),
-    );
-  }
-
-  Widget _ridePreviewTile({required Color primary, required Color forest}) {
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [const Color(0xFFFFF3E8), primary.withValues(alpha: 0.16)],
-        ),
-        border: Border.all(color: primary.withValues(alpha: 0.12)),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: CustomPaint(
-                painter: _RidePreviewPainter(
-                  lineColor: forest.withValues(alpha: 0.5),
-                  accentColor: primary,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 8,
-            top: 10,
-            child: _mapPin(primary.withValues(alpha: 0.9)),
-          ),
-          Positioned(
-            right: 8,
-            bottom: 10,
-            child: _mapPin(forest.withValues(alpha: 0.9)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _mapPin(Color color) {
-    return Container(
-      width: 12,
-      height: 12,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 1.5),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4),
-        ],
-      ),
     );
   }
 
@@ -241,9 +188,10 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                           children: [
                             Row(
                               children: [
-                                _ridePreviewTile(
-                                  primary: primary,
-                                  forest: forest,
+                                RideMapThumbnail(
+                                  ride: ride,
+                                  size: 60,
+                                  radius: 14,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -404,72 +352,6 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                 ),
               ),
     );
-  }
-}
-
-class _RidePreviewPainter extends CustomPainter {
-  const _RidePreviewPainter({
-    required this.lineColor,
-    required this.accentColor,
-  });
-
-  final Color lineColor;
-  final Color accentColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final gridPaint =
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.45)
-          ..strokeWidth = 1;
-    for (double dx = 10; dx < size.width; dx += 16) {
-      canvas.drawLine(Offset(dx, 0), Offset(dx, size.height), gridPaint);
-    }
-    for (double dy = 10; dy < size.height; dy += 16) {
-      canvas.drawLine(Offset(0, dy), Offset(size.width, dy), gridPaint);
-    }
-
-    final path =
-        Path()
-          ..moveTo(size.width * 0.18, size.height * 0.28)
-          ..cubicTo(
-            size.width * 0.28,
-            size.height * 0.16,
-            size.width * 0.42,
-            size.height * 0.72,
-            size.width * 0.56,
-            size.height * 0.52,
-          )
-          ..cubicTo(
-            size.width * 0.67,
-            size.height * 0.38,
-            size.width * 0.76,
-            size.height * 0.74,
-            size.width * 0.82,
-            size.height * 0.7,
-          );
-
-    final baseRoutePaint =
-        Paint()
-          ..color = lineColor
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4
-          ..strokeCap = StrokeCap.round;
-    canvas.drawPath(path, baseRoutePaint);
-
-    final accentPaint =
-        Paint()
-          ..color = accentColor.withValues(alpha: 0.7)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..strokeCap = StrokeCap.round;
-    canvas.drawPath(path, accentPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _RidePreviewPainter oldDelegate) {
-    return oldDelegate.lineColor != lineColor ||
-        oldDelegate.accentColor != accentColor;
   }
 }
 
