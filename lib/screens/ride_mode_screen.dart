@@ -142,6 +142,34 @@ class _RideModeScreenState extends State<RideModeScreen>
   bool _fuelSuggestionShown = false;
   bool _breakReminderShown = false;
 
+  // ── Own breadcrumb trail ───────────────────────────────────────────────────
+  /// Every place this rider has actually been on this ride, in order.
+  ///
+  /// This is deliberately separate from the per-rider trails in
+  /// [GroupRideIntelligence], which are capped at 300 m and are keyed by
+  /// presence rows - so a solo rider, or anyone whose group had gone quiet, saw
+  /// no trail of their own at all. It is also separate from [_routePoints],
+  /// which is the *planned* road route rather than the road actually taken.
+  ///
+  /// The 5 m gate and the 250 m sanity ceiling mirror
+  /// [RideAnalyticsEngine.recordPosition] on purpose, so the orange line drawn
+  /// live is the same geometry that ends up on the shared summary image.
+  final List<LatLng> _ownTrail = <LatLng>[];
+
+  void _recordOwnTrailPoint(Position pos) {
+    final point = LatLng(pos.latitude, pos.longitude);
+    if (_ownTrail.isEmpty) {
+      _ownTrail.add(point);
+      return;
+    }
+    final meters = const Distance().as(LengthUnit.Meter, _ownTrail.last, point);
+    // A jump beyond 250 m between fixes is a GPS glitch, not riding. Drawing it
+    // would put a straight line across the map.
+    if (meters > 5 && meters < 250) {
+      _ownTrail.add(point);
+    }
+  }
+
   // ── Tracking active badge animation ───────────────────────────────────────
   late AnimationController _trackingPulse;
 
@@ -344,6 +372,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       }
 
       _analyticsEngine.recordPosition(pos);
+      _recordOwnTrailPoint(pos);
       _maybeShowRideIntelligencePrompts(pos);
       _prevPosition = pos;
       if (!mounted) return;
@@ -796,8 +825,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     setState(() {
       if (adoptRoute) {
         _routePoints = points;
-        _hasRoadRoute =
-            points.length >= RideGeometryService.minRoadRoutePoints;
+        _hasRoadRoute = points.length >= RideGeometryService.minRoadRoutePoints;
       }
       if (destination != null) {
         _destinationLat = destination.latitude;
@@ -893,6 +921,11 @@ class _RideModeScreenState extends State<RideModeScreen>
       _alertDismissTimer?.cancel();
       setState(() => _activeAlert = alert);
     } catch (e) {
+      // Emergency sync was switched on before the insert was attempted. Leaving
+      // it on after a failure would keep uploading at the fast emergency
+      // interval - draining the battery of someone who may actually need it -
+      // while the UI shows no active alert and so offers no way to stand down.
+      _trackingService.setEmergencySync(false);
       if (!mounted) return;
       setState(() => _sosBusy = false);
       showAppToast(
@@ -1560,17 +1593,35 @@ class _RideModeScreenState extends State<RideModeScreen>
     for (final rider in _groupSnapshot.riders) {
       final trail = rider.trail;
       if (trail.length < 2) continue;
-      final isLeader =
-          rider.location.userId == _leaderId || rider.location.isLeader;
+      // Other riders' recent tails, kept faint and cool-toned so the rider's
+      // own orange breadcrumb below is unmistakably theirs. The leader used to
+      // be drawn in orange too, which now reads as "this is you".
       polylines.add(
         Polyline(
           points: trail,
-          strokeWidth: isLeader ? 4 : 3,
-          color: (isLeader ? const Color(0xFFFF6A00) : const Color(0xFF2563EB))
-              .withValues(alpha: 0.28),
+          strokeWidth:
+              rider.location.userId == _leaderId || rider.location.isLeader
+                  ? 4
+                  : 3,
+          color: AppColors.routeBlue.withValues(alpha: 0.28),
         ),
       );
     }
+
+    // Drawn last so it sits above every other trail: the road actually ridden,
+    // in brand orange, distinct from the blue planned route.
+    if (_ownTrail.length > 1) {
+      polylines.add(
+        Polyline(
+          points: _ownTrail,
+          strokeWidth: 5,
+          color: AppColors.primary,
+          borderColor: Colors.white.withValues(alpha: 0.75),
+          borderStrokeWidth: 1.5,
+        ),
+      );
+    }
+
     return polylines;
   }
 

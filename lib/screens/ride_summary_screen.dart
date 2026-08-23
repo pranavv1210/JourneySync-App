@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
@@ -7,7 +8,10 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+// latlong2 exports its own Path class (a list of LatLng), which shadows the
+// dart:ui Path that CustomPainter draws with. Hiding it here is the same fix
+// smooth_marker.dart already uses. Nothing in this file wants latlong2's Path.
+import 'package:latlong2/latlong.dart' hide Path;
 import 'dart:ui' as ui;
 
 import '../widgets/app_toast.dart';
@@ -38,6 +42,10 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
   String userId = '';
   List<_SummaryParticipant> participants = <_SummaryParticipant>[];
   RideAnalyticsSnapshot? analytics;
+
+  /// Marks the share poster so it can be rasterised to a PNG. Only the subtree
+  /// under this key is captured, so the dialog's buttons stay out of the image.
+  final GlobalKey _posterKey = GlobalKey();
 
   @override
   void initState() {
@@ -117,6 +125,129 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
     return '$value $unit';
   }
 
+  // ── Real ride stats ────────────────────────────────────────────────────────
+  // Each of these prefers the analytics snapshot recorded during the ride. The
+  // `rides` row carries distance_km / avg_speed_kmh / elevation_m columns that
+  // the tracker never writes, so reading those first is what made the share
+  // poster and the share text print "--" for a ride with a full GPS track.
+
+  String _distanceText() {
+    final data = analytics;
+    if (data != null && data.distanceKm > 0) {
+      return '${data.distanceKm.toStringAsFixed(1)} km';
+    }
+    return _metric(const ['distance_km', 'distance'], 'km');
+  }
+
+  String _avgSpeedText() {
+    final data = analytics;
+    if (data != null && data.averageSpeedKmh > 0) {
+      return '${data.averageSpeedKmh.toStringAsFixed(1)} km/h';
+    }
+    return _metric(const ['avg_speed_kmh', 'avg_speed'], 'km/h');
+  }
+
+  String _topSpeedText() {
+    final data = analytics;
+    if (data != null && data.maxSpeedKmh > 0) {
+      return '${data.maxSpeedKmh.toStringAsFixed(0)} km/h';
+    }
+    return _metric(const ['top_speed_kmh', 'top_speed'], 'km/h');
+  }
+
+  String _elevationText() {
+    final data = analytics;
+    if (data != null && data.elevationGainM > 0) {
+      return '+${data.elevationGainM.toStringAsFixed(0)} m';
+    }
+    return _metric(const ['elevation_m', 'elevation'], 'm');
+  }
+
+  String _durationValue() {
+    final data = analytics;
+    if (data != null && data.durationSeconds > 0) {
+      return RideAnalyticsEngine.durationText(data.durationSeconds);
+    }
+    return _durationText();
+  }
+
+  String _paceText() {
+    final pace = analytics?.averagePaceMinPerKm ?? 0;
+    if (pace <= 0 || pace.isNaN || pace.isInfinite) return '--';
+    final minutes = pace.floor();
+    final seconds = ((pace - minutes) * 60).round();
+    // 7.99 min/km must not render as "7:60".
+    final carry = seconds == 60;
+    return '${carry ? minutes + 1 : minutes}:'
+        '${(carry ? 0 : seconds).toString().padLeft(2, '0')} /km';
+  }
+
+  /// Riders on this ride. Membership rows are the truth; the analytics member
+  /// count is the fallback, and a solo ride still counts the rider themselves.
+  int _riderCount() {
+    if (participants.isNotEmpty) return participants.length;
+    final counted = analytics?.memberCount ?? 0;
+    return counted > 0 ? counted : 1;
+  }
+
+  /// Plain-language answer to "how did the ride go", assembled only from
+  /// recorded numbers so it can never claim something the tracker did not
+  /// actually measure.
+  String _rideVerdict() {
+    final data = analytics;
+    if (data == null) {
+      return 'This ride was logged, but no GPS track was recorded for it, so '
+          'distance and speed are not available.';
+    }
+
+    final sentences = <String>[];
+    final riders = _riderCount();
+    sentences.add(
+      riders <= 1
+          ? 'You rode this one solo.'
+          : 'You rode with ${riders - 1} other '
+              '${riders == 2 ? 'rider' : 'riders'}.',
+    );
+
+    if (data.distanceKm > 0 && data.durationSeconds > 0) {
+      sentences.add(
+        'You covered ${data.distanceKm.toStringAsFixed(1)} km in '
+        '${RideAnalyticsEngine.durationText(data.durationSeconds)}, averaging '
+        '${data.averageSpeedKmh.toStringAsFixed(1)} km/h and topping out at '
+        '${data.maxSpeedKmh.toStringAsFixed(0)} km/h.',
+      );
+    }
+
+    if (data.durationSeconds > 0 && data.movingSeconds > 0) {
+      final movingShare = (data.movingSeconds / data.durationSeconds * 100)
+          .round()
+          .clamp(0, 100);
+      sentences.add(
+        data.numberOfStops == 0
+            ? 'You kept rolling for $movingShare% of the ride with no stops.'
+            : 'You were moving $movingShare% of the ride across '
+                '${data.numberOfStops} '
+                '${data.numberOfStops == 1 ? 'stop' : 'stops'}.',
+      );
+    }
+
+    if (data.elevationGainM >= 50) {
+      sentences.add(
+        'You climbed ${data.elevationGainM.toStringAsFixed(0)} m along the way.',
+      );
+    }
+
+    if (data.sosEvents > 0) {
+      sentences.add(
+        '${data.sosEvents} SOS '
+        '${data.sosEvents == 1 ? 'alert was' : 'alerts were'} raised during '
+        'this ride.',
+      );
+    }
+
+    return sentences.join(' ');
+  }
+
   String _dateLabel() {
     final end =
         ride?['ended_at']?.toString() ?? ride?['created_at']?.toString();
@@ -146,8 +277,12 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
   @override
   Widget build(BuildContext context) {
     const primary = AppColors.primary;
-    const secondaryBlue = Color(0xFF0056B3);
-    const vibrantTeal = Color(0xFF00C2CB);
+    // These were Color(0xFF0056B3) and Color(0xFF00C2CB) - a blue and a cyan
+    // that appear nowhere else in JourneySync. The completion tick is now the
+    // palette's green and the duration accent is forest, so the summary reads as
+    // part of the app instead of as a stock template.
+    const durationAccent = AppColors.forest;
+    const completeGreen = AppColors.success;
     const background = AppColors.background;
 
     if (loading) {
@@ -185,9 +320,11 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 8),
-                    _header(vibrantTeal),
+                    _header(completeGreen),
                     const SizedBox(height: 24),
-                    _summaryCard(primary, secondaryBlue),
+                    _summaryCard(primary, durationAccent),
+                    const SizedBox(height: 18),
+                    _rideReportCard(),
                     if (analytics != null) ...[
                       const SizedBox(height: 18),
                       _scoreCard(primary),
@@ -210,14 +347,14 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
     );
   }
 
-  Widget _header(Color vibrantTeal) {
+  Widget _header(Color accent) {
     return Column(
       children: [
         Container(
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            color: vibrantTeal.withValues(alpha: 0.1),
+            color: accent.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Center(
@@ -225,16 +362,20 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: vibrantTeal,
+                color: accent,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: vibrantTeal.withValues(alpha: 0.3),
+                    color: accent.withValues(alpha: 0.3),
                     blurRadius: 16,
                   ),
                 ],
               ),
-              child: const Icon(Icons.check, color: Colors.white, size: 34),
+              child: const Icon(
+                Icons.check_rounded,
+                color: Colors.white,
+                size: 34,
+              ),
             ),
           ),
         ),
@@ -260,8 +401,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
     );
   }
 
-  Widget _summaryCard(Color primary, Color secondaryBlue) {
-    final data = analytics;
+  Widget _summaryCard(Color primary, Color durationAccent) {
     return GlassCard(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -272,13 +412,8 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                 child: _metricBlock(
                   icon: Icons.timer,
                   label: 'Duration',
-                  value:
-                      data == null
-                          ? _durationText()
-                          : RideAnalyticsEngine.durationText(
-                            data.durationSeconds,
-                          ),
-                  color: secondaryBlue,
+                  value: _durationValue(),
+                  color: durationAccent,
                 ),
               ),
               const SizedBox(width: 12),
@@ -286,10 +421,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                 child: _metricBlock(
                   icon: Icons.add_location_alt,
                   label: 'Distance',
-                  value:
-                      data == null
-                          ? _metric(const ['distance_km', 'distance'], 'km')
-                          : '${data.distanceKm.toStringAsFixed(1)} km',
+                  value: _distanceText(),
                   color: primary,
                 ),
               ),
@@ -300,32 +432,73 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(
-                child: _miniMetric(
-                  'Avg Speed',
-                  data == null
-                      ? _metric(const ['avg_speed_kmh', 'avg_speed'], 'km/h')
-                      : '${data.averageSpeedKmh.toStringAsFixed(1)} km/h',
-                ),
-              ),
-              Expanded(
-                child: _miniMetric(
-                  'Top Speed',
-                  data == null
-                      ? _metric(const ['top_speed_kmh', 'top_speed'], 'km/h')
-                      : '${data.maxSpeedKmh.toStringAsFixed(0)} km/h',
-                ),
-              ),
-              Expanded(
-                child: _miniMetric(
-                  'Elevation',
-                  data == null
-                      ? _metric(const ['elevation_m', 'elevation'], 'm')
-                      : '+${data.elevationGainM.toStringAsFixed(0)} m',
-                ),
-              ),
+              Expanded(child: _miniMetric('Avg Speed', _avgSpeedText())),
+              Expanded(child: _miniMetric('Top Speed', _topSpeedText())),
+              Expanded(child: _miniMetric('Elevation', _elevationText())),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Answers the two things the old summary could not: who was on the ride, and
+  /// how it actually went. Every value here comes from the recorded snapshot.
+  Widget _rideReportCard() {
+    final data = analytics;
+    return GlassCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'HOW THE RIDE WENT',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _rideVerdict(),
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+              color: Colors.black87,
+            ),
+          ),
+          if (data != null) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1, thickness: 1, color: Colors.black12),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: _miniMetric('Riders', '${_riderCount()}')),
+                Expanded(child: _miniMetric('Joined', '${data.membersJoined}')),
+                Expanded(child: _miniMetric('Left', '${data.membersLeft}')),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _miniMetric('Avg Pace', _paceText())),
+                Expanded(
+                  child: _miniMetric(
+                    'Stopped',
+                    RideAnalyticsEngine.durationText(data.stoppedSeconds),
+                  ),
+                ),
+                Expanded(
+                  child: _miniMetric(
+                    'Tracking',
+                    '${data.trackingQualityScore}%',
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -498,7 +671,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                   const Icon(
                     Icons.auto_awesome_rounded,
                     size: 16,
-                    color: Color(0xFFFF6A00),
+                    color: AppColors.primary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -528,15 +701,13 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF00C2CB,
-                            ).withValues(alpha: 0.1),
+                            color: AppColors.forest.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
                             achievement,
                             style: const TextStyle(
-                              color: Color(0xFF00A8B0),
+                              color: AppColors.forest,
                               fontWeight: FontWeight.w700,
                               fontSize: 11,
                             ),
@@ -573,34 +744,36 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
       child: Stack(
         children: [
           Positioned.fill(
-            child: hasRoute
-                ? FlutterMap(
-                    options: MapOptions(
-                      initialCameraFit: CameraFit.bounds(
-                        bounds: bounds!,
-                        padding: const EdgeInsets.all(20),
+            child:
+                hasRoute
+                    ? FlutterMap(
+                      options: MapOptions(
+                        initialCameraFit: CameraFit.bounds(
+                          bounds: bounds!,
+                          padding: const EdgeInsets.all(20),
+                        ),
+                        interactionOptions: const InteractionOptions(
+                          flags: InteractiveFlag.none,
+                        ),
                       ),
-                      interactionOptions: const InteractionOptions(
-                        flags: InteractiveFlag.none,
-                      ),
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.example.journeysync',
-                      ),
-                      PolylineLayer(
-                        polylines: [
-                          Polyline(
-                            points: mapPoints,
-                            color: Colors.orange.shade700,
-                            strokeWidth: 4,
-                          ),
-                        ],
-                      ),
-                    ],
-                  )
-                : Container(color: Colors.grey.shade300),
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.example.journeysync',
+                        ),
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: mapPoints,
+                              color: Colors.orange.shade700,
+                              strokeWidth: 4,
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                    : Container(color: Colors.grey.shade300),
           ),
           Positioned.fill(
             child: Container(
@@ -665,7 +838,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFF00C2CB).withValues(alpha: 0.1),
+                color: AppColors.forest.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
@@ -673,7 +846,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF00C2CB),
+                  color: AppColors.forest,
                 ),
               ),
             ),
@@ -733,7 +906,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF00C2CB).withValues(alpha: 0.1),
+                      color: AppColors.forest.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Text(
@@ -741,7 +914,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF00C2CB),
+                        color: AppColors.forest,
                       ),
                     ),
                   ),
@@ -769,12 +942,12 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
             : participant.name.trim().substring(0, 1).toUpperCase();
     return CircleAvatar(
       radius: 20,
-      backgroundColor: const Color(0xFF00C2CB).withValues(alpha: 0.16),
+      backgroundColor: AppColors.forest.withValues(alpha: 0.16),
       child: Text(
         initial,
         style: const TextStyle(
           fontWeight: FontWeight.w700,
-          color: Color(0xFF00C2CB),
+          color: AppColors.forest,
         ),
       ),
     );
@@ -944,252 +1117,315 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
     );
   }
 
+  /// Renders the on-screen poster to a PNG and hands it to the OS share sheet.
+  ///
+  /// The poster is captured from the dialog while it is visible, so the render
+  /// tree is guaranteed to be laid out and painted. The route is drawn by
+  /// [_RouteTracePainter] rather than by a tile map, because map tiles load
+  /// asynchronously and would have produced half-blank images.
+  Future<void> _captureAndSharePoster() async {
+    ui.Image? image;
+    try {
+      final boundary =
+          _posterKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+      if (boundary == null) {
+        throw Exception('Poster is not ready yet.');
+      }
+      image = await boundary.toImage(pixelRatio: 3);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (bytes == null) {
+        throw Exception('Could not encode the poster.');
+      }
+
+      final dir = await getTemporaryDirectory();
+      final safeName = _rideName()
+          .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_')
+          .replaceAll(RegExp(r'^_+|_+$'), '');
+      final file = File(
+        '${dir.path}/journeysync_${safeName.isEmpty ? 'ride' : safeName}.png',
+      );
+      // The offset/length form matters: `buffer.asUint8List()` with no arguments
+      // returns the whole backing buffer, which can be larger than the encoded
+      // PNG and would write trailing garbage into the file.
+      await file.writeAsBytes(
+        bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
+        flush: true,
+      );
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: _shareSummaryText(),
+          subject: '${_rideName()} on JourneySync',
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      showAppToast(
+        context,
+        'Could not share the ride image: $error',
+        type: AppToastType.error,
+      );
+    } finally {
+      // Holds native memory until released, so it must go even on the error path.
+      image?.dispose();
+    }
+  }
+
   Future<void> _shareRideProgress() async {
-    unawaited(
-      showGeneralDialog(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: 'Share',
-        transitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (ctx, _, __) {
-          final rideName = _rideName();
-          final destination = _destinationLabel();
-          final date = _dateLabel();
-          final duration = _durationText();
-          final distance = _metric(const ['distance_km', 'distance'], 'km');
-          final avgSpeed = _metric(const [
-            'avg_speed_kmh',
-            'avg_speed',
-          ], 'km/h');
-          final topSpeed = _metric(const [
-            'top_speed_kmh',
-            'top_speed',
-          ], 'km/h');
-
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Material(
-                    color: Colors.black.withValues(alpha: 0.85),
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: Colors.white24, width: 1.5),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Card Header
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.stars_rounded,
-                                color: Color(0xFFFF6A00),
-                                size: 20,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'JOURNEYSYNC SHARE POSTER',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontFamily: AppTypography.fontFamily,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  letterSpacing: 1.2,
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Share',
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (ctx, _, __) {
+        return Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Material(
+                  color: Colors.black.withValues(alpha: 0.85),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: Colors.white24, width: 1.5),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Only the boundary below is captured, so the dialog
+                        // chrome and buttons never appear in the shared image.
+                        RepaintBoundary(key: _posterKey, child: _sharePoster()),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Poster Graphic
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF1E3A8A), Color(0xFF0F172A)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white10),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  rideName.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                                onPressed: () async {
+                                  // Capture first: popping the dialog would
+                                  // dispose the boundary being captured.
+                                  await _captureAndSharePoster();
+                                  if (!ctx.mounted) return;
+                                  Navigator.pop(ctx);
+                                },
+                                icon: const Icon(Icons.image_rounded, size: 16),
+                                label: const Text(
+                                  'Share image',
+                                  style: TextStyle(
                                     fontFamily: AppTypography.fontFamily,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Destination: $destination • $date',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-
-                                // Stats grid inside poster
-                                Row(
-                                  children: [
-                                    _posterStat('DISTANCE', distance),
-                                    _posterStat('DURATION', duration),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    _posterStat('AVG SPEED', avgSpeed),
-                                    _posterStat('TOP SPEED', topSpeed),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-
-                                // Branding
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Rider: $userName',
-                                      style: const TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                    const Text(
-                                      'JOURNEYSYNC V2',
-                                      style: TextStyle(
-                                        color: Color(0xFFFF6A00),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 10,
-                                        letterSpacing: 1.0,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Share Actions
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const ui.Color(0xFFFF6A00),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                  ),
-                                  onPressed: () async {
-                                    Navigator.pop(ctx);
-                                    try {
-                                      final text = _shareSummaryText();
-                                      await SharePlus.instance.share(
-                                        ShareParams(text: text),
-                                      );
-                                    } catch (error) {
-                                      if (!mounted) return;
-                                      showAppToast(
-                                        context,
-                                        'Could not open share sheet: $error',
-                                        type: AppToastType.error,
-                                      );
-                                    }
-                                  },
-                                  icon: const Icon(
-                                    Icons.share_rounded,
-                                    size: 16,
-                                  ),
-                                  label: const Text(
-                                    'Share Text',
-                                    style: TextStyle(
-                                      fontFamily: AppTypography.fontFamily,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(
-                                      color: Colors.white54,
-                                    ),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Colors.white54),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  onPressed: () {
-                                    Navigator.pop(ctx);
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  Navigator.pop(ctx);
+                                  try {
+                                    await SharePlus.instance.share(
+                                      ShareParams(text: _shareSummaryText()),
+                                    );
+                                  } catch (error) {
+                                    if (!mounted) return;
                                     showAppToast(
                                       context,
-                                      'Poster image copied to clipboard!',
-                                      type: AppToastType.info,
+                                      'Could not open share sheet: $error',
+                                      type: AppToastType.error,
                                     );
-                                  },
-                                  icon: const Icon(
-                                    Icons.save_alt_rounded,
-                                    size: 16,
-                                  ),
-                                  label: const Text(
-                                    'Save Card',
-                                    style: TextStyle(
-                                      fontFamily: AppTypography.fontFamily,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  }
+                                },
+                                icon: const Icon(
+                                  Icons.short_text_rounded,
+                                  size: 16,
+                                ),
+                                label: const Text(
+                                  'Share text',
+                                  style: TextStyle(
+                                    fontFamily: AppTypography.fontFamily,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
             ),
-          );
-        },
-        transitionBuilder: (ctx, animation, _, child) {
-          final curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeInOutCubic,
-          );
-          return FadeTransition(
-            opacity: curved,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
-              child: child,
+          ),
+        );
+      },
+      transitionBuilder: (ctx, animation, _, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInOutCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  /// The shareable card. Kept free of network images so it renders identically
+  /// on screen and in the exported PNG.
+  Widget _sharePoster() {
+    final data = analytics;
+    final trace =
+        (data?.routePoints ?? const <Map<String, double>>[])
+            .map((p) => (lat: p['lat'] ?? 0.0, lng: p['lng'] ?? 0.0))
+            .toList();
+
+    return Container(
+      width: 300,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.forest, AppColors.forestDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _rideName().toUpperCase(),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontFamily: AppTypography.fontFamily,
+              fontSize: 18,
             ),
-          );
-        },
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${_destinationLabel()} • ${_dateLabel()}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+
+          // The recorded track, in brand orange.
+          Container(
+            height: 132,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white12),
+            ),
+            child:
+                trace.length > 1
+                    ? CustomPaint(
+                      // A CustomPaint with no child sizes itself to Size.zero
+                      // unless told otherwise, which would paint nothing.
+                      // Size.infinite resolves to the parent's constraints.
+                      size: Size.infinite,
+                      painter: _RouteTracePainter(
+                        points: trace,
+                        color: AppColors.primaryLight,
+                      ),
+                    )
+                    : const Center(
+                      child: Text(
+                        'No GPS track recorded',
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              _posterStat('DISTANCE', _distanceText()),
+              _posterStat('DURATION', _durationValue()),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _posterStat('AVG SPEED', _avgSpeedText()),
+              _posterStat('TOP SPEED', _topSpeedText()),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _posterStat('RIDERS', '${_riderCount()}'),
+              _posterStat(
+                'RIDE SCORE',
+                data == null ? '--' : '${data.rideScore}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  'Rider: $userName',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                ),
+              ),
+              const Text(
+                'JOURNEYSYNC',
+                style: TextStyle(
+                  color: AppColors.primaryLight,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1225,12 +1461,15 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
     final rideName = _rideName();
     final destination = _destinationLabel();
     final date = _dateLabel();
-    final duration = _durationText();
-    final distance = _metric(const ['distance_km', 'distance'], 'km');
-    final avgSpeed = _metric(const ['avg_speed_kmh', 'avg_speed'], 'km/h');
-    final topSpeed = _metric(const ['top_speed_kmh', 'top_speed'], 'km/h');
-    final elevation = _metric(const ['elevation_m', 'elevation'], 'm');
-    final riders = participants.isEmpty ? 1 : participants.length;
+    // These used to read rides.distance_km / avg_speed_kmh / elevation_m -
+    // columns the tracker never writes - so a shared ride printed "--" for
+    // every number even when a full GPS track had been recorded.
+    final duration = _durationValue();
+    final distance = _distanceText();
+    final avgSpeed = _avgSpeedText();
+    final topSpeed = _topSpeedText();
+    final elevation = _elevationText();
+    final riders = _riderCount();
     final data = analytics;
     final score =
         data == null
@@ -1270,4 +1509,100 @@ class _SummaryParticipant {
   final String bike;
   final String avatarUrl;
   final bool isYou;
+}
+
+/// Draws a recorded GPS track as a single orange line, scaled to fit.
+///
+/// The share poster deliberately does not use a tile map: tiles arrive over the
+/// network, so a capture taken moments after the dialog opens could rasterise a
+/// half-loaded or blank map. Painting the track directly means the exported PNG
+/// always contains the route.
+class _RouteTracePainter extends CustomPainter {
+  const _RouteTracePainter({required this.points, required this.color});
+
+  final List<({double lat, double lng})> points;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2) return;
+
+    var minLat = points.first.lat, maxLat = points.first.lat;
+    var minLng = points.first.lng, maxLng = points.first.lng;
+    for (final p in points) {
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lng < minLng) minLng = p.lng;
+      if (p.lng > maxLng) maxLng = p.lng;
+    }
+
+    const pad = 18.0;
+    final w = size.width - pad * 2;
+    final h = size.height - pad * 2;
+    if (w <= 0 || h <= 0) return;
+
+    // A degree of longitude is shorter than a degree of latitude away from the
+    // equator. Correcting for that keeps the drawn shape recognisable as the
+    // route rather than a stretched version of it.
+    final latSpan = (maxLat - minLat).abs();
+    final lngSpan =
+        (maxLng - minLng).abs() * math.cos(minLat * math.pi / 180).abs();
+
+    // A dead-straight or stationary track has zero span on one axis; the guard
+    // keeps the scale finite so it renders as a line instead of vanishing.
+    final span = math.max(math.max(latSpan, lngSpan), 1e-6);
+    final scale = math.min(w, h) / span;
+
+    final drawnW = lngSpan * scale;
+    final drawnH = latSpan * scale;
+    final offsetX = pad + (w - drawnW) / 2;
+    final offsetY = pad + (h - drawnH) / 2;
+
+    Offset project(({double lat, double lng}) p) {
+      final x =
+          (p.lng - minLng) * math.cos(minLat * math.pi / 180).abs() * scale;
+      // Latitude grows northward but canvas y grows downward, so it is flipped.
+      final y = drawnH - (p.lat - minLat) * scale;
+      return Offset(offsetX + x, offsetY + y);
+    }
+
+    final first = project(points.first);
+    final path = Path()..moveTo(first.dx, first.dy);
+    for (final p in points.skip(1)) {
+      final o = project(p);
+      path.lineTo(o.dx, o.dy);
+    }
+
+    // Soft under-stroke so the line reads clearly against the dark card.
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 7
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = color.withValues(alpha: 0.25),
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = color,
+    );
+
+    // Start and finish markers, so a loop is not mistaken for an out-and-back.
+    canvas.drawCircle(
+      project(points.first),
+      4,
+      Paint()..color = AppColors.success,
+    );
+    canvas.drawCircle(project(points.last), 4, Paint()..color = Colors.white);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RouteTracePainter old) =>
+      old.points != points || old.color != color;
 }

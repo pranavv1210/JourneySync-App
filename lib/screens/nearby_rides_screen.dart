@@ -479,18 +479,27 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
   }
 
   String _joinErrorMessage(Object error) {
-    final lower = error.toString().toLowerCase();
+    final text = error.toString();
+    final lower = text.toLowerCase();
     // Only report a specific cause when we can actually identify one - the old
     // catch-all matched every Postgrest error and hid real problems behind
     // "try again after sync", which is not something a rider can act on.
     if (lower.contains('login again') || lower.contains('user session')) {
       return 'Missing user session. Please login again.';
     }
-    if (lower.contains('no longer available') || lower.contains('not found')) {
-      return 'This ride is no longer available.';
-    }
     if (lower.contains('own ride')) {
       return 'This is your own ride.';
+    }
+    // Messages RideService raises deliberately for a rider to read. They are
+    // already phrased for the toast, so pass them through instead of flattening
+    // them into the generic fallback below.
+    if (lower.contains('no ride found for code') ||
+        lower.contains('already finished') ||
+        lower.contains('valid code like')) {
+      return _stripExceptionPrefix(text);
+    }
+    if (lower.contains('no longer available') || lower.contains('not found')) {
+      return 'This ride is no longer available.';
     }
     if (lower.contains('42501') ||
         lower.contains('row-level security') ||
@@ -505,6 +514,12 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       return 'No internet connection. Check your network and try again.';
     }
     return 'Could not join this ride. Please try again.';
+  }
+
+  /// `Exception('...').toString()` prefixes the message with "Exception: ".
+  String _stripExceptionPrefix(String text) {
+    const prefix = 'Exception: ';
+    return text.startsWith(prefix) ? text.substring(prefix.length) : text;
   }
 
   @override
@@ -940,9 +955,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       }
 
       placed.add(bestOffset);
-      nodes.add(
-        _RadarNode(ride: ride, dx: bestOffset.dx, dy: bestOffset.dy),
-      );
+      nodes.add(_RadarNode(ride: ride, dx: bestOffset.dx, dy: bestOffset.dy));
     }
     return nodes;
   }
@@ -983,8 +996,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     } else {
       buttonLabel = 'Join Ride';
     }
-    final buttonLocked =
-        !current.isOwnRide && (current.joined || pending);
+    final buttonLocked = !current.isOwnRide && (current.joined || pending);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -1699,11 +1711,7 @@ class _RadarPainter extends CustomPainter {
 }
 
 class _RadarNode {
-  const _RadarNode({
-    required this.ride,
-    required this.dx,
-    required this.dy,
-  });
+  const _RadarNode({required this.ride, required this.dx, required this.dy});
 
   final NearbyRide ride;
 

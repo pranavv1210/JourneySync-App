@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:ui' show ImageFilter;
 import '../theme/app_theme.dart';
@@ -659,6 +660,22 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     showAppToast(context, "Code copied", type: AppToastType.success);
   }
 
+  /// Hands the code to the OS share sheet so the host can send it over
+  /// WhatsApp/SMS rather than copying and switching apps manually.
+  Future<void> _shareAccessCode() async {
+    final code = _rideCode(widget.rideId);
+    final title = (ride?['title'] ?? '').toString().trim();
+    final rideName = title.isNotEmpty ? title : 'my ride';
+    await SharePlus.instance.share(
+      ShareParams(
+        text:
+            'Join $rideName on JourneySync. Open Nearby Rides, tap Join with '
+            'code, and enter $code.',
+        subject: 'JourneySync ride code $code',
+      ),
+    );
+  }
+
   Future<void> _showInviteActions() async {
     final code = _rideCode(widget.rideId);
     await showModalBottomSheet<void>(
@@ -708,7 +725,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Share this code with your riding group. Riders can enter it from Nearby Rides or tap your radar card.',
+                        'Share this code with your riding group, or just read it out. Riders enter it from Nearby Rides and join straight away.',
                         style: AppTypography.bodyMedium.copyWith(
                           color: AppColors.textSecondary,
                           height: 1.35,
@@ -739,17 +756,38 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () async {
-                            await _copyAccessCode();
-                            if (!context.mounted) return;
-                            Navigator.pop(context);
-                          },
-                          icon: const Icon(Icons.content_copy_rounded),
-                          label: const Text('Copy access code'),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                await _copyAccessCode();
+                                if (!context.mounted) return;
+                                Navigator.pop(context);
+                              },
+                              icon: const Icon(
+                                Icons.content_copy_rounded,
+                                size: 18,
+                              ),
+                              label: const Text('Copy'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () async {
+                                await _shareAccessCode();
+                                if (!context.mounted) return;
+                                Navigator.pop(context);
+                              },
+                              icon: const Icon(
+                                Icons.ios_share_rounded,
+                                size: 18,
+                              ),
+                              label: const Text('Share'),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -962,8 +1000,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                   children: [
                     _rideDetailsCard(primary, forest, sand),
                     const SizedBox(height: 16),
-                    _joinCode(primary),
-                    const SizedBox(height: 16),
+                    // The access code card used to sit here, duplicating what
+                    // Invite already shows. Invite is now the single place the
+                    // code is revealed, copied, and shared.
                     _rideActionPanel(primary, primaryDark),
                     const SizedBox(height: 16),
                     _joinRequests(primary),
@@ -995,9 +1034,6 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           icon: const Icon(Icons.more_vert, size: 24),
           onSelected: (value) async {
             switch (value) {
-              case 'copy_code':
-                await _copyAccessCode();
-                break;
               case 'edit_briefing':
                 await _editBriefing();
                 break;
@@ -1008,10 +1044,9 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           },
           itemBuilder:
               (context) => [
-                const PopupMenuItem(
-                  value: 'copy_code',
-                  child: Text('Copy Access Code'),
-                ),
+                // The access code lives behind Invite only. It used to be
+                // reachable from here, from a copy button in the access card,
+                // and from Invite - three routes to one string.
                 if (_isCurrentUserHost())
                   const PopupMenuItem(
                     value: 'edit_briefing',
@@ -1247,61 +1282,6 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: Colors.black87,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _joinCode(Color primary) {
-    final code = _rideCode(widget.rideId);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primary.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            "RIDE ACCESS CODE",
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.6,
-              color: primary.withValues(alpha: 0.8),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                code,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.forest,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(width: 10),
-              IconButton(
-                onPressed: _copyAccessCode,
-                tooltip: 'Copy access code',
-                icon: const Icon(Icons.content_copy, size: 20),
-                color: primary,
-              ),
-            ],
-          ),
-          Text(
-            "Share this code with your riding group",
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey,
-              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -1711,44 +1691,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       ),
       child: Column(
         children: [
-          if (_isCurrentUserHost()) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _addRouteDialog,
-                    icon: const Icon(Icons.near_me_rounded),
-                    label: const Text('Sync route'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: primary,
-                      side: BorderSide(color: primary, width: 1.6),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _editRideDetailsDialog,
-                    icon: const Icon(Icons.edit_rounded),
-                    label: const Text('Edit details'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: primaryDark,
-                      side: BorderSide(color: primary.withValues(alpha: 0.24)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-          ],
+          // Sync route and Edit details used to sit above this. Start ride is
+          // the only thing a host needs from the lobby; route and detail edits
+          // belong to ride creation, and Edit Ride Briefing is still in the
+          // overflow menu.
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(

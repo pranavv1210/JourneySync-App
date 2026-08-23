@@ -205,31 +205,23 @@ class RideService {
     }
 
     // Resolve current membership first so a second tap reports the real state
-    // instead of bubbling up a duplicate-key error.
+    // instead of bubbling up a duplicate-key error. A leftover 'pending' row
+    // from an older build is not a real membership, so fall through and let the
+    // write below promote it.
     final existing = await _supabaseService.fetchRideMembershipStatus(
       rideId: normalizedRideId,
       userId: normalizedUserId,
     );
-    if (existing != null) {
-      return existing == 'pending'
-          ? JoinByCodeStatus.alreadyRequested
-          : JoinByCodeStatus.alreadyJoined;
+    if (existing != null && existing != 'pending') {
+      return JoinByCodeStatus.alreadyJoined;
     }
 
-    try {
-      await _supabaseService.createJoinRequest(
-        rideId: normalizedRideId,
-        userId: normalizedUserId,
-      );
-      return JoinByCodeStatus.requested;
-    } on PostgrestException catch (error) {
-      if (_isDuplicateRow(error)) {
-        return JoinByCodeStatus.alreadyRequested;
-      }
-      if (!_isMissingJoinRequestSchema(error)) rethrow;
-    }
-
-    // Deployment has no request/approval columns - join outright.
+    // Join outright instead of filing a request for approval. No screen in the
+    // app ever approved a pending row, so a rider who tapped a ride was parked
+    // in a state nothing could clear - the ride being visible on their radar is
+    // already the invitation. addParticipant promotes an existing 'pending' row
+    // rather than inserting a second one, so the unique (ride_id, member_id)
+    // index is not violated.
     await joinRide(
       rideId: normalizedRideId,
       userId: normalizedUserId,
@@ -347,17 +339,22 @@ class RideService {
       limit: 250,
     );
     Map<String, dynamic>? matchedRide;
+    // Tracked separately so a code that belongs to a finished ride reports that,
+    // rather than the same "no such code" message as a typo.
+    var codeMatchedAFinishedRide = false;
     for (final row in rides) {
       final rideId = (row['id'] ?? '').toString().trim();
       if (rideId.isEmpty) continue;
       if (_rideCodeFromId(rideId) != normalizedCode) continue;
       final status = (row['status'] ?? '').toString().trim().toLowerCase();
       if (status == 'cancelled' || status == 'completed' || status == 'ended') {
+        codeMatchedAFinishedRide = true;
         continue;
       }
       if (row['archived_at'] != null ||
           row['is_archived'] == true ||
           row['archived'] == true) {
+        codeMatchedAFinishedRide = true;
         continue;
       }
       matchedRide = row;
@@ -365,7 +362,11 @@ class RideService {
     }
 
     if (matchedRide == null) {
-      throw Exception('No active ride found for this access code.');
+      throw Exception(
+        codeMatchedAFinishedRide
+            ? 'That ride has already finished.'
+            : 'No ride found for code $normalizedCode. Check the code with your host.',
+      );
     }
 
     final rideId = (matchedRide['id'] ?? '').toString().trim();
@@ -393,27 +394,10 @@ class RideService {
       );
     }
 
-    try {
-      await _supabaseService.createJoinRequest(
-        rideId: rideId,
-        userId: normalizedUserId,
-      );
-      return JoinByCodeResult(
-        status: JoinByCodeStatus.requested,
-        rideId: rideId,
-        rideTitle: title.isNotEmpty ? title : 'Ride',
-      );
-    } on PostgrestException catch (error) {
-      if (_isDuplicateRow(error)) {
-        return JoinByCodeResult(
-          status: JoinByCodeStatus.alreadyRequested,
-          rideId: rideId,
-          rideTitle: title.isNotEmpty ? title : 'Ride',
-        );
-      }
-      if (!_isMissingJoinRequestSchema(error)) rethrow;
-    }
-
+    // Typing the access code joins the ride outright. The code is the
+    // authorisation - a rider who has it was given it by the host - so there is
+    // nothing left to approve. This used to write a 'pending' row and report
+    // "join request sent", which no screen could ever clear.
     await joinRide(
       rideId: rideId,
       userId: normalizedUserId,
@@ -612,18 +596,6 @@ class RideService {
             '')
         .toString()
         .trim();
-  }
-
-  bool _isMissingJoinRequestSchema(PostgrestException error) {
-    final code = (error.code ?? '').trim();
-    // Only a genuinely absent table/column means "this deployment has no
-    // request-and-approve flow". Matching on message text such as 'status' also
-    // caught check-constraint and RLS failures, which then fell through to a
-    // direct join and reported success for a write that never happened.
-    return code == '42P01' ||
-        code == '42703' ||
-        code == 'PGRST204' ||
-        error.message.toLowerCase().contains('join_requests');
   }
 
   bool _isDuplicateRow(PostgrestException error) {

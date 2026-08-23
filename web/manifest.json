@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "JourneySync v1.1.1 - premium group ride coordination, live tracking, SOS, weather, fuel, and ride intelligence.",
+    "description": "JourneySync v1.1.2 - premium group ride coordination, live tracking, SOS, weather, fuel, and ride intelligence.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
