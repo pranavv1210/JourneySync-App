@@ -143,9 +143,11 @@ class JoinByCodeResult {
     required this.status,
     required this.rideId,
     required this.rideTitle,
+    this.rideStatus = '',
   });
 
   final JoinByCodeStatus status;
   final String rideId;
   final String rideTitle;
+  final String rideStatus;
 }

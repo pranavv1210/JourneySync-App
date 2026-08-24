@@ -15,7 +15,6 @@ import '../models/rider_location.dart';
 import '../coordinators/active_ride_coordinator.dart';
 import '../coordinators/realtime_coordinator.dart' hide unawaited;
 import '../services/live_tracking_service.dart' hide unawaited;
-import '../services/fuel_service.dart';
 import '../services/group_ride_intelligence.dart';
 import '../services/notification_service.dart';
 import '../services/ride_analytics_engine.dart';
@@ -59,7 +58,6 @@ class _RideModeScreenState extends State<RideModeScreen>
   final Battery _battery = Battery();
   late final RideAnalyticsEngine _analyticsEngine;
   final WeatherService _weatherService = WeatherService();
-  final FuelService _fuelService = FuelService();
   final RideGeometryService _geometryService = RideGeometryService();
 
   // ── User / Ride state ──────────────────────────────────────────────────────
@@ -88,6 +86,7 @@ class _RideModeScreenState extends State<RideModeScreen>
   bool _fitGroupMode = false;
   bool _smartAutoMode = true;
   bool _programmaticCameraMove = false;
+  DateTime? _lastFollowLeaderDistanceToastAt;
   DateTime _autoFollowResumeAt = DateTime.fromMillisecondsSinceEpoch(0);
   DateTime _lastGpsCameraDriveAt = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -139,7 +138,6 @@ class _RideModeScreenState extends State<RideModeScreen>
   RideRoute? _rideRoute;
   WeatherSnapshot? _weatherSnapshot;
   DateTime? _lastWeatherAlertAt;
-  bool _fuelSuggestionShown = false;
   bool _breakReminderShown = false;
 
   // ── Own breadcrumb trail ───────────────────────────────────────────────────
@@ -349,7 +347,9 @@ class _RideModeScreenState extends State<RideModeScreen>
           pos.latitude,
           pos.longitude,
         );
-        _distanceTravelled += distMeters / 1000.0;
+        if (distMeters > 1 && distMeters < 250) {
+          _distanceTravelled += distMeters / 1000.0;
+        }
       }
 
       _currentSpeed = speedKmh;
@@ -429,32 +429,6 @@ class _RideModeScreenState extends State<RideModeScreen>
         type: AppToastType.info,
       );
     }
-
-    final hasFuelStop = (_rideRoute?.stops ?? <RouteStop>[]).any(
-      (stop) => stop.label.toLowerCase().contains('fuel'),
-    );
-    if (!_fuelSuggestionShown && !hasFuelStop && _distanceTravelled >= 80) {
-      _fuelSuggestionShown = true;
-      _showFuelSuggestion(position).ignore();
-    }
-  }
-
-  Future<void> _showFuelSuggestion(Position position) async {
-    try {
-      final stations = await _fuelService.fetchNearbyFuelStations(
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-      if (!mounted || stations.isEmpty) return;
-      final nearest = stations.first;
-      if (nearest.distanceKm <= 8) {
-        showAppToast(
-          context,
-          'Fuel nearby: ${nearest.name} (${nearest.distanceKm.toStringAsFixed(1)} km).',
-          type: AppToastType.info,
-        );
-      }
-    } catch (_) {}
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -465,7 +439,8 @@ class _RideModeScreenState extends State<RideModeScreen>
     if (!mounted) return;
 
     // Check our own offline status from the service.
-    final nowOffline = _trackingService.isOffline;
+    final nowOffline =
+        !_trackingService.isChannelActive && _trackingService.isOffline;
 
     final snapshot = _groupIntelligence.update(
       locations: locations,
@@ -495,17 +470,39 @@ class _RideModeScreenState extends State<RideModeScreen>
 
     _analyticsEngine.recordGroupSnapshot(snapshot);
     _handleGroupAlerts(snapshot);
+    _maybeWarnFollowerDistance(leaderDistances);
     _driveCamera(locations);
+  }
+
+  void _maybeWarnFollowerDistance(Map<String, double> leaderDistances) {
+    if (!_followingLeader || _currentUserId == _leaderId) return;
+    final distance = leaderDistances[_currentUserId];
+    if (distance == null || distance < 1200) return;
+    final now = DateTime.now();
+    if (_lastFollowLeaderDistanceToastAt != null &&
+        now.difference(_lastFollowLeaderDistanceToastAt!) <
+            const Duration(seconds: 60)) {
+      return;
+    }
+    _lastFollowLeaderDistanceToastAt = now;
+    if (!mounted) return;
+    showAppToast(
+      context,
+      'Move closer to the host to stay connected.',
+      type: AppToastType.info,
+    );
   }
 
   void _onRealtimeChanged() {
     if (!mounted) return;
     final state = _realtimeCoordinator.connectionState;
+    final liveTrackingConnected =
+        _trackingService.isChannelActive && !_trackingService.isOffline;
     setState(() {
       _isOffline =
-          _trackingService.isOffline ||
-          state == RealtimeConnectionState.offline ||
-          state == RealtimeConnectionState.reconnecting;
+          !liveTrackingConnected &&
+          (state == RealtimeConnectionState.offline ||
+              state == RealtimeConnectionState.reconnecting);
     });
   }
 
@@ -1165,6 +1162,15 @@ class _RideModeScreenState extends State<RideModeScreen>
     double lng,
   ) async {
     if (_rideData == null) return;
+    if (_leaderId != _currentUserId) {
+      if (!mounted) return;
+      showAppToast(
+        context,
+        'Only the host can add pit stops.',
+        type: AppToastType.info,
+      );
+      return;
+    }
 
     final currentStops = _rideRoute?.stops ?? <RouteStop>[];
 
@@ -1211,6 +1217,15 @@ class _RideModeScreenState extends State<RideModeScreen>
   }
 
   Future<void> _endRide() async {
+    if (_leaderId != _currentUserId) {
+      showAppToast(
+        context,
+        'Only the host can end the ride session.',
+        type: AppToastType.info,
+      );
+      return;
+    }
+
     final confirmed = await showAppConfirmDialog(
       context,
       title: 'End Ride?',
@@ -1477,6 +1492,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                 });
               },
               onEndRide: _endRide,
+              canEndRide: _leaderId == _currentUserId,
               currentLatitude: _currentPosition?.latitude,
               currentLongitude: _currentPosition?.longitude,
               pitStops: _rideRoute?.stops ?? <RouteStop>[],
@@ -1522,7 +1538,8 @@ class _RideModeScreenState extends State<RideModeScreen>
       children: [
         // Tile layer
         TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          subdomains: const ['a', 'b', 'c'],
           userAgentPackageName: 'com.journeysync.app',
         ),
         // Route polyline

@@ -374,6 +374,7 @@ class RideService {
         (matchedRide['title'] ?? matchedRide['name'] ?? 'Ride')
             .toString()
             .trim();
+    final rideStatus = (matchedRide['status'] ?? '').toString().trim();
     final hostId = _rideHostId(matchedRide);
 
     if (hostId.isNotEmpty && hostId == normalizedUserId) {
@@ -391,6 +392,7 @@ class RideService {
         status: JoinByCodeStatus.alreadyJoined,
         rideId: rideId,
         rideTitle: title.isNotEmpty ? title : 'Ride',
+        rideStatus: rideStatus,
       );
     }
 
@@ -407,6 +409,7 @@ class RideService {
       status: JoinByCodeStatus.joinedDirectly,
       rideId: rideId,
       rideTitle: title.isNotEmpty ? title : 'Ride',
+      rideStatus: rideStatus,
     );
   }
 

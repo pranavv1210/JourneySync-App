@@ -303,6 +303,17 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       });
 
       showAppToast(context, message, type: AppToastType.success);
+      if (joinedNow) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        if (!mounted) return;
+        await pushAppRoute<void>(
+          context,
+          ride.ride.isActive
+              ? RideModeScreen(rideId: rideId)
+              : RideLobbyScreen(rideId: rideId),
+        );
+        if (mounted) await _loadNearbyRides();
+      }
     } catch (error) {
       if (!mounted) return;
       showAppToast(context, _joinErrorMessage(error), type: AppToastType.error);
@@ -465,6 +476,20 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
           'You are already part of "${result.rideTitle}".',
       };
       showAppToast(context, message, type: AppToastType.success);
+      final joinedNow =
+          result.status == JoinByCodeStatus.joinedDirectly ||
+          result.status == JoinByCodeStatus.alreadyJoined;
+      if (joinedNow) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        if (!mounted) return;
+        final status = result.rideStatus.trim().toLowerCase();
+        await pushAppRoute<void>(
+          context,
+          status == 'active' || status == 'started' || status == 'live'
+              ? RideModeScreen(rideId: result.rideId)
+              : RideLobbyScreen(rideId: result.rideId),
+        );
+      }
       await _loadNearbyRides();
     } catch (error) {
       if (!mounted) return;
@@ -990,13 +1015,13 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       // has to go somewhere useful rather than sitting disabled on "Joined".
       buttonLabel = isLive ? 'Open live ride' : 'Open ride lobby';
     } else if (current.joined) {
-      buttonLabel = 'Joined';
+      buttonLabel = isLive ? 'Open live ride' : 'Open ride lobby';
     } else if (pending) {
       buttonLabel = 'Request sent';
     } else {
       buttonLabel = 'Join Ride';
     }
-    final buttonLocked = !current.isOwnRide && (current.joined || pending);
+    final buttonLocked = !current.isOwnRide && pending;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -1109,7 +1134,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                           current.isOwnRide
                               ? Icons.arrow_forward_rounded
                               : current.joined
-                              ? Icons.check_rounded
+                              ? Icons.arrow_forward_rounded
                               : pending
                               ? Icons.hourglass_top_rounded
                               : Icons.add_rounded,
@@ -1126,6 +1151,20 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                                 Navigator.pop(sheetContext);
                                 if (current.isOwnRide) {
                                   await _openOwnRide(current);
+                                  return;
+                                }
+                                if (current.joined) {
+                                  await pushAppRoute<void>(
+                                    context,
+                                    isLive
+                                        ? RideModeScreen(
+                                          rideId: current.ride.id,
+                                        )
+                                        : RideLobbyScreen(
+                                          rideId: current.ride.id,
+                                        ),
+                                  );
+                                  if (mounted) await _loadNearbyRides();
                                   return;
                                 }
                                 await _joinRide(current);

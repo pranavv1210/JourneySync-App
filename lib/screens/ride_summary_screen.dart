@@ -136,7 +136,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
     if (data != null && data.distanceKm > 0) {
       return '${data.distanceKm.toStringAsFixed(1)} km';
     }
-    return _metric(const ['distance_km', 'distance'], 'km');
+    return '--';
   }
 
   String _avgSpeedText() {
@@ -759,8 +759,9 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                       children: [
                         TileLayer(
                           urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.example.journeysync',
+                              'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          subdomains: const ['a', 'b', 'c'],
+                          userAgentPackageName: 'com.journeysync.app',
                         ),
                         PolylineLayer(
                           polylines: [
@@ -1202,79 +1203,33 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                         // chrome and buttons never appear in the shared image.
                         RepaintBoundary(key: _posterKey, child: _sharePoster()),
                         const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  // Capture first: popping the dialog would
-                                  // dispose the boundary being captured.
-                                  await _captureAndSharePoster();
-                                  if (!ctx.mounted) return;
-                                  Navigator.pop(ctx);
-                                },
-                                icon: const Icon(Icons.image_rounded, size: 16),
-                                label: const Text(
-                                  'Share image',
-                                  style: TextStyle(
-                                    fontFamily: AppTypography.fontFamily,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onPressed: () async {
+                              // Capture first: popping the dialog would dispose
+                              // the boundary being captured.
+                              await _captureAndSharePoster();
+                              if (!ctx.mounted) return;
+                              Navigator.pop(ctx);
+                            },
+                            icon: const Icon(Icons.ios_share_rounded, size: 18),
+                            label: const Text(
+                              'Share',
+                              style: TextStyle(
+                                fontFamily: AppTypography.fontFamily,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Colors.white54),
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  Navigator.pop(ctx);
-                                  try {
-                                    await SharePlus.instance.share(
-                                      ShareParams(text: _shareSummaryText()),
-                                    );
-                                  } catch (error) {
-                                    if (!mounted) return;
-                                    showAppToast(
-                                      context,
-                                      'Could not open share sheet: $error',
-                                      type: AppToastType.error,
-                                    );
-                                  }
-                                },
-                                icon: const Icon(
-                                  Icons.short_text_rounded,
-                                  size: 16,
-                                ),
-                                label: const Text(
-                                  'Share text',
-                                  style: TextStyle(
-                                    fontFamily: AppTypography.fontFamily,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),

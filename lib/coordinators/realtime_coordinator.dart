@@ -233,6 +233,33 @@ class RealtimeCoordinator extends ChangeNotifier {
   static bool isSosAlert(Map<String, dynamic> alert) =>
       (alert['type'] ?? '').toString().trim().toLowerCase() != alertTypeSafe;
 
+  static bool _isMissingAlertLocationColumn(PostgrestException error) {
+    final text = '${error.code} ${error.message}'.toLowerCase();
+    return (text.contains('latitude') || text.contains('longitude')) &&
+        (text.contains('column') ||
+            text.contains('schema cache') ||
+            text.contains('pgrst204') ||
+            text.contains('42703'));
+  }
+
+  Future<Map<String, dynamic>> _insertRideAlert(
+    Map<String, dynamic> payload,
+  ) async {
+    final insertedPayload = Map<String, dynamic>.from(payload);
+    try {
+      await _client.from('ride_alerts').insert(insertedPayload);
+      return insertedPayload;
+    } on PostgrestException catch (error) {
+      if (!_isMissingAlertLocationColumn(error)) rethrow;
+      final legacyPayload =
+          Map<String, dynamic>.from(payload)
+            ..remove('latitude')
+            ..remove('longitude');
+      await _client.from('ride_alerts').insert(legacyPayload);
+      return legacyPayload;
+    }
+  }
+
   /// Fires an SOS alert for the given ride.
   ///
   /// Returns the row that was sent so the caller can show it immediately
@@ -256,9 +283,9 @@ class RealtimeCoordinator extends ChangeNotifier {
       'created_at': DateTime.now().toIso8601String(),
     };
 
-    // Deliberately unguarded: if the insert fails, nobody is alerted and the
-    // caller must say so.
-    await _client.from('ride_alerts').insert(payload);
+    // Deliberately unguarded beyond schema compatibility: if the insert fails,
+    // nobody is alerted and the caller must say so.
+    final insertedPayload = await _insertRideAlert(payload);
 
     // Everything below is bookkeeping, and is guarded individually. The insert
     // above is what actually reaches the other riders, so a failed notification
@@ -271,7 +298,7 @@ class RealtimeCoordinator extends ChangeNotifier {
         body: 'Emergency alert is live for your ride.',
         category: AppNotificationCategory.sos,
         rideId: rideId,
-        data: payload,
+        data: insertedPayload,
       );
     } catch (error) {
       debugPrint('[Realtime] SOS notification not persisted: $error');
@@ -286,7 +313,7 @@ class RealtimeCoordinator extends ChangeNotifier {
       debugPrint('[Realtime] SOS local notification failed: $error');
     }
 
-    return payload;
+    return insertedPayload;
   }
 
   /// Tells the rest of the ride that [profileId] is safe again.
@@ -301,7 +328,7 @@ class RealtimeCoordinator extends ChangeNotifier {
     double? latitude,
     double? longitude,
   }) async {
-    await _client.from('ride_alerts').insert(<String, dynamic>{
+    await _insertRideAlert(<String, dynamic>{
       'ride_id': rideId.trim(),
       'profile_id': profileId.trim(),
       'user_name': profileName.trim().isEmpty ? 'Rider' : profileName.trim(),

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../coordinators/active_ride_coordinator.dart';
 import '../models/ride_record.dart';
 import '../services/app_navigation.dart';
+import '../services/ride_analytics_engine.dart';
 import '../services/ride_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_main_bottom_nav.dart';
@@ -26,6 +27,7 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
   final RideService _rideService = RideService();
   bool _loading = true;
   List<RideRecord> _rides = const <RideRecord>[];
+  double _totalDistanceKm = 0;
 
   @override
   void initState() {
@@ -40,13 +42,27 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
       final userId = (prefs.getString('userId') ?? '').trim();
       if (userId.isEmpty) return;
       final rides = await _rideService.fetchRecentRides(userId, limit: 80);
+      final historyIds =
+          rides
+              .where((ride) => ride.isCompleted)
+              .map((ride) => ride.id)
+              .toSet();
+      final stats =
+          historyIds.isEmpty
+              ? null
+              : await RideAnalyticsEngine.aggregateProfileStatsForRideIds(
+                historyIds,
+              );
       final activeSnapshot = ActiveRideCoordinator.instance.snapshot;
       if (activeSnapshot.hasActiveRide &&
           !rides.any((ride) => ride.id == activeSnapshot.rideId)) {
         await ActiveRideCoordinator.instance.clear();
       }
       if (!mounted) return;
-      setState(() => _rides = rides);
+      setState(() {
+        _rides = rides;
+        _totalDistanceKm = stats?.totalDistanceKm ?? 0;
+      });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -67,8 +83,7 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
   List<RideRecord> get _history =>
       _rides.where((ride) => ride.isCompleted).toList(growable: false);
 
-  double get _totalDistance =>
-      _history.length * 18.0; // until ride_summaries distance is wired in.
+  double get _totalDistance => _totalDistanceKm;
 
   Future<void> _openRide(RideRecord ride) async {
     if (ride.isActive) {

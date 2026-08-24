@@ -132,7 +132,8 @@ class _RideMapThumbnailState extends State<RideMapThumbnail> {
         ),
         children: [
           TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            subdomains: const ['a', 'b', 'c'],
             userAgentPackageName: 'com.journeysync.app',
           ),
           if (geometry.hasRoute)

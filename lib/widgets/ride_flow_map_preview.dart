@@ -69,7 +69,8 @@ class _RideFlowMapPreviewState extends State<RideFlowMapPreview> {
                 children: [
                   TileLayer(
                     urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    subdomains: const ['a', 'b', 'c'],
                     userAgentPackageName: 'com.journeysync.app',
                   ),
                   MarkerLayer(

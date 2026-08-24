@@ -1,9 +1,9 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../models/rider_location.dart';
 import '../models/ride_route.dart';
-import '../services/fuel_service.dart';
 import '../services/group_ride_intelligence.dart';
 import 'haptic_button.dart';
 
@@ -25,6 +25,7 @@ class RealtimeRideHUD extends StatefulWidget {
     required this.followingLeader,
     required this.onFollowLeaderToggled,
     required this.onEndRide,
+    required this.canEndRide,
     required this.currentLatitude,
     required this.currentLongitude,
     required this.pitStops,
@@ -46,6 +47,7 @@ class RealtimeRideHUD extends StatefulWidget {
   final bool followingLeader;
   final ValueChanged<bool> onFollowLeaderToggled;
   final VoidCallback onEndRide;
+  final bool canEndRide;
   final double? currentLatitude;
   final double? currentLongitude;
   final List<RouteStop> pitStops;
@@ -57,11 +59,7 @@ class RealtimeRideHUD extends StatefulWidget {
 
 class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
   bool _isExpanded = false;
-  int _selectedTab = 0; // 0 = Dashboard, 1 = Pack, 2 = Stops, 3 = Fuel
-
-  final FuelService _fuelService = FuelService();
-  List<FuelStation> _fuelStations = [];
-  bool _loadingFuel = false;
+  int _selectedTab = 0; // 0 = Dashboard, 1 = Pack, 2 = Stops
 
   String _formatDuration(int s) {
     final h = s ~/ 3600;
@@ -91,28 +89,6 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
       return const Color(0xFFEF4444);
     } catch (_) {
       return AppColors.textSecondary;
-    }
-  }
-
-  Future<void> _fetchFuelStations() async {
-    if (_loadingFuel) return;
-    setState(() => _loadingFuel = true);
-    try {
-      final stations = await _fuelService.fetchNearbyFuelStations(
-        latitude: widget.currentLatitude,
-        longitude: widget.currentLongitude,
-      );
-      if (mounted) {
-        setState(() {
-          _fuelStations = stations;
-          _loadingFuel = false;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching fuel stations: $e");
-      if (mounted) {
-        setState(() => _loadingFuel = false);
-      }
     }
   }
 
@@ -150,9 +126,7 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                     value: selectedType,
                     isExpanded: true,
                     items:
-                        <String>['Tea', 'Fuel', 'Food', 'Rest'].map((
-                          String value,
-                        ) {
+                        <String>['Tea', 'Food', 'Rest'].map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text('$value Stop'),
@@ -312,19 +286,31 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                         _buildDashboardTab(connectionLabel),
                         _buildPackTab(),
                         _buildStopsTab(),
-                        _buildFuelTab(),
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-                    child: HapticButton(
-                      label: 'End Ride Session',
-                      icon: Icons.cancel_rounded,
-                      variant: HapticButtonVariant.danger,
-                      onPressed: widget.onEndRide,
+                  if (widget.canEndRide)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                      child: HapticButton(
+                        label: 'End Ride Session',
+                        icon: Icons.cancel_rounded,
+                        variant: HapticButtonVariant.danger,
+                        onPressed: widget.onEndRide,
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                      child: Text(
+                        'Only the host can end the ride session.',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               ],
             ),
@@ -335,7 +321,7 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
   }
 
   Widget _buildTabs() {
-    final tabs = ["Dashboard", "Pack", "Stops", "Fuel"];
+    final tabs = ["Dashboard", "Pack", "Stops"];
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -351,9 +337,6 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                 setState(() {
                   _selectedTab = idx;
                 });
-                if (idx == 3) {
-                  _fetchFuelStations();
-                }
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -766,9 +749,6 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
               if (type == 'tea') {
                 icon = Icons.local_cafe_rounded;
                 color = Colors.brown;
-              } else if (type == 'fuel') {
-                icon = Icons.local_gas_station_rounded;
-                color = Colors.amber.shade700;
               } else if (type == 'food') {
                 icon = Icons.restaurant_rounded;
                 color = Colors.red;
@@ -803,11 +783,10 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                     Icons.navigation_outlined,
                     color: AppColors.primary,
                   ),
-                  onPressed: () {
-                    if (stop.latitude != null && stop.longitude != null) {
-                      _fuelService.navigateTo(stop.latitude!, stop.longitude!);
-                    }
-                  },
+                  onPressed:
+                      stop.latitude != null && stop.longitude != null
+                          ? () => _openMap(stop.latitude!, stop.longitude!)
+                          : null,
                 ),
               ),
             );
@@ -816,140 +795,11 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
     );
   }
 
-  Widget _buildFuelTab() {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      children: [
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'NEARBY FUEL STATIONS',
-              style: AppTypography.labelMedium.copyWith(
-                color: AppColors.primary,
-                letterSpacing: 1.0,
-              ),
-            ),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              onPressed: _fetchFuelStations,
-              icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-              tooltip: 'Refresh Fuel Stations',
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (_loadingFuel)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 30),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (_fuelStations.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-              child: Text(
-                'No nearby fuel stations found.',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-          )
-        else
-          ..._fuelStations.map((station) {
-            return Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: Colors.amber.withValues(alpha: 0.12),
-                      child: Icon(
-                        Icons.local_gas_station_rounded,
-                        color: Colors.amber.shade800,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            station.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.titleMedium.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Text(
-                                '${station.distanceKm.toStringAsFixed(1)} km away',
-                                style: AppTypography.caption.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(
-                                Icons.star_rounded,
-                                size: 14,
-                                color: Colors.orange,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                station.rating.toStringAsFixed(1),
-                                style: AppTypography.caption.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.navigation_outlined,
-                        color: AppColors.primary,
-                      ),
-                      onPressed:
-                          () => _fuelService.navigateTo(
-                            station.latitude,
-                            station.longitude,
-                          ),
-                      tooltip: 'Navigate',
-                    ),
-                    if (_isCurrentUserHost())
-                      IconButton(
-                        icon: const Icon(
-                          Icons.add_circle_outline_rounded,
-                          color: Colors.green,
-                        ),
-                        onPressed: () {
-                          widget.onAddPitStop(
-                            'Fuel',
-                            station.name,
-                            station.latitude,
-                            station.longitude,
-                          );
-                        },
-                        tooltip: 'Add Stop',
-                      ),
-                  ],
-                ),
-              ),
-            );
-          }),
-      ],
+  Future<void> _openMap(double lat, double lng) async {
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
     );
+    await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   Widget _buildMiniStat({

@@ -46,6 +46,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   String userAvatarUrl = "";
   String currentUserId = "";
   int maxRiders = 20;
+  int liveCrewCount = 0;
   bool joinRequestFeatureAvailable = true;
   List<_LobbyMember> crew = <_LobbyMember>[];
   List<_LobbyRequest> pendingRequests = <_LobbyRequest>[];
@@ -74,10 +75,12 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
 
     final loadedCrew = await _fetchCrew(data);
     final loadedRequests = await _fetchPendingJoinRequests();
+    final loadedLiveCount = await _fetchLiveCrewCount();
 
     setState(() {
       ride = data;
       maxRiders = safeMax;
+      liveCrewCount = loadedLiveCount;
       crew = loadedCrew;
       pendingRequests = loadedRequests;
       loading = false;
@@ -406,6 +409,31 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     return members;
   }
 
+  Future<int> _fetchLiveCrewCount() async {
+    try {
+      final rows = await supabase
+          .from('live_locations')
+          .select('profile_id,updated_at')
+          .eq('ride_id', widget.rideId);
+      final cutoff = DateTime.now().toUtc().subtract(
+        const Duration(minutes: 2),
+      );
+      final liveIds = <String>{};
+      for (final row in rows) {
+        final id = (row['profile_id'] ?? '').toString().trim();
+        final updatedAt = DateTime.tryParse(
+          (row['updated_at'] ?? '').toString(),
+        );
+        if (id.isNotEmpty && updatedAt != null && updatedAt.isAfter(cutoff)) {
+          liveIds.add(id);
+        }
+      }
+      return liveIds.length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   Future<List<_LobbyRequest>> _fetchPendingJoinRequests() async {
     try {
       final rows = await supabase
@@ -593,6 +621,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   }
 
   Future<void> _startRide() async {
+    if (!_isCurrentUserHost()) {
+      _showInfo('Only the host can start this ride.');
+      return;
+    }
     try {
       await _rideService.startRide(widget.rideId);
       if (!mounted) return;
@@ -611,6 +643,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   }
 
   Future<void> _approveJoinRequest(_LobbyRequest request) async {
+    if (!_isCurrentUserHost()) {
+      _showInfo('Only the host can manage join requests.');
+      return;
+    }
     if (!joinRequestFeatureAvailable) {
       _showInfo("No join requests are available yet.");
       return;
@@ -627,6 +663,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   }
 
   Future<void> _rejectJoinRequest(_LobbyRequest request) async {
+    if (!_isCurrentUserHost()) {
+      _showInfo('Only the host can manage join requests.');
+      return;
+    }
     if (!joinRequestFeatureAvailable) {
       _showInfo("No join requests are available yet.");
       return;
@@ -1003,10 +1043,15 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                     // The access code card used to sit here, duplicating what
                     // Invite already shows. Invite is now the single place the
                     // code is revealed, copied, and shared.
-                    _rideActionPanel(primary, primaryDark),
-                    const SizedBox(height: 16),
-                    _joinRequests(primary),
-                    const SizedBox(height: 16),
+                    if (_isCurrentUserHost()) ...[
+                      _rideActionPanel(primary, primaryDark),
+                      const SizedBox(height: 16),
+                      _joinRequests(primary),
+                      const SizedBox(height: 16),
+                    ] else ...[
+                      _waitingForHostCard(primary),
+                      const SizedBox(height: 16),
+                    ],
                     _participants(primary, forest),
                     const SizedBox(height: 16),
                     _briefing(forest),
@@ -1221,7 +1266,8 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       ),
       children: [
         TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          subdomains: const ['a', 'b', 'c'],
           userAgentPackageName: 'com.journeysync.app',
         ),
         if (start != null || end != null)
@@ -1282,6 +1328,40 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _waitingForHostCard(Color primary) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: primary.withValues(alpha: 0.12)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.hourglass_top_rounded, color: primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Waiting for the host to start the ride.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -1367,7 +1447,11 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                 ),
                 child: Row(
                   children: [
-                    _avatar(url: request.avatarUrl, radius: 18),
+                    _avatar(
+                      url: request.avatarUrl,
+                      name: request.name,
+                      radius: 18,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -1426,13 +1510,26 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
                 color: forest,
               ),
             ),
-            Text(
-              "${crew.length}/$maxRiders",
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-                fontWeight: FontWeight.w600,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  "Crew: ${crew.length}/$maxRiders",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  "Live: $liveCrewCount",
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1445,7 +1542,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
             crossAxisCount: 3,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            childAspectRatio: 0.72,
+            childAspectRatio: 0.64,
           ),
           itemBuilder: (context, index) {
             if (index == crew.length) return _inviteCard(primary);
@@ -1468,7 +1565,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     final isCurrent = member.id.isNotEmpty && member.id == currentUserId;
     final displayName = isCurrent ? "You" : member.name;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1485,10 +1582,11 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
         ],
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Stack(
             children: [
-              _avatar(url: member.avatarUrl, radius: 28),
+              _avatar(url: member.avatarUrl, name: displayName, radius: 28),
               Positioned(
                 bottom: 0,
                 right: 0,
@@ -1505,7 +1603,12 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(displayName, style: TextStyle(fontWeight: FontWeight.w700)),
+          Text(
+            displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
           Text(
             member.bike,
             maxLines: 1,
@@ -1518,7 +1621,7 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
           ),
           if (member.isHost)
             Container(
-              margin: const EdgeInsets.only(top: 6),
+              margin: const EdgeInsets.only(top: 8),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: primary,
@@ -1539,22 +1642,49 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     );
   }
 
-  Widget _avatar({required String url, required double radius}) {
+  Widget _avatar({
+    required String url,
+    required String name,
+    required double radius,
+  }) {
     final clean = url.trim();
+    final initial =
+        name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
     if (clean.isNotEmpty) {
       return CircleAvatar(
         radius: radius,
-        backgroundImage: NetworkImage(clean),
-        onBackgroundImageError: (_, __) {},
+        backgroundColor: const Color(0xFFF2F4F7),
+        child: ClipOval(
+          child: Image.network(
+            clean,
+            width: radius * 2,
+            height: radius * 2,
+            fit: BoxFit.cover,
+            errorBuilder:
+                (_, __, ___) => Center(
+                  child: Text(
+                    initial,
+                    style: TextStyle(
+                      color: AppColors.forest,
+                      fontWeight: FontWeight.w800,
+                      fontSize: radius * 0.7,
+                    ),
+                  ),
+                ),
+          ),
+        ),
       );
     }
     return CircleAvatar(
       radius: radius,
       backgroundColor: const Color(0xFFF2F4F7),
-      child: Icon(
-        Icons.person_rounded,
-        size: radius,
-        color: Colors.grey.shade500,
+      child: Text(
+        initial,
+        style: TextStyle(
+          color: AppColors.forest,
+          fontWeight: FontWeight.w800,
+          fontSize: radius * 0.7,
+        ),
       ),
     );
   }
