@@ -32,7 +32,7 @@ as $$
     (
       select p.id::text
       from public.profiles p
-      where p.auth_user_id = auth.uid()
+      where to_jsonb(p)->>'auth_user_id' = auth.uid()::text
          or p.id::text = auth.uid()::text
       limit 1
     ),
@@ -52,18 +52,22 @@ as $$
     from public.rides r
     where r.id = target_ride_id
       and (
-        coalesce(r.host_id::text, '') = public.current_profile_id_text()
-        or coalesce(r.profile_id::text, '') = public.current_profile_id_text()
-        or coalesce(r.creator_id::text, '') = public.current_profile_id_text()
-        or coalesce(r.user_id::text, '') = public.current_profile_id_text()
+        coalesce(to_jsonb(r)->>'host_id', '') = public.current_profile_id_text()
+        or coalesce(to_jsonb(r)->>'profile_id', '') = public.current_profile_id_text()
+        or coalesce(to_jsonb(r)->>'creator_id', '') = public.current_profile_id_text()
+        or coalesce(to_jsonb(r)->>'user_id', '') = public.current_profile_id_text()
       )
   )
   or exists (
     select 1
     from public.ride_members rm
     where rm.ride_id = target_ride_id
-      and rm.member_id::text = public.current_profile_id_text()
-      and coalesce(rm.status, 'joined') <> 'removed'
+      and coalesce(
+        to_jsonb(rm)->>'member_id',
+        to_jsonb(rm)->>'user_id',
+        ''
+      ) = public.current_profile_id_text()
+      and coalesce(to_jsonb(rm)->>'status', 'joined') <> 'removed'
   )
 $$;
 
@@ -79,10 +83,10 @@ as $$
     from public.rides r
     where r.id = target_ride_id
       and (
-        coalesce(r.host_id::text, '') = public.current_profile_id_text()
-        or coalesce(r.profile_id::text, '') = public.current_profile_id_text()
-        or coalesce(r.creator_id::text, '') = public.current_profile_id_text()
-        or coalesce(r.user_id::text, '') = public.current_profile_id_text()
+        coalesce(to_jsonb(r)->>'host_id', '') = public.current_profile_id_text()
+        or coalesce(to_jsonb(r)->>'profile_id', '') = public.current_profile_id_text()
+        or coalesce(to_jsonb(r)->>'creator_id', '') = public.current_profile_id_text()
+        or coalesce(to_jsonb(r)->>'user_id', '') = public.current_profile_id_text()
       )
   )
 $$;
