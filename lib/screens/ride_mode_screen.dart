@@ -115,6 +115,8 @@ class _RideModeScreenState extends State<RideModeScreen>
   /// until the rider says they are safe.
   bool _sosActive = false;
   bool _sosBusy = false;
+  bool _hostAcknowledgedActiveSos = false;
+  bool _groupAlertedActiveSos = false;
 
   /// When my own SOS overlay was raised locally.
   ///
@@ -689,18 +691,39 @@ class _RideModeScreenState extends State<RideModeScreen>
     final fromId =
         (alert['profile_id'] ?? alert['user_id'] ?? '').toString().trim();
     final isMine = fromId.isNotEmpty && fromId == _currentUserId;
+    final type = RealtimeCoordinator.alertType(alert);
 
     // A stand-down row travels the same channel as the SOS it cancels, so it
     // arrives here too. It must clear the overlay, not raise a new one.
-    if (!RealtimeCoordinator.isSosAlert(alert)) {
+    if (RealtimeCoordinator.isSafeAlert(alert)) {
       final activeFrom = _activeSosRiderId();
       if (isMine || activeFrom.isEmpty || activeFrom == fromId) {
         _alertDismissTimer?.cancel();
         setState(() {
           _activeAlert = null;
           if (isMine) _sosActive = false;
+          _hostAcknowledgedActiveSos = false;
+          _groupAlertedActiveSos = false;
         });
       }
+      return;
+    }
+
+    if (type == RealtimeCoordinator.alertTypeSosAcknowledged) {
+      if (_activeSosRiderId() == fromId || isMine) {
+        setState(() => _hostAcknowledgedActiveSos = true);
+      }
+      return;
+    }
+
+    if (type == RealtimeCoordinator.alertTypeGroupAcknowledged) {
+      return;
+    }
+
+    if (!RealtimeCoordinator.isSosAlert(alert)) return;
+    if (type == RealtimeCoordinator.alertTypeSos &&
+        !isMine &&
+        !_isCurrentUserHost) {
       return;
     }
 
@@ -726,14 +749,10 @@ class _RideModeScreenState extends State<RideModeScreen>
     setState(() {
       _activeAlert = alert;
       if (isMine) _sosActive = true;
+      _hostAcknowledgedActiveSos = false;
+      _groupAlertedActiveSos = type == RealtimeCoordinator.alertTypeGroupSos;
     });
     _alertDismissTimer?.cancel();
-    // My own alert stays put until I stand it down or acknowledge it; someone
-    // else's clears itself so the map is usable again.
-    if (isMine) return;
-    _alertDismissTimer = Timer(const Duration(seconds: 15), () {
-      if (mounted) setState(() => _activeAlert = null);
-    });
   }
 
   void _onRouteUpdate(Map<String, dynamic> data) {
@@ -897,8 +916,10 @@ class _RideModeScreenState extends State<RideModeScreen>
         rideId: widget.rideId,
         profileId: _currentUserId,
         profileName: _currentUserName,
+        avatarUrl: _currentUserAvatarUrl,
         latitude: _currentPosition?.latitude,
         longitude: _currentPosition?.longitude,
+        broadcastToGroup: _leaderId == _currentUserId,
       );
       await _realtimeCoordinator.updateMyPresence(
         profileId: _currentUserId,
@@ -909,6 +930,9 @@ class _RideModeScreenState extends State<RideModeScreen>
       setState(() {
         _sosBusy = false;
         _sosActive = true;
+        _groupAlertedActiveSos =
+            RealtimeCoordinator.alertType(alert) ==
+            RealtimeCoordinator.alertTypeGroupSos;
       });
       // Raise my own alert card straight away. Waiting for the realtime echo
       // meant that a rider alone on a ride - or on a weak connection - saw a
@@ -952,6 +976,7 @@ class _RideModeScreenState extends State<RideModeScreen>
         rideId: widget.rideId,
         profileId: _currentUserId,
         profileName: _currentUserName,
+        avatarUrl: _currentUserAvatarUrl,
         latitude: _currentPosition?.latitude,
         longitude: _currentPosition?.longitude,
       );
@@ -970,6 +995,8 @@ class _RideModeScreenState extends State<RideModeScreen>
         _sosBusy = false;
         _sosActive = false;
         _activeAlert = null;
+        _hostAcknowledgedActiveSos = false;
+        _groupAlertedActiveSos = false;
       });
       showAppToast(context, 'SOS cleared. Riders have been told you are safe.');
     } catch (e) {
@@ -2058,12 +2085,145 @@ class _RideModeScreenState extends State<RideModeScreen>
     }
   }
 
+  bool get _isCurrentUserHost => _leaderId == _currentUserId;
+
+  String _activeSosAvatarUrl() {
+    final fromId = _activeSosRiderId();
+    final payloadAvatar = (_activeAlert?['avatar_url'] ?? '').toString().trim();
+    if (payloadAvatar.isNotEmpty) return payloadAvatar;
+    if (fromId == _currentUserId && _currentUserAvatarUrl.isNotEmpty) {
+      return _currentUserAvatarUrl;
+    }
+    for (final rider in _riderLocations) {
+      if (rider.userId == fromId && (rider.avatarUrl ?? '').trim().isNotEmpty) {
+        return rider.avatarUrl!.trim();
+      }
+    }
+    final members = ActiveRideCoordinator.instance.snapshot.members;
+    for (final member in members) {
+      if (member.userId == fromId && member.avatarUrl.trim().isNotEmpty) {
+        return member.avatarUrl.trim();
+      }
+    }
+    return '';
+  }
+
+  String _initialsFor(String name) {
+    final parts =
+        name
+            .trim()
+            .split(RegExp(r'\s+'))
+            .where((part) => part.isNotEmpty)
+            .toList();
+    if (parts.isEmpty) return 'SOS';
+    final initials = parts.take(2).map((part) => part[0]).join();
+    return initials.toUpperCase();
+  }
+
+  Future<void> _acknowledgeSosAsHost() async {
+    final alert = _activeAlert;
+    if (alert == null || _sosBusy) return;
+    setState(() => _sosBusy = true);
+    try {
+      await _realtimeCoordinator.acknowledgeSOS(
+        rideId: widget.rideId,
+        sosProfileId: _activeSosRiderId(),
+        sosProfileName: (alert['user_name'] ?? 'Rider').toString(),
+        sosAvatarUrl: _activeSosAvatarUrl(),
+        hostProfileId: _currentUserId,
+        originalAlertId: (alert['id'] ?? '').toString(),
+        latitude: (alert['latitude'] as num?)?.toDouble(),
+        longitude: (alert['longitude'] as num?)?.toDouble(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _sosBusy = false;
+        _hostAcknowledgedActiveSos = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _sosBusy = false);
+      showAppToast(
+        context,
+        'Could not acknowledge SOS. Please try again.',
+        type: AppToastType.error,
+      );
+    }
+  }
+
+  Future<void> _alertGroupForActiveSos() async {
+    final alert = _activeAlert;
+    if (alert == null || _sosBusy) return;
+    setState(() => _sosBusy = true);
+    try {
+      final groupAlert = await _realtimeCoordinator.alertGroupSOS(
+        rideId: widget.rideId,
+        sosProfileId: _activeSosRiderId(),
+        sosProfileName: (alert['user_name'] ?? 'Rider').toString(),
+        sosAvatarUrl: _activeSosAvatarUrl(),
+        hostProfileId: _currentUserId,
+        originalAlertId: (alert['id'] ?? '').toString(),
+        latitude: (alert['latitude'] as num?)?.toDouble(),
+        longitude: (alert['longitude'] as num?)?.toDouble(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _sosBusy = false;
+        _activeAlert = groupAlert;
+        _groupAlertedActiveSos = true;
+      });
+      showAppToast(context, 'Emergency alert sent to the ride group.');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _sosBusy = false);
+      showAppToast(
+        context,
+        'Could not alert the group. Please try again.',
+        type: AppToastType.error,
+      );
+    }
+  }
+
+  Future<void> _acknowledgeGroupSos() async {
+    final alert = _activeAlert;
+    if (alert == null || _sosBusy) return;
+    setState(() => _sosBusy = true);
+    try {
+      await _realtimeCoordinator.acknowledgeGroupSOS(
+        rideId: widget.rideId,
+        sosProfileId: _activeSosRiderId(),
+        sosProfileName: (alert['user_name'] ?? 'Rider').toString(),
+        sosAvatarUrl: _activeSosAvatarUrl(),
+        acknowledgedByProfileId: _currentUserId,
+        originalAlertId: (alert['id'] ?? '').toString(),
+        latitude: (alert['latitude'] as num?)?.toDouble(),
+        longitude: (alert['longitude'] as num?)?.toDouble(),
+      );
+      if (!mounted) return;
+      _alertDismissTimer?.cancel();
+      setState(() {
+        _sosBusy = false;
+        _activeAlert = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _sosBusy = false);
+      showAppToast(
+        context,
+        'Could not acknowledge the group SOS.',
+        type: AppToastType.error,
+      );
+    }
+  }
+
   Widget _buildSOSOverlay() {
-    final riderName = (_activeAlert!['user_name'] ?? 'Rider').toString();
+    final riderName = (_activeAlert!['user_name'] ?? 'Rider').toString().trim();
     final lat = (_activeAlert!['latitude'] as num?)?.toDouble();
     final lng = (_activeAlert!['longitude'] as num?)?.toDouble();
     final timeStr = (_activeAlert!['created_at'] ?? '').toString();
     final time = _formatTime(timeStr);
+    final type = RealtimeCoordinator.alertType(_activeAlert!);
+    final isGroupAlert = type == RealtimeCoordinator.alertTypeGroupSos;
     // My own alert reads differently: the useful actions are calling for help
     // and standing the alert down, not navigating to myself. Both sides must be
     // non-empty, or an alert row with no profile_id would claim to be mine.
@@ -2072,6 +2232,10 @@ class _RideModeScreenState extends State<RideModeScreen>
         alertFrom.isNotEmpty &&
         _currentUserId.isNotEmpty &&
         alertFrom == _currentUserId;
+    final showHostControls =
+        _isCurrentUserHost && !isMine && !isGroupAlert && alertFrom.isNotEmpty;
+    final showGroupAck = !isMine && isGroupAlert && !_isCurrentUserHost;
+    final avatarUrl = _activeSosAvatarUrl();
 
     double? distance;
     if (lat != null && lng != null && _currentPosition != null) {
@@ -2102,6 +2266,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 24),
                   padding: const EdgeInsets.all(24),
+                  constraints: const BoxConstraints(maxWidth: 420),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(28),
@@ -2125,22 +2290,48 @@ class _RideModeScreenState extends State<RideModeScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.emergency_rounded,
-                          color: Colors.red,
-                          size: 40,
+                      Text(
+                        'SOS',
+                        style: TextStyle(
+                          color: Color.lerp(
+                            Colors.white,
+                            Colors.red.shade100,
+                            pulseVal,
+                          ),
+                          fontFamily: AppTypography.fontFamily,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 46,
+                          letterSpacing: 0,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 10),
+                      CircleAvatar(
+                        radius: 38,
+                        backgroundColor: Colors.red.withValues(alpha: 0.22),
+                        backgroundImage:
+                            avatarUrl.isNotEmpty
+                                ? NetworkImage(avatarUrl)
+                                : null,
+                        child:
+                            avatarUrl.isEmpty
+                                ? Text(
+                                  _initialsFor(riderName),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontFamily: AppTypography.fontFamily,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 18,
+                                  ),
+                                )
+                                : null,
+                      ),
+                      const SizedBox(height: 16),
                       Text(
-                        isMine ? 'YOUR SOS IS LIVE' : 'CRITICAL SOS ALERT',
+                        isMine
+                            ? 'YOUR SOS IS LIVE'
+                            : isGroupAlert
+                            ? 'GROUP SOS ALERT'
+                            : 'CRITICAL SOS ALERT',
                         style: const TextStyle(
                           color: Colors.red,
                           fontFamily: AppTypography.fontFamily,
@@ -2158,7 +2349,9 @@ class _RideModeScreenState extends State<RideModeScreen>
                                     'with your live location.'
                                 : 'Recorded with your live location. Riders who '
                                     'come online will see it.'
-                            : '$riderName needs emergency assistance!',
+                            : isGroupAlert
+                            ? '$riderName needs emergency assistance. Acknowledge this alert.'
+                            : '$riderName needs emergency assistance. Acknowledge, then alert the group.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white,
@@ -2180,6 +2373,10 @@ class _RideModeScreenState extends State<RideModeScreen>
                         child: Column(
                           children: [
                             _buildSOSDetailRow(
+                              'Rider',
+                              riderName.isEmpty ? 'Rider' : riderName,
+                            ),
+                            _buildSOSDetailRow(
                               'Location',
                               lat != null && lng != null
                                   ? '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}'
@@ -2191,6 +2388,10 @@ class _RideModeScreenState extends State<RideModeScreen>
                                 '${distance.toStringAsFixed(2)} km',
                               ),
                             _buildSOSDetailRow('Time Triggered', time),
+                            if (_hostAcknowledgedActiveSos)
+                              _buildSOSDetailRow('Host Status', 'Acknowledged'),
+                            if (_groupAlertedActiveSos || isGroupAlert)
+                              _buildSOSDetailRow('Group Status', 'Alerted'),
                           ],
                         ),
                       ),
@@ -2309,6 +2510,58 @@ class _RideModeScreenState extends State<RideModeScreen>
                         ],
                       ),
                       const SizedBox(height: 12),
+                      if (showHostControls && !_hostAcknowledgedActiveSos)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: FilledButton.icon(
+                            onPressed: _sosBusy ? null : _acknowledgeSosAsHost,
+                            icon: const Icon(Icons.check_circle_rounded),
+                            label: const Text('Acknowledge'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.red.shade700,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      if (showHostControls && _hostAcknowledgedActiveSos) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: FilledButton.icon(
+                            onPressed:
+                                _sosBusy || _groupAlertedActiveSos
+                                    ? null
+                                    : _alertGroupForActiveSos,
+                            icon: const Icon(Icons.campaign_rounded),
+                            label: Text(
+                              _groupAlertedActiveSos
+                                  ? 'Group Alerted'
+                                  : 'Alert Group',
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.red.shade700,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (showGroupAck)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: FilledButton.icon(
+                            onPressed: _sosBusy ? null : _acknowledgeGroupSos,
+                            icon: const Icon(Icons.check_circle_rounded),
+                            label: const Text('Acknowledge'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.red.shade700,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      if (showHostControls || showGroupAck)
+                        const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
                         height: 48,
@@ -2325,9 +2578,12 @@ class _RideModeScreenState extends State<RideModeScreen>
                           onPressed:
                               isMine
                                   ? (_sosBusy ? null : _standDownSOS)
-                                  : () => setState(() => _activeAlert = null),
+                                  : () {
+                                    _alertDismissTimer?.cancel();
+                                    setState(() => _activeAlert = null);
+                                  },
                           child: Text(
-                            isMine ? "I'm safe - clear my SOS" : 'Acknowledge',
+                            isMine ? "I'm safe - clear my SOS" : 'Hide',
                             style: const TextStyle(
                               color: Colors.white70,
                               fontFamily: AppTypography.fontFamily,
@@ -2368,21 +2624,31 @@ class _RideModeScreenState extends State<RideModeScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 13,
-              fontFamily: AppTypography.fontFamily,
+          Expanded(
+            flex: 3,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 13,
+                fontFamily: AppTypography.fontFamily,
+              ),
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontFamily: AppTypography.fontFamily,
-              fontWeight: FontWeight.bold,
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 5,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontFamily: AppTypography.fontFamily,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],

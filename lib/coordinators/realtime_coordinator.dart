@@ -222,6 +222,15 @@ class RealtimeCoordinator extends ChangeNotifier {
   /// `ride_alerts.type` for a live emergency.
   static const String alertTypeSos = 'sos';
 
+  /// `ride_alerts.type` for the host acknowledging a rider SOS.
+  static const String alertTypeSosAcknowledged = 'sos_acknowledged';
+
+  /// `ride_alerts.type` for an SOS broadcast to the full ride group.
+  static const String alertTypeGroupSos = 'group_sos';
+
+  /// `ride_alerts.type` for a rider acknowledging a group SOS broadcast.
+  static const String alertTypeGroupAcknowledged = 'group_acknowledged';
+
   /// `ride_alerts.type` for a rider standing their own SOS down.
   ///
   /// Presence is not a shared signal - [updateMyPresence] persists only
@@ -230,12 +239,28 @@ class RealtimeCoordinator extends ChangeNotifier {
   /// a row of its own, or everyone else keeps seeing the alert.
   static const String alertTypeSafe = 'safe';
 
-  static bool isSosAlert(Map<String, dynamic> alert) =>
-      (alert['type'] ?? '').toString().trim().toLowerCase() != alertTypeSafe;
+  static String alertType(Map<String, dynamic> alert) =>
+      (alert['type'] ?? '').toString().trim().toLowerCase();
 
-  static bool _isMissingAlertLocationColumn(PostgrestException error) {
+  static bool isSosAlert(Map<String, dynamic> alert) {
+    final type = alertType(alert);
+    return type == alertTypeSos || type == alertTypeGroupSos;
+  }
+
+  static bool isSafeAlert(Map<String, dynamic> alert) =>
+      alertType(alert) == alertTypeSafe;
+
+  static bool isSosAcknowledgement(Map<String, dynamic> alert) =>
+      alertType(alert) == alertTypeSosAcknowledged ||
+      alertType(alert) == alertTypeGroupAcknowledged;
+
+  static bool _isMissingAlertOptionalColumn(PostgrestException error) {
     final text = '${error.code} ${error.message}'.toLowerCase();
-    return (text.contains('latitude') || text.contains('longitude')) &&
+    return (text.contains('latitude') ||
+            text.contains('longitude') ||
+            text.contains('avatar_url') ||
+            text.contains('acknowledged_by') ||
+            text.contains('original_alert_id')) &&
         (text.contains('column') ||
             text.contains('schema cache') ||
             text.contains('pgrst204') ||
@@ -250,11 +275,14 @@ class RealtimeCoordinator extends ChangeNotifier {
       await _client.from('ride_alerts').insert(insertedPayload);
       return insertedPayload;
     } on PostgrestException catch (error) {
-      if (!_isMissingAlertLocationColumn(error)) rethrow;
+      if (!_isMissingAlertOptionalColumn(error)) rethrow;
       final legacyPayload =
           Map<String, dynamic>.from(payload)
             ..remove('latitude')
-            ..remove('longitude');
+            ..remove('longitude')
+            ..remove('avatar_url')
+            ..remove('acknowledged_by')
+            ..remove('original_alert_id');
       await _client.from('ride_alerts').insert(legacyPayload);
       return legacyPayload;
     }
@@ -269,15 +297,21 @@ class RealtimeCoordinator extends ChangeNotifier {
     required String rideId,
     required String profileId,
     required String profileName,
+    String avatarUrl = '',
     double? latitude,
     double? longitude,
+    bool broadcastToGroup = false,
   }) async {
     final payload = <String, dynamic>{
       'ride_id': rideId.trim(),
       'profile_id': profileId.trim(),
       'user_name': profileName.trim().isEmpty ? 'Rider' : profileName.trim(),
-      'type': alertTypeSos,
-      'message': 'SOS alert triggered',
+      'type': broadcastToGroup ? alertTypeGroupSos : alertTypeSos,
+      'message':
+          broadcastToGroup
+              ? 'SOS alert broadcast to the ride group'
+              : 'SOS alert triggered',
+      'avatar_url': avatarUrl.trim(),
       'latitude': latitude,
       'longitude': longitude,
       'created_at': DateTime.now().toIso8601String(),
@@ -316,6 +350,91 @@ class RealtimeCoordinator extends ChangeNotifier {
     return insertedPayload;
   }
 
+  /// Persists the host's acknowledgement of a rider SOS.
+  Future<void> acknowledgeSOS({
+    required String rideId,
+    required String sosProfileId,
+    required String sosProfileName,
+    required String hostProfileId,
+    String sosAvatarUrl = '',
+    String? originalAlertId,
+    double? latitude,
+    double? longitude,
+  }) async {
+    await _insertRideAlert(<String, dynamic>{
+      'ride_id': rideId.trim(),
+      'profile_id': sosProfileId.trim(),
+      'user_name':
+          sosProfileName.trim().isEmpty ? 'Rider' : sosProfileName.trim(),
+      'type': alertTypeSosAcknowledged,
+      'message': 'Host acknowledged SOS',
+      'avatar_url': sosAvatarUrl.trim(),
+      'acknowledged_by': hostProfileId.trim(),
+      if ((originalAlertId ?? '').trim().isNotEmpty)
+        'original_alert_id': originalAlertId!.trim(),
+      'latitude': latitude,
+      'longitude': longitude,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Broadcasts an emergency to every participant on the active ride.
+  Future<Map<String, dynamic>> alertGroupSOS({
+    required String rideId,
+    required String sosProfileId,
+    required String sosProfileName,
+    required String hostProfileId,
+    String sosAvatarUrl = '',
+    String? originalAlertId,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final payload = <String, dynamic>{
+      'ride_id': rideId.trim(),
+      'profile_id': sosProfileId.trim(),
+      'user_name':
+          sosProfileName.trim().isEmpty ? 'Rider' : sosProfileName.trim(),
+      'type': alertTypeGroupSos,
+      'message': 'SOS alert broadcast to the ride group',
+      'avatar_url': sosAvatarUrl.trim(),
+      'acknowledged_by': hostProfileId.trim(),
+      if ((originalAlertId ?? '').trim().isNotEmpty)
+        'original_alert_id': originalAlertId!.trim(),
+      'latitude': latitude,
+      'longitude': longitude,
+      'created_at': DateTime.now().toIso8601String(),
+    };
+    return _insertRideAlert(payload);
+  }
+
+  /// Records that the current rider saw and acknowledged the group SOS.
+  Future<void> acknowledgeGroupSOS({
+    required String rideId,
+    required String sosProfileId,
+    required String sosProfileName,
+    required String acknowledgedByProfileId,
+    String sosAvatarUrl = '',
+    String? originalAlertId,
+    double? latitude,
+    double? longitude,
+  }) async {
+    await _insertRideAlert(<String, dynamic>{
+      'ride_id': rideId.trim(),
+      'profile_id': sosProfileId.trim(),
+      'user_name':
+          sosProfileName.trim().isEmpty ? 'Rider' : sosProfileName.trim(),
+      'type': alertTypeGroupAcknowledged,
+      'message': 'Rider acknowledged group SOS',
+      'avatar_url': sosAvatarUrl.trim(),
+      'acknowledged_by': acknowledgedByProfileId.trim(),
+      if ((originalAlertId ?? '').trim().isNotEmpty)
+        'original_alert_id': originalAlertId!.trim(),
+      'latitude': latitude,
+      'longitude': longitude,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
   /// Tells the rest of the ride that [profileId] is safe again.
   ///
   /// Sent as a normal alert row so it travels the same realtime channel as the
@@ -325,6 +444,7 @@ class RealtimeCoordinator extends ChangeNotifier {
     required String rideId,
     required String profileId,
     required String profileName,
+    String avatarUrl = '',
     double? latitude,
     double? longitude,
   }) async {
@@ -334,6 +454,7 @@ class RealtimeCoordinator extends ChangeNotifier {
       'user_name': profileName.trim().isEmpty ? 'Rider' : profileName.trim(),
       'type': alertTypeSafe,
       'message': 'Rider marked themselves safe',
+      'avatar_url': avatarUrl.trim(),
       'latitude': latitude,
       'longitude': longitude,
       'created_at': DateTime.now().toIso8601String(),
@@ -638,7 +759,7 @@ class RealtimeCoordinator extends ChangeNotifier {
                     .toString()
                     .trim();
             if (alertProfileId.isNotEmpty) {
-              if (!isSos && _lastAlert != null) {
+              if (isSafeAlert(alert) && _lastAlert != null) {
                 final lastFrom =
                     (_lastAlert!['profile_id'] ?? _lastAlert!['user_id'] ?? '')
                         .toString()
