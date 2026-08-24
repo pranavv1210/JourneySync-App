@@ -59,7 +59,7 @@ class ConnectionStatusBar extends StatelessWidget {
   _ConnectionSpec _specFor(RealtimeConnectionState state) {
     return switch (state) {
       RealtimeConnectionState.connected => const _ConnectionSpec(
-        label: 'Realtime active',
+        label: 'Connected',
         color: Color(0xFF16A34A),
         pulsing: true,
       ),
