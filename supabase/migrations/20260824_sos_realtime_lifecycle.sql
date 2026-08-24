@@ -40,7 +40,7 @@ as $$
   )
 $$;
 
-create or replace function public.is_ride_participant_text(target_ride_id uuid)
+create or replace function public.is_ride_participant_text(target_ride_id text)
 returns boolean
 language sql
 stable
@@ -50,7 +50,7 @@ as $$
   select exists (
     select 1
     from public.rides r
-    where r.id = target_ride_id
+    where r.id::text = target_ride_id
       and (
         coalesce(to_jsonb(r)->>'host_id', '') = public.current_profile_id_text()
         or coalesce(to_jsonb(r)->>'profile_id', '') = public.current_profile_id_text()
@@ -61,7 +61,7 @@ as $$
   or exists (
     select 1
     from public.ride_members rm
-    where rm.ride_id = target_ride_id
+    where rm.ride_id::text = target_ride_id
       and coalesce(
         to_jsonb(rm)->>'member_id',
         to_jsonb(rm)->>'user_id',
@@ -71,7 +71,7 @@ as $$
   )
 $$;
 
-create or replace function public.is_ride_host_text(target_ride_id uuid)
+create or replace function public.is_ride_host_text(target_ride_id text)
 returns boolean
 language sql
 stable
@@ -81,7 +81,7 @@ as $$
   select exists (
     select 1
     from public.rides r
-    where r.id = target_ride_id
+    where r.id::text = target_ride_id
       and (
         coalesce(to_jsonb(r)->>'host_id', '') = public.current_profile_id_text()
         or coalesce(to_jsonb(r)->>'profile_id', '') = public.current_profile_id_text()
