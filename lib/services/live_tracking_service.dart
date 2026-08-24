@@ -274,11 +274,10 @@ class LiveTrackingService {
       return;
     }
 
-    final missing =
-        _locationCache.keys
-            .where((id) => id.isNotEmpty && !_avatarUrls.containsKey(id))
-            .toSet()
-            .toList(growable: false);
+    final missing = _locationCache.keys
+        .where((id) => id.isNotEmpty && !_avatarUrls.containsKey(id))
+        .toSet()
+        .toList(growable: false);
     if (missing.isEmpty) return;
 
     _avatarFetchInFlight = true;
@@ -723,8 +722,7 @@ class LiveTrackingService {
           (row['signal'] ?? '').toString().trim().isEmpty
               ? null
               : row['signal'].toString().trim(),
-      avatarUrl:
-          (avatarUrl != null && avatarUrl.isNotEmpty) ? avatarUrl : null,
+      avatarUrl: (avatarUrl != null && avatarUrl.isNotEmpty) ? avatarUrl : null,
     );
   }
 

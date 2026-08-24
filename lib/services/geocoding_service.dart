@@ -101,8 +101,9 @@ class GeocodingService {
   /// resolves to its city.
   List<String> _queryVariants(String query) {
     final variants = <String>[query];
-    final parts = query.split(',').map((p) => p.trim()).toList()
-      ..removeWhere((p) => p.isEmpty);
+    final parts =
+        query.split(',').map((p) => p.trim()).toList()
+          ..removeWhere((p) => p.isEmpty);
     if (parts.length > 3) {
       variants.add(parts.take(3).join(', '));
     }
@@ -194,8 +195,7 @@ class GeocodingService {
 
   Future<void> _remember(String key, LatLng? point) async {
     final disk = await _loadDisk();
-    disk[key] =
-        point == null ? null : '${point.latitude},${point.longitude}';
+    disk[key] = point == null ? null : '${point.latitude},${point.longitude}';
 
     // Dart maps keep insertion order, so this drops the oldest entries.
     while (disk.length > _maxCacheEntries) {

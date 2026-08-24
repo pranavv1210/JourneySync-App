@@ -114,12 +114,17 @@ class RideAnalyticsSnapshot {
 
   factory RideAnalyticsSnapshot.fromMap(Map<String, dynamic> map) {
     final score = (map['rideScore'] as num?)?.toInt() ?? 0;
-    
+
     List<Map<String, double>> parsedRoutePoints = [];
     if (map['routePoints'] is List) {
       for (final pt in map['routePoints']) {
         if (pt is Map) {
-          final p = Map<String, double>.from(pt.map((key, value) => MapEntry(key.toString(), (value as num).toDouble())));
+          final p = Map<String, double>.from(
+            pt.map(
+              (key, value) =>
+                  MapEntry(key.toString(), (value as num).toDouble()),
+            ),
+          );
           parsedRoutePoints.add(p);
         }
       }
@@ -127,8 +132,12 @@ class RideAnalyticsSnapshot {
 
     return RideAnalyticsSnapshot(
       rideId: (map['rideId'] ?? '').toString(),
-      startedAt: DateTime.tryParse((map['startedAt'] ?? '').toString()) ?? DateTime.now(),
-      updatedAt: DateTime.tryParse((map['updatedAt'] ?? '').toString()) ?? DateTime.now(),
+      startedAt:
+          DateTime.tryParse((map['startedAt'] ?? '').toString()) ??
+          DateTime.now(),
+      updatedAt:
+          DateTime.tryParse((map['updatedAt'] ?? '').toString()) ??
+          DateTime.now(),
       completedAt: DateTime.tryParse((map['completedAt'] ?? '').toString()),
       durationSeconds: (map['durationSeconds'] as num?)?.toInt() ?? 0,
       movingSeconds: (map['movingSeconds'] as num?)?.toInt() ?? 0,
@@ -136,7 +145,8 @@ class RideAnalyticsSnapshot {
       distanceKm: (map['distanceKm'] as num?)?.toDouble() ?? 0,
       averageSpeedKmh: (map['averageSpeedKmh'] as num?)?.toDouble() ?? 0,
       maxSpeedKmh: (map['maxSpeedKmh'] as num?)?.toDouble() ?? 0,
-      averagePaceMinPerKm: (map['averagePaceMinPerKm'] as num?)?.toDouble() ?? 0,
+      averagePaceMinPerKm:
+          (map['averagePaceMinPerKm'] as num?)?.toDouble() ?? 0,
       elevationGainM: (map['elevationGainM'] as num?)?.toDouble() ?? 0,
       elevationLossM: (map['elevationLossM'] as num?)?.toDouble() ?? 0,
       numberOfStops: (map['numberOfStops'] as num?)?.toInt() ?? 0,
@@ -144,16 +154,30 @@ class RideAnalyticsSnapshot {
       sosEvents: (map['sosEvents'] as num?)?.toInt() ?? 0,
       membersJoined: (map['membersJoined'] as num?)?.toInt() ?? 0,
       membersLeft: (map['membersLeft'] as num?)?.toInt() ?? 0,
-      connectionQualityScore: (map['connectionQualityScore'] as num?)?.toInt() ?? score,
-      trackingQualityScore: (map['trackingQualityScore'] as num?)?.toInt() ?? score,
+      connectionQualityScore:
+          (map['connectionQualityScore'] as num?)?.toInt() ?? score,
+      trackingQualityScore:
+          (map['trackingQualityScore'] as num?)?.toInt() ?? score,
       groupCohesionScore: (map['groupCohesionScore'] as num?)?.toInt() ?? score,
       rideScore: score,
       scoreLabel: _scoreLabelFromString((map['scoreLabel'] ?? '').toString()),
       healthState: _healthFromString((map['healthState'] ?? '').toString()),
-      insights: (map['insights'] as List?)?.map((item) => item.toString()).toList() ?? const <String>[],
-      achievements: (map['achievements'] as List?)?.map((item) => item.toString()).toList() ?? const <String>[],
-      weatherSummary: (map['weatherSummary'] ?? '').toString().trim().isEmpty ? null : map['weatherSummary'].toString(),
-      leaderName: (map['leaderName'] ?? '').toString().trim().isEmpty ? null : map['leaderName'].toString(),
+      insights:
+          (map['insights'] as List?)?.map((item) => item.toString()).toList() ??
+          const <String>[],
+      achievements:
+          (map['achievements'] as List?)
+              ?.map((item) => item.toString())
+              .toList() ??
+          const <String>[],
+      weatherSummary:
+          (map['weatherSummary'] ?? '').toString().trim().isEmpty
+              ? null
+              : map['weatherSummary'].toString(),
+      leaderName:
+          (map['leaderName'] ?? '').toString().trim().isEmpty
+              ? null
+              : map['leaderName'].toString(),
       memberCount: (map['memberCount'] as num?)?.toInt() ?? 1,
       routePoints: parsedRoutePoints,
     );
@@ -242,17 +266,25 @@ class RideAnalyticsEngine {
       );
       if (meters > 1 && meters < 250) {
         _distanceKm += meters / 1000.0;
-        
+
         // Add to route points if moved enough (e.g., 5 meters) to reduce density
-        if (_routePoints.isEmpty || Geolocator.distanceBetween(
-          _routePoints.last['lat']!, _routePoints.last['lng']!,
-          position.latitude, position.longitude) > 5) {
-          _routePoints.add({'lat': position.latitude, 'lng': position.longitude});
+        if (_routePoints.isEmpty ||
+            Geolocator.distanceBetween(
+                  _routePoints.last['lat']!,
+                  _routePoints.last['lng']!,
+                  position.latitude,
+                  position.longitude,
+                ) >
+                5) {
+          _routePoints.add({
+            'lat': position.latitude,
+            'lng': position.longitude,
+          });
         }
       } else if (meters >= 250) {
         _badConnectionSamples++;
       }
-      
+
       final altitudeDelta = position.altitude - previous.altitude;
       if (altitudeDelta > 1) {
         _elevationGainM += altitudeDelta;

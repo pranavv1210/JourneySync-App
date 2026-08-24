@@ -280,7 +280,8 @@ class _NotificationCard extends StatelessWidget {
         if (isUnread) {
           NotificationCoordinator.instance.markRead(notification.id);
         }
-        if (notification.category == AppNotificationCategory.sos && notification.rideId != null) {
+        if (notification.category == AppNotificationCategory.sos &&
+            notification.rideId != null) {
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -290,131 +291,133 @@ class _NotificationCard extends StatelessWidget {
         }
       },
       child: AnimatedContainer(
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color:
-            isUnread
-                ? AppColors.surface
-                : AppColors.surface.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
           color:
-              isUnread ? spec.color.withValues(alpha: 0.15) : AppColors.divider,
-          width: 1.5,
+              isUnread
+                  ? AppColors.surface
+                  : AppColors.surface.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          border: Border.all(
+            color:
+                isUnread
+                    ? spec.color.withValues(alpha: 0.15)
+                    : AppColors.divider,
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: spec.color.withValues(alpha: isUnread ? 0.06 : 0.02),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: spec.color.withValues(alpha: isUnread ? 0.06 : 0.02),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Category icon with glass background
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  spec.color.withValues(alpha: 0.15),
-                  spec.color.withValues(alpha: 0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: spec.color.withValues(alpha: 0.15),
-                width: 1,
-              ),
-            ),
-            child: Icon(spec.icon, color: spec.color, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        notification.title,
-                        style: AppTypography.titleMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.forest,
-                        ),
-                      ),
-                    ),
-                    if (isUnread)
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: spec.color,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: spec.color.withValues(alpha: 0.4),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                      ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Category icon with glass background
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    spec.color.withValues(alpha: 0.15),
+                    spec.color.withValues(alpha: 0.05),
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  notification.body,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    height: 1.25,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: spec.color.withValues(alpha: 0.15),
+                  width: 1,
+                ),
+              ),
+              child: Icon(spec.icon, color: spec.color, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          notification.title,
+                          style: AppTypography.titleMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.forest,
+                          ),
+                        ),
+                      ),
+                      if (isUnread)
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: spec.color,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: spec.color.withValues(alpha: 0.4),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Text(
-                      _relativeTime(notification.createdAt),
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  const SizedBox(height: 6),
+                  Text(
+                    notification.body,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                      height: 1.25,
                     ),
-                    const Spacer(),
-                    // Category label
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: spec.color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        _categoryLabel(notification.category),
-                        style: TextStyle(
-                          color: spec.color,
-                          fontSize: 10,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Text(
+                        _relativeTime(notification.createdAt),
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textTertiary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const Spacer(),
+                      // Category label
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: spec.color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          _categoryLabel(notification.category),
+                          style: TextStyle(
+                            color: spec.color,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

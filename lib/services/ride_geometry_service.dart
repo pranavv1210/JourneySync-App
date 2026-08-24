@@ -153,8 +153,7 @@ class RideGeometryService {
 
     final start =
         startLabel == null ? null : await _geocoder.resolve(startLabel);
-    destination ??=
-        endLabel == null ? null : await _geocoder.resolve(endLabel);
+    destination ??= endLabel == null ? null : await _geocoder.resolve(endLabel);
 
     if (start == null || destination == null) {
       // One endpoint is enough to centre a map on, just not to draw a route.

@@ -107,10 +107,11 @@ class NotificationCoordinator extends ChangeNotifier {
 
   Future<void> markRead(String id) async {
     if (_profileId.isEmpty) return;
-    _notifications = _notifications.map((item) {
-      if (item.id == id) return item.copyWith(read: true);
-      return item;
-    }).toList();
+    _notifications =
+        _notifications.map((item) {
+          if (item.id == id) return item.copyWith(read: true);
+          return item;
+        }).toList();
     notifyListeners();
     try {
       await _client
