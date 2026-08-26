@@ -520,18 +520,25 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                           isLeader
                               ? const Color(0xFFFFEDD5)
                               : const Color(0xFFEFF6FF),
-                      child: Text(
-                        rider.userName.isNotEmpty
-                            ? rider.userName[0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color:
-                              isLeader
-                                  ? AppColors.primary
-                                  : Colors.blue.shade700,
-                        ),
-                      ),
+                      backgroundImage:
+                          rider.avatarUrl?.trim().isNotEmpty == true
+                              ? NetworkImage(rider.avatarUrl!.trim())
+                              : null,
+                      child:
+                          rider.avatarUrl?.trim().isNotEmpty == true
+                              ? null
+                              : Text(
+                                rider.userName.isNotEmpty
+                                    ? rider.userName[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      isLeader
+                                          ? AppColors.primary
+                                          : Colors.blue.shade700,
+                                ),
+                              ),
                     ),
                     if (isLeader)
                       Positioned(

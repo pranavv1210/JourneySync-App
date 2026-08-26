@@ -9,6 +9,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/rider_location.dart';
@@ -21,6 +22,7 @@ import '../services/ride_analytics_engine.dart';
 import '../services/ride_engine_core.dart';
 import '../services/ride_geometry_service.dart';
 import '../services/ride_service.dart';
+import '../services/app_navigation.dart';
 import '../services/supabase_service.dart';
 import '../services/weather_service.dart';
 import '../widgets/app_toast.dart';
@@ -33,6 +35,7 @@ import '../widgets/smooth_marker.dart';
 import '../theme/app_theme.dart';
 import '../models/presence_info.dart';
 import '../models/ride_route.dart';
+import 'ride_summary_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RideModeScreen — Production-Grade Live Rider Tracking
@@ -72,6 +75,8 @@ class _RideModeScreenState extends State<RideModeScreen>
   // ── Live locations ─────────────────────────────────────────────────────────
   List<RiderLocation> _riderLocations = [];
   StreamSubscription<List<RiderLocation>>? _locationStreamSub;
+  RealtimeChannel? _rideStatusChannel;
+  bool _handlingRemoteRideCompletion = false;
 
   // ── GPS / position ─────────────────────────────────────────────────────────
   Position? _currentPosition;
@@ -271,6 +276,7 @@ class _RideModeScreenState extends State<RideModeScreen>
               .toString()
               .trim();
       _rideData = ride;
+      _subscribeRideStatus();
 
       // ── Start timer ──────────────────────────────────────────────────────
       _startRideTimer();
@@ -377,6 +383,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       _recordOwnTrailPoint(pos);
       _maybeShowRideIntelligencePrompts(pos);
       _prevPosition = pos;
+      _refreshLocalRiderSnapshot();
       if (!mounted) return;
       setState(() {});
 
@@ -437,15 +444,65 @@ class _RideModeScreenState extends State<RideModeScreen>
   // CALLBACKS
   // ─────────────────────────────────────────────────────────────────────────
 
+  RiderLocation? _currentRiderLocationFromGps() {
+    final pos = _currentPosition;
+    if (pos == null || _currentUserId.isEmpty) return null;
+    return RiderLocation(
+      userId: _currentUserId,
+      rideId: widget.rideId,
+      latitude: pos.latitude,
+      longitude: pos.longitude,
+      updatedAt: DateTime.now(),
+      userName: _currentUserName,
+      bikeName: _currentBikeName,
+      isLeader: _leaderId == _currentUserId,
+      heading: pos.heading >= 0 ? pos.heading : null,
+      speed: pos.speed >= 0 ? pos.speed : null,
+      avatarUrl: _currentUserAvatarUrl,
+    );
+  }
+
+  List<RiderLocation> _withCurrentRiderLocation(List<RiderLocation> locations) {
+    final mine = _currentRiderLocationFromGps();
+    if (mine == null) return locations;
+    final merged = <RiderLocation>[];
+    var inserted = false;
+    for (final location in locations) {
+      if (location.userId == _currentUserId) {
+        merged.add(mine);
+        inserted = true;
+      } else {
+        merged.add(location);
+      }
+    }
+    if (!inserted) merged.add(mine);
+    return merged;
+  }
+
+  void _refreshLocalRiderSnapshot() {
+    if (!mounted || _currentPosition == null) return;
+    final effective = _withCurrentRiderLocation(_riderLocations);
+    final snapshot = _groupIntelligence.update(
+      locations: effective,
+      leaderId: _leaderId,
+      currentUserId: _currentUserId,
+      destination: _getDestinationCoords(),
+      sosRiderId: _activeSosRiderId(),
+    );
+    _riderLocations = effective;
+    _groupSnapshot = snapshot;
+  }
+
   void _onRiderLocationsUpdate(List<RiderLocation> locations) {
     if (!mounted) return;
+    final effective = _withCurrentRiderLocation(locations);
 
     // Check our own offline status from the service.
     final nowOffline =
         !_trackingService.isChannelActive && _trackingService.isOffline;
 
     final snapshot = _groupIntelligence.update(
-      locations: locations,
+      locations: effective,
       leaderId: _leaderId,
       currentUserId: _currentUserId,
       destination: _getDestinationCoords(),
@@ -454,7 +511,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     final leaderDistances =
         _leaderId == null
             ? const <String, double>{}
-            : _distanceCache.update(locations: locations, leaderId: _leaderId!);
+            : _distanceCache.update(locations: effective, leaderId: _leaderId!);
 
     // Calculate falling behind status (>2 km from leader)
     bool isFallingBehind = false;
@@ -464,7 +521,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     }
 
     setState(() {
-      _riderLocations = locations;
+      _riderLocations = effective;
       _isOffline = nowOffline;
       _isFallingBehind = isFallingBehind;
       _groupSnapshot = snapshot;
@@ -473,7 +530,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     _analyticsEngine.recordGroupSnapshot(snapshot);
     _handleGroupAlerts(snapshot);
     _maybeWarnFollowerDistance(leaderDistances);
-    _driveCamera(locations);
+    _driveCamera(effective);
   }
 
   void _maybeWarnFollowerDistance(Map<String, double> leaderDistances) {
@@ -1307,6 +1364,7 @@ class _RideModeScreenState extends State<RideModeScreen>
     _sosPulseController.dispose();
     _locationStreamSub?.cancel();
     _gpsStreamSub?.cancel();
+    _rideStatusChannel?.unsubscribe();
     ActiveRideCoordinator.instance.removeListener(_onActiveRideSnapshotChanged);
     _realtimeCoordinator.removeListener(_onRealtimeChanged);
     _distanceCache.clear();
@@ -1315,6 +1373,59 @@ class _RideModeScreenState extends State<RideModeScreen>
     // might minimize the app and come back. Call stopSyncing() + clearLiveLocation()
     // only on intentional ride end. The service auto-reconnects.
     super.dispose();
+  }
+
+  void _subscribeRideStatus() {
+    _rideStatusChannel?.unsubscribe();
+    _rideStatusChannel = Supabase.instance.client.channel(
+      'ride:${widget.rideId}:status',
+    );
+    _rideStatusChannel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'rides',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: widget.rideId,
+          ),
+          callback: (payload) {
+            final row = payload.newRecord;
+            final status = (row['status'] ?? '').toString().toLowerCase();
+            if (status == 'completed' || status == 'ended') {
+              unawaited(_handleRemoteRideCompleted());
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> _handleRemoteRideCompleted() async {
+    if (_handlingRemoteRideCompletion) return;
+    _handlingRemoteRideCompletion = true;
+    try {
+      final destination =
+          (_rideData?['end_location'] ?? _rideData?['destination'] ?? '')
+              .toString();
+      try {
+        await _analyticsEngine.complete(destination: destination);
+      } catch (_) {}
+      await _trackingService.stopSyncing();
+      if (_currentUserId.isNotEmpty) {
+        await _trackingService.clearLiveLocation(
+          rideId: widget.rideId,
+          userId: _currentUserId,
+        );
+      }
+      await ActiveRideCoordinator.instance.markCompleted();
+      if (!mounted) return;
+      await Navigator.of(context).pushReplacement(
+        buildAppRoute(RideSummaryScreen(rideId: widget.rideId)),
+      );
+    } finally {
+      _handlingRemoteRideCompletion = false;
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

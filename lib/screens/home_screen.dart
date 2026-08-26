@@ -996,8 +996,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       animation: ActiveRideCoordinator.instance,
       builder: (context, _) {
         final snapshot = ActiveRideCoordinator.instance.snapshot;
+        final completedInRecent = recentRides.any(
+          (ride) => ride.id == snapshot.rideId && ride.isCompleted,
+        );
         if (!snapshot.hasActiveRide ||
-            snapshot.status == ActiveRideStatus.completed) {
+            snapshot.status == ActiveRideStatus.completed ||
+            completedInRecent) {
           return const SizedBox.shrink();
         }
         return PremiumCard(
@@ -1146,6 +1150,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.titleMedium.copyWith(
+                                    color: AppColors.textPrimary,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),

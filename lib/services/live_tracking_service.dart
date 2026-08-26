@@ -433,6 +433,20 @@ class LiveTrackingService {
       },
     );
 
+    try {
+      final initial = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      _latestPosition = initial;
+      _updateStationaryCounter(initial);
+      await _uploadPosition();
+    } catch (e) {
+      debugPrint('[LiveTracking] Initial GPS sync unavailable: $e');
+    }
+
     // Start the initial sync timer.
     _scheduleSyncTimer();
   }

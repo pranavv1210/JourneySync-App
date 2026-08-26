@@ -50,6 +50,11 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
   bool joinRequestFeatureAvailable = true;
   List<_LobbyMember> crew = <_LobbyMember>[];
   List<_LobbyRequest> pendingRequests = <_LobbyRequest>[];
+  RealtimeChannel? _memberChannel;
+  RealtimeChannel? _locationChannel;
+  RealtimeChannel? _rideChannel;
+  RealtimeChannel? _profileChannel;
+  Timer? _refreshDebounce;
 
   @override
   void initState() {
@@ -86,7 +91,112 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
       loading = false;
     });
 
+    _subscribeLobbyRealtime();
     unawaited(_loadWeather());
+  }
+
+  @override
+  void dispose() {
+    _refreshDebounce?.cancel();
+    _memberChannel?.unsubscribe();
+    _locationChannel?.unsubscribe();
+    _rideChannel?.unsubscribe();
+    _profileChannel?.unsubscribe();
+    super.dispose();
+  }
+
+  void _subscribeLobbyRealtime() {
+    _memberChannel?.unsubscribe();
+    _locationChannel?.unsubscribe();
+    _rideChannel?.unsubscribe();
+    _profileChannel?.unsubscribe();
+
+    _memberChannel = supabase.channel('lobby:${widget.rideId}:members');
+    _memberChannel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'ride_members',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'ride_id',
+            value: widget.rideId,
+          ),
+          callback: (_) => _scheduleRealtimeRefresh(),
+        )
+        .subscribe();
+
+    _locationChannel = supabase.channel('lobby:${widget.rideId}:locations');
+    _locationChannel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'live_locations',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'ride_id',
+            value: widget.rideId,
+          ),
+          callback: (_) => _scheduleRealtimeRefresh(),
+        )
+        .subscribe();
+
+    _rideChannel = supabase.channel('lobby:${widget.rideId}:ride');
+    _rideChannel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'rides',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: widget.rideId,
+          ),
+          callback: (_) => _scheduleRealtimeRefresh(),
+        )
+        .subscribe();
+
+    _profileChannel = supabase.channel('lobby:${widget.rideId}:profiles');
+    _profileChannel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'profiles',
+          callback: (_) => _scheduleRealtimeRefresh(),
+        )
+        .subscribe();
+  }
+
+  void _scheduleRealtimeRefresh() {
+    _refreshDebounce?.cancel();
+    _refreshDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => unawaited(_refreshRealtimeLobbyData()),
+    );
+  }
+
+  Future<void> _refreshRealtimeLobbyData() async {
+    if (!mounted || ride == null) return;
+    try {
+      final data =
+          await supabase
+              .from('rides')
+              .select()
+              .eq('id', widget.rideId)
+              .single();
+      final loadedCrew = await _fetchCrew(data);
+      final loadedRequests = await _fetchPendingJoinRequests();
+      final loadedLiveCount = await _fetchLiveCrewCount();
+      if (!mounted) return;
+      setState(() {
+        ride = data;
+        crew = loadedCrew;
+        pendingRequests = loadedRequests;
+        liveCrewCount = loadedLiveCount;
+      });
+    } catch (e) {
+      debugPrint('Lobby realtime refresh failed: $e');
+    }
   }
 
   Future<void> _loadWeather() async {
@@ -364,11 +474,18 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     try {
       final participantRows = await supabase
           .from('ride_members')
-          .select('member_id,status')
-          .eq('ride_id', widget.rideId)
-          .eq('status', 'approved');
+          .select('member_id,user_id,status')
+          .eq('ride_id', widget.rideId);
       for (final row in participantRows) {
-        final userId = (row['member_id'] ?? '').toString().trim();
+        final status = (row['status'] ?? 'approved').toString().toLowerCase();
+        if (status == 'pending' ||
+            status == 'removed' ||
+            status == 'rejected' ||
+            status == 'cancelled') {
+          continue;
+        }
+        final userId =
+            (row['member_id'] ?? row['user_id'] ?? '').toString().trim();
         if (userId.isNotEmpty) ids.add(userId);
       }
     } catch (_) {
@@ -413,14 +530,15 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
     try {
       final rows = await supabase
           .from('live_locations')
-          .select('profile_id,updated_at')
+          .select('profile_id,user_id,updated_at')
           .eq('ride_id', widget.rideId);
       final cutoff = DateTime.now().toUtc().subtract(
         const Duration(minutes: 2),
       );
       final liveIds = <String>{};
       for (final row in rows) {
-        final id = (row['profile_id'] ?? '').toString().trim();
+        final id =
+            (row['profile_id'] ?? row['user_id'] ?? '').toString().trim();
         final updatedAt = DateTime.tryParse(
           (row['updated_at'] ?? '').toString(),
         );
@@ -726,117 +844,259 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.14),
+                    blurRadius: 28,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 18),
+                      decoration: BoxDecoration(
+                        color: AppColors.divider,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Invite Riders',
+                    style: AppTypography.headlineSmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Share this code with your riding group, or just read it out. Riders enter it from Nearby Rides and join straight away.',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 18,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.18),
+                      ),
+                    ),
+                    child: Text(
+                      code,
+                      textAlign: TextAlign.center,
+                      style: AppTypography.displaySmall.copyWith(
+                        color: AppColors.forest,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            await _copyAccessCode();
+                            if (!context.mounted) return;
+                            Navigator.pop(context);
+                          },
+                          icon: const Icon(
+                            Icons.content_copy_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('Copy'),
+                          style: _inviteButtonStyle(
+                            foreground: AppColors.forest,
+                            background: Colors.white,
+                            border: AppColors.divider,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            await _shareAccessCode();
+                            if (!context.mounted) return;
+                            Navigator.pop(context);
+                          },
+                          icon: const Icon(Icons.ios_share_rounded, size: 18),
+                          label: const Text('Share'),
+                          style: _inviteButtonStyle(
+                            foreground: Colors.white,
+                            background: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  ButtonStyle _inviteButtonStyle({
+    required Color foreground,
+    required Color background,
+    Color? border,
+  }) {
+    return FilledButton.styleFrom(
+      foregroundColor: foreground,
+      backgroundColor: background,
+      minimumSize: const Size.fromHeight(52),
+      textStyle: AppTypography.buttonMedium.copyWith(
+        fontWeight: FontWeight.w800,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side:
+            border == null
+                ? BorderSide.none
+                : BorderSide(color: border, width: 1.3),
+      ),
+      elevation: 0,
+    );
+  }
+
+  Future<void> _showRouteDetails() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.14),
+                    blurRadius: 28,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 18),
+                      decoration: BoxDecoration(
+                        color: AppColors.divider,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Ride Route',
+                    style: AppTypography.headlineSmall.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: SizedBox(
+                      height: 170,
+                      width: double.infinity,
+                      child: _lobbyMapPreview(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _routeDetailRow(
+                    Icons.play_circle_fill_rounded,
+                    'Start',
+                    _startLocationLabel(),
+                  ),
+                  _routeDetailRow(
+                    Icons.location_on_rounded,
+                    'Destination',
+                    _destinationLabel(),
+                  ),
+                  _routeDetailRow(
+                    Icons.schedule_rounded,
+                    'Status',
+                    _timeLabel(),
+                  ),
+                  _routeDetailRow(
+                    Icons.key_rounded,
+                    'Join Code',
+                    _rideCode(widget.rideId),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _routeDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.primary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 44,
-                  height: 5,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(999),
+                Text(
+                  label,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: AppColors.textTertiary,
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.14),
-                        blurRadius: 28,
-                        offset: const Offset(0, 12),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Invite Riders',
-                        style: AppTypography.headlineSmall.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Share this code with your riding group, or just read it out. Riders enter it from Nearby Rides and join straight away.',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 18,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        child: Text(
-                          code,
-                          textAlign: TextAlign.center,
-                          style: AppTypography.displaySmall.copyWith(
-                            color: AppColors.forest,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () async {
-                                await _copyAccessCode();
-                                if (!context.mounted) return;
-                                Navigator.pop(context);
-                              },
-                              icon: const Icon(
-                                Icons.content_copy_rounded,
-                                size: 18,
-                              ),
-                              label: const Text('Copy'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: () async {
-                                await _shareAccessCode();
-                                if (!context.mounted) return;
-                                Navigator.pop(context);
-                              },
-                              icon: const Icon(
-                                Icons.ios_share_rounded,
-                                size: 18,
-                              ),
-                              label: const Text('Share'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -1219,32 +1479,41 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
               ),
             ],
           ),
-          Container(
-            height: 52,
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: sand.withValues(alpha: 0.6)),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _showRouteDetails,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(20),
               ),
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 16),
-                Icon(Icons.route, color: primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _routeStripLabel(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: forest,
-                    ),
+              child: Container(
+                height: 52,
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: sand.withValues(alpha: 0.6)),
                   ),
                 ),
-                Icon(Icons.chevron_right, color: Colors.grey.shade400),
-                const SizedBox(width: 12),
-              ],
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    Icon(Icons.route, color: primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _routeStripLabel(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: forest,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                    const SizedBox(width: 12),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
