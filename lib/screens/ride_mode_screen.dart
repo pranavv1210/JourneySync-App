@@ -1343,7 +1343,9 @@ class _RideModeScreenState extends State<RideModeScreen>
           )
           .ignore();
       if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      await Navigator.of(context).pushReplacement(
+        buildAppRoute(RideSummaryScreen(rideId: widget.rideId)),
+      );
     } catch (e) {
       if (!mounted) return;
       showAppToast(context, 'Error ending ride: $e', type: AppToastType.error);

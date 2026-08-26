@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'services/app_navigation.dart';
 import 'services/app_config.dart';
 import 'services/app_version.dart';
+import 'services/app_session_guard.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 import 'coordinators/active_ride_coordinator.dart';
@@ -81,6 +82,7 @@ Future<void> _initializeServices() async {
     anonKey: supabaseAnonKey,
   ).timeout(const Duration(seconds: 20));
   await ActiveRideCoordinator.instance.restore();
+  await AppSessionGuard.instance.restore();
 }
 
 class JourneySyncApp extends StatelessWidget {
@@ -93,6 +95,7 @@ class JourneySyncApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: AppVersion.name,
       theme: AppTheme.light,
+      navigatorKey: appNavigatorKey,
       navigatorObservers: [
         appRouteObserver,
         if (Firebase.apps.isNotEmpty)

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_config.dart';
+import 'app_session_guard.dart';
 import 'supabase_service.dart';
 import '../coordinators/active_ride_coordinator.dart';
 import '../coordinators/notification_coordinator.dart';
@@ -286,9 +287,13 @@ class AuthService {
     const storage = FlutterSecureStorage();
     await storage.write(key: 'phoneEmailAccessToken', value: accessToken);
     await storage.write(key: 'phoneEmailJwtToken', value: jwtToken);
+    unawaited(AppSessionGuard.instance.start(user.id));
   }
 
   Future<void> clearSession() async {
+    try {
+      await AppSessionGuard.instance.stop();
+    } catch (_) {}
     try {
       await ActiveRideCoordinator.instance.clear();
     } catch (_) {}

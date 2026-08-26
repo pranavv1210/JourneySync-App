@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
+import '../services/app_session_guard.dart';
 import '../services/auth_service.dart';
 import '../services/feedback_prompt_service.dart';
 import '../services/geocoding_service.dart';
@@ -19,7 +20,6 @@ import 'explore_screen.dart';
 import 'my_rides_screen.dart';
 import 'nearby_rides_screen.dart';
 import 'plan_together_screen.dart';
-import 'ride_now_screen.dart';
 import '../services/ride_service.dart';
 import 'settings_screen.dart';
 import '../services/supabase_service.dart';
@@ -161,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
       if (resolvedId.isNotEmpty) {
         await prefs.setString('userId', resolvedId);
+        unawaited(AppSessionGuard.instance.start(resolvedId));
         unawaited(NotificationCoordinator.instance.start(resolvedId));
         try {
           final remoteGarage = await _supabaseService.fetchGarage(
@@ -1410,7 +1411,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           label: 'Explore',
           onTap: () {
             unawaited(_recordFeedbackFeature('explore'));
-            Navigator.pushReplacement(
+            Navigator.push(
               context,
               buildHorizontalAppRoute(const ExploreScreen()),
             );
@@ -1421,7 +1422,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           label: 'Rides',
           onTap: () {
             unawaited(_recordFeedbackFeature('my_rides'));
-            Navigator.pushReplacement(
+            Navigator.push(
               context,
               buildHorizontalAppRoute(const MyRidesScreen()),
             );
@@ -1458,13 +1459,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             const SizedBox(height: 14),
             _createOption(
               context,
-              value: 'ride_now',
-              icon: Icons.flash_on_rounded,
-              title: 'Ride Now',
-              subtitle: 'Start instantly. Nearby riders can join if public.',
-            ),
-            _createOption(
-              context,
               value: 'plan_together',
               icon: Icons.event_rounded,
               title: 'Plan Together',
@@ -1484,7 +1478,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     if (selected == null || !mounted) return;
     unawaited(_recordFeedbackFeature(selected));
     final screen = switch (selected) {
-      'ride_now' => const RideNowScreen(),
       'plan_together' => const PlanTogetherScreen(),
       'explore_solo' => const ExploreSoloScreen(),
       _ => const CreateRideScreen(),

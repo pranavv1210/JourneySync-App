@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../screens/explore_screen.dart';
 import '../screens/explore_solo_screen.dart';
-import '../screens/home_screen.dart';
 import '../screens/my_rides_screen.dart';
 import '../screens/plan_together_screen.dart';
-import '../screens/ride_now_screen.dart';
 import '../screens/settings_screen.dart';
 import '../services/app_navigation.dart';
 import '../services/feedback_prompt_service.dart';
@@ -27,15 +25,13 @@ class AppMainBottomNav extends StatelessWidget {
 
   void _goHome(BuildContext context) {
     if (currentTab == AppMainTab.home) return;
-    Navigator.of(context).pushReplacement(
-      buildHorizontalAppRoute(const HomeScreen(), forward: false),
-    );
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   void _goExplore(BuildContext context) {
     if (currentTab == AppMainTab.explore) return;
     _record('explore');
-    Navigator.of(context).pushReplacement(
+    Navigator.of(context).push(
       buildHorizontalAppRoute(
         const ExploreScreen(),
         forward: currentTab.index < AppMainTab.explore.index,
@@ -46,7 +42,7 @@ class AppMainBottomNav extends StatelessWidget {
   void _goRides(BuildContext context) {
     if (currentTab == AppMainTab.rides) return;
     _record('my_rides');
-    Navigator.of(context).pushReplacement(
+    Navigator.of(context).push(
       buildHorizontalAppRoute(
         const MyRidesScreen(),
         forward: currentTab.index < AppMainTab.rides.index,
@@ -72,12 +68,6 @@ class AppMainBottomNav extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             _CreateOption(
-              value: 'ride_now',
-              icon: Icons.flash_on_rounded,
-              title: 'Ride Now',
-              subtitle: 'Start instantly. Nearby riders can join if public.',
-            ),
-            _CreateOption(
               value: 'plan_together',
               icon: Icons.event_rounded,
               title: 'Plan Together',
@@ -96,10 +86,9 @@ class AppMainBottomNav extends StatelessWidget {
     if (selected == null || !context.mounted) return;
     unawaited(_record(selected));
     final screen = switch (selected) {
-      'ride_now' => const RideNowScreen(),
       'plan_together' => const PlanTogetherScreen(),
       'explore_solo' => const ExploreSoloScreen(),
-      _ => const RideNowScreen(),
+      _ => const PlanTogetherScreen(),
     };
     await Navigator.of(context).push(buildAppRoute(screen));
   }
