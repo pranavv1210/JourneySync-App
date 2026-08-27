@@ -7,11 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_map/flutter_map.dart';
-// latlong2 exports its own Path class (a list of LatLng), which shadows the
-// dart:ui Path that CustomPainter draws with. Hiding it here is the same fix
-// smooth_marker.dart already uses. Nothing in this file wants latlong2's Path.
-import 'package:latlong2/latlong.dart' hide Path;
 import 'dart:ui' as ui;
 
 import '../widgets/app_toast.dart';
@@ -19,8 +14,10 @@ import '../widgets/app_error_state.dart';
 import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/ride_loading_indicator.dart';
+import '../services/app_navigation.dart';
 import '../services/ride_analytics_engine.dart';
 import '../theme/app_theme.dart';
+import 'home_screen.dart';
 
 class RideSummaryScreen extends StatefulWidget {
   const RideSummaryScreen({super.key, required this.rideId});
@@ -332,8 +329,6 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                       _insightsCard(),
                     ],
                     const SizedBox(height: 18),
-                    _routeThumbnail(),
-                    const SizedBox(height: 18),
                     _participants(),
                     const SizedBox(height: 20),
                     _actions(primary),
@@ -383,6 +378,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
         const Text(
           'Ride Completed!',
           style: TextStyle(
+            color: AppColors.textPrimary,
             fontSize: 28,
             fontWeight: FontWeight.w700,
             fontFamily: AppTypography.fontFamily,
@@ -722,98 +718,6 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
     );
   }
 
-  Widget _routeThumbnail() {
-    final routePoints = analytics?.routePoints ?? [];
-    final hasRoute = routePoints.length > 1;
-
-    // Calculate map bounds
-    LatLngBounds? bounds;
-    List<LatLng> mapPoints = [];
-    if (hasRoute) {
-      mapPoints = routePoints.map((p) => LatLng(p['lat']!, p['lng']!)).toList();
-      bounds = LatLngBounds.fromPoints(mapPoints);
-    }
-
-    return Container(
-      height: 150,
-      clipBehavior: Clip.hardEdge,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child:
-                hasRoute
-                    ? FlutterMap(
-                      options: MapOptions(
-                        initialCameraFit: CameraFit.bounds(
-                          bounds: bounds!,
-                          padding: const EdgeInsets.all(20),
-                        ),
-                        interactionOptions: const InteractionOptions(
-                          flags: InteractiveFlag.none,
-                        ),
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          subdomains: const ['a', 'b', 'c'],
-                          userAgentPackageName: 'com.journeysync.app',
-                        ),
-                        PolylineLayer(
-                          polylines: [
-                            Polyline(
-                              points: mapPoints,
-                              color: Colors.orange.shade700,
-                              strokeWidth: 4,
-                            ),
-                          ],
-                        ),
-                      ],
-                    )
-                    : Container(color: Colors.grey.shade300),
-          ),
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.35),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 12,
-            bottom: 10,
-            child: Row(
-              children: [
-                const Icon(Icons.place, color: Colors.white, size: 14),
-                const SizedBox(width: 6),
-                Text(
-                  _destinationLabel(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   String _destinationLabel() {
     final dest =
         (ride?['end_location'] ?? ride?['destination'])?.toString().trim();
@@ -1085,7 +989,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
+              unawaited(replaceAllWithAppRoute(context, const HomeScreen()));
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: primary,
@@ -1100,7 +1004,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'View Full History',
+                  'Done',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,

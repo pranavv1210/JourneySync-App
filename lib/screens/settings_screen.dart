@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
@@ -789,89 +790,144 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
     final relationController = TextEditingController();
+    var canSave = false;
     return showModalBottomSheet<Map<String, String>>(
       context: parentContext,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 18,
-            right: 18,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 18,
-          ),
-          child: Material(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(26),
-            child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Add emergency contact',
-                    style: AppTypography.headlineSmall.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _settingsTextField(nameController, 'Name', Icons.person),
-                  const SizedBox(height: 12),
-                  _settingsTextField(
-                    phoneController,
-                    'Phone number',
-                    Icons.call,
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 12),
-                  _settingsTextField(
-                    relationController,
-                    'Relation',
-                    Icons.badge_outlined,
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
+        return StatefulBuilder(
+          builder: (context, setFormState) {
+            void refreshCanSave() {
+              final next =
+                  nameController.text.trim().isNotEmpty &&
+                  phoneController.text.trim().isNotEmpty;
+              if (next != canSave) setFormState(() => canSave = next);
+            }
+
+            Future<void> pickContact() async {
+              final allowed = await FlutterContacts.requestPermission(
+                readonly: true,
+              );
+              if (!allowed) {
+                if (!context.mounted) return;
+                showPremiumToast(
+                  context,
+                  'Contacts permission is needed to pick a contact.',
+                  type: PremiumToastType.info,
+                );
+                return;
+              }
+              final picked = await FlutterContacts.openExternalPick();
+              if (picked == null) return;
+              final name = picked.displayName.trim();
+              final phone =
+                  picked.phones.isNotEmpty
+                      ? picked.phones.first.number.trim()
+                      : '';
+              setFormState(() {
+                if (name.isNotEmpty) nameController.text = name;
+                if (phone.isNotEmpty) phoneController.text = phone;
+                canSave =
+                    nameController.text.trim().isNotEmpty &&
+                    phoneController.text.trim().isNotEmpty;
+              });
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 18,
+                right: 18,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 18,
+              ),
+              child: Material(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(26),
+                child: Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Add emergency contact',
+                              style: AppTypography.headlineSmall.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Pick from contacts',
+                            onPressed: pickContact,
+                            icon: const Icon(Icons.contacts_rounded),
+                            color: AppColors.primary,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            final name = nameController.text.trim();
-                            final phone = phoneController.text.trim();
-                            if (name.isEmpty || phone.isEmpty) {
-                              showPremiumToast(
-                                context,
-                                'Add a name and phone number.',
-                                type: PremiumToastType.error,
-                              );
-                              return;
-                            }
-                            Navigator.pop(context, {
-                              'name': name,
-                              'phone': phone,
-                              'relation':
-                                  relationController.text.trim().isEmpty
-                                      ? 'Emergency'
-                                      : relationController.text.trim(),
-                            });
-                          },
-                          child: const Text('Save'),
-                        ),
+                      const SizedBox(height: 16),
+                      _settingsTextField(
+                        nameController,
+                        'Name',
+                        Icons.person,
+                        onChanged: (_) => refreshCanSave(),
+                      ),
+                      const SizedBox(height: 12),
+                      _settingsTextField(
+                        phoneController,
+                        'Phone number',
+                        Icons.call,
+                        keyboardType: TextInputType.phone,
+                        onChanged: (_) => refreshCanSave(),
+                      ),
+                      const SizedBox(height: 12),
+                      _settingsTextField(
+                        relationController,
+                        'Relation (optional)',
+                        Icons.badge_outlined,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed:
+                                  canSave
+                                      ? () {
+                                        Navigator.pop(context, {
+                                          'name': nameController.text.trim(),
+                                          'phone': phoneController.text.trim(),
+                                          'relation':
+                                              relationController.text
+                                                      .trim()
+                                                      .isEmpty
+                                                  ? 'Emergency'
+                                                  : relationController.text
+                                                      .trim(),
+                                        });
+                                      }
+                                      : null,
+                              child: const Text('Save'),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     ).whenComplete(() {
@@ -886,10 +942,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String label,
     IconData icon, {
     TextInputType? keyboardType,
+    ValueChanged<String>? onChanged,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      onChanged: onChanged,
       style: AppTypography.bodyLarge.copyWith(color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,

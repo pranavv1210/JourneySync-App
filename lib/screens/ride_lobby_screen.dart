@@ -1876,7 +1876,10 @@ class _RideLobbyScreenState extends State<RideLobbyScreen> {
             displayName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           Text(
             member.bike,

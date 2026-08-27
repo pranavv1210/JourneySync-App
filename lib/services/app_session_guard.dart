@@ -41,6 +41,11 @@ class AppSessionGuard with WidgetsBindingObserver {
   Future<void> start(String profileId) async {
     final normalized = profileId.trim();
     if (normalized.isEmpty || _client.auth.currentSession == null) return;
+    if (_profileId == normalized && _sessionToken.isNotEmpty) {
+      _subscribe();
+      unawaited(validate());
+      return;
+    }
 
     _profileId = normalized;
     final deviceId = await _deviceId();
@@ -128,7 +133,35 @@ class AppSessionGuard with WidgetsBindingObserver {
       return;
     }
     if (revoked || (remoteToken.isNotEmpty && remoteToken != _sessionToken)) {
-      unawaited(_forceLogout('JourneySync was opened on another phone.'));
+      unawaited(_confirmRemoteLogout());
+    }
+  }
+
+  Future<void> _confirmRemoteLogout() async {
+    if (_profileId.isEmpty || _sessionToken.isEmpty || _loggingOut) return;
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (_profileId.isEmpty || _sessionToken.isEmpty || _loggingOut) return;
+    try {
+      final row =
+          await _client
+              .from('user_device_sessions')
+              .select('session_token,revoked_at,deleted_at')
+              .eq('profile_id', _profileId)
+              .maybeSingle();
+      if (row == null) return;
+      final remote = Map<String, dynamic>.from(row);
+      final remoteToken = (remote['session_token'] ?? '').toString();
+      final revoked = (remote['revoked_at'] ?? '').toString().trim().isNotEmpty;
+      final deleted = (remote['deleted_at'] ?? '').toString().trim().isNotEmpty;
+      if (deleted) {
+        await _forceLogout('Your JourneySync account was deleted.');
+        return;
+      }
+      if (revoked || (remoteToken.isNotEmpty && remoteToken != _sessionToken)) {
+        await _forceLogout('JourneySync was opened on another phone.');
+      }
+    } catch (error) {
+      debugPrint('Device session logout confirmation failed: $error');
     }
   }
 

@@ -734,6 +734,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         return _DetailSheet(
           title: 'My Bike',
           icon: Icons.two_wheeler_rounded,
+          imagePath: activeBikeImagePath,
           rows: [
             _DetailRow('Vehicle name', vehicleName),
             if (garageBike != null) ...[
@@ -1585,11 +1586,13 @@ class _DetailSheet extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.rows,
+    this.imagePath = '',
   });
 
   final String title;
   final IconData icon;
   final List<_DetailRow> rows;
+  final String imagePath;
 
   @override
   Widget build(BuildContext context) {
@@ -1600,13 +1603,19 @@ class _DetailSheet extends StatelessWidget {
         Row(
           children: [
             Container(
+              clipBehavior: Clip.antiAlias,
               width: 46,
               height: 46,
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
-              child: Icon(icon, color: AppColors.primary, size: 24),
+              child:
+                  imagePath.trim().isNotEmpty
+                      ? imagePath.startsWith('http')
+                          ? Image.network(imagePath, fit: BoxFit.cover)
+                          : Image.file(File(imagePath), fit: BoxFit.cover)
+                      : Icon(icon, color: AppColors.primary, size: 24),
             ),
             const SizedBox(width: 12),
             Text(

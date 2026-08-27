@@ -226,7 +226,7 @@ class _LeaderMarkerState extends State<LeaderMarker>
                     avatarUrl: widget.location.avatarUrl,
                   ),
                 ),
-                // Crown icon / Premium badge top
+                // Leader badge
                 Positioned(
                   top: -14,
                   child: Row(
@@ -250,8 +250,6 @@ class _LeaderMarkerState extends State<LeaderMarker>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text('👑', style: TextStyle(fontSize: 10)),
-                            const SizedBox(width: 2),
                             Text(
                               'LEADER',
                               style: TextStyle(

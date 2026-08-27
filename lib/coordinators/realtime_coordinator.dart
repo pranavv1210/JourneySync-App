@@ -275,7 +275,9 @@ class RealtimeCoordinator extends ChangeNotifier {
       await _client.from('ride_alerts').insert(insertedPayload);
       return insertedPayload;
     } on PostgrestException catch (error) {
-      if (!_isMissingAlertOptionalColumn(error)) rethrow;
+      if (!_isMissingAlertOptionalColumn(error)) {
+        return _insertRideAlertViaRpc(insertedPayload);
+      }
       final legacyPayload =
           Map<String, dynamic>.from(payload)
             ..remove('latitude')
@@ -283,9 +285,35 @@ class RealtimeCoordinator extends ChangeNotifier {
             ..remove('avatar_url')
             ..remove('acknowledged_by')
             ..remove('original_alert_id');
-      await _client.from('ride_alerts').insert(legacyPayload);
-      return legacyPayload;
+      try {
+        await _client.from('ride_alerts').insert(legacyPayload);
+        return legacyPayload;
+      } on PostgrestException {
+        return _insertRideAlertViaRpc(insertedPayload);
+      }
     }
+  }
+
+  Future<Map<String, dynamic>> _insertRideAlertViaRpc(
+    Map<String, dynamic> payload,
+  ) async {
+    final type = (payload['type'] ?? '').toString().trim().toLowerCase();
+    if (type != alertTypeSos && type != alertTypeGroupSos) {
+      throw Exception('SOS alert insert failed.');
+    }
+    final row = await _client.rpc(
+      'create_ride_alert_sos',
+      params: {
+        'p_ride_id': (payload['ride_id'] ?? '').toString(),
+        'p_profile_id': (payload['profile_id'] ?? '').toString(),
+        'p_profile_name': (payload['user_name'] ?? 'Rider').toString(),
+        'p_avatar_url': (payload['avatar_url'] ?? '').toString(),
+        'p_latitude': payload['latitude'],
+        'p_longitude': payload['longitude'],
+        'p_broadcast_to_group': type == alertTypeGroupSos,
+      },
+    );
+    return Map<String, dynamic>.from(row as Map);
   }
 
   /// Fires an SOS alert for the given ride.

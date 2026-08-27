@@ -314,63 +314,8 @@ class _WelcomeBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Positioned.fill(child: CustomPaint(painter: _RouteGridPainter())),
-        Positioned.fill(child: CustomPaint(painter: _JourneyLinePainter())),
+        const Positioned.fill(child: ColoredBox(color: AppColors.background)),
       ],
     );
   }
-}
-
-class _RouteGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..color = AppColors.forest.withValues(alpha: 0.035)
-          ..strokeWidth = 1;
-    for (double x = 0; x < size.width; x += 32) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += 32) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _JourneyLinePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..color = AppColors.primary.withValues(alpha: 0.08)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4
-          ..strokeCap = StrokeCap.round;
-    final path =
-        Path()
-          ..moveTo(size.width * 0.08, size.height * 0.18)
-          ..cubicTo(
-            size.width * 0.30,
-            size.height * 0.10,
-            size.width * 0.24,
-            size.height * 0.48,
-            size.width * 0.54,
-            size.height * 0.42,
-          )
-          ..cubicTo(
-            size.width * 0.82,
-            size.height * 0.36,
-            size.width * 0.70,
-            size.height * 0.76,
-            size.width * 0.93,
-            size.height * 0.72,
-          );
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

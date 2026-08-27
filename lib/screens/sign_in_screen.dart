@@ -100,6 +100,18 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _loading = true);
     try {
       final result = await _authService.authenticateWithGoogle();
+      final email =
+          (Supabase.instance.client.auth.currentUser?.email ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+      if (isJourneySyncAdminEmail(email)) {
+        if (!mounted) return;
+        unawaited(
+          replaceAllWithAppRoute(context, const AdminDashboardScreen()),
+        );
+        return;
+      }
       final user = await _authService.resolveUser(
         identity: result.identity,
         isNewAccount: false,
@@ -112,19 +124,7 @@ class _SignInScreenState extends State<SignInScreen> {
         jwtToken: result.idToken,
       );
       if (!mounted) return;
-      final email =
-          (Supabase.instance.client.auth.currentUser?.email ?? '')
-              .toString()
-              .trim()
-              .toLowerCase();
-      unawaited(
-        replaceAllWithAppRoute(
-          context,
-          isJourneySyncAdminEmail(email)
-              ? const AdminDashboardScreen()
-              : const HomeScreen(),
-        ),
-      );
+      unawaited(replaceAllWithAppRoute(context, const HomeScreen()));
     } catch (error) {
       if (!mounted) return;
       final message = error.toString();

@@ -60,6 +60,18 @@ class RealtimeRideHUD extends StatefulWidget {
 class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
   bool _isExpanded = false;
   int _selectedTab = 0; // 0 = Dashboard, 1 = Pack, 2 = Stops
+  static const List<String> _packTitles = <String>[
+    'Corner calm',
+    'Steady rider',
+    'Road captain',
+    'Route watcher',
+    'Pace keeper',
+    'Tail support',
+    'Lane scout',
+    'Smooth throttle',
+    'Pack anchor',
+    'Distance runner',
+  ];
 
   String _formatDuration(int s) {
     final h = s ~/ 3600;
@@ -79,6 +91,19 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
       default:
         return const Color(0xFFEF4444);
     }
+  }
+
+  String _packTitleFor(RiderLocation rider, bool isLeader) {
+    if (isLeader) return 'Leading pack';
+    final seed =
+        '${rider.userId}:${DateTime.now().millisecondsSinceEpoch ~/ 3600000}';
+    final index =
+        seed.codeUnits.fold<int>(
+          0,
+          (value, unit) => (value * 31 + unit) & 0x7fffffff,
+        ) %
+        _packTitles.length;
+    return _packTitles[index];
   }
 
   Color _getBatteryColor(String batteryStr) {
@@ -540,18 +565,6 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                                 ),
                               ),
                     ),
-                    if (isLeader)
-                      Positioned(
-                        top: -10,
-                        left: -4,
-                        child: Transform.rotate(
-                          angle: -0.2,
-                          child: const Text(
-                            '👑',
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
                 const SizedBox(width: 12),
@@ -564,6 +577,7 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                           Text(
                             rider.userName,
                             style: AppTypography.titleMedium.copyWith(
+                              color: AppColors.textPrimary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -620,9 +634,7 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isLeader
-                            ? 'Leading pack'
-                            : '${snapshot.leaderRelation} • ETA ${GroupRideIntelligence.formatDuration(snapshot.etaToLeader)}',
+                        _packTitleFor(rider, isLeader),
                         style: AppTypography.caption.copyWith(
                           color:
                               snapshot.leaderRelation == 'off-route'
@@ -675,6 +687,7 @@ class _RealtimeRideHUDState extends State<RealtimeRideHUD> {
                         Text(
                           '${rider.speedKmh?.toStringAsFixed(0) ?? '0'} km/h',
                           style: AppTypography.titleSmall.copyWith(
+                            color: AppColors.textPrimary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
