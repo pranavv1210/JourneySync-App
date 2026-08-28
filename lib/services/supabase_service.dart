@@ -1614,8 +1614,10 @@ class SupabaseService {
             'model': (map['model'] ?? '').toString(),
             'cc': (map['cc'] ?? '').toString(),
             'nickname': (map['nickname'] ?? 'Motorcycle').toString(),
-            'fuelType': (map['fuelType'] ?? 'Petrol').toString(),
-            'imagePath': (map['imagePath'] ?? '').toString(),
+            'fuelType': (map['fuelType'] ?? '').toString(),
+            'imagePath':
+                (map['imagePath'] ?? map['image_url'] ?? map['photo_url'] ?? '')
+                    .toString(),
           };
         })
         .toList(growable: false);

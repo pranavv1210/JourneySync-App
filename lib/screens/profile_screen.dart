@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/ride_analytics_engine.dart';
 import '../services/ride_service.dart';
 import '../services/supabase_service.dart';
+import '../services/photo_crop_service.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../widgets/app_dialog.dart';
@@ -77,10 +78,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
     var activeBike = prefs.getString('userActiveBikeId') ?? '';
     final cachedAvatarPath = prefs.getString('localAvatarPath') ?? '';
-    var resolvedAvatar = cachedAvatarPath;
-    if (resolvedAvatar.isEmpty || !File(resolvedAvatar).existsSync()) {
-      resolvedAvatar = prefs.getString('userAvatarUrl') ?? '';
-    }
+    final cachedAvatarUrl = prefs.getString('userAvatarUrl') ?? '';
+    var resolvedAvatar =
+        cachedAvatarUrl.trim().isNotEmpty ? cachedAvatarUrl : cachedAvatarPath;
 
     if (mounted) {
       _refreshBikeImageCache(loadedBikes);
@@ -114,6 +114,24 @@ class _ProfileScreenState extends State<ProfileScreen>
     final userId = (prefs.getString('userId') ?? '').trim();
     if (userId.isNotEmpty) {
       try {
+        final remoteProfile = await _supabaseService
+            .fetchOrCreateCurrentUserProfile(
+              cachedUserId: userId,
+              cachedPhone: prefs.getString('userPhone') ?? '',
+              cachedName: prefs.getString('userName') ?? userName,
+              cachedBike: prefs.getString('userBike') ?? '',
+            );
+        final remoteAvatar =
+            (remoteProfile?['avatar_url'] ?? '').toString().trim();
+        if (remoteAvatar.isNotEmpty) {
+          resolvedAvatar = remoteAvatar;
+          await prefs.setString('userAvatarUrl', remoteAvatar);
+          await prefs.setString('localAvatarPath', '');
+        }
+        final remoteName = (remoteProfile?['name'] ?? '').toString().trim();
+        if (remoteName.isNotEmpty) {
+          await prefs.setString('userName', remoteName);
+        }
         final remoteGarage = await _supabaseService.fetchGarage(userId: userId);
         if (remoteGarage != null && remoteGarage.bikes.isNotEmpty) {
           loadedBikes = remoteGarage.bikes;
@@ -231,7 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         'model': parts.length > 2 ? parts[2] : '',
         'cc': parts.length > 3 ? parts[3] : '',
         'nickname': parts.length > 4 ? parts[4] : 'Motorcycle',
-        'fuelType': parts.length > 5 ? parts[5] : 'Petrol',
+        'fuelType': parts.length > 5 ? parts[5] : '',
         'imagePath': parts.length > 6 ? parts[6] : '',
       };
     }).toList();
@@ -350,32 +368,18 @@ class _ProfileScreenState extends State<ProfileScreen>
       });
     }
 
-    Future<String> saveBikeImage(XFile picked) async {
+    Future<String> saveBikeImage(CroppedFile picked) async {
       final prefs = await SharedPreferences.getInstance();
       final userId = (prefs.getString('userId') ?? '').trim();
       if (userId.isEmpty) {
         throw Exception('Sign in again before uploading a bike photo.');
       }
       final bytes = await picked.readAsBytes();
-      try {
-        return await _supabaseService.uploadBikePhoto(
-          userId: userId,
-          bikeId: formBikeId,
-          bytes: bytes,
-        );
-      } catch (error) {
-        debugPrint('Bike photo upload failed, saving local copy: $error');
-        final directory = await getApplicationDocumentsDirectory();
-        final garageDir = Directory('${directory.path}/garage');
-        if (!garageDir.existsSync()) {
-          await garageDir.create(recursive: true);
-        }
-        final extension =
-            picked.path.contains('.') ? picked.path.split('.').last : 'jpg';
-        final target = '${garageDir.path}/$formBikeId.$extension';
-        final saved = await File(picked.path).copy(target);
-        return saved.path;
-      }
+      return _supabaseService.uploadBikePhoto(
+        userId: userId,
+        bikeId: formBikeId,
+        bytes: bytes,
+      );
     }
 
     final result = await showModalBottomSheet<Map<String, String>>(
@@ -387,6 +391,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         return StatefulBuilder(
           builder: (context, setSheetState) {
             final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+            final canSaveVehicle =
+                brandController.text.trim().isNotEmpty &&
+                modelController.text.trim().isNotEmpty &&
+                ccController.text.trim().isNotEmpty;
             return Padding(
               padding: EdgeInsets.fromLTRB(
                 AppSpacing.xl,
@@ -433,9 +441,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                         InkWell(
                           borderRadius: BorderRadius.circular(AppRadius.lg),
                           onTap: () async {
-                            final picked = await ImagePicker().pickImage(
+                            final picked = await PhotoCropService.pickAndCrop(
                               source: ImageSource.gallery,
-                              imageQuality: 82,
+                              title: 'Crop motorcycle photo',
+                              aspectRatio: const CropAspectRatio(
+                                ratioX: 16,
+                                ratioY: 9,
+                              ),
+                              initAspectRatio: CropAspectRatioPreset.ratio16x9,
+                              imageQuality: 88,
                             );
                             if (picked == null) return;
                             try {
@@ -523,6 +537,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           label: 'Brand',
                           hint: 'Royal Enfield',
                           onTap: () => scrollFieldIntoView(brandKey),
+                          onChanged: (_) => setSheetState(() {}),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _VehicleField(
@@ -532,6 +547,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           label: 'Model',
                           hint: 'Continental GT 650',
                           onTap: () => scrollFieldIntoView(modelKey),
+                          onChanged: (_) => setSheetState(() {}),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _VehicleField(
@@ -542,6 +558,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           hint: '650',
                           keyboardType: TextInputType.number,
                           onTap: () => scrollFieldIntoView(ccKey),
+                          onChanged: (_) => setSheetState(() {}),
                         ),
                         const SizedBox(height: AppSpacing.md),
                         _VehicleField(
@@ -551,6 +568,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           label: 'Nickname',
                           hint: 'Weekend machine',
                           onTap: () => scrollFieldIntoView(nicknameKey),
+                          onChanged: (_) => setSheetState(() {}),
                         ),
                         const SizedBox(height: AppSpacing.xl),
                         Row(
@@ -564,34 +582,42 @@ class _ProfileScreenState extends State<ProfileScreen>
                             const SizedBox(width: AppSpacing.md),
                             Expanded(
                               child: ElevatedButton(
-                                onPressed: () {
-                                  final brand = brandController.text.trim();
-                                  final model = modelController.text.trim();
-                                  final cc = ccController.text.trim();
-                                  final nickname =
-                                      nicknameController.text.trim().isEmpty
-                                          ? model
-                                          : nicknameController.text.trim();
-                                  if (brand.isEmpty ||
-                                      model.isEmpty ||
-                                      cc.isEmpty) {
-                                    showPremiumToast(
-                                      context,
-                                      'Add brand, model, and CC.',
-                                      type: PremiumToastType.error,
-                                    );
-                                    return;
-                                  }
-                                  Navigator.pop(context, {
-                                    'id': formBikeId,
-                                    'brand': brand,
-                                    'model': model,
-                                    'cc': cc,
-                                    'nickname': nickname,
-                                    'fuelType': 'Petrol',
-                                    'imagePath': imagePath,
-                                  });
-                                },
+                                onPressed:
+                                    !canSaveVehicle
+                                        ? null
+                                        : () {
+                                          final brand =
+                                              brandController.text.trim();
+                                          final model =
+                                              modelController.text.trim();
+                                          final cc = ccController.text.trim();
+                                          final nickname =
+                                              nicknameController.text
+                                                      .trim()
+                                                      .isEmpty
+                                                  ? model
+                                                  : nicknameController.text
+                                                      .trim();
+                                          if (brand.isEmpty ||
+                                              model.isEmpty ||
+                                              cc.isEmpty) {
+                                            showPremiumToast(
+                                              context,
+                                              'Add brand, model, and CC.',
+                                              type: PremiumToastType.error,
+                                            );
+                                            return;
+                                          }
+                                          Navigator.pop(context, {
+                                            'id': formBikeId,
+                                            'brand': brand,
+                                            'model': model,
+                                            'cc': cc,
+                                            'nickname': nickname,
+                                            'fuelType': '',
+                                            'imagePath': imagePath,
+                                          });
+                                        },
                                 child: Text(isEditing ? 'Update' : 'Save'),
                               ),
                             ),
@@ -1311,7 +1337,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${bike['cc']} CC • ${bike['fuelType']}',
+                          '${bike['cc']} CC',
                           style: AppTypography.caption.copyWith(
                             color: AppColors.textTertiary,
                           ),
@@ -1564,6 +1590,7 @@ class _VehicleField extends StatelessWidget {
     required this.hint,
     this.keyboardType,
     this.onTap,
+    this.onChanged,
   });
 
   final Key fieldKey;
@@ -1573,6 +1600,7 @@ class _VehicleField extends StatelessWidget {
   final String hint;
   final TextInputType? keyboardType;
   final VoidCallback? onTap;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1582,6 +1610,7 @@ class _VehicleField extends StatelessWidget {
       focusNode: focusNode,
       keyboardType: keyboardType,
       onTap: onTap,
+      onChanged: onChanged,
       style: AppTypography.bodyLarge.copyWith(
         color: AppColors.textPrimary,
         fontWeight: FontWeight.w600,

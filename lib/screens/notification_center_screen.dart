@@ -95,63 +95,78 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Premium illustration container
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.surface,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.6),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 18, 20, 0),
+          child: JourneyHeader(
+            surface: true,
+            leading: JourneyBackButton(),
+            eyebrow: 'SIGNAL CENTER',
+            title: 'Notifications',
+            subtitle: 'SOS alerts, ride changes, invites, and route updates.',
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.surface,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.notifications_active_outlined,
+                      size: 48,
+                      color: AppColors.forest.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'All clear',
+                    style: AppTypography.headlineSmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.forest,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Your ride signal feed is quiet. SOS alerts, crew joins, route changes, and weekend ride nudges will land here.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  AppButton(
+                    label: 'Refresh',
+                    expand: false,
+                    size: AppButtonSize.small,
+                    onPressed: _coordinator.refresh,
                   ),
                 ],
               ),
-              child: Icon(
-                Icons.notifications_active_outlined,
-                size: 48,
-                color: AppColors.forest.withValues(alpha: 0.4),
-              ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              'All clear',
-              style: AppTypography.headlineSmall.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppColors.forest,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'No notifications yet.\nRide invites, SOS alerts, route changes, and weather updates will land here.',
-              textAlign: TextAlign.center,
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            AppButton(
-              label: 'Refresh',
-              expand: false,
-              size: AppButtonSize.small,
-              onPressed: _coordinator.refresh,
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

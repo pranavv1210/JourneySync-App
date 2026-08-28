@@ -12,10 +12,12 @@ import 'ride_mode_screen.dart';
 import 'package:intl/intl.dart';
 import '../widgets/empty_state_card.dart';
 import '../widgets/journey_screen.dart';
+import '../widgets/app_button.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/ride_loading_indicator.dart';
 import '../widgets/ride_map_thumbnail.dart';
 import 'dart:ui' as ui;
+import 'create_ride_screen.dart';
 
 class RideHistoryScreen extends StatefulWidget {
   const RideHistoryScreen({super.key});
@@ -139,13 +141,50 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                 child: RideLoadingIndicator(label: 'Loading ride journal'),
               )
               : allRides.isEmpty
-              ? const JourneyScreen(
-                scrollable: false,
-                child: EmptyStateCard(
-                  title: 'No journeys yet',
-                  message: 'Finished and scheduled rides will appear here.',
-                  icon: Icons.history_rounded,
-                  foreground: forest,
+              ? SafeArea(
+                child: Column(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: JourneyHeader(
+                        surface: true,
+                        leading: JourneyBackButton(),
+                        title: 'Ride History',
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.xl),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const EmptyStateCard(
+                                title: 'No journeys yet',
+                                message:
+                                    'Finished and scheduled rides will appear here.',
+                                icon: Icons.history_rounded,
+                                foreground: forest,
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+                              AppButton(
+                                label: 'Create first ride',
+                                icon: Icons.add_rounded,
+                                expand: false,
+                                size: AppButtonSize.medium,
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    buildAppRoute(const CreateRideScreen()),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               )
               : SafeArea(

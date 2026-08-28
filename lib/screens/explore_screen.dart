@@ -9,6 +9,7 @@ import '../widgets/app_main_bottom_nav.dart';
 import '../widgets/journey_screen.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
+import '../widgets/weather_loading_tile.dart';
 import 'create_ride_screen.dart';
 import 'nearby_essentials_screen.dart';
 
@@ -309,19 +310,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
       elevated: true,
       child: Row(
         children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-            ),
-            child: const Icon(
-              Icons.speed_rounded,
-              color: AppColors.primary,
-              size: 26,
-            ),
-          ),
+          _loadingWeather
+              ? const WeatherLoadingTile()
+              : Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                child: const Icon(
+                  Icons.speed_rounded,
+                  color: AppColors.primary,
+                  size: 26,
+                ),
+              ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -338,7 +341,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _weather?.displayText ?? 'Weather unavailable',
+                  _loadingWeather
+                      ? 'Syncing live weather near you'
+                      : _weather?.displayText ?? 'Weather unavailable',
                   style: AppTypography.bodyMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),

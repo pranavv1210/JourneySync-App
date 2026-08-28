@@ -60,11 +60,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final userId = (prefs.getString('userId') ?? '').trim();
     if (userId.isEmpty) return;
     try {
+      final remoteProfile = await _supabaseService
+          .fetchOrCreateCurrentUserProfile(
+            cachedUserId: userId,
+            cachedPhone: userPhone,
+            cachedName: userName,
+            cachedBike: userBike,
+          );
+      final remoteAvatar =
+          (remoteProfile?['avatar_url'] ?? '').toString().trim();
+      final remoteName = (remoteProfile?['name'] ?? '').toString().trim();
+      final remoteBike = (remoteProfile?['bike'] ?? '').toString().trim();
+      if (remoteAvatar.isNotEmpty) {
+        await prefs.setString('userAvatarUrl', remoteAvatar);
+        await prefs.setString('localAvatarPath', '');
+      }
+      if (remoteName.isNotEmpty) await prefs.setString('userName', remoteName);
+      if (remoteBike.isNotEmpty) await prefs.setString('userBike', remoteBike);
       final remoteContacts = await _supabaseService.fetchEmergencyContacts(
         userId: userId,
       );
       if (remoteContacts != null) {
         await _saveEmergencyContacts(remoteContacts, syncCloud: false);
+      }
+      if (mounted) {
+        setState(() {
+          userName = remoteName.isNotEmpty ? remoteName : userName;
+          userBike = remoteBike.isNotEmpty ? remoteBike : userBike;
+          avatarUrl = remoteAvatar.isNotEmpty ? remoteAvatar : avatarUrl;
+          if (remoteAvatar.isNotEmpty) localAvatarPath = '';
+        });
       }
     } catch (_) {}
   }
@@ -422,7 +447,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       child: Text(
-                        'Edit photo, rider details, and account profile',
+                        'Edit profile',
                         textAlign: TextAlign.center,
                         style: AppTypography.buttonMedium.copyWith(
                           color: AppColors.textOnDark,
@@ -516,12 +541,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   ImageProvider? _settingsHeroImage() {
+    if (avatarUrl.startsWith('http')) {
+      return NetworkImage(avatarUrl);
+    }
     if (localAvatarPath.isNotEmpty) {
       final file = File(localAvatarPath);
       if (file.existsSync()) return FileImage(file);
-    }
-    if (avatarUrl.startsWith('http')) {
-      return NetworkImage(avatarUrl);
     }
     return null;
   }

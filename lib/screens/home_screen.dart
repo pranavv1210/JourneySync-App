@@ -35,6 +35,7 @@ import '../widgets/app_bottom_sheet.dart';
 import '../widgets/journey_bottom_nav.dart';
 import '../widgets/ride_loading_indicator.dart';
 import '../widgets/ride_map_thumbnail.dart';
+import '../widgets/weather_loading_tile.dart';
 import '../models/ride_record.dart';
 import '../coordinators/active_ride_coordinator.dart';
 import '../coordinators/notification_coordinator.dart';
@@ -583,19 +584,21 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: const Icon(
-                      Icons.wb_sunny_rounded,
-                      color: Color(0xFF2563EB),
-                      size: 22,
-                    ),
-                  ),
+                  refreshingHome && weatherSnapshot == null
+                      ? const WeatherLoadingTile(compact: true)
+                      : Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: const Icon(
+                          Icons.wb_sunny_rounded,
+                          color: Color(0xFF2563EB),
+                          size: 22,
+                        ),
+                      ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -608,7 +611,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           ),
                         ),
                         Text(
-                          weatherText,
+                          refreshingHome && weatherSnapshot == null
+                              ? 'Checking...'
+                              : weatherText,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.titleMedium.copyWith(
@@ -754,12 +759,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 (garageBike['nickname'] ?? '').trim().isEmpty
                     ? '-'
                     : garageBike['nickname']!,
-              ),
-              _DetailRow(
-                'Fuel',
-                (garageBike['fuelType'] ?? '').trim().isEmpty
-                    ? '-'
-                    : garageBike['fuelType']!,
               ),
             ] else
               const _DetailRow(

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/journey_screen.dart';
 import '../widgets/ride_loading_indicator.dart';
 import '../services/supabase_service.dart';
+import '../services/photo_crop_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -67,6 +69,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             .toLowerCase();
     final cachedPhone = prefs.getString('userPhone') ?? '';
     if (!mounted) return;
+    final cachedLocal = prefs.getString('localAvatarPath') ?? '';
+    final cachedRemote = prefs.getString('userAvatarUrl') ?? '';
     setState(() {
       _nameController.text = prefs.getString('userName') ?? '';
       _bikeController.text = prefs.getString('userBike') ?? '';
@@ -75,7 +79,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ? authEmail
               : (prefs.getString('userEmail') ?? '').trim().toLowerCase();
       _phoneController.text = cachedPhone.contains('@') ? '' : cachedPhone;
-      _localAvatarPath = prefs.getString('localAvatarPath') ?? '';
+      _localAvatarPath =
+          cachedRemote.trim().isNotEmpty ? cachedRemote.trim() : cachedLocal;
       _initialName = _nameController.text.trim();
       _initialBike = _bikeController.text.trim();
       _initialPhone = _phoneController.text.trim();
@@ -86,10 +91,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _pickProfilePhoto() async {
     try {
-      final picker = ImagePicker();
-      final image = await picker.pickImage(
+      final image = await PhotoCropService.pickAndCrop(
         source: ImageSource.gallery,
-        imageQuality: 85,
+        title: 'Crop profile photo',
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        initAspectRatio: CropAspectRatioPreset.square,
+        imageQuality: 88,
         maxWidth: 1200,
       );
       if (image == null) return;
@@ -147,9 +154,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         await prefs.setString('userEmail', email);
       }
       await prefs.setString('userPhone', phone);
-      if (_localAvatarPath.isNotEmpty) {
+      if (_localAvatarPath.isNotEmpty && !_localAvatarPath.startsWith('http')) {
         await prefs.setString('localAvatarPath', _localAvatarPath);
-        await prefs.setString('userAvatarUrl', '');
       }
 
       final userId = prefs.getString('userId') ?? '';
@@ -211,7 +217,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     String userId,
     SharedPreferences prefs,
   ) async {
-    if (_localAvatarPath.isEmpty || !File(_localAvatarPath).existsSync()) {
+    if (_localAvatarPath.isEmpty ||
+        _localAvatarPath.startsWith('http') ||
+        !File(_localAvatarPath).existsSync()) {
       return;
     }
     try {
@@ -225,6 +233,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         avatarUrl: avatarUrl,
       );
       await prefs.setString('userAvatarUrl', avatarUrl);
+      await prefs.setString('localAvatarPath', '');
+      _localAvatarPath = avatarUrl;
     } catch (error) {
       debugPrint('Avatar upload skipped: $error');
     }
@@ -440,10 +450,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildEditablePhotoHero() {
-    final imageProvider =
-        _localAvatarPath.isNotEmpty && File(_localAvatarPath).existsSync()
-            ? FileImage(File(_localAvatarPath))
-            : null;
+    final imageProvider = _avatarImageProvider();
     final initial =
         _nameController.text.trim().isNotEmpty
             ? _nameController.text.trim()[0]
@@ -543,5 +550,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       ),
     );
+  }
+
+  ImageProvider? _avatarImageProvider() {
+    final value = _localAvatarPath.trim();
+    if (value.startsWith('http')) return NetworkImage(value);
+    if (value.isNotEmpty && File(value).existsSync()) {
+      return FileImage(File(value));
+    }
+    return null;
   }
 }
