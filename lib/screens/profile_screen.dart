@@ -134,7 +134,11 @@ class _ProfileScreenState extends State<ProfileScreen>
         }
         final remoteGarage = await _supabaseService.fetchGarage(userId: userId);
         if (remoteGarage != null && remoteGarage.bikes.isNotEmpty) {
-          loadedBikes = remoteGarage.bikes;
+          loadedBikes = await _upgradeLocalGaragePhotos(
+            remoteGarage.bikes,
+            userId,
+            remoteGarage.activeBikeId,
+          );
           activeBike = remoteGarage.activeBikeId;
           await _saveBikesToPrefs(loadedBikes);
           await prefs.setString('userActiveBikeId', activeBike);
@@ -270,6 +274,48 @@ class _ProfileScreenState extends State<ProfileScreen>
     } catch (_) {
       return false;
     }
+  }
+
+  Future<List<Map<String, String>>> _upgradeLocalGaragePhotos(
+    List<Map<String, String>> source,
+    String ownerId,
+    String activeId,
+  ) async {
+    var changed = false;
+    final upgraded = <Map<String, String>>[];
+    for (final bike in source) {
+      final copy = Map<String, String>.from(bike);
+      final imagePath = (copy['imagePath'] ?? '').trim();
+      final bikeId = (copy['id'] ?? '').trim();
+      if (ownerId.isNotEmpty &&
+          bikeId.isNotEmpty &&
+          imagePath.isNotEmpty &&
+          !imagePath.startsWith('http') &&
+          File(imagePath).existsSync()) {
+        try {
+          final uploaded = await _supabaseService.uploadBikePhoto(
+            userId: ownerId,
+            bikeId: bikeId,
+            bytes: await File(imagePath).readAsBytes(),
+          );
+          copy['imagePath'] = uploaded;
+          changed = true;
+        } catch (error) {
+          debugPrint('Garage photo upgrade skipped for $bikeId: $error');
+        }
+      }
+      upgraded.add(copy);
+    }
+    if (changed) {
+      unawaited(
+        _supabaseService.saveGarage(
+          userId: ownerId,
+          bikes: upgraded,
+          activeBikeId: activeId,
+        ),
+      );
+    }
+    return upgraded;
   }
 
   Future<void> _addBike() async {
