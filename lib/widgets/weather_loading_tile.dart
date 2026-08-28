@@ -5,9 +5,14 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 class WeatherLoadingTile extends StatefulWidget {
-  const WeatherLoadingTile({super.key, this.compact = false});
+  const WeatherLoadingTile({
+    super.key,
+    this.compact = false,
+    this.animated = true,
+  });
 
   final bool compact;
+  final bool animated;
 
   @override
   State<WeatherLoadingTile> createState() => _WeatherLoadingTileState();
@@ -42,14 +47,17 @@ class _WeatherLoadingTileState extends State<WeatherLoadingTile>
       child: SizedBox(
         width: size,
         height: size,
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, _) {
-            return CustomPaint(
-              painter: _WeatherLoadingPainter(_controller.value),
-            );
-          },
-        ),
+        child:
+            widget.animated
+                ? AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) {
+                    return CustomPaint(
+                      painter: _WeatherLoadingPainter(_controller.value),
+                    );
+                  },
+                )
+                : const CustomPaint(painter: _WeatherLoadingPainter(0.18)),
       ),
     );
   }

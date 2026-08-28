@@ -66,15 +66,21 @@ class WeatherService {
       if (current is! Map<String, dynamic>) return null;
 
       final daily = data['daily'];
-      final temp = (current['temperature_2m'] as num?)?.toDouble() ?? 24.0;
-      final weatherCode = (current['weather_code'] as num?)?.toInt() ?? 0;
-      final wind = (current['wind_speed_10m'] as num?)?.toDouble() ?? 0.0;
-      final visMeters = (current['visibility'] as num?)?.toDouble() ?? 10000.0;
+      final temp = (current['temperature_2m'] as num?)?.toDouble();
+      final weatherCode = (current['weather_code'] as num?)?.toInt();
+      final wind = (current['wind_speed_10m'] as num?)?.toDouble();
+      final visMeters = (current['visibility'] as num?)?.toDouble();
+      if (temp == null ||
+          weatherCode == null ||
+          wind == null ||
+          visMeters == null) {
+        return null;
+      }
       final vis = visMeters / 1000.0;
 
       var rainProb = 0;
-      var sunriseStr = '06:00 AM';
-      var sunsetStr = '07:00 PM';
+      var sunriseStr = '--';
+      var sunsetStr = '--';
       if (daily is Map<String, dynamic>) {
         final probs = daily['precipitation_probability_max'] as List?;
         if (probs != null && probs.isNotEmpty) {

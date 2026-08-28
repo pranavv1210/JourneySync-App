@@ -66,6 +66,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
   bool loading = false;
   bool refreshingHome = false;
+  bool refreshingWeather = false;
   String rideActionLoadingId = '';
   List<RideRecord> recentRides = [];
   List<RideRecord> nearbyRides = [];
@@ -129,7 +130,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       var profileErrorText = '';
       var fetchedRecent = <RideRecord>[];
       var fetchedNearby = <RideRecord>[];
-      var weatherValue = 'Weather unavailable';
+      var weatherValue =
+          weatherSnapshot?.displayText.trim().isNotEmpty == true
+              ? weatherSnapshot!.displayText.trim()
+              : weatherText;
       var fetchedProfileFromServer = false;
       Map<String, String>? fetchedActiveBike;
 
@@ -224,9 +228,14 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         if (weather != null && weather.displayText.trim().isNotEmpty) {
           weatherValue = weather.displayText.trim();
           weatherSnapshot = weather;
+        } else if (weatherSnapshot == null) {
+          weatherValue = 'Weather unavailable';
         }
       } catch (error) {
         debugPrint('Weather fetch failed: $error');
+        if (weatherSnapshot == null) {
+          weatherValue = 'Weather unavailable';
+        }
       }
       final updatedBikeImagePath = _resolveActiveBikeImagePath(prefs);
       fetchedActiveBike = _resolveActiveBikeDetails(prefs);
@@ -260,6 +269,55 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         unawaited(_maybeShowFeedbackPrompt());
       }
     }
+  }
+
+  bool get _weatherUnavailable {
+    return weatherText.trim().isEmpty ||
+        weatherText.toLowerCase().contains('weather unavailable');
+  }
+
+  bool get _showWeatherAnimation {
+    return refreshingHome || refreshingWeather || _weatherUnavailable;
+  }
+
+  Future<void> _refreshHomeWeather() async {
+    if (refreshingWeather) return;
+    setState(() {
+      refreshingWeather = true;
+      if (_weatherUnavailable) {
+        weatherSnapshot = null;
+      }
+    });
+    try {
+      final weather = await _weatherService.fetchCurrentWeather();
+      if (!mounted) return;
+      setState(() {
+        if (weather != null && weather.displayText.trim().isNotEmpty) {
+          weatherSnapshot = weather;
+          weatherText = weather.displayText.trim();
+        } else if (weatherSnapshot == null) {
+          weatherText = 'Weather unavailable';
+        }
+      });
+    } catch (error) {
+      debugPrint('Weather refresh failed: $error');
+      if (!mounted) return;
+      setState(() {
+        if (weatherSnapshot == null) {
+          weatherText = 'Weather unavailable';
+        }
+      });
+    } finally {
+      if (mounted) {
+        setState(() => refreshingWeather = false);
+      }
+    }
+  }
+
+  Future<void> _handleWeatherTap() async {
+    await _refreshHomeWeather();
+    if (!mounted) return;
+    unawaited(_showWeatherDetails());
   }
 
   Future<List<Map<String, String>>> _upgradeLocalGaragePhotos(
@@ -626,25 +684,16 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       children: [
         Expanded(
           child: GestureDetector(
-            onTap: _showWeatherDetails,
+            onTap: _handleWeatherTap,
             child: PremiumCard(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
-                  refreshingHome && weatherSnapshot == null
+                  _showWeatherAnimation
                       ? const WeatherLoadingTile(compact: true)
-                      : Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                        child: const Icon(
-                          Icons.wb_sunny_rounded,
-                          color: Color(0xFF2563EB),
-                          size: 22,
-                        ),
+                      : const WeatherLoadingTile(
+                        compact: true,
+                        animated: false,
                       ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -658,9 +707,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           ),
                         ),
                         Text(
-                          refreshingHome && weatherSnapshot == null
-                              ? 'Checking...'
-                              : weatherText,
+                          _showWeatherAnimation ? 'Checking...' : weatherText,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.titleMedium.copyWith(

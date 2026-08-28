@@ -304,34 +304,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Widget _conditionsCard() {
+    final weatherUnavailable =
+        _weather == null ||
+        _weather!.displayText.trim().isEmpty ||
+        _weather!.displayText.toLowerCase().contains('weather unavailable');
+    final showWeatherAnimation = _loadingWeather || weatherUnavailable;
     return GlassCard(
       onTap: _showWeatherDetails,
       padding: const EdgeInsets.all(16),
       elevated: true,
       child: Row(
         children: [
-          _loadingWeather
+          showWeatherAnimation
               ? const WeatherLoadingTile()
-              : Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                ),
-                child: const Icon(
-                  Icons.speed_rounded,
-                  color: AppColors.primary,
-                  size: 26,
-                ),
-              ),
+              : const WeatherLoadingTile(animated: false),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _loadingWeather
+                  showWeatherAnimation
                       ? 'Loading conditions'
                       : '$_rideScore Ride Score',
                   style: AppTypography.headlineSmall.copyWith(
@@ -341,7 +334,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _loadingWeather
+                  showWeatherAnimation
                       ? 'Syncing live weather near you'
                       : _weather?.displayText ?? 'Weather unavailable',
                   style: AppTypography.bodyMedium.copyWith(

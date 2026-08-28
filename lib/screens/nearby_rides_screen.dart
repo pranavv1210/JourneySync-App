@@ -13,6 +13,7 @@ import '../widgets/premium/glass_card.dart';
 import '../widgets/haptic_button.dart';
 import '../services/ride_service.dart';
 import '../widgets/ride_loading_indicator.dart';
+import '../widgets/weather_loading_tile.dart';
 import 'dart:ui' show ImageFilter;
 import '../theme/app_theme.dart';
 import '../services/weather_service.dart';
@@ -32,7 +33,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
 
   /// Design diameter of the radar. The rendered diameter shrinks on narrow
   /// screens; every other radar dimension is derived from it by [_RadarLayout].
-  static const double _radarDiameter = 300;
+  static const double _radarDiameter = 330;
 
   final RideService _rideService = RideService();
   final RealtimeCoordinator _realtimeCoordinator = RealtimeCoordinator.instance;
@@ -571,11 +572,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                 customColor: Colors.white,
                 child: Row(
                   children: [
-                    Icon(
-                      _weatherIcon(_weatherSnapshot!.displayText),
-                      color: primary,
-                      size: 22,
-                    ),
+                    const WeatherLoadingTile(compact: true, animated: false),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -658,12 +655,18 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       return Column(
         children: [
           _screenHeader(),
-          weatherWidget,
           Expanded(
-            child: _radarExperience(
-              primary,
-              forest,
-              showFallback: _showNoRidesFallback,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: _radarExperience(
+                    primary,
+                    forest,
+                    showFallback: _showNoRidesFallback,
+                  ),
+                ),
+                Positioned(left: 0, right: 0, top: 0, child: weatherWidget),
+              ],
             ),
           ),
         ],
@@ -719,54 +722,71 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
     Color forest, {
     required bool showFallback,
   }) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final statusTop =
+            (constraints.maxHeight / 2) + (_radarDiameter / 2) + 18;
+        final safeStatusTop =
+            statusTop
+                .clamp(0.0, math.max(0.0, constraints.maxHeight - 132))
+                .toDouble();
+        return Stack(
+          alignment: Alignment.center,
           children: [
-            _radarSurface(primary, forest, nearbyRides),
-            const SizedBox(height: 18),
-            _radarStatusChip(primary, forest),
-            const SizedBox(height: 12),
-            if (showFallback)
-              Text(
-                'No riders nearby',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: forest,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              )
-            else
-              RideLoadingIndicator(
-                label: 'Scanning for nearby rides...',
-                compact: true,
-                color: primary,
+            Align(
+              alignment: Alignment.center,
+              child: _radarSurface(primary, forest, nearbyRides),
+            ),
+            Positioned(
+              left: 20,
+              right: 20,
+              top: safeStatusTop,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _radarStatusChip(primary, forest),
+                  const SizedBox(height: 12),
+                  if (showFallback)
+                    Text(
+                      'No riders nearby',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: forest,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  else
+                    RideLoadingIndicator(
+                      label: 'Scanning for nearby rides...',
+                      compact: true,
+                      color: primary,
+                    ),
+                  if (showFallback) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Ask a host to create a ride and keep it live. Radar updates automatically.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: forest.withValues(alpha: 0.68),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            if (showFallback) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Ask a host to create a ride and keep it live. Radar updates automatically.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: forest.withValues(alpha: 0.68),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _radarSurface(Color primary, Color forest, List<NearbyRide> rides) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 18),
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(28)),
       child: Column(
         children: [
@@ -1715,8 +1735,8 @@ class _RadarPainter extends CustomPainter {
           ..color = primary.withValues(alpha: 0.24)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.4;
-    for (int i = 1; i <= 4; i++) {
-      canvas.drawCircle(center, radius * (i / 4), ringPaint);
+    for (int i = 1; i <= 6; i++) {
+      canvas.drawCircle(center, radius * (i / 6), ringPaint);
     }
 
     final sweepRect = Rect.fromCircle(center: center, radius: radius);
