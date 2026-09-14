@@ -1107,8 +1107,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   children: [
                                     Radio<String>(
                                       value: message,
+                                      // TODO: Migrate to RadioGroup when the
+                                      // minimum Flutter SDK is 3.35 or newer.
+                                      // ignore: deprecated_member_use
                                       groupValue: service.selectedMessage,
                                       activeColor: AppColors.primary,
+                                      // ignore: deprecated_member_use
                                       onChanged: (value) async {
                                         if (value == null) return;
                                         await service.selectMessage(value);

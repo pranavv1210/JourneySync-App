@@ -54,7 +54,7 @@ jobs:
       - name: Build APK
         run: |
           for attempt in 1 2 3 4; do
-            if flutter build apk --release --dart-define-from-file=.env; then
+            if flutter build apk --release --flavor sideload --dart-define-from-file=.env; then
               exit 0
             fi
             if [ "$attempt" -eq 4 ]; then
@@ -69,7 +69,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: journeysync-android-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/app-sideload-release.apk
           if-no-files-found: error
 
   build_ios_unsigned:
