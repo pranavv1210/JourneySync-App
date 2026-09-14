@@ -11,7 +11,7 @@ export function DownloadSection({ onDownload }: { onDownload: () => void }) {
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      const apkUrl = new URL('/journeysync.apk', window.location.origin).href;
+      const apkUrl = new URL('/journeysync.apk?v=1.2.1', window.location.origin).href;
       setQrSrc(
         `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=${encodeURIComponent(apkUrl)}`,
       );
@@ -67,7 +67,7 @@ export function DownloadSection({ onDownload }: { onDownload: () => void }) {
 
           <div className="download-qr">
             <div className="download-qr-phone">
-              <a href="/journeysync.apk" download aria-label="Scan to download JourneySync APK">
+              <a href="/journeysync.apk?v=1.2.1" download aria-label="Scan to download JourneySync APK">
                 {qrSrc ? (
                   <img src={qrSrc} alt="QR code to download JourneySync Android beta APK" />
                 ) : (
