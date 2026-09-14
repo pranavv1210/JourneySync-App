@@ -94,6 +94,22 @@ android {
         versionName = flutter.versionName
     }
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("sideload") {
+            dimension = "distribution"
+            buildConfigField("boolean", "BIKE_AUTO_SMS_ENABLED", "false")
+        }
+        create("play") {
+            dimension = "distribution"
+            buildConfigField("boolean", "BIKE_AUTO_SMS_ENABLED", "true")
+        }
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
     signingConfigs {
         create("release") {
             if (hasReleaseSigningConfig) {

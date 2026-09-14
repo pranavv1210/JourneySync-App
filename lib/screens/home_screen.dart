@@ -738,7 +738,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 const SizedBox(height: 2),
                 Text(
                   enabled
-                      ? 'Calls get your selected reply.'
+                      ? (service.capability.directSmsSupported
+                          ? 'Calls get your selected reply.'
+                          : 'Calls are declined; your status is shared.')
                       : 'Let callers know you are riding.',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -773,14 +775,18 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     } else if (capability.fullyReady) {
       showPremiumToast(
         context,
-        'Bike Mode on. Calls will get your selected reply.',
+        capability.directSmsSupported
+            ? 'Bike Mode on. Calls will get your selected reply.'
+            : 'Bike Mode on. Calls will be declined and your riding status is shared.',
         type: PremiumToastType.success,
       );
     } else {
       showPremiumToast(
         context,
         capability.callScreeningAvailable
-            ? 'Bike Mode is on, but call or SMS access was not granted.'
+            ? (capability.directSmsSupported
+                ? 'Bike Mode is on, but call or SMS access was not granted.'
+                : 'Bike Mode is on, but call screening access was not granted.')
             : 'Bike Mode status is on. Call handling needs Android 10 or newer.',
         type: PremiumToastType.warning,
       );

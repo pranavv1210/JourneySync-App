@@ -15,8 +15,8 @@ export function BikeModeSection() {
           <h2>Keep your hands on the bars and callers in the loop.</h2>
           <p>
             Turn Bike Mode on for a commute or a long ride. On supported Android phones,
-            JourneySync can decline incoming calls and send your selected SMS reply while the
-            mode stays active.
+            JourneySync can decline incoming calls and share your selected riding reply while
+            the mode stays active.
           </p>
           <ul>
             <li>Write and save multiple replies in Settings.</li>
@@ -25,8 +25,9 @@ export function BikeModeSection() {
             <li>Bike Mode stays on until you turn it off.</li>
           </ul>
           <small>
-            Call handling requires Android system approval and SMS permission. Carrier charges
-            may apply. iPhone support is limited to the in-app riding status.
+            The direct-download APK does not request silent SMS access, so it installs without
+            that high-risk permission. Automatic SMS is reserved for a Play-reviewed release.
+            iPhone support is limited to the in-app riding status.
           </small>
         </div>
 
@@ -36,7 +37,7 @@ export function BikeModeSection() {
               <strong>{enabled ? 'Bike Mode is on' : 'Bike Mode'}</strong>
               <span>
                 {enabled
-                  ? 'Calls get your selected reply.'
+                  ? 'Calls are declined; your status is shared.'
                   : 'Let callers know you are riding.'}
               </span>
             </div>
@@ -74,7 +75,7 @@ export function BikeModeSection() {
           <div className="bike-mode-message-preview">
             <span className="material-icons-round" aria-hidden="true">sms</span>
             <div>
-              <small>Automatic reply</small>
+              <small>Riding reply</small>
               <p>
                 I&apos;m currently riding and can&apos;t take your call. I&apos;ll get back to you
                 when I stop. Sent by JourneySync Bike Mode.

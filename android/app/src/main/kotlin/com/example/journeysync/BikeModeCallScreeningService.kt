@@ -29,7 +29,7 @@ class BikeModeCallScreeningService : CallScreeningService() {
         )
 
         val number = details.handle?.schemeSpecificPart?.trim().orEmpty()
-        if (number.isEmpty() ||
+        if (!BuildConfig.BIKE_AUTO_SMS_ENABLED || number.isEmpty() ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) !=
             PackageManager.PERMISSION_GRANTED
         ) return

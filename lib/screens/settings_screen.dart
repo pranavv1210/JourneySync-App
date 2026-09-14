@@ -216,8 +216,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildSection('Bike mode', [
                       _buildSettingTile(
                         icon: Icons.quickreply_outlined,
-                        title: 'Automatic replies',
-                        subtitle: 'Choose or write the SMS callers receive',
+                        title: 'Riding replies',
+                        subtitle: 'Choose the message shown while you ride',
                         onTap: _showBikeModeMessagesSheet,
                       ),
                     ]),
@@ -1076,7 +1076,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Select the message JourneySync sends after declining an incoming call. Carrier SMS charges may apply.',
+                        service.capability.directSmsSupported
+                            ? 'Select the message JourneySync sends after declining an incoming call. Carrier SMS charges may apply.'
+                            : 'Select the message JourneySync shows to your contacts while you ride. Direct SMS is available only in the Play-reviewed release.',
                         style: AppTypography.bodyMedium.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -1184,7 +1186,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        'Android requires Call Screening and SMS access. JourneySync asks for both only when you first turn Bike Mode on.',
+                        service.capability.directSmsSupported
+                            ? 'Android requires Call Screening and SMS access. JourneySync asks for both only when you first turn Bike Mode on.'
+                            : 'This direct-download release requests Call Screening only. It does not request permission to send SMS.',
                         style: AppTypography.caption.copyWith(
                           color: AppColors.textTertiary,
                         ),
@@ -1291,7 +1295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _privacyPoint(
                     Icons.phone_locked_outlined,
                     'Bike Mode calls and SMS',
-                    'On supported Android phones, call screening declines incoming calls and sends your selected SMS reply. Caller numbers are not uploaded.',
+                    'On supported Android phones, call screening can decline incoming calls. Automatic SMS is enabled only in a Play-reviewed release with explicit SMS approval. Caller numbers are not uploaded.',
                   ),
                   _privacyPoint(
                     Icons.account_circle_outlined,

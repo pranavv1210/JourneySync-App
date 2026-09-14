@@ -11,20 +11,26 @@ class BikeModeCapability {
     required this.callScreeningGranted,
     required this.smsGranted,
     required this.contactsGranted,
+    required this.directSmsSupported,
   });
 
   const BikeModeCapability.unavailable()
     : callScreeningAvailable = false,
       callScreeningGranted = false,
       smsGranted = false,
-      contactsGranted = false;
+      contactsGranted = false,
+      directSmsSupported = false;
 
   final bool callScreeningAvailable;
   final bool callScreeningGranted;
   final bool smsGranted;
   final bool contactsGranted;
+  final bool directSmsSupported;
 
-  bool get fullyReady => callScreeningGranted && smsGranted && contactsGranted;
+  bool get fullyReady =>
+      callScreeningGranted &&
+      contactsGranted &&
+      (!directSmsSupported || smsGranted);
 }
 
 class BikeModeService extends ChangeNotifier {
@@ -197,6 +203,7 @@ class BikeModeService extends ChangeNotifier {
       callScreeningGranted: raw?['callScreeningGranted'] == true,
       smsGranted: raw?['smsGranted'] == true,
       contactsGranted: raw?['contactsGranted'] == true,
+      directSmsSupported: raw?['directSmsSupported'] == true,
     );
   }
 

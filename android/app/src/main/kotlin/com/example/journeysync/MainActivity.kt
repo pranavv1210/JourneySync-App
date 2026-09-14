@@ -99,10 +99,11 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun requestBikePermissionsIfNeeded() {
-        val missingPermissions = listOf(
-            Manifest.permission.SEND_SMS,
-            Manifest.permission.READ_CONTACTS,
-        ).filter {
+        val requestedPermissions = mutableListOf(Manifest.permission.READ_CONTACTS)
+        if (BuildConfig.BIKE_AUTO_SMS_ENABLED) {
+            requestedPermissions.add(Manifest.permission.SEND_SMS)
+        }
+        val missingPermissions = requestedPermissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missingPermissions.isEmpty()) {
@@ -131,6 +132,7 @@ class MainActivity : FlutterActivity() {
             "callScreeningAvailable" to roleAvailable,
             "callScreeningGranted" to roleGranted,
             "smsGranted" to smsGranted,
+            "directSmsSupported" to BuildConfig.BIKE_AUTO_SMS_ENABLED,
             "contactsGranted" to contactsGranted,
             "enabled" to enabled,
         )
