@@ -13,6 +13,8 @@ class PresenceInfo {
     this.currentRideId,
     this.customStatus,
     this.isInRide = false,
+    this.bikeModeEnabled = false,
+    this.bikeModeMessage,
   });
 
   final String profileId;
@@ -21,6 +23,8 @@ class PresenceInfo {
   final String? currentRideId;
   final String? customStatus;
   final bool isInRide;
+  final bool bikeModeEnabled;
+  final String? bikeModeMessage;
 
   PresenceInfo copyWith({
     String? profileId,
@@ -29,6 +33,8 @@ class PresenceInfo {
     String? currentRideId,
     String? customStatus,
     bool? isInRide,
+    bool? bikeModeEnabled,
+    String? bikeModeMessage,
     bool clearLastSeen = false,
     bool clearCurrentRide = false,
     bool clearCustomStatus = false,
@@ -42,6 +48,8 @@ class PresenceInfo {
       customStatus:
           clearCustomStatus ? null : (customStatus ?? this.customStatus),
       isInRide: isInRide ?? this.isInRide,
+      bikeModeEnabled: bikeModeEnabled ?? this.bikeModeEnabled,
+      bikeModeMessage: bikeModeMessage ?? this.bikeModeMessage,
     );
   }
 
@@ -49,7 +57,10 @@ class PresenceInfo {
     final rawStatus =
         (row['status'] ?? row['presence_status'] ?? 'online').toString().trim();
     return PresenceInfo(
-      profileId: (row['profile_id'] ?? row['user_id'] ?? '').toString().trim(),
+      profileId:
+          (row['profile_id'] ?? row['user_id'] ?? row['id'] ?? '')
+              .toString()
+              .trim(),
       status: riderPresenceStatusFromString(rawStatus),
       lastSeenAt: DateTime.tryParse((row['last_seen_at'] ?? '').toString()),
       currentRideId:
@@ -61,6 +72,11 @@ class PresenceInfo {
               ? null
               : row['custom_status'].toString(),
       isInRide: (row['is_in_ride'] ?? row['in_ride'] ?? false) == true,
+      bikeModeEnabled: row['bike_mode_enabled'] == true,
+      bikeModeMessage:
+          (row['bike_mode_message'] ?? '').toString().trim().isEmpty
+              ? null
+              : row['bike_mode_message'].toString().trim(),
     );
   }
 
@@ -72,6 +88,8 @@ class PresenceInfo {
       if (currentRideId != null) 'current_ride_id': currentRideId,
       if (customStatus != null) 'custom_status': customStatus,
       'is_in_ride': isInRide,
+      'bike_mode_enabled': bikeModeEnabled,
+      if (bikeModeMessage != null) 'bike_mode_message': bikeModeMessage,
     };
   }
 

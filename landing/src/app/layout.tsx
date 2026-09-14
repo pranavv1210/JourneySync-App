@@ -65,7 +65,6 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
-        <div id="scroll-progress" aria-hidden="true" />
         {children}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${analyticsConfig.googleMeasurementId}`}

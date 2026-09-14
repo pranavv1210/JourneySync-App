@@ -6,14 +6,13 @@ import { Footer } from '@/components/layout/Footer';
 import { MobileStickyCta } from '@/components/layout/MobileStickyCta';
 import { CookieBanner } from '@/components/layout/CookieBanner';
 import { HeroSection } from '@/components/sections/HeroSection';
-import { SocialProofSection } from '@/components/sections/SocialProofSection';
 import { ProblemSolutionSection } from '@/components/sections/ProblemSolutionSection';
 import { FeaturesSection } from '@/components/sections/FeaturesSection';
 import { ComparisonSection } from '@/components/sections/ComparisonSection';
 import { DemoSection } from '@/components/sections/DemoSection';
 import { BuiltByRidersSection } from '@/components/sections/BuiltByRidersSection';
 import { SafetySection } from '@/components/sections/SafetySection';
-import { TestimonialsSection } from '@/components/sections/TestimonialsSection';
+import { BikeModeSection } from '@/components/sections/BikeModeSection';
 import { FaqSection } from '@/components/sections/FaqSection';
 import { DownloadSection } from '@/components/sections/DownloadSection';
 import { FinalCtaSection } from '@/components/sections/FinalCtaSection';
@@ -45,18 +44,16 @@ export function LandingClient() {
 
   return (
     <>
-      <div id="cursor-glow" aria-hidden="true" />
       <Header onJoinBeta={openBeta} />
       <main>
         <HeroSection onJoinBeta={openBeta} />
-        <SocialProofSection />
         <ProblemSolutionSection />
         <FeaturesSection />
+        <BikeModeSection />
         <ComparisonSection />
         <DemoSection />
         <BuiltByRidersSection />
         <SafetySection />
-        <TestimonialsSection />
         <FaqSection />
         <DownloadSection onDownload={openDownload} />
         <FinalCtaSection onJoinBeta={openBeta} />

@@ -273,7 +273,7 @@ export function JoinBetaModal({
               </div>
               <a
                 href="/beta/download"
-                className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#d46211] px-6 text-sm font-bold text-white transition hover:bg-[#b6520e]"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#d46211] px-6 text-sm font-bold text-white transition hover:bg-[#b6520e]"
               >
                 Open download page
               </a>

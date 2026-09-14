@@ -159,28 +159,6 @@ svg {
   color: #ffb36e;
 }
 
-#scroll-progress {
-  position: fixed;
-  inset: 0 auto auto 0;
-  z-index: 10000;
-  width: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--js-orange), var(--js-forest));
-}
-
-#cursor-glow {
-  position: fixed;
-  z-index: 1;
-  width: 22rem;
-  height: 22rem;
-  pointer-events: none;
-  border-radius: 999px;
-  opacity: 0;
-  translate: -50% -50%;
-  background: radial-gradient(circle, rgba(212, 98, 17, 0.1), transparent 68%);
-  transition: opacity 180ms ease;
-}
-
 .site-header {
   position: fixed;
   z-index: 2000;
@@ -269,7 +247,7 @@ svg {
   justify-content: center;
   gap: 0.55rem;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: 12px;
   padding: 0.85rem 1.15rem;
   font-size: 0.92rem;
   font-weight: 900;
@@ -1424,7 +1402,7 @@ svg {
 .sos-emergency {
   width: 100%;
   min-height: 3rem;
-  border-radius: 999px;
+  border-radius: 12px;
   font-weight: 900;
 }
 
@@ -1841,7 +1819,7 @@ svg {
 
 .cookie-banner button {
   border: 0;
-  border-radius: 999px;
+  border-radius: 10px;
   padding: 0.65rem 0.9rem;
   color: white;
   background: var(--js-forest);
@@ -1932,7 +1910,7 @@ svg {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 999px;
+  border-radius: 12px;
   padding: 0.85rem 1rem;
   font-weight: 900;
 }
@@ -2061,6 +2039,167 @@ svg {
 .beta-download-note a {
   color: #ffb36e;
   font-weight: 900;
+}
+
+.bike-mode-chapter {
+  padding: clamp(5rem, 9vw, 8rem) 0;
+  background: #f2eee6;
+  border-block: 1px solid var(--js-line);
+}
+
+.bike-mode-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1.1fr);
+  align-items: center;
+  gap: clamp(2.5rem, 7vw, 7rem);
+}
+
+.bike-mode-copy h2 {
+  max-width: 13ch;
+  margin: 0.8rem 0 1.1rem;
+  color: var(--js-forest);
+  font-size: clamp(2.4rem, 5vw, 5rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.bike-mode-copy > p {
+  max-width: 62ch;
+  color: var(--js-muted);
+  font-size: 1.08rem;
+  line-height: 1.7;
+}
+
+.bike-mode-copy ul {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1.5rem 0;
+  padding-left: 1.2rem;
+  color: var(--js-ink);
+}
+
+.bike-mode-copy small {
+  display: block;
+  max-width: 68ch;
+  color: var(--js-faint);
+  line-height: 1.55;
+}
+
+.bike-mode-demo {
+  padding: clamp(1.2rem, 3vw, 2rem);
+  border: 1px solid rgba(20, 61, 49, 0.2);
+  border-radius: var(--radius-xl);
+  background: #fffdf8;
+  box-shadow: 0 24px 70px rgba(20, 61, 49, 0.12);
+}
+
+.bike-mode-demo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 1.4rem;
+  border-bottom: 1px solid var(--js-line);
+}
+
+.bike-mode-demo-header strong,
+.bike-mode-demo-header span {
+  display: block;
+}
+
+.bike-mode-demo-header strong {
+  color: var(--js-forest);
+  font-size: 1.2rem;
+}
+
+.bike-mode-demo-header div > span {
+  margin-top: 0.25rem;
+  color: var(--js-muted);
+}
+
+.bike-mode-preview-switch {
+  position: relative;
+  flex: 0 0 86px;
+  width: 86px;
+  height: 44px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(20, 61, 49, 0.2);
+  border-radius: 14px;
+  color: var(--js-faint);
+  background: #e4e1da;
+  cursor: pointer;
+}
+
+.bike-mode-preview-switch:focus-visible {
+  outline: 3px solid rgba(212, 98, 17, 0.32);
+  outline-offset: 3px;
+}
+
+.bike-mode-preview-switch.is-on {
+  color: var(--js-orange);
+  background: #f8e7d8;
+  border-color: rgba(212, 98, 17, 0.4);
+}
+
+.bike-mode-preview-bike {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  left: 8px;
+  font-size: 27px;
+}
+
+.bike-mode-preview-lines {
+  position: absolute;
+  top: 17px;
+  left: 10px;
+  width: 18px;
+  height: 2px;
+  transform-origin: right center;
+  background: currentColor;
+  box-shadow: 0 7px 0 currentColor;
+}
+
+.bike-mode-preview-stop {
+  position: absolute;
+  top: 12px;
+  right: 11px;
+  width: 2px;
+  height: 20px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.bike-mode-message-preview {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  margin-top: 1.4rem;
+  padding: 1.2rem;
+  border-radius: var(--radius-md);
+  color: #eef5f1;
+  background: var(--js-forest);
+}
+
+.bike-mode-message-preview > span {
+  color: #f4a45d;
+}
+
+.bike-mode-message-preview small {
+  color: #afc4ba;
+  font-weight: 800;
+}
+
+.bike-mode-message-preview p {
+  margin: 0.4rem 0 0;
+  line-height: 1.55;
+}
+
+@media (max-width: 860px) {
+  .bike-mode-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @keyframes shimmer {

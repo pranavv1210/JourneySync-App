@@ -76,8 +76,8 @@ export function HeroSection({ onJoinBeta }: { onJoinBeta: () => void }) {
           transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="product-orbit" aria-hidden="true">
-            <span>12.97 N</span>
-            <span>77.59 E</span>
+            <span>GPS</span>
+            <span>SYNC</span>
             <span>LIVE</span>
           </div>
 
@@ -133,16 +133,16 @@ export function HeroSection({ onJoinBeta }: { onJoinBeta: () => void }) {
 
               <div className="phone-bottom-sheet">
                 <div>
-                  <span>Distance</span>
-                  <strong>68.4 km</strong>
+                  <span>Route</span>
+                  <strong>Shared</strong>
                 </div>
                 <div>
-                  <span>Spread</span>
-                  <strong>420 m</strong>
+                  <span>Group</span>
+                  <strong>Visible</strong>
                 </div>
                 <div>
                   <span>Weather</span>
-                  <strong>24 C</strong>
+                  <strong>Ready</strong>
                 </div>
               </div>
             </div>
@@ -156,7 +156,7 @@ export function HeroSection({ onJoinBeta }: { onJoinBeta: () => void }) {
             <span className="material-icons-round">radar</span>
             <div>
               <strong>Ride Radar active</strong>
-              <small>2 nearby rides detected</small>
+              <small>Nearby rides available</small>
             </div>
           </motion.article>
 

@@ -944,6 +944,11 @@ class RealtimeCoordinator extends ChangeNotifier {
               lastSeenAt: lastSeen,
               currentRideId: activeRideId.isNotEmpty ? activeRideId : null,
               isInRide: activeRideId.isNotEmpty,
+              bikeModeEnabled: record['bike_mode_enabled'] == true,
+              bikeModeMessage:
+                  (record['bike_mode_message'] ?? '').toString().trim().isEmpty
+                      ? null
+                      : record['bike_mode_message'].toString().trim(),
             );
             notifyListeners();
           },

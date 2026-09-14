@@ -40,6 +40,8 @@ import '../models/ride_record.dart';
 import '../coordinators/active_ride_coordinator.dart';
 import '../coordinators/notification_coordinator.dart';
 import '../services/ride_analytics_engine.dart';
+import '../services/bike_mode_service.dart';
+import '../widgets/bike_mode_switch.dart';
 import 'notification_center_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -75,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   void initState() {
     super.initState();
+    BikeModeService.instance.addListener(_onBikeModeChanged);
     unawaited(FeedbackPromptService.instance.recordHomeSession());
     _hydrateFromCache();
     _loadHomeData();
@@ -92,7 +95,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   void dispose() {
     appRouteObserver.unsubscribe(this);
+    BikeModeService.instance.removeListener(_onBikeModeChanged);
     super.dispose();
+  }
+
+  void _onBikeModeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -256,6 +264,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 ? profileErrorText
                 : '';
       });
+      unawaited(BikeModeService.instance.initialize(profileId: resolvedId));
     } catch (error, stackTrace) {
       _logProfileLoadError(error, stackTrace);
       if (!mounted) return;
@@ -373,6 +382,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       activeBikeImagePath = _resolveActiveBikeImagePath(prefs);
       activeGarageBike = _resolveActiveBikeDetails(prefs);
     });
+    unawaited(BikeModeService.instance.initialize(profileId: userId));
   }
 
   String _resolveActiveBikeImagePath(SharedPreferences prefs) {
@@ -599,84 +609,182 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   Widget _buildHeader() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'WELCOME BACK',
-                style: AppTypography.labelMedium.copyWith(
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "Let's ride, $name",
-                style: AppTypography.headlineLarge.copyWith(
-                  color: AppColors.forest,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        AnimatedBuilder(
-          animation: NotificationCoordinator.instance,
-          builder: (context, _) {
-            final unread = NotificationCoordinator.instance.unreadCount;
-            return GestureDetector(
-              onTap:
-                  () => Navigator.push(
-                    context,
-                    buildAppRoute(const NotificationCenterScreen()),
-                  ),
-              child: Stack(
-                clipBehavior: Clip.none,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.82),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(color: AppColors.glassBorder),
-                      boxShadow: AppShadows.sm,
+                  Text(
+                    'WELCOME BACK',
+                    style: AppTypography.labelMedium.copyWith(
+                      color: AppColors.primary,
                     ),
-                    child: const Icon(Icons.notifications_none_rounded),
                   ),
-                  if (unread > 0)
-                    Positioned(
-                      right: -4,
-                      top: -4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          unread > 9 ? '9+' : unread.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Let's ride, $name",
+                    style: AppTypography.headlineLarge.copyWith(
+                      color: AppColors.forest,
                     ),
+                  ),
                 ],
               ),
-            );
-          },
+            ),
+            const SizedBox(width: 12),
+            AnimatedBuilder(
+              animation: NotificationCoordinator.instance,
+              builder: (context, _) {
+                final unread = NotificationCoordinator.instance.unreadCount;
+                return GestureDetector(
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        buildAppRoute(const NotificationCenterScreen()),
+                      ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.82),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.glassBorder),
+                          boxShadow: AppShadows.sm,
+                        ),
+                        child: const Icon(Icons.notifications_none_rounded),
+                      ),
+                      if (unread > 0)
+                        Positioned(
+                          right: -4,
+                          top: -4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              unread > 9 ? '9+' : unread.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerRight,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 330),
+            child: _buildBikeModeCard(),
+          ),
         ),
       ],
     );
+  }
+
+  Widget _buildBikeModeCard() {
+    final service = BikeModeService.instance;
+    final enabled = service.enabled;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: BoxDecoration(
+        color:
+            enabled
+                ? AppColors.primary.withValues(alpha: 0.09)
+                : Colors.white.withValues(alpha: 0.76),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color:
+              enabled
+                  ? AppColors.primary.withValues(alpha: 0.3)
+                  : AppColors.glassBorder,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  enabled ? 'Bike Mode is on' : 'Bike Mode',
+                  style: AppTypography.titleMedium.copyWith(
+                    color: enabled ? AppColors.forest : AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  enabled
+                      ? 'Calls get your selected reply.'
+                      : 'Let callers know you are riding.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.textTertiary,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          BikeModeSwitch(
+            value: enabled,
+            busy: service.busy,
+            onChanged: _setBikeMode,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _setBikeMode(bool enabled) async {
+    final capability = await BikeModeService.instance.setEnabled(enabled);
+    if (!mounted) return;
+    if (!enabled) {
+      showPremiumToast(
+        context,
+        'Bike Mode off. Calls will ring normally.',
+        type: PremiumToastType.info,
+      );
+    } else if (capability.fullyReady) {
+      showPremiumToast(
+        context,
+        'Bike Mode on. Calls will get your selected reply.',
+        type: PremiumToastType.success,
+      );
+    } else {
+      showPremiumToast(
+        context,
+        capability.callScreeningAvailable
+            ? 'Bike Mode is on, but call or SMS access was not granted.'
+            : 'Bike Mode status is on. Call handling needs Android 10 or newer.',
+        type: PremiumToastType.warning,
+      );
+    }
   }
 
   Widget _buildQuickStatus() {

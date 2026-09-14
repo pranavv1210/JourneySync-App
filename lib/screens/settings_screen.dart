@@ -16,6 +16,7 @@ import '../services/app_navigation.dart';
 import '../services/app_version.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
+import '../services/bike_mode_service.dart';
 import 'edit_profile_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
@@ -40,7 +41,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    BikeModeService.instance.addListener(_onBikeModeChanged);
     _loadProfile();
+  }
+
+  @override
+  void dispose() {
+    BikeModeService.instance.removeListener(_onBikeModeChanged);
+    super.dispose();
+  }
+
+  void _onBikeModeChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadProfile() async {
@@ -58,6 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     });
     final userId = (prefs.getString('userId') ?? '').trim();
+    unawaited(BikeModeService.instance.initialize(profileId: userId));
     if (userId.isEmpty) return;
     try {
       final remoteProfile = await _supabaseService
@@ -195,6 +208,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               'Theme Customization',
                               'JourneySync currently uses the premium light theme. Dark/system theme support will be added after core ride flows are stable.',
                             ),
+                      ),
+                    ]),
+
+                    const SizedBox(height: 24),
+
+                    _buildSection('Bike mode', [
+                      _buildSettingTile(
+                        icon: Icons.quickreply_outlined,
+                        title: 'Automatic replies',
+                        subtitle: 'Choose or write the SMS callers receive',
+                        onTap: _showBikeModeMessagesSheet,
                       ),
                     ]),
 
@@ -1009,6 +1033,221 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _showBikeModeMessagesSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final service = BikeModeService.instance;
+            return DraggableScrollableSheet(
+              initialChildSize: 0.72,
+              minChildSize: 0.5,
+              maxChildSize: 0.92,
+              builder: (context, controller) {
+                return Material(
+                  color: AppColors.surface,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
+                  child: ListView(
+                    controller: controller,
+                    padding: const EdgeInsets.fromLTRB(22, 16, 22, 32),
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.divider,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        'Bike Mode replies',
+                        style: AppTypography.headlineSmall.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Select the message JourneySync sends after declining an incoming call. Carrier SMS charges may apply.',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      ...service.messages.map((message) {
+                        final selected = message == service.selectedMessage;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Material(
+                            color:
+                                selected
+                                    ? AppColors.primary.withValues(alpha: 0.08)
+                                    : AppColors.background,
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              onTap: () async {
+                                await service.selectMessage(message);
+                                setSheetState(() {});
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Radio<String>(
+                                      value: message,
+                                      groupValue: service.selectedMessage,
+                                      activeColor: AppColors.primary,
+                                      onChanged: (value) async {
+                                        if (value == null) return;
+                                        await service.selectMessage(value);
+                                        setSheetState(() {});
+                                      },
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        message,
+                                        style: AppTypography.bodyMedium
+                                            .copyWith(
+                                              color: AppColors.textPrimary,
+                                              height: 1.35,
+                                            ),
+                                      ),
+                                    ),
+                                    PopupMenuButton<String>(
+                                      tooltip: 'Message options',
+                                      icon: const Icon(Icons.more_vert_rounded),
+                                      onSelected: (action) async {
+                                        if (action == 'edit') {
+                                          final updated =
+                                              await _showBikeMessageEditor(
+                                                initialValue: message,
+                                              );
+                                          if (updated != null) {
+                                            await service.updateMessage(
+                                              message,
+                                              updated,
+                                            );
+                                          }
+                                        } else if (action == 'delete') {
+                                          final removed = await service
+                                              .removeMessage(message);
+                                          if (!removed && mounted) {
+                                            showPremiumToast(
+                                              this.context,
+                                              'Keep at least one Bike Mode reply.',
+                                              type: PremiumToastType.info,
+                                            );
+                                          }
+                                        }
+                                        setSheetState(() {});
+                                      },
+                                      itemBuilder:
+                                          (context) => const [
+                                            PopupMenuItem(
+                                              value: 'edit',
+                                              child: Text('Edit'),
+                                            ),
+                                            PopupMenuItem(
+                                              value: 'delete',
+                                              child: Text('Delete'),
+                                            ),
+                                          ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final message = await _showBikeMessageEditor();
+                          if (message == null) return;
+                          await service.addMessage(message);
+                          setSheetState(() {});
+                        },
+                        icon: const Icon(Icons.add_comment_outlined),
+                        label: const Text('Add reply'),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Android requires Call Screening and SMS access. JourneySync asks for both only when you first turn Bike Mode on.',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<String?> _showBikeMessageEditor({String initialValue = ''}) async {
+    final controller = TextEditingController(text: initialValue);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+          ),
+          title: Text(
+            initialValue.isEmpty ? 'Add Bike Mode reply' : 'Edit reply',
+            style: AppTypography.headlineSmall.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            minLines: 3,
+            maxLines: 6,
+            maxLength: 320,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              hintText: "I'm riding right now. I'll call you when I stop.",
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final message = controller.text.trim();
+                if (message.isNotEmpty) Navigator.pop(dialogContext, message);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    return result;
+  }
+
   void _showPrivacySheet() {
     showModalBottomSheet<void>(
       context: context,
@@ -1047,7 +1286,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _privacyPoint(
                     Icons.location_on_outlined,
                     'Live location',
-                    'Shared only while Ride Mode or ride radar is active.',
+                    'Shared during live ride features. Bike Mode uses local location checks only to remind you after you stop.',
+                  ),
+                  _privacyPoint(
+                    Icons.phone_locked_outlined,
+                    'Bike Mode calls and SMS',
+                    'On supported Android phones, call screening declines incoming calls and sends your selected SMS reply. Caller numbers are not uploaded.',
                   ),
                   _privacyPoint(
                     Icons.account_circle_outlined,

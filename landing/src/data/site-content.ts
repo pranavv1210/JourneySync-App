@@ -1,10 +1,4 @@
 export type NavItem = { label: string; href: string };
-export type StatItem = {
-  value: number;
-  suffix?: string;
-  label: string;
-  detail: string;
-};
 export type StoryStep = {
   index: string;
   phase: string;
@@ -27,16 +21,10 @@ export type ComparisonRow = {
   whatsapp: string;
   journeysync: string;
 };
-export type Testimonial = {
-  quote: string;
-  name: string;
-  bike: string;
-  location: string;
-};
 export type FaqItem = { question: string; answer: string };
 export type BuiltByBullet = { text: string; icon: string };
 
-export const appVersion = 'v1.1.1';
+export const appVersion = 'v1.2.0';
 export const siteUrl = 'https://journeysyncrideapp.in';
 
 export const navItems: NavItem[] = [
@@ -45,33 +33,8 @@ export const navItems: NavItem[] = [
   { label: 'Compare', href: '#comparison' },
   { label: 'Demo', href: '#demo' },
   { label: 'Safety', href: '#safety' },
+  { label: 'Bike Mode', href: '#bike-mode' },
   { label: 'Download', href: '#download' },
-];
-
-export const socialStats: StatItem[] = [
-  {
-    value: 120,
-    suffix: '+',
-    label: 'rides coordinated',
-    detail: 'Closed beta target across Bengaluru rider groups.',
-  },
-  {
-    value: 75,
-    suffix: '+',
-    label: 'beta testers',
-    detail: 'Founding cohort shaping the first ride layer.',
-  },
-  {
-    value: 12,
-    label: 'cities covered',
-    detail: 'India-first rollout with real road feedback.',
-  },
-  {
-    value: 300,
-    suffix: '+',
-    label: 'testing hours',
-    detail: 'Road, simulator, and group ride validation.',
-  },
 ];
 
 export const storySteps: StoryStep[] = [
@@ -111,10 +74,20 @@ export const storySteps: StoryStep[] = [
 
 export const featureMoments: FeatureMoment[] = [
   {
+    id: 'bike-mode',
+    kicker: 'Bike Mode',
+    icon: 'two_wheeler',
+    metric: 'Call ready',
+    title: 'Let callers know you are focused on the road.',
+    description:
+      'Bike Mode can decline incoming calls on supported Android phones and send the reply you selected before the ride.',
+    bullets: ['Reusable SMS replies', 'Manual on and off control', 'Stationary reminder'],
+  },
+  {
     id: 'lobby',
     kicker: 'Ride lobby',
     icon: 'groups',
-    metric: '6 riders',
+    metric: 'Ride ready',
     title: 'Start with one shared ride state.',
     description:
       'Create a ride, set route visibility, invite riders, and keep the crew aligned before the engine starts.',
@@ -124,7 +97,7 @@ export const featureMoments: FeatureMoment[] = [
     id: 'radar',
     kicker: 'Ride Radar',
     icon: 'radar',
-    metric: '5 km radius',
+    metric: 'Nearby',
     title: 'Discover nearby active rides without chat noise.',
     description:
       'Radar keeps discovery focused on active rides near you, so spontaneous riding has real context.',
@@ -237,42 +210,11 @@ export const safetyFeatures = [
   },
 ];
 
-export const testimonials: Testimonial[] = [
-  {
-    quote:
-      'Ride Radar is the first thing that made group discovery feel practical instead of random.',
-    name: 'Aarav Menon',
-    bike: 'Royal Enfield Himalayan',
-    location: 'Bengaluru',
-  },
-  {
-    quote:
-      'The hybrid Google Maps flow makes sense. I keep familiar navigation but the group stays visible.',
-    name: 'Nisha Rao',
-    bike: 'KTM Duke 390',
-    location: 'Bengaluru',
-  },
-  {
-    quote:
-      'This solves the exact junction problem every weekend ride has. Less calling, more riding.',
-    name: 'Rohan Iyer',
-    bike: 'Interceptor 650',
-    location: 'Bengaluru',
-  },
-  {
-    quote:
-      'The safety and SOS thinking makes JourneySync feel like a serious ride product, not a demo.',
-    name: 'Dev Gowda',
-    bike: 'Dominar 400',
-    location: 'Bengaluru',
-  },
-];
-
 export const faqs: FaqItem[] = [
   {
     question: 'Is JourneySync available now?',
     answer:
-      'JourneySync v1.1.1 is available as a direct Android APK download. iOS compatibility is planned through TestFlight.',
+      'JourneySync v1.2.0 is available as a direct Android APK download. iOS compatibility is planned through TestFlight.',
   },
   {
     question: 'Does it replace Google Maps?',
