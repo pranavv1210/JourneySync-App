@@ -1042,169 +1042,211 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             final service = BikeModeService.instance;
-            return DraggableScrollableSheet(
-              initialChildSize: 0.72,
-              minChildSize: 0.5,
-              maxChildSize: 0.92,
-              builder: (context, controller) {
-                return Material(
-                  color: AppColors.surface,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(30),
+            return SafeArea(
+              top: false,
+              child: Material(
+                color: AppColors.surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppRadius.xxl),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * 0.86,
                   ),
-                  child: ListView(
-                    controller: controller,
-                    padding: const EdgeInsets.fromLTRB(22, 16, 22, 32),
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: AppColors.divider,
-                            borderRadius: BorderRadius.circular(2),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.divider,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        'Bike Mode replies',
-                        style: AppTypography.headlineSmall.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w700,
+                        const SizedBox(height: 16),
+                        Text(
+                          'Bike Mode replies',
+                          style: AppTypography.headlineSmall.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        service.capability.directSmsSupported
-                            ? 'Select the message JourneySync sends after declining an incoming call. Carrier SMS charges may apply.'
-                            : 'Select the message JourneySync shows to your contacts while you ride. Direct SMS is available only in the Play-reviewed release.',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
+                        const SizedBox(height: 4),
+                        Text(
+                          'Choose the message shown to your contacts while you ride.',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      ...service.messages.map((message) {
-                        final selected = message == service.selectedMessage;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Material(
-                            color:
-                                selected
-                                    ? AppColors.primary.withValues(alpha: 0.08)
-                                    : AppColors.background,
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              onTap: () async {
-                                await service.selectMessage(message);
-                                setSheetState(() {});
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(14),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Radio<String>(
-                                      value: message,
-                                      // TODO: Migrate to RadioGroup when the
-                                      // minimum Flutter SDK is 3.35 or newer.
-                                      // ignore: deprecated_member_use
-                                      groupValue: service.selectedMessage,
-                                      activeColor: AppColors.primary,
-                                      // ignore: deprecated_member_use
-                                      onChanged: (value) async {
-                                        if (value == null) return;
-                                        await service.selectMessage(value);
-                                        setSheetState(() {});
-                                      },
+                        const SizedBox(height: 14),
+                        ...service.messages.map((message) {
+                          final selected = message == service.selectedMessage;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Semantics(
+                              selected: selected,
+                              button: true,
+                              label: message,
+                              child: Material(
+                                color:
+                                    selected
+                                        ? AppColors.primary.withValues(
+                                          alpha: 0.08,
+                                        )
+                                        : AppColors.surfaceAlt,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.lg,
+                                  ),
+                                  side: BorderSide(
+                                    color:
+                                        selected
+                                            ? AppColors.primary.withValues(
+                                              alpha: 0.34,
+                                            )
+                                            : AppColors.divider,
+                                  ),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: InkWell(
+                                  onTap: () async {
+                                    await service.selectMessage(message);
+                                    setSheetState(() {});
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      12,
+                                      10,
+                                      4,
+                                      10,
                                     ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        message,
-                                        style: AppTypography.bodyMedium
-                                            .copyWith(
-                                              color: AppColors.textPrimary,
-                                              height: 1.35,
-                                            ),
-                                      ),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        _replySelectionIndicator(selected),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            message,
+                                            style: AppTypography.bodyMedium
+                                                .copyWith(
+                                                  color: AppColors.textPrimary,
+                                                  height: 1.35,
+                                                ),
+                                          ),
+                                        ),
+                                        PopupMenuButton<String>(
+                                          tooltip: 'Message options',
+                                          padding: EdgeInsets.zero,
+                                          icon: const Icon(
+                                            Icons.more_vert_rounded,
+                                            size: 22,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                          onSelected: (action) async {
+                                            if (action == 'edit') {
+                                              final updated =
+                                                  await _showBikeMessageEditor(
+                                                    initialValue: message,
+                                                  );
+                                              if (updated != null) {
+                                                await service.updateMessage(
+                                                  message,
+                                                  updated,
+                                                );
+                                              }
+                                            } else if (action == 'delete') {
+                                              final removed = await service
+                                                  .removeMessage(message);
+                                              if (!removed && mounted) {
+                                                showPremiumToast(
+                                                  this.context,
+                                                  'Keep at least one Bike Mode reply.',
+                                                  type: PremiumToastType.info,
+                                                );
+                                              }
+                                            }
+                                            setSheetState(() {});
+                                          },
+                                          itemBuilder:
+                                              (context) => const [
+                                                PopupMenuItem(
+                                                  value: 'edit',
+                                                  child: Text('Edit'),
+                                                ),
+                                                PopupMenuItem(
+                                                  value: 'delete',
+                                                  child: Text('Delete'),
+                                                ),
+                                              ],
+                                        ),
+                                      ],
                                     ),
-                                    PopupMenuButton<String>(
-                                      tooltip: 'Message options',
-                                      icon: const Icon(Icons.more_vert_rounded),
-                                      onSelected: (action) async {
-                                        if (action == 'edit') {
-                                          final updated =
-                                              await _showBikeMessageEditor(
-                                                initialValue: message,
-                                              );
-                                          if (updated != null) {
-                                            await service.updateMessage(
-                                              message,
-                                              updated,
-                                            );
-                                          }
-                                        } else if (action == 'delete') {
-                                          final removed = await service
-                                              .removeMessage(message);
-                                          if (!removed && mounted) {
-                                            showPremiumToast(
-                                              this.context,
-                                              'Keep at least one Bike Mode reply.',
-                                              type: PremiumToastType.info,
-                                            );
-                                          }
-                                        }
-                                        setSheetState(() {});
-                                      },
-                                      itemBuilder:
-                                          (context) => const [
-                                            PopupMenuItem(
-                                              value: 'edit',
-                                              child: Text('Edit'),
-                                            ),
-                                            PopupMenuItem(
-                                              value: 'delete',
-                                              child: Text('Delete'),
-                                            ),
-                                          ],
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
+                          );
+                        }),
+                        const SizedBox(height: 4),
+                        SizedBox(
+                          height: 48,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final message = await _showBikeMessageEditor();
+                              if (message == null) return;
+                              await service.addMessage(message);
+                              setSheetState(() {});
+                            },
+                            icon: const Icon(Icons.add_comment_outlined),
+                            label: const Text('Add reply'),
                           ),
-                        );
-                      }),
-                      const SizedBox(height: 8),
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          final message = await _showBikeMessageEditor();
-                          if (message == null) return;
-                          await service.addMessage(message);
-                          setSheetState(() {});
-                        },
-                        icon: const Icon(Icons.add_comment_outlined),
-                        label: const Text('Add reply'),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        service.capability.directSmsSupported
-                            ? 'Android requires Call Screening and SMS access. JourneySync asks for both only when you first turn Bike Mode on.'
-                            : 'This direct-download release requests Call Screening only. It does not request permission to send SMS.',
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.textTertiary,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+                        Text(
+                          'Replies are saved to your JourneySync account and restored when you sign in again.',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textTertiary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                );
-              },
+                ),
+              ),
             );
           },
         );
       },
+    );
+  }
+
+  Widget _replySelectionIndicator(bool selected) {
+    return AnimatedContainer(
+      duration: AppDurations.fast,
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: selected ? AppColors.primary : Colors.transparent,
+        border: Border.all(
+          color: selected ? AppColors.primary : AppColors.textTertiary,
+          width: 2,
+        ),
+      ),
+      child:
+          selected
+              ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+              : null,
     );
   }
 
@@ -1228,12 +1270,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           content: TextField(
             controller: controller,
             autofocus: true,
-            minLines: 3,
-            maxLines: 6,
+            minLines: 2,
+            maxLines: 5,
             maxLength: 320,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
+            keyboardType: TextInputType.multiline,
+            style: AppTypography.bodyLarge.copyWith(
+              color: AppColors.textPrimary,
+              height: 1.4,
+            ),
+            cursorColor: AppColors.primary,
+            decoration: InputDecoration(
               hintText: "I'm riding right now. I'll call you when I stop.",
+              hintStyle: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textTertiary,
+              ),
+              filled: true,
+              fillColor: AppColors.surfaceAlt,
+              contentPadding: const EdgeInsets.all(14),
             ),
           ),
           actions: [

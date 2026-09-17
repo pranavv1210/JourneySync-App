@@ -43,7 +43,7 @@ export function DownloadModal({
         </ul>
 
         <div className="download-modal-actions">
-          <a href="/journeysync.apk?v=1.2.1" download className="download-modal-primary">
+          <a href="/journeysync.apk?v=1.2.2" download className="download-modal-primary">
             <span className="material-icons-round">download</span>
             Download Android beta
           </a>

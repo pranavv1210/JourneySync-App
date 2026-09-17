@@ -63,7 +63,18 @@ class BikeModeService extends ChangeNotifier {
 
   Future<void> initialize({String? profileId}) async {
     final normalizedId = profileId?.trim() ?? '';
+    final profileChanged =
+        _initialized &&
+        normalizedId.isNotEmpty &&
+        _profileId.isNotEmpty &&
+        normalizedId != _profileId;
     if (normalizedId.isNotEmpty) _profileId = normalizedId;
+    if (profileChanged) {
+      _enabled = false;
+      _messages = const <String>[defaultMessage];
+      _selectedMessage = defaultMessage;
+      notifyListeners();
+    }
     if (!_initialized) {
       final prefs = await SharedPreferences.getInstance();
       _enabled = prefs.getBool(_enabledKey) ?? false;
@@ -87,7 +98,7 @@ class BikeModeService extends ChangeNotifier {
     }
     await _refreshNativeState();
     notifyListeners();
-    unawaited(_hydrateFromCloud());
+    await _hydrateFromCloud();
   }
 
   Future<BikeModeCapability> setEnabled(bool value) async {
@@ -97,6 +108,10 @@ class BikeModeService extends ChangeNotifier {
     try {
       if (value && defaultTargetPlatform == TargetPlatform.android) {
         _capability = await _prepareAndroidCapability();
+        if (_capability.callScreeningAvailable &&
+            !_capability.callScreeningGranted) {
+          return _capability;
+        }
       }
       _enabled = value;
       final prefs = await SharedPreferences.getInstance();
@@ -239,8 +254,11 @@ class BikeModeService extends ChangeNotifier {
               ?.map((item) => item.toString().trim())
               .where((item) => item.isNotEmpty)
               .toList();
-      if (remoteMessages != null && remoteMessages.isNotEmpty) {
-        _messages = remoteMessages;
+      if (remoteMessages != null) {
+        _messages =
+            remoteMessages.isEmpty
+                ? const <String>[defaultMessage]
+                : remoteMessages;
       }
       final remoteMessage = (row['bike_mode_message'] ?? '').toString().trim();
       if (remoteMessage.isNotEmpty) {
@@ -248,6 +266,8 @@ class BikeModeService extends ChangeNotifier {
           _messages = <String>[..._messages, remoteMessage];
         }
         _selectedMessage = remoteMessage;
+      } else if (!_messages.contains(_selectedMessage)) {
+        _selectedMessage = _messages.first;
       }
       _enabled = row['bike_mode_enabled'] == true;
       final prefs = await SharedPreferences.getInstance();

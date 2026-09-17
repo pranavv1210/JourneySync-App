@@ -609,162 +609,110 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'WELCOME BACK',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Let's ride, $name",
-                    style: AppTypography.headlineLarge.copyWith(
-                      color: AppColors.forest,
-                    ),
-                  ),
-                ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'WELCOME BACK',
+                style: AppTypography.labelMedium.copyWith(
+                  color: AppColors.primary,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            AnimatedBuilder(
-              animation: NotificationCoordinator.instance,
-              builder: (context, _) {
-                final unread = NotificationCoordinator.instance.unreadCount;
-                return GestureDetector(
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        buildAppRoute(const NotificationCenterScreen()),
-                      ),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.82),
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          border: Border.all(color: AppColors.glassBorder),
-                          boxShadow: AppShadows.sm,
+              const SizedBox(height: 4),
+              Text(
+                "Let's ride, $name",
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.headlineLarge.copyWith(
+                  color: AppColors.forest,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        BikeModeSwitch(
+          value: BikeModeService.instance.enabled,
+          busy: BikeModeService.instance.busy,
+          onChanged: _setBikeMode,
+        ),
+        const SizedBox(width: 8),
+        AnimatedBuilder(
+          animation: NotificationCoordinator.instance,
+          builder: (context, _) {
+            final unread = NotificationCoordinator.instance.unreadCount;
+            return GestureDetector(
+              onTap:
+                  () => Navigator.push(
+                    context,
+                    buildAppRoute(const NotificationCenterScreen()),
+                  ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.82),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.glassBorder),
+                      boxShadow: AppShadows.sm,
+                    ),
+                    child: const Icon(Icons.notifications_none_rounded),
+                  ),
+                  if (unread > 0)
+                    Positioned(
+                      right: -4,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
                         ),
-                        child: const Icon(Icons.notifications_none_rounded),
-                      ),
-                      if (unread > 0)
-                        Positioned(
-                          right: -4,
-                          top: -4,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              unread > 9 ? '9+' : unread.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          unread > 9 ? '9+' : unread.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerRight,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 330),
-            child: _buildBikeModeCard(),
-          ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         ),
       ],
     );
   }
 
-  Widget _buildBikeModeCard() {
-    final service = BikeModeService.instance;
-    final enabled = service.enabled;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-      decoration: BoxDecoration(
-        color:
-            enabled
-                ? AppColors.primary.withValues(alpha: 0.09)
-                : Colors.white.withValues(alpha: 0.76),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(
-          color:
-              enabled
-                  ? AppColors.primary.withValues(alpha: 0.3)
-                  : AppColors.glassBorder,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  enabled ? 'Bike Mode is on' : 'Bike Mode',
-                  style: AppTypography.titleMedium.copyWith(
-                    color: enabled ? AppColors.forest : AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  enabled
-                      ? (service.capability.directSmsSupported
-                          ? 'Calls get your selected reply.'
-                          : 'Calls are declined; your status is shared.')
-                      : 'Let callers know you are riding.',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.textTertiary,
-                    height: 1.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          BikeModeSwitch(
-            value: enabled,
-            busy: service.busy,
-            onChanged: _setBikeMode,
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _setBikeMode(bool enabled) async {
-    final capability = await BikeModeService.instance.setEnabled(enabled);
+    final service = BikeModeService.instance;
+    if (enabled &&
+        Platform.isAndroid &&
+        !service.capability.callScreeningGranted) {
+      final continueSetup = await showAppConfirmDialog(
+        context,
+        title: 'Allow call rejection?',
+        message:
+            'Android calls this the "caller ID & spam" role. It only lets JourneySync reject calls while Bike Mode is on. Phone stays your default calling app.',
+        confirmLabel: 'Continue',
+        cancelLabel: 'Not now',
+      );
+      if (continueSetup != true || !mounted) return;
+    }
+    final capability = await service.setEnabled(enabled);
     if (!mounted) return;
     if (!enabled) {
       showPremiumToast(
