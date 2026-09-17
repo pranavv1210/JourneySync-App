@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:journeysync/widgets/bike_mode_switch.dart';
 
@@ -32,11 +31,13 @@ void main() {
 
     expect(tester.getSize(find.byType(BikeModeSwitch)), const Size(60, 48));
     expect(
-      tester
-          .getSemantics(find.byType(BikeModeSwitch))
-          .getSemanticsData()
-          .hasFlag(SemanticsFlag.isToggled),
-      isFalse,
+      tester.getSemantics(find.byType(BikeModeSwitch)),
+      containsSemantics(
+        label: 'Bike Mode',
+        hasToggledState: true,
+        isToggled: false,
+        hasTapAction: true,
+      ),
     );
 
     await tester.tap(find.byType(BikeModeSwitch));
@@ -45,11 +46,13 @@ void main() {
     expect(changes, 1);
     expect(enabled, isTrue);
     expect(
-      tester
-          .getSemantics(find.byType(BikeModeSwitch))
-          .getSemanticsData()
-          .hasFlag(SemanticsFlag.isToggled),
-      isTrue,
+      tester.getSemantics(find.byType(BikeModeSwitch)),
+      containsSemantics(
+        label: 'Bike Mode',
+        hasToggledState: true,
+        isToggled: true,
+        hasTapAction: true,
+      ),
     );
   });
 }
