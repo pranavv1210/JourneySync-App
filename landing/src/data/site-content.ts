@@ -24,7 +24,7 @@ export type ComparisonRow = {
 export type FaqItem = { question: string; answer: string };
 export type BuiltByBullet = { text: string; icon: string };
 
-export const appVersion = 'v1.2.2';
+export const appVersion = 'v1.2.3';
 export const siteUrl = 'https://journeysyncrideapp.in';
 
 export const navItems: NavItem[] = [
@@ -214,7 +214,7 @@ export const faqs: FaqItem[] = [
   {
     question: 'Is JourneySync available now?',
     answer:
-      'JourneySync v1.2.2 is available as a direct Android APK download. iOS compatibility is planned through TestFlight.',
+      'JourneySync v1.2.3 is available as a direct Android APK download. iOS compatibility is planned through TestFlight.',
   },
   {
     question: 'Does it replace Google Maps?',

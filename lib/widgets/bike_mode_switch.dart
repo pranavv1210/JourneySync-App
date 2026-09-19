@@ -44,7 +44,7 @@ class _BikeModeSwitchState extends State<BikeModeSwitch>
     _controller.animateTo(
       widget.value ? 1 : 0,
       duration: Duration(milliseconds: reduceMotion ? 80 : 280),
-      curve: const Cubic(0.23, 1, 0.32, 1),
+      curve: Curves.linear,
     );
   }
 
@@ -110,17 +110,22 @@ class _BikeSwitchPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    const motionCurve = Cubic(0.23, 1, 0.32, 1);
+    final position =
+        direction > 0
+            ? motionCurve.transform(progress)
+            : 1 - motionCurve.transform(1 - progress);
     final track = RRect.fromRectAndRadius(
       Offset.zero & size,
       Radius.circular(size.height / 2),
     );
     final background =
-        Color.lerp(const Color(0xFFAAA9A5), AppColors.primary, progress)!;
+        Color.lerp(const Color(0xFFAAA9A5), AppColors.primary, position)!;
     canvas.drawRRect(track, Paint()..color = background);
 
     final thumbRadius = 12.5;
     final center = Offset(
-      thumbRadius + 3 + (size.width - (thumbRadius + 3) * 2) * progress,
+      thumbRadius + 3 + (size.width - (thumbRadius + 3) * 2) * position,
       size.height / 2,
     );
     final activity = (progress * (1 - progress) * 4).clamp(0.0, 1.0);
@@ -155,7 +160,7 @@ class _BikeSwitchPainter extends CustomPainter {
     canvas.drawCircle(center, thumbRadius, Paint()..color = Colors.white);
 
     if (activity > 0.02) {
-      _paintMotorcycle(canvas, center, activity, progress);
+      _paintMotorcycle(canvas, center, activity, position);
     }
 
     if (busy) {
