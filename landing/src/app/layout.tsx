@@ -59,6 +59,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta
+          name="google-adsense-account"
+          content="ca-pub-1337164173594961"
+        />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1337164173594961"
+          crossOrigin="anonymous"
+        />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/icon?family=Material+Icons+Round"
