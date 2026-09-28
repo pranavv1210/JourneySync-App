@@ -104,15 +104,27 @@ class BikeModeService extends ChangeNotifier {
   Future<BikeModeCapability> setEnabled(bool value) async {
     if (_busy || value == _enabled) return _capability;
     _busy = true;
-    _enabled = value;
     notifyListeners();
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_enabledKey, value);
-      await _pushNativeState();
       if (value && defaultTargetPlatform == TargetPlatform.android) {
         _capability = await _prepareAndroidCapability();
+        // The switch represents working call handling, not merely the user's
+        // preference. Never leave it on when Android declined or cannot offer
+        // the call-screening role.
+        if (!_capability.callScreeningAvailable ||
+            !_capability.callScreeningGranted) {
+          _enabled = false;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool(_enabledKey, false);
+          await _pushNativeState();
+          await _syncCloud();
+          return _capability;
+        }
       }
+
+      _enabled = value;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_enabledKey, value);
       await _pushNativeState();
       await _syncCloud();
       return _capability;

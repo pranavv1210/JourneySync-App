@@ -550,6 +550,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           _buildHeader(),
                           const SizedBox(height: 14),
                           _buildQuickStatus(),
+                          const SizedBox(height: 14),
+                          _buildRideModeCard(),
                           const SizedBox(height: 24),
                           _buildPrimaryActions(),
                           const SizedBox(height: 16),
@@ -635,12 +637,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           ),
         ),
         const SizedBox(width: 8),
-        BikeModeSwitch(
-          value: BikeModeService.instance.enabled,
-          busy: BikeModeService.instance.busy,
-          onChanged: _setBikeMode,
-        ),
-        const SizedBox(width: 8),
         AnimatedBuilder(
           animation: NotificationCoordinator.instance,
           builder: (context, _) {
@@ -706,7 +702,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         context,
         title: 'Allow call rejection?',
         message:
-            'Android calls this the "caller ID & spam" role. It only lets JourneySync reject calls while Bike Mode is on. Phone stays your default calling app.',
+            'Android calls this the "caller ID & spam" role. It lets JourneySync reject calls only while Ride Mode is active. Your Phone app stays unchanged.',
         confirmLabel: 'Continue',
         cancelLabel: 'Not now',
       );
@@ -717,28 +713,148 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     if (!enabled) {
       showPremiumToast(
         context,
-        'Bike Mode off. Calls will ring normally.',
+        'Ride Mode off. Calls will ring normally.',
         type: PremiumToastType.info,
       );
     } else if (capability.fullyReady) {
       showPremiumToast(
         context,
-        capability.directSmsSupported
-            ? 'Bike Mode on. Calls will get your selected reply.'
-            : 'Bike Mode on. Calls will be declined and your riding status is shared.',
+        'Ride Mode active. Incoming calls will be declined.',
         type: PremiumToastType.success,
+      );
+    } else if (!service.enabled) {
+      showPremiumToast(
+        context,
+        capability.callScreeningAvailable
+            ? 'Ride Mode was not turned on. Select JourneySync for caller ID & spam access.'
+            : 'Ride Mode call rejection is not supported on this phone.',
+        type: PremiumToastType.warning,
       );
     } else {
       showPremiumToast(
         context,
-        capability.callScreeningAvailable
-            ? (capability.directSmsSupported
-                ? 'Bike Mode is on, but call or SMS access was not granted.'
-                : 'Bike Mode is on, but call screening access was not granted.')
-            : 'Bike Mode status is on. Call handling needs Android 10 or newer.',
+        !capability.contactsGranted
+            ? 'Ride Mode is active. Allow Contacts so saved callers are handled too.'
+            : 'Ride Mode is active. Call rejection works, but automatic SMS still needs access.',
         type: PremiumToastType.warning,
       );
     }
+  }
+
+  Widget _buildRideModeCard() {
+    final service = BikeModeService.instance;
+    final enabled = service.enabled;
+    final busy = service.busy;
+    final capability = service.capability;
+    final status =
+        busy
+            ? 'SETTING UP'
+            : enabled && capability.callScreeningGranted
+            ? 'ACTIVE'
+            : 'OFF';
+    final detail =
+        busy
+            ? 'Waiting for Android call-screening access…'
+            : enabled && capability.callScreeningGranted
+            ? (capability.directSmsSupported && capability.smsGranted
+                ? 'Rejecting calls and sending your selected reply'
+                : 'Rejecting incoming calls while you ride')
+            : Platform.isAndroid &&
+                capability.callScreeningAvailable &&
+                !capability.callScreeningGranted
+            ? 'Turn on to set up call rejection'
+            : 'Reject incoming calls while you ride';
+
+    return Semantics(
+      container: true,
+      label: 'Ride Mode. $status. $detail',
+      child: PremiumCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        borderColor:
+            enabled
+                ? AppColors.primary.withValues(alpha: 0.42)
+                : AppColors.divider,
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color:
+                    enabled
+                        ? AppColors.primary.withValues(alpha: 0.14)
+                        : AppColors.background,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(
+                Icons.two_wheeler_rounded,
+                color: enabled ? AppColors.primary : AppColors.textSecondary,
+                size: 25,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Ride Mode',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.forest,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              enabled
+                                  ? AppColors.primary.withValues(alpha: 0.12)
+                                  : AppColors.background,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          status,
+                          style: AppTypography.caption.copyWith(
+                            color:
+                                enabled
+                                    ? AppColors.primaryDark
+                                    : AppColors.textTertiary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    detail,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            BikeModeSwitch(value: enabled, busy: busy, onChanged: _setBikeMode),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildQuickStatus() {

@@ -65,7 +65,7 @@ class _BikeModeSwitchState extends State<BikeModeSwitch>
     return Semantics(
       container: true,
       toggled: widget.value,
-      label: 'Bike Mode',
+      label: 'Ride Mode',
       hint:
           widget.value
               ? 'Double tap to turn off call handling'

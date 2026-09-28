@@ -88,6 +88,10 @@ class MainActivity : FlutterActivity() {
         }
         pendingBikeModeResult = result
         val roleManager = getSystemService(RoleManager::class.java)
+        if (!roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) {
+            finishBikeModeSetup()
+            return
+        }
         if (!roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
             startActivityForResult(
                 roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING),
@@ -119,9 +123,12 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun bikeModeState(): Map<String, Any> {
-        val roleAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-        val roleGranted = roleAvailable && getSystemService(RoleManager::class.java)
-            .isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+        val roleManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            getSystemService(RoleManager::class.java)
+        } else null
+        val roleAvailable = roleManager?.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING) == true
+        val roleGranted = roleAvailable &&
+            roleManager?.isRoleHeld(RoleManager.ROLE_CALL_SCREENING) == true
         val smsGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) ==
             PackageManager.PERMISSION_GRANTED
         val contactsGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) ==
@@ -146,7 +153,13 @@ class MainActivity : FlutterActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == callScreeningRequestCode) requestBikePermissionsIfNeeded()
+        if (requestCode == callScreeningRequestCode) {
+            val roleGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                getSystemService(RoleManager::class.java)
+                    .isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+            } else false
+            if (roleGranted) requestBikePermissionsIfNeeded() else finishBikeModeSetup()
+        }
     }
 
     override fun onRequestPermissionsResult(

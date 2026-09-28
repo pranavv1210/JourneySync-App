@@ -36,7 +36,7 @@ void main() {
     );
 
     expect(tester.getSize(find.byType(BikeModeSwitch)), const Size(60, 48));
-    expect(find.bySemanticsLabel('Bike Mode'), findsOneWidget);
+    expect(find.bySemanticsLabel('Ride Mode'), findsOneWidget);
 
     await tester.tap(find.byType(BikeModeSwitch));
     await tester.pump();
@@ -47,10 +47,10 @@ void main() {
 
     expect(changes, 1);
     expect(enabled, isTrue);
-    expect(find.bySemanticsLabel('Bike Mode'), findsOneWidget);
+    expect(find.bySemanticsLabel('Ride Mode'), findsOneWidget);
   });
 
-  testWidgets('Bike Mode remains on when call screening is not granted', (
+  testWidgets('Ride Mode returns off when call screening is not granted', (
     tester,
   ) async {
     const channel = MethodChannel('com.example.journeysync/bike_mode');
@@ -89,9 +89,9 @@ void main() {
       final enabling = service.setEnabled(true);
       await tester.pump();
 
-      expect(service.enabled, isTrue);
+      expect(service.enabled, isFalse);
       expect(service.busy, isTrue);
-      expect(nativeStates, contains(true));
+      expect(nativeStates, isNot(contains(true)));
 
       setupResult.complete(<String, dynamic>{
         'callScreeningAvailable': true,
@@ -103,9 +103,8 @@ void main() {
       final capability = await enabling;
 
       expect(capability.callScreeningGranted, isFalse);
-      expect(service.enabled, isTrue);
+      expect(service.enabled, isFalse);
       expect(service.busy, isFalse);
-      await service.setEnabled(false);
     } finally {
       debugDefaultTargetPlatformOverride = null;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
