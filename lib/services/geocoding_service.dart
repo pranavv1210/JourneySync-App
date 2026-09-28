@@ -17,7 +17,7 @@ import '../utils/app_logger.dart';
 class GeocodingService {
   static const String _host = 'nominatim.openstreetmap.org';
   static const String _userAgent =
-      'JourneySync/1.1.1 (journeysync.app@gmail.com)';
+      'JourneySync/1.3.0 (journeysync.app@gmail.com)';
   static const String _prefsKey = 'geocodeCacheV1';
   static const Duration _timeout = Duration(seconds: 10);
 

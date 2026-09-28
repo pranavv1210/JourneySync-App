@@ -122,7 +122,7 @@ flutter build apk --release --dart-define-from-file=dart_defines.local.json
 For the local release helper:
 
 ```powershell
-.\scripts\release.ps1 -Version 1.1.1
+.\scripts\release.ps1 -Version 1.3.0
 ```
 
 Keep signing files, keystores, and local dart define files outside Git.
