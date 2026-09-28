@@ -43,6 +43,7 @@ import '../services/ride_analytics_engine.dart';
 import '../services/bike_mode_service.dart';
 import '../widgets/bike_mode_switch.dart';
 import 'notification_center_screen.dart';
+import 'ride_mode_settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -73,11 +74,16 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   List<RideRecord> recentRides = [];
   List<RideRecord> nearbyRides = [];
   bool _feedbackPromptShowing = false;
+  Timer? _rideModeTicker;
+  DateTime? weatherUpdatedAt;
 
   @override
   void initState() {
     super.initState();
     BikeModeService.instance.addListener(_onBikeModeChanged);
+    _rideModeTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted && BikeModeService.instance.enabled) setState(() {});
+    });
     unawaited(FeedbackPromptService.instance.recordHomeSession());
     _hydrateFromCache();
     _loadHomeData();
@@ -96,6 +102,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   void dispose() {
     appRouteObserver.unsubscribe(this);
     BikeModeService.instance.removeListener(_onBikeModeChanged);
+    _rideModeTicker?.cancel();
     super.dispose();
   }
 
@@ -236,6 +243,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         if (weather != null && weather.displayText.trim().isNotEmpty) {
           weatherValue = weather.displayText.trim();
           weatherSnapshot = weather;
+          weatherUpdatedAt = DateTime.now();
+          await prefs.setString('cachedWeatherText', weatherValue);
+          await prefs.setString(
+            'cachedWeatherUpdatedAt',
+            weatherUpdatedAt!.toIso8601String(),
+          );
         } else if (weatherSnapshot == null) {
           weatherValue = 'Weather unavailable';
         }
@@ -289,6 +302,16 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     return refreshingHome || refreshingWeather || _weatherUnavailable;
   }
 
+  String _weatherAgeLabel() {
+    final updated = weatherUpdatedAt;
+    if (updated == null) return 'cached';
+    final minutes = DateTime.now().difference(updated).inMinutes;
+    if (minutes < 1) return 'now';
+    if (minutes < 60) return '${minutes}m ago';
+    final hours = minutes ~/ 60;
+    return hours < 24 ? '${hours}h ago' : 'cached';
+  }
+
   Future<void> _refreshHomeWeather() async {
     if (refreshingWeather) return;
     setState(() {
@@ -300,14 +323,27 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     try {
       final weather = await _weatherService.fetchCurrentWeather();
       if (!mounted) return;
+      String? weatherToCache;
+      DateTime? weatherCacheTime;
       setState(() {
         if (weather != null && weather.displayText.trim().isNotEmpty) {
           weatherSnapshot = weather;
           weatherText = weather.displayText.trim();
+          weatherUpdatedAt = DateTime.now();
+          weatherToCache = weatherText;
+          weatherCacheTime = weatherUpdatedAt;
         } else if (weatherSnapshot == null) {
           weatherText = 'Weather unavailable';
         }
       });
+      if (weatherToCache != null && weatherCacheTime != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('cachedWeatherText', weatherToCache!);
+        await prefs.setString(
+          'cachedWeatherUpdatedAt',
+          weatherCacheTime!.toIso8601String(),
+        );
+      }
     } catch (error) {
       debugPrint('Weather refresh failed: $error');
       if (!mounted) return;
@@ -381,6 +417,11 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       bike = (prefs.getString('userBike') ?? 'No bike added').trim();
       activeBikeImagePath = _resolveActiveBikeImagePath(prefs);
       activeGarageBike = _resolveActiveBikeDetails(prefs);
+      final cachedWeather = (prefs.getString('cachedWeatherText') ?? '').trim();
+      if (cachedWeather.isNotEmpty) weatherText = cachedWeather;
+      weatherUpdatedAt = DateTime.tryParse(
+        prefs.getString('cachedWeatherUpdatedAt') ?? '',
+      );
     });
     unawaited(BikeModeService.instance.initialize(profileId: userId));
   }
@@ -754,11 +795,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             : 'OFF';
     final detail =
         busy
-            ? 'Waiting for Android call-screening access…'
+            ? 'Waiting for Android call-screening access...'
             : enabled && capability.callScreeningGranted
-            ? (capability.directSmsSupported && capability.smsGranted
-                ? 'Rejecting calls and sending your selected reply'
-                : 'Rejecting incoming calls while you ride')
+            ? _rideModeActiveDetail(service)
             : Platform.isAndroid &&
                 capability.callScreeningAvailable &&
                 !capability.callScreeningGranted
@@ -769,7 +808,12 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
       container: true,
       label: 'Ride Mode. $status. $detail',
       child: PremiumCard(
+        onTap: _showRideModeDetails,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        color:
+            enabled
+                ? AppColors.primary.withValues(alpha: 0.09)
+                : AppColors.surface,
         borderColor:
             enabled
                 ? AppColors.primary.withValues(alpha: 0.42)
@@ -857,6 +901,141 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
+  String _rideModeActiveDetail(BikeModeService service) {
+    final activatedAt = service.activatedAt;
+    final elapsed =
+        activatedAt == null
+            ? Duration.zero
+            : DateTime.now().difference(activatedAt);
+    final time =
+        elapsed.inHours > 0
+            ? '${elapsed.inHours}h ${elapsed.inMinutes.remainder(60)}m'
+            : '${elapsed.inMinutes.clamp(0, 999)}m';
+    final action =
+        service.capability.directSmsSupported && service.capability.smsGranted
+            ? 'rejecting calls + replying'
+            : 'rejecting incoming calls';
+    return 'Active for $time - $action';
+  }
+
+  Future<void> _showRideModeDetails() {
+    return showAppBottomSheet<void>(
+      context,
+      builder: (sheetContext) {
+        final service = BikeModeService.instance;
+        final capability = service.capability;
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            Future<void> openSettings() async {
+              Navigator.pop(context);
+              await Navigator.push(
+                this.context,
+                buildAppRoute(const RideModeSettingsScreen()),
+              );
+            }
+
+            Future<void> testMode() async {
+              await service.refreshCapability();
+              if (!context.mounted) return;
+              final ready =
+                  service.enabled && service.capability.callScreeningGranted;
+              final result = await showAppConfirmDialog(
+                context,
+                title: ready ? 'Ride Mode is ready' : 'Finish setup first',
+                message:
+                    ready
+                        ? 'Call this phone from another number. The call should be declined. Emergency, favorite, current ride-member, and repeat callers may ring based on your settings.'
+                        : 'Turn on Ride Mode and grant Android caller ID & spam access before making a real test call.',
+                confirmLabel: 'Done',
+                cancelLabel: ready ? 'Settings' : 'Close',
+              );
+              if (result == false && ready && context.mounted) {
+                await openSettings();
+                return;
+              }
+              setSheetState(() {});
+            }
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ride Mode status',
+                    style: AppTypography.headlineMedium.copyWith(
+                      color: AppColors.forest,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _RideModeCheckRow(
+                    label: 'Call rejection',
+                    ready: capability.callScreeningGranted,
+                  ),
+                  _RideModeCheckRow(
+                    label: 'Saved contacts',
+                    ready: capability.contactsGranted,
+                  ),
+                  _RideModeCheckRow(
+                    label: 'Automatic reply',
+                    ready:
+                        capability.directSmsSupported && capability.smsGranted,
+                    unavailable: !capability.directSmsSupported,
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Selected reply', style: AppTypography.labelMedium),
+                  const SizedBox(height: 4),
+                  Text(
+                    service.selectedMessage,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: testMode,
+                          icon: const Icon(Icons.fact_check_outlined),
+                          label: const Text('Test Ride Mode'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: openSettings,
+                          child: const Text('Settings'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (service.enabled) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          await service.setEnabled(false);
+                          if (context.mounted) Navigator.pop(context);
+                        },
+                        icon: const Icon(Icons.stop_circle_outlined),
+                        label: const Text('Turn off Ride Mode'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildQuickStatus() {
     return Row(
       children: [
@@ -879,7 +1058,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Weather',
+                          weatherUpdatedAt == null
+                              ? 'Weather'
+                              : 'Weather · ${_weatherAgeLabel()}',
                           style: AppTypography.caption.copyWith(
                             color: AppColors.textTertiary,
                           ),
@@ -1062,7 +1243,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             await _loadHomeData();
           },
           child: Container(
-            height: 190,
+            height: 166,
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.xxl),
@@ -1151,7 +1332,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             await _loadHomeData();
           },
           child: Container(
-            height: 190,
+            height: nearbyRides.isEmpty ? 158 : 174,
             width: double.infinity,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -1840,6 +2021,57 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RideModeCheckRow extends StatelessWidget {
+  const _RideModeCheckRow({
+    required this.label,
+    required this.ready,
+    this.unavailable = false,
+  });
+
+  final String label;
+  final bool ready;
+  final bool unavailable;
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        ready
+            ? AppColors.success
+            : unavailable
+            ? AppColors.textTertiary
+            : AppColors.warning;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(
+            ready ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+            color: color,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          Text(
+            ready
+                ? 'Ready'
+                : unavailable
+                ? 'Unavailable'
+                : 'Needs access',
+            style: AppTypography.labelSmall.copyWith(color: color),
+          ),
+        ],
       ),
     );
   }

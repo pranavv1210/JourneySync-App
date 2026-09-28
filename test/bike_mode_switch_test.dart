@@ -54,8 +54,9 @@ void main() {
     tester,
   ) async {
     const channel = MethodChannel('com.example.journeysync/bike_mode');
-    final setupResult = Completer<Map<String, dynamic>>();
+    var setupResult = Completer<Map<String, dynamic>>();
     final nativeStates = <bool>[];
+    final nativeArguments = <Map<String, dynamic>>[];
     SharedPreferences.setMockInitialValues({'bikeModeEnabled': false});
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
 
@@ -75,6 +76,7 @@ void main() {
               final arguments = Map<String, dynamic>.from(
                 call.arguments as Map,
               );
+              nativeArguments.add(arguments);
               nativeStates.add(arguments['enabled'] == true);
               return true;
             case 'prepareBikeMode':
@@ -105,6 +107,32 @@ void main() {
       expect(capability.callScreeningGranted, isFalse);
       expect(service.enabled, isFalse);
       expect(service.busy, isFalse);
+
+      setupResult = Completer<Map<String, dynamic>>();
+      final granted = service.setEnabled(true);
+      setupResult.complete(<String, dynamic>{
+        'callScreeningAvailable': true,
+        'callScreeningGranted': true,
+        'smsGranted': true,
+        'contactsGranted': true,
+        'directSmsSupported': true,
+      });
+      await granted;
+      expect(service.enabled, isTrue);
+      expect(nativeStates.last, isTrue);
+
+      await service.updatePreferences(
+        allowRepeatCallers: false,
+        autoTurnOff: true,
+        stationaryMinutes: 15,
+      );
+      expect(service.allowRepeatCallers, isFalse);
+      expect(service.autoTurnOff, isTrue);
+      expect(service.stationaryMinutes, 15);
+      expect(nativeArguments.last['allowRepeatCallers'], isFalse);
+      expect(nativeArguments.last['autoTurnOff'], isTrue);
+      expect(nativeArguments.last['stationaryMinutes'], 15);
+      await service.setEnabled(false);
     } finally {
       debugDefaultTargetPlatformOverride = null;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

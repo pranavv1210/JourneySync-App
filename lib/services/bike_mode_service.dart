@@ -46,6 +46,15 @@ class BikeModeService extends ChangeNotifier {
   static const String _enabledKey = 'bikeModeEnabled';
   static const String _messagesKey = 'bikeModeMessages';
   static const String _selectedMessageKey = 'bikeModeSelectedMessage';
+  static const String _sendSmsKey = 'rideModeSendSms';
+  static const String _allowEmergencyKey = 'rideModeAllowEmergency';
+  static const String _allowFavoritesKey = 'rideModeAllowFavorites';
+  static const String _allowRepeatKey = 'rideModeAllowRepeatCallers';
+  static const String _allowRideMembersKey = 'rideModeAllowRideMembers';
+  static const String _remindWhenStoppedKey = 'rideModeRemindWhenStopped';
+  static const String _autoTurnOffKey = 'rideModeAutoTurnOff';
+  static const String _stationaryMinutesKey = 'rideModeStationaryMinutes';
+  static const String _activatedAtKey = 'rideModeActivatedAt';
 
   bool _initialized = false;
   bool _enabled = false;
@@ -54,12 +63,32 @@ class BikeModeService extends ChangeNotifier {
   List<String> _messages = const <String>[defaultMessage];
   String _selectedMessage = defaultMessage;
   BikeModeCapability _capability = const BikeModeCapability.unavailable();
+  bool _sendSms = true;
+  bool _allowEmergencyContacts = true;
+  bool _allowFavorites = true;
+  bool _allowRepeatCallers = true;
+  bool _allowRideMembers = true;
+  bool _remindWhenStopped = true;
+  bool _autoTurnOff = false;
+  int _stationaryMinutes = 10;
+  DateTime? _activatedAt;
+  List<String> _emergencyNumbers = const [];
+  List<String> _rideMemberNumbers = const [];
 
   bool get enabled => _enabled;
   bool get busy => _busy;
   List<String> get messages => List<String>.unmodifiable(_messages);
   String get selectedMessage => _selectedMessage;
   BikeModeCapability get capability => _capability;
+  bool get sendSms => _sendSms;
+  bool get allowEmergencyContacts => _allowEmergencyContacts;
+  bool get allowFavorites => _allowFavorites;
+  bool get allowRepeatCallers => _allowRepeatCallers;
+  bool get allowRideMembers => _allowRideMembers;
+  bool get remindWhenStopped => _remindWhenStopped;
+  bool get autoTurnOff => _autoTurnOff;
+  int get stationaryMinutes => _stationaryMinutes;
+  DateTime? get activatedAt => _activatedAt;
 
   Future<void> initialize({String? profileId}) async {
     final normalizedId = profileId?.trim() ?? '';
@@ -94,6 +123,23 @@ class BikeModeService extends ChangeNotifier {
           storedSelection.isNotEmpty && _messages.contains(storedSelection)
               ? storedSelection
               : _messages.first;
+      _sendSms = prefs.getBool(_sendSmsKey) ?? true;
+      _allowEmergencyContacts = prefs.getBool(_allowEmergencyKey) ?? true;
+      _allowFavorites = prefs.getBool(_allowFavoritesKey) ?? true;
+      _allowRepeatCallers = prefs.getBool(_allowRepeatKey) ?? true;
+      _allowRideMembers = prefs.getBool(_allowRideMembersKey) ?? true;
+      _remindWhenStopped = prefs.getBool(_remindWhenStoppedKey) ?? true;
+      _autoTurnOff = prefs.getBool(_autoTurnOffKey) ?? false;
+      _stationaryMinutes = (prefs.getInt(_stationaryMinutesKey) ?? 10).clamp(
+        5,
+        30,
+      );
+      _activatedAt = DateTime.tryParse(prefs.getString(_activatedAtKey) ?? '');
+      _emergencyNumbers = _phoneNumbersFromRows(
+        prefs.getStringList('emergencyContacts') ?? const [],
+      );
+      _rideMemberNumbers =
+          prefs.getStringList('activeRideMemberPhones') ?? const [];
       _initialized = true;
     }
     await _refreshNativeState();
@@ -123,8 +169,14 @@ class BikeModeService extends ChangeNotifier {
       }
 
       _enabled = value;
+      _activatedAt = value ? DateTime.now() : null;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_enabledKey, value);
+      if (_activatedAt == null) {
+        await prefs.remove(_activatedAtKey);
+      } else {
+        await prefs.setString(_activatedAtKey, _activatedAt!.toIso8601String());
+      }
       await _pushNativeState();
       await _syncCloud();
       return _capability;
@@ -190,6 +242,82 @@ class BikeModeService extends ChangeNotifier {
     await prefs.setString(_selectedMessageKey, _selectedMessage);
   }
 
+  Future<void> refreshCapability() async {
+    await _refreshNativeState();
+    notifyListeners();
+  }
+
+  Future<BikeModeCapability> prepareAccess() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return _capability;
+    _busy = true;
+    notifyListeners();
+    try {
+      _capability = await _prepareAndroidCapability();
+      await _pushNativeState();
+      return _capability;
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updatePreferences({
+    bool? sendSms,
+    bool? allowEmergencyContacts,
+    bool? allowFavorites,
+    bool? allowRepeatCallers,
+    bool? allowRideMembers,
+    bool? remindWhenStopped,
+    bool? autoTurnOff,
+    int? stationaryMinutes,
+  }) async {
+    _sendSms = sendSms ?? _sendSms;
+    _allowEmergencyContacts = allowEmergencyContacts ?? _allowEmergencyContacts;
+    _allowFavorites = allowFavorites ?? _allowFavorites;
+    _allowRepeatCallers = allowRepeatCallers ?? _allowRepeatCallers;
+    _allowRideMembers = allowRideMembers ?? _allowRideMembers;
+    _remindWhenStopped = remindWhenStopped ?? _remindWhenStopped;
+    _autoTurnOff = autoTurnOff ?? _autoTurnOff;
+    _stationaryMinutes = (stationaryMinutes ?? _stationaryMinutes).clamp(5, 30);
+    final prefs = await SharedPreferences.getInstance();
+    await Future.wait([
+      prefs.setBool(_sendSmsKey, _sendSms),
+      prefs.setBool(_allowEmergencyKey, _allowEmergencyContacts),
+      prefs.setBool(_allowFavoritesKey, _allowFavorites),
+      prefs.setBool(_allowRepeatKey, _allowRepeatCallers),
+      prefs.setBool(_allowRideMembersKey, _allowRideMembers),
+      prefs.setBool(_remindWhenStoppedKey, _remindWhenStopped),
+      prefs.setBool(_autoTurnOffKey, _autoTurnOff),
+      prefs.setInt(_stationaryMinutesKey, _stationaryMinutes),
+    ]);
+    _emergencyNumbers = _phoneNumbersFromRows(
+      prefs.getStringList('emergencyContacts') ?? const [],
+    );
+    _rideMemberNumbers =
+        prefs.getStringList('activeRideMemberPhones') ?? const [];
+    await _pushNativeState();
+    notifyListeners();
+  }
+
+  Future<void> updateRideMemberNumbers(Iterable<String> numbers) async {
+    _rideMemberNumbers = numbers
+        .map((number) => number.replaceAll(RegExp(r'\D'), ''))
+        .where((number) => number.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('activeRideMemberPhones', _rideMemberNumbers);
+    await _pushNativeState();
+  }
+
+  List<String> _phoneNumbersFromRows(List<String> rows) => rows
+      .map((row) => row.split('|'))
+      .where((parts) => parts.length > 1)
+      .map((parts) => parts[1].replaceAll(RegExp(r'\D'), ''))
+      .where((number) => number.isNotEmpty)
+      .toSet()
+      .toList(growable: false);
+
   Future<BikeModeCapability> _prepareAndroidCapability() async {
     try {
       final raw = await _channel.invokeMapMethod<String, dynamic>(
@@ -212,6 +340,13 @@ class BikeModeService extends ChangeNotifier {
         _capability = _capabilityFromMap(raw);
         final nativeEnabled = raw['enabled'];
         if (nativeEnabled is bool) _enabled = nativeEnabled;
+        if (_enabled && !_capability.callScreeningGranted) {
+          _enabled = false;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool(_enabledKey, false);
+          await prefs.remove(_activatedAtKey);
+          _activatedAt = null;
+        }
       }
       await _pushNativeState();
     } on PlatformException catch (error) {
@@ -237,6 +372,17 @@ class BikeModeService extends ChangeNotifier {
       await _channel.invokeMethod<void>('setBikeModeState', {
         'enabled': _enabled,
         'message': _selectedMessage,
+        'sendSms': _sendSms,
+        'allowEmergencyContacts': _allowEmergencyContacts,
+        'allowFavorites': _allowFavorites,
+        'allowRepeatCallers': _allowRepeatCallers,
+        'allowRideMembers': _allowRideMembers,
+        'remindWhenStopped': _remindWhenStopped,
+        'autoTurnOff': _autoTurnOff,
+        'stationaryMinutes': _stationaryMinutes,
+        'activatedAt': _activatedAt?.millisecondsSinceEpoch ?? 0,
+        'emergencyNumbers': _emergencyNumbers,
+        'rideMemberNumbers': _rideMemberNumbers,
       });
     } on PlatformException catch (error) {
       debugPrint('[BikeMode] Could not update Android state: ${error.message}');
@@ -278,7 +424,9 @@ class BikeModeService extends ChangeNotifier {
       } else if (!_messages.contains(_selectedMessage)) {
         _selectedMessage = _messages.first;
       }
-      _enabled = row['bike_mode_enabled'] == true;
+      // Activation is deliberately device-local. Restoring a cloud `true`
+      // here could re-enable call rejection after the native stationary
+      // monitor turned it off, after a reinstall, or on a second phone.
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_enabledKey, _enabled);
       await _persistMessages();

@@ -20,6 +20,7 @@ import '../services/bike_mode_service.dart';
 import 'edit_profile_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
+import 'ride_mode_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -213,11 +214,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const SizedBox(height: 24),
 
-                    _buildSection('Bike mode', [
+                    _buildSection('Ride mode', [
+                      _buildSettingTile(
+                        icon: Icons.two_wheeler_rounded,
+                        title: 'Ride Mode controls',
+                        subtitle:
+                            'Call handling, replies, exceptions, and shutoff',
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            buildAppRoute(const RideModeSettingsScreen()),
+                          );
+                        },
+                      ),
                       _buildSettingTile(
                         icon: Icons.quickreply_outlined,
-                        title: 'Riding replies',
-                        subtitle: 'Choose the message shown while you ride',
+                        title: 'Manage saved replies',
+                        subtitle: 'Add, edit, or remove custom messages',
                         onTap: _showBikeModeMessagesSheet,
                       ),
                     ]),

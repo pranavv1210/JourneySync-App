@@ -3,6 +3,7 @@ package com.example.journeysync
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.ContactsContract
 import android.telecom.Call
 import android.telecom.CallScreeningService
 import android.telephony.SmsManager
@@ -18,6 +19,31 @@ class BikeModeCallScreeningService : CallScreeningService() {
             return
         }
 
+        val number = details.handle?.schemeSpecificPart?.trim().orEmpty()
+        val normalized = normalizeNumber(number)
+        val now = System.currentTimeMillis()
+        val allowEmergency = preferences.getBoolean("allow_emergency", true) &&
+            matchesAny(normalized, preferences.getStringSet("emergency_numbers", emptySet()).orEmpty())
+        val allowRideMember = preferences.getBoolean("allow_ride_members", true) &&
+            matchesAny(normalized, preferences.getStringSet("ride_member_numbers", emptySet()).orEmpty())
+        val allowFavorite = preferences.getBoolean("allow_favorites", true) &&
+            number.isNotEmpty() && isFavoriteContact(number)
+        val previousNumber = preferences.getString("last_incoming_number", "").orEmpty()
+        val previousAt = preferences.getLong("last_incoming_at", 0L)
+        val allowRepeat = preferences.getBoolean("allow_repeat", true) &&
+            normalized.isNotEmpty() && normalizeNumber(previousNumber) == normalized &&
+            now - previousAt <= 3 * 60 * 1000L
+
+        preferences.edit()
+            .putString("last_incoming_number", number)
+            .putLong("last_incoming_at", now)
+            .apply()
+
+        if (allowEmergency || allowRideMember || allowFavorite || allowRepeat) {
+            respondToCall(details, CallResponse.Builder().build())
+            return
+        }
+
         respondToCall(
             details,
             CallResponse.Builder()
@@ -28,13 +54,12 @@ class BikeModeCallScreeningService : CallScreeningService() {
                 .build(),
         )
 
-        val number = details.handle?.schemeSpecificPart?.trim().orEmpty()
-        if (!BuildConfig.BIKE_AUTO_SMS_ENABLED || number.isEmpty() ||
+        if (!BuildConfig.BIKE_AUTO_SMS_ENABLED ||
+            !preferences.getBoolean("send_sms", true) || number.isEmpty() ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) !=
             PackageManager.PERMISSION_GRANTED
         ) return
 
-        val now = System.currentTimeMillis()
         val lastNumber = preferences.getString("last_sms_number", "").orEmpty()
         val lastSentAt = preferences.getLong("last_sms_at", 0L)
         if (lastNumber == number && now - lastSentAt < 120_000L) return
@@ -55,5 +80,36 @@ class BikeModeCallScreeningService : CallScreeningService() {
                 .putLong("last_sms_at", now)
                 .apply()
         }
+    }
+
+    private fun normalizeNumber(number: String): String {
+        val digits = number.filter(Char::isDigit)
+        return if (digits.length > 10) digits.takeLast(10) else digits
+    }
+
+    private fun matchesAny(number: String, candidates: Set<String>): Boolean {
+        if (number.isEmpty()) return false
+        return candidates.any { normalizeNumber(it) == number }
+    }
+
+    private fun isFavoriteContact(number: String): Boolean {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) return false
+        val uri = android.net.Uri.withAppendedPath(
+            ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+            android.net.Uri.encode(number),
+        )
+        return runCatching {
+            contentResolver.query(
+                uri,
+                arrayOf(ContactsContract.PhoneLookup.STARRED),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                cursor.moveToFirst() && cursor.getInt(0) == 1
+            } == true
+        }.getOrDefault(false)
     }
 }

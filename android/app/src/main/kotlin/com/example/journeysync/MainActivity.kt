@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.WindowManager
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -49,6 +50,15 @@ class MainActivity : FlutterActivity() {
                         startActivity(intent)
                         result.success(true)
                     }
+                    "setKeepScreenOn" -> {
+                        val enabled = call.argument<Boolean>("enabled") == true
+                        if (enabled) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
+                        result.success(true)
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -64,6 +74,23 @@ class MainActivity : FlutterActivity() {
                         getSharedPreferences(bikeModePreferences, MODE_PRIVATE).edit()
                             .putBoolean("enabled", enabled)
                             .putString("message", message)
+                            .putBoolean("send_sms", call.argument<Boolean>("sendSms") == true)
+                            .putBoolean("allow_emergency", call.argument<Boolean>("allowEmergencyContacts") != false)
+                            .putBoolean("allow_favorites", call.argument<Boolean>("allowFavorites") != false)
+                            .putBoolean("allow_repeat", call.argument<Boolean>("allowRepeatCallers") != false)
+                            .putBoolean("allow_ride_members", call.argument<Boolean>("allowRideMembers") != false)
+                            .putBoolean("remind_when_stopped", call.argument<Boolean>("remindWhenStopped") != false)
+                            .putBoolean("auto_turn_off", call.argument<Boolean>("autoTurnOff") == true)
+                            .putInt("stationary_minutes", call.argument<Int>("stationaryMinutes") ?: 10)
+                            .putLong("activated_at", call.argument<Number>("activatedAt")?.toLong() ?: 0L)
+                            .putStringSet(
+                                "emergency_numbers",
+                                call.argument<List<String>>("emergencyNumbers")?.toSet() ?: emptySet(),
+                            )
+                            .putStringSet(
+                                "ride_member_numbers",
+                                call.argument<List<String>>("rideMemberNumbers")?.toSet() ?: emptySet(),
+                            )
                             .apply()
                         if (enabled && hasLocationPermission()) {
                             BikeModeMonitorService.start(applicationContext)
@@ -106,6 +133,9 @@ class MainActivity : FlutterActivity() {
         val requestedPermissions = mutableListOf(Manifest.permission.READ_CONTACTS)
         if (BuildConfig.BIKE_AUTO_SMS_ENABLED) {
             requestedPermissions.add(Manifest.permission.SEND_SMS)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestedPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
         }
         val missingPermissions = requestedPermissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:journeysync/services/app_config.dart';
 import 'package:journeysync/screens/login_screen.dart';
 import 'package:journeysync/screens/home_screen.dart';
+import 'package:journeysync/screens/ride_mode_settings_screen.dart';
 import 'package:journeysync/widgets/premium/premium_button.dart';
 import 'package:journeysync/widgets/ride_loading_indicator.dart';
 
@@ -60,6 +61,37 @@ void main() {
             find.text("Let's ride, Rider").evaluate().isNotEmpty,
         isTrue,
       );
+    });
+
+    testWidgets('Ride Mode settings renders diagnostics and safety controls', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        const MaterialApp(home: RideModeSettingsScreen()),
+      );
+      await tester.pump();
+
+      expect(find.text('Ride Mode'), findsOneWidget);
+      expect(find.text('PERMISSION STATUS'), findsOneWidget);
+      expect(find.text('Call rejection'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Repeat callers'),
+        300,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(find.text('Repeat callers'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Automatic shutoff'),
+        300,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(find.text('Automatic shutoff'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 }

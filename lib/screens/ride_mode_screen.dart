@@ -25,6 +25,7 @@ import '../services/ride_service.dart';
 import '../services/app_navigation.dart';
 import '../services/supabase_service.dart';
 import '../services/weather_service.dart';
+import '../services/bike_mode_service.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/realtime_ride_hud.dart';
@@ -74,6 +75,7 @@ class _RideModeScreenState extends State<RideModeScreen>
 
   // ── Live locations ─────────────────────────────────────────────────────────
   List<RiderLocation> _riderLocations = [];
+  Set<String> _syncedRideMemberIds = const {};
   StreamSubscription<List<RiderLocation>>? _locationStreamSub;
   RealtimeChannel? _rideStatusChannel;
   bool _handlingRemoteRideCompletion = false;
@@ -205,6 +207,11 @@ class _RideModeScreenState extends State<RideModeScreen>
   @override
   void initState() {
     super.initState();
+    unawaited(
+      const MethodChannel(
+        'com.example.journeysync/foreground_service',
+      ).invokeMethod<void>('setKeepScreenOn', {'enabled': true}),
+    );
     _analyticsEngine = RideAnalyticsEngine(rideId: widget.rideId);
 
     _trackingPulse = AnimationController(
@@ -531,6 +538,34 @@ class _RideModeScreenState extends State<RideModeScreen>
     _handleGroupAlerts(snapshot);
     _maybeWarnFollowerDistance(leaderDistances);
     _driveCamera(effective);
+    unawaited(_syncRideMemberCallExceptions(effective));
+  }
+
+  Future<void> _syncRideMemberCallExceptions(
+    List<RiderLocation> locations,
+  ) async {
+    final ids =
+        locations
+            .map((location) => location.userId.trim())
+            .where((id) => id.isNotEmpty && id != _currentUserId)
+            .toSet();
+    if (ids.length == _syncedRideMemberIds.length &&
+        ids.containsAll(_syncedRideMemberIds)) {
+      return;
+    }
+    _syncedRideMemberIds = ids;
+    if (ids.isEmpty) {
+      await BikeModeService.instance.updateRideMemberNumbers(const []);
+      return;
+    }
+    try {
+      final profiles = await _supabaseService.fetchUsersByIds(ids.toList());
+      await BikeModeService.instance.updateRideMemberNumbers(
+        profiles.values.map((row) => (row['phone'] ?? '').toString()),
+      );
+    } catch (error) {
+      debugPrint('[RideMode] Could not sync call exceptions: $error');
+    }
   }
 
   void _maybeWarnFollowerDistance(Map<String, double> leaderDistances) {
@@ -1301,6 +1336,14 @@ class _RideModeScreenState extends State<RideModeScreen>
   }
 
   Future<void> _endRide() async {
+    if (_currentSpeed > 5) {
+      showAppToast(
+        context,
+        'Stop safely before ending the ride.',
+        type: AppToastType.info,
+      );
+      return;
+    }
     if (_leaderId != _currentUserId) {
       showAppToast(
         context,
@@ -1358,6 +1401,12 @@ class _RideModeScreenState extends State<RideModeScreen>
 
   @override
   void dispose() {
+    unawaited(BikeModeService.instance.updateRideMemberNumbers(const []));
+    unawaited(
+      const MethodChannel(
+        'com.example.journeysync/foreground_service',
+      ).invokeMethod<void>('setKeepScreenOn', {'enabled': false}),
+    );
     _rideTimer?.cancel();
     _alertDismissTimer?.cancel();
     _trackingPulse.dispose();
