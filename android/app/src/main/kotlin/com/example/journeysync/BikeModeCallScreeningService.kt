@@ -65,7 +65,7 @@ class BikeModeCallScreeningService : CallScreeningService() {
         if (lastNumber == number && now - lastSentAt < 120_000L) return
 
         val message = preferences.getString("message", null)?.trim()?.takeIf { it.isNotEmpty() }
-            ?: "I'm currently riding and can't take your call. I'll get back to you when I stop. Sent by JourneySync Bike Mode."
+            ?: "I'm currently riding and can't take your call. I'll get back to you when I stop. Sent by JourneySync Ride Mode."
         runCatching {
             @Suppress("DEPRECATION")
             val smsManager = SmsManager.getDefault()

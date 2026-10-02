@@ -42,7 +42,7 @@ class BikeModeService extends ChangeNotifier {
     'com.example.journeysync/bike_mode',
   );
   static const String defaultMessage =
-      "I'm currently riding and can't take your call. I'll get back to you when I stop. Sent by JourneySync Bike Mode.";
+      "I'm currently riding and can't take your call. I'll get back to you when I stop. Sent by JourneySync Ride Mode.";
   static const String _enabledKey = 'bikeModeEnabled';
   static const String _messagesKey = 'bikeModeMessages';
   static const String _selectedMessageKey = 'bikeModeSelectedMessage';
@@ -55,6 +55,7 @@ class BikeModeService extends ChangeNotifier {
   static const String _autoTurnOffKey = 'rideModeAutoTurnOff';
   static const String _stationaryMinutesKey = 'rideModeStationaryMinutes';
   static const String _activatedAtKey = 'rideModeActivatedAt';
+  static const String _restoreCallerIdKey = 'rideModeRestoreCallerId';
 
   bool _initialized = false;
   bool _enabled = false;
@@ -71,6 +72,7 @@ class BikeModeService extends ChangeNotifier {
   bool _remindWhenStopped = true;
   bool _autoTurnOff = false;
   int _stationaryMinutes = 10;
+  bool _restoreCallerIdAfterRide = true;
   DateTime? _activatedAt;
   List<String> _emergencyNumbers = const [];
   List<String> _rideMemberNumbers = const [];
@@ -88,6 +90,7 @@ class BikeModeService extends ChangeNotifier {
   bool get remindWhenStopped => _remindWhenStopped;
   bool get autoTurnOff => _autoTurnOff;
   int get stationaryMinutes => _stationaryMinutes;
+  bool get restoreCallerIdAfterRide => _restoreCallerIdAfterRide;
   DateTime? get activatedAt => _activatedAt;
 
   Future<void> initialize({String? profileId}) async {
@@ -134,6 +137,7 @@ class BikeModeService extends ChangeNotifier {
         5,
         30,
       );
+      _restoreCallerIdAfterRide = prefs.getBool(_restoreCallerIdKey) ?? true;
       _activatedAt = DateTime.tryParse(prefs.getString(_activatedAtKey) ?? '');
       _emergencyNumbers = _phoneNumbersFromRows(
         prefs.getStringList('emergencyContacts') ?? const [],
@@ -270,6 +274,7 @@ class BikeModeService extends ChangeNotifier {
     bool? remindWhenStopped,
     bool? autoTurnOff,
     int? stationaryMinutes,
+    bool? restoreCallerIdAfterRide,
   }) async {
     _sendSms = sendSms ?? _sendSms;
     _allowEmergencyContacts = allowEmergencyContacts ?? _allowEmergencyContacts;
@@ -279,6 +284,8 @@ class BikeModeService extends ChangeNotifier {
     _remindWhenStopped = remindWhenStopped ?? _remindWhenStopped;
     _autoTurnOff = autoTurnOff ?? _autoTurnOff;
     _stationaryMinutes = (stationaryMinutes ?? _stationaryMinutes).clamp(5, 30);
+    _restoreCallerIdAfterRide =
+        restoreCallerIdAfterRide ?? _restoreCallerIdAfterRide;
     final prefs = await SharedPreferences.getInstance();
     await Future.wait([
       prefs.setBool(_sendSmsKey, _sendSms),
@@ -289,6 +296,7 @@ class BikeModeService extends ChangeNotifier {
       prefs.setBool(_remindWhenStoppedKey, _remindWhenStopped),
       prefs.setBool(_autoTurnOffKey, _autoTurnOff),
       prefs.setInt(_stationaryMinutesKey, _stationaryMinutes),
+      prefs.setBool(_restoreCallerIdKey, _restoreCallerIdAfterRide),
     ]);
     _emergencyNumbers = _phoneNumbersFromRows(
       prefs.getStringList('emergencyContacts') ?? const [],
@@ -297,6 +305,20 @@ class BikeModeService extends ChangeNotifier {
         prefs.getStringList('activeRideMemberPhones') ?? const [];
     await _pushNativeState();
     notifyListeners();
+  }
+
+  Future<bool> openCallerIdSettings() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      return await _channel.invokeMethod<bool>('openCallerIdSettings') ?? false;
+    } on PlatformException catch (error) {
+      debugPrint(
+        '[BikeMode] Could not open caller ID settings: ${error.message}',
+      );
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
   }
 
   Future<void> updateRideMemberNumbers(Iterable<String> numbers) async {
@@ -433,7 +455,7 @@ class BikeModeService extends ChangeNotifier {
       await _pushNativeState();
       notifyListeners();
     } catch (error) {
-      // The migration may not be installed yet. Local Bike Mode remains usable.
+      // The migration may not be installed yet. Local Ride Mode remains usable.
       debugPrint('[BikeMode] Cloud state unavailable: $error');
     }
   }

@@ -79,6 +79,6 @@ To create and publish an Android release candidate locally, run the integrated r
 This release command:
 1. **Validates** current branch and state.
 2. **Updates** the `pubspec.yaml` version.
-3. **Builds** the signed release APK (`flutter build apk --release`).
+3. **Builds** the signed direct-download APK (`flutter build apk --flavor sideload --release`) without the restricted SMS permission.
 4. **Applies** the SemVer git tag.
 5. **Creates** and uploads the release artifact directly to GitHub.

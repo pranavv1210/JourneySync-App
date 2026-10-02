@@ -1,5 +1,5 @@
 TERMS OF USE
-Last updated July 07, 2026
+Last updated October 2, 2026
 
 These Terms of Use govern access to and use of JourneySync, including the JourneySync website, beta downloads, mobile application, and related services. By using JourneySync, you agree to these terms.
 
@@ -12,11 +12,15 @@ Use JourneySync only for lawful ride planning, coordination, and community purpo
 3. ACCOUNTS AND ACCESS
 You are responsible for the information you provide and for activity associated with your access. We may limit, suspend, or revoke beta access when needed to protect JourneySync, other riders, infrastructure, or the community.
 
-4. RIDE AND LOCATION FEATURES
+4. RIDE, LOCATION, AND RIDE MODE FEATURES
 JourneySync may process route, ride lobby, status, device, and location information to operate group ride features. Location accuracy can vary by device, permissions, network conditions, GPS availability, and map provider behavior.
 
+Ride Mode is an optional Android feature. When enabled and granted Android's Caller ID & spam role, it may decline incoming calls according to your settings and may use Contacts data on-device to allow emergency, favorite, repeat, or current ride-member exceptions. The direct-download APK does not send automatic SMS. Any future automatic-reply feature depends on separate permission, device support, carrier delivery, and distribution-policy approval.
+
+Android permits only one call-screening role holder at a time. JourneySync stops handling calls when Ride Mode is turned off, but Android does not let JourneySync silently restore a previous caller-ID app. If you choose the restore option, JourneySync can open system settings; you remain responsible for manually selecting the caller-ID app you want. Permission status, OEM behavior, dual-SIM behavior, blocked/private numbers, battery restrictions, and network conditions can affect results. Test Ride Mode safely before relying on it.
+
 5. SAFETY
-JourneySync assists with coordination. It does not replace rider judgment, training, protective gear, road awareness, traffic laws, emergency services, or safe group riding practices. You remain responsible for your ride decisions at all times.
+JourneySync assists with coordination. It does not replace rider judgment, training, protective gear, road awareness, traffic laws, emergency services, or safe group riding practices. Call rejection, reminders, automatic shutoff, SOS, and contact exceptions are convenience features and are not guaranteed emergency systems. Do not interact with the app while operating a vehicle. You remain responsible for your ride decisions at all times.
 
 6. THIRD-PARTY SERVICES
 JourneySync may integrate with services such as maps, authentication, hosting, analytics, notifications, and backend infrastructure. Those services may have their own terms and privacy practices.

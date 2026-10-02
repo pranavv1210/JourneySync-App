@@ -68,6 +68,26 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "getBikeModeState" -> result.success(bikeModeState())
                     "prepareBikeMode" -> prepareBikeMode(result)
+                    "openCallerIdSettings" -> {
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+                        } else {
+                            Intent(Settings.ACTION_SETTINGS)
+                        }
+                        runCatching { startActivity(intent) }
+                            .onSuccess { result.success(true) }
+                            .onFailure {
+                                runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }
+                                    .onSuccess { result.success(true) }
+                                    .onFailure { error ->
+                                        result.error(
+                                            "settings_unavailable",
+                                            error.message ?: "Android default-app settings are unavailable.",
+                                            null,
+                                        )
+                                    }
+                            }
+                    }
                     "setBikeModeState" -> {
                         val enabled = call.argument<Boolean>("enabled") == true
                         val message = call.argument<String>("message")?.trim().orEmpty()
@@ -106,7 +126,7 @@ class MainActivity : FlutterActivity() {
 
     private fun prepareBikeMode(result: MethodChannel.Result) {
         if (pendingBikeModeResult != null) {
-            result.error("setup_in_progress", "Bike Mode setup is already open.", null)
+            result.error("setup_in_progress", "Ride Mode setup is already open.", null)
             return
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {

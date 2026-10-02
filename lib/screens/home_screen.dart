@@ -757,6 +757,21 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         'Ride Mode off. Calls will ring normally.',
         type: PremiumToastType.info,
       );
+      if (Platform.isAndroid &&
+          service.restoreCallerIdAfterRide &&
+          capability.callScreeningGranted) {
+        final restore = await showAppConfirmDialog(
+          context,
+          title: 'Restore your caller ID app?',
+          message:
+              'Ride Mode is already off. Android requires you to manually choose Phone, Truecaller, or your previous caller ID & spam app on the next screen.',
+          confirmLabel: 'Open settings',
+          cancelLabel: 'Keep JourneySync',
+        );
+        if (restore == true) {
+          await service.openCallerIdSettings();
+        }
+      }
     } else if (capability.fullyReady) {
       showPremiumToast(
         context,
@@ -1019,8 +1034,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                       width: double.infinity,
                       child: TextButton.icon(
                         onPressed: () async {
-                          await service.setEnabled(false);
                           if (context.mounted) Navigator.pop(context);
+                          await _setBikeMode(false);
                         },
                         icon: const Icon(Icons.stop_circle_outlined),
                         label: const Text('Turn off Ride Mode'),

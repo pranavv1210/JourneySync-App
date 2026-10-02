@@ -11,33 +11,33 @@ export function BikeModeSection() {
     <section id="bike-mode" className="bike-mode-chapter">
       <div className="container bike-mode-layout">
         <div className="bike-mode-copy">
-          <p className="eyebrow">Bike Mode</p>
+          <p className="eyebrow">Ride Mode · New in v1.4.0</p>
           <h2>Keep your hands on the bars and callers in the loop.</h2>
           <p>
-            Turn Bike Mode on for a commute or a long ride. On supported Android phones,
-            JourneySync can decline incoming calls and share your selected riding reply while
-            the mode stays active.
+            Turn Ride Mode on for a commute or a long ride. On supported Android phones,
+            JourneySync can decline incoming calls while allowing the important people and
+            repeat callers you choose.
           </p>
           <ul>
-            <li>Write and save multiple replies in Settings.</li>
-            <li>Switch messages to match the ride you are taking.</li>
-            <li>Get a reminder after you have been stationary for a while.</li>
-            <li>Bike Mode stays on until you turn it off.</li>
+            <li>See call-screening, Contacts, and reply readiness in one place.</li>
+            <li>Allow emergency contacts, favorites, ride members, or repeat callers.</li>
+            <li>Choose a stopped reminder or automatic shutoff.</li>
+            <li>After switching off, reopen Android settings to restore your caller-ID app.</li>
           </ul>
           <small>
-            The direct-download APK does not request silent SMS access, so it installs without
-            that high-risk permission. Automatic SMS is reserved for a Play-reviewed release.
-            iPhone support is limited to the in-app riding status.
+            Android requires you to select JourneySync for Caller ID &amp; spam access and to
+            manually reselect your previous app later. The direct-download APK does not request
+            restricted SMS access; automatic SMS is reserved for a Play-reviewed release.
           </small>
         </div>
 
         <div className="bike-mode-demo" aria-live="polite">
           <div className="bike-mode-demo-header">
             <div>
-              <strong>{enabled ? 'Bike Mode is on' : 'Bike Mode'}</strong>
+              <strong>{enabled ? 'Ride Mode is on' : 'Ride Mode'}</strong>
               <span>
                 {enabled
-                  ? 'Calls are declined; your status is shared.'
+                  ? 'Calls are declined using your exceptions.'
                   : 'Let callers know you are riding.'}
               </span>
             </div>
@@ -45,7 +45,7 @@ export function BikeModeSection() {
               type="button"
               role="switch"
               aria-checked={enabled}
-              aria-label="Preview Bike Mode"
+              aria-label="Preview Ride Mode"
               className={`bike-mode-preview-switch ${enabled ? 'is-on' : ''}`}
               onClick={() => setEnabled((value) => !value)}
             >
@@ -78,7 +78,7 @@ export function BikeModeSection() {
               <small>Riding reply</small>
               <p>
                 I&apos;m currently riding and can&apos;t take your call. I&apos;ll get back to you
-                when I stop. Sent by JourneySync Bike Mode.
+                when I stop. Sent by JourneySync Ride Mode.
               </p>
             </div>
           </div>

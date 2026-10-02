@@ -88,7 +88,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $pubspecPath = Join-Path $repoRoot "pubspec.yaml"
 $androidKeyProperties = Join-Path $repoRoot "android\key.properties"
 $dartDefinesPath = Join-Path $repoRoot "dart_defines.local.json"
-$apkPath = Join-Path $repoRoot "build\app\outputs\flutter-apk\app-release.apk"
+$apkPath = Join-Path $repoRoot "build\app\outputs\flutter-apk\app-sideload-release.apk"
 $releaseNotesPath = Join-Path $env:TEMP "journeysync-release-notes-$Version.md"
 $tag = "v$Version"
 $releaseTitle = if ($Title) { $Title } else { "JourneySync v$Version" }
@@ -131,7 +131,7 @@ if ($existingTag) {
 }
 
 Write-Host "Building signed release APK for $tag..."
-flutter build apk --release --dart-define-from-file=dart_defines.local.json
+flutter build apk --flavor sideload --release --dart-define-from-file=dart_defines.local.json
 if ($LASTEXITCODE -ne 0) {
     Fail "Flutter build failed."
 }

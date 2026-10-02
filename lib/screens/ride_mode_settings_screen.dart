@@ -65,6 +65,25 @@ class _RideModeSettingsScreenState extends State<RideModeSettingsScreen> {
     await service.addMessage(message);
   }
 
+  Future<void> _setRideMode(bool enabled) async {
+    final capability = await service.setEnabled(enabled);
+    if (!mounted) return;
+    if (!enabled &&
+        Platform.isAndroid &&
+        service.restoreCallerIdAfterRide &&
+        capability.callScreeningGranted) {
+      final restore = await showAppConfirmDialog(
+        context,
+        title: 'Restore your caller ID app?',
+        message:
+            'Ride Mode is already off. Android requires you to manually choose Phone, Truecaller, or your previous caller ID & spam app on the next screen.',
+        confirmLabel: 'Open settings',
+        cancelLabel: 'Keep JourneySync',
+      );
+      if (restore == true) await service.openCallerIdSettings();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final capability = service.capability;
@@ -289,6 +308,33 @@ class _RideModeSettingsScreenState extends State<RideModeSettingsScreen> {
                       ],
                     ),
                   ),
+                  if (Platform.isAndroid) ...[
+                    const SizedBox(height: 24),
+                    _sectionTitle('Caller ID after riding'),
+                    PremiumCard(
+                      padding: EdgeInsets.zero,
+                      child: _switchRow(
+                        Icons.settings_backup_restore_rounded,
+                        'Restore caller ID app',
+                        'When you turn Ride Mode off here, offer Android settings so you can reselect your previous app',
+                        service.restoreCallerIdAfterRide,
+                        true,
+                        (value) => service.updatePreferences(
+                          restoreCallerIdAfterRide: value,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        'Android does not allow apps to restore this role silently. You must confirm the previous app in system settings.',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   Text(
                     'JourneySync never uploads caller numbers. Android must approve call-screening, Contacts, and SMS access separately.',
@@ -354,8 +400,7 @@ class _RideModeSettingsScreenState extends State<RideModeSettingsScreen> {
           Switch.adaptive(
             value: active,
             activeColor: AppColors.primary,
-            onChanged:
-                service.busy ? null : (value) => service.setEnabled(value),
+            onChanged: service.busy ? null : _setRideMode,
           ),
         ],
       ),

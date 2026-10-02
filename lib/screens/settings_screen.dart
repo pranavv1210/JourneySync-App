@@ -1085,7 +1085,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Bike Mode replies',
+                          'Ride Mode replies',
                           style: AppTypography.headlineSmall.copyWith(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w700,
@@ -1182,7 +1182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               if (!removed && mounted) {
                                                 showPremiumToast(
                                                   this.context,
-                                                  'Keep at least one Bike Mode reply.',
+                                                  'Keep at least one Ride Mode reply.',
                                                   type: PremiumToastType.info,
                                                 );
                                               }
@@ -1274,7 +1274,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
           title: Text(
-            initialValue.isEmpty ? 'Add Bike Mode reply' : 'Edit reply',
+            initialValue.isEmpty ? 'Add Ride Mode reply' : 'Edit reply',
             style: AppTypography.headlineSmall.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
@@ -1361,11 +1361,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _privacyPoint(
                     Icons.location_on_outlined,
                     'Live location',
-                    'Shared during live ride features. Bike Mode uses local location checks only to remind you after you stop.',
+                    'Shared during live ride features. Ride Mode uses local location checks for your stopped reminder or automatic shutoff setting.',
                   ),
                   _privacyPoint(
                     Icons.phone_locked_outlined,
-                    'Bike Mode calls and SMS',
+                    'Ride Mode calls and SMS',
                     'On supported Android phones, call screening can decline incoming calls. Automatic SMS is enabled only in a Play-reviewed release with explicit SMS approval. Caller numbers are not uploaded.',
                   ),
                   _privacyPoint(

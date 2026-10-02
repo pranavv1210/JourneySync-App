@@ -9,7 +9,7 @@ import 'package:journeysync/widgets/bike_mode_switch.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('Bike Mode switch is compact and toggles accessibly', (
+  testWidgets('Ride Mode switch is compact and toggles accessibly', (
     tester,
   ) async {
     var enabled = false;
@@ -125,10 +125,12 @@ void main() {
         allowRepeatCallers: false,
         autoTurnOff: true,
         stationaryMinutes: 15,
+        restoreCallerIdAfterRide: false,
       );
       expect(service.allowRepeatCallers, isFalse);
       expect(service.autoTurnOff, isTrue);
       expect(service.stationaryMinutes, 15);
+      expect(service.restoreCallerIdAfterRide, isFalse);
       expect(nativeArguments.last['allowRepeatCallers'], isFalse);
       expect(nativeArguments.last['autoTurnOff'], isTrue);
       expect(nativeArguments.last['stationaryMinutes'], 15);
