@@ -211,25 +211,7 @@ class _RideModeSettingsScreenState extends State<RideModeSettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ...service.messages.map(
-                          (message) => RadioListTile<String>(
-                            contentPadding: EdgeInsets.zero,
-                            activeColor: AppColors.primary,
-                            title: Text(
-                              message,
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            value: message,
-                            groupValue: service.selectedMessage,
-                            onChanged:
-                                (value) =>
-                                    value == null
-                                        ? null
-                                        : service.selectMessage(value),
-                          ),
-                        ),
+                        ...service.messages.map(_replyChoice),
                         TextButton.icon(
                           onPressed: _addReply,
                           icon: const Icon(Icons.add_rounded),
@@ -399,7 +381,6 @@ class _RideModeSettingsScreenState extends State<RideModeSettingsScreen> {
           ),
           Switch.adaptive(
             value: active,
-            activeColor: AppColors.primary,
             onChanged: service.busy ? null : _setRideMode,
           ),
         ],
@@ -416,6 +397,44 @@ class _RideModeSettingsScreenState extends State<RideModeSettingsScreen> {
   );
 
   Widget _divider() => const Divider(height: 1, indent: 52);
+
+  Widget _replyChoice(String message) {
+    final selected = message == service.selectedMessage;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: message,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        onTap: () => service.selectMessage(message),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 52),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Icon(
+                  selected
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: selected ? AppColors.primary : AppColors.textTertiary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _statusRow(
     IconData icon,
@@ -501,7 +520,6 @@ class _RideModeSettingsScreenState extends State<RideModeSettingsScreen> {
         ),
         Switch.adaptive(
           value: enabled && value,
-          activeColor: AppColors.primary,
           onChanged: enabled ? onChanged : null,
         ),
       ],
