@@ -1,20 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { CtaButton } from '@/components/ui/CtaButton';
 
 const CONSENT_KEY = 'journeysync_cookie_consent';
+const CONSENT_EVENT = 'journeysync-consent-change';
+
+function subscribeToConsent(onStoreChange: () => void) {
+  window.addEventListener('storage', onStoreChange);
+  window.addEventListener(CONSENT_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener('storage', onStoreChange);
+    window.removeEventListener(CONSENT_EVENT, onStoreChange);
+  };
+}
+
+function getConsentSnapshot() {
+  return !window.localStorage.getItem(CONSENT_KEY);
+}
 
 export function CookieBanner() {
-  const [visible, setVisible] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      !window.localStorage.getItem(CONSENT_KEY),
-  );
+  // The server snapshot is always hidden, so hydration matches. React then
+  // reads localStorage through the external-store contract in the browser.
+  const visible = useSyncExternalStore(subscribeToConsent, getConsentSnapshot, () => false);
 
   const accept = () => {
     window.localStorage.setItem(CONSENT_KEY, 'accepted');
-    setVisible(false);
+    window.dispatchEvent(new Event(CONSENT_EVENT));
   };
 
   if (!visible) return null;
