@@ -1,0 +1,54 @@
+name: Supabase RLS Security Regression
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/security-rls.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/security-rls.yml'
+
+jobs:
+  rls_security:
+    name: PostgreSQL attacker-policy tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          # Ephemeral runner-only database; avoids committing even a fixture password.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: postgres
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Create isolated test database
+        run: createdb journeysync_rls_test
+
+      - name: Create representative legacy schema
+        run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/tests/rls_fixture.sql
+
+      - name: Apply forward security migration
+        run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/migrations/20261010_production_rls_security_hardening.sql
+
+      - name: Run attacker and regression assertions
+        run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/tests/rls_security_regression.sql
+
+      - name: Validate production verification SQL
+        run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/production_rls_verification.sql

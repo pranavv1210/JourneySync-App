@@ -335,78 +335,23 @@ class RideService {
       throw Exception('Enter a valid code like JS-0370.');
     }
 
-    final rides = await _supabaseService.fetchRecentRidesForCodeLookup(
-      limit: 250,
+    // Resolve and validate the code server-side. Enumerating rides in the
+    // client exposed private and completed ride metadata and made the code only
+    // a UI check rather than authorization.
+    final matchedRide = await _supabaseService.joinRideByAccessCode(
+      normalizedCode,
     );
-    Map<String, dynamic>? matchedRide;
-    // Tracked separately so a code that belongs to a finished ride reports that,
-    // rather than the same "no such code" message as a typo.
-    var codeMatchedAFinishedRide = false;
-    for (final row in rides) {
-      final rideId = (row['id'] ?? '').toString().trim();
-      if (rideId.isEmpty) continue;
-      if (_rideCodeFromId(rideId) != normalizedCode) continue;
-      final status = (row['status'] ?? '').toString().trim().toLowerCase();
-      if (status == 'cancelled' || status == 'completed' || status == 'ended') {
-        codeMatchedAFinishedRide = true;
-        continue;
-      }
-      if (row['archived_at'] != null ||
-          row['is_archived'] == true ||
-          row['archived'] == true) {
-        codeMatchedAFinishedRide = true;
-        continue;
-      }
-      matchedRide = row;
-      break;
-    }
-
-    if (matchedRide == null) {
-      throw Exception(
-        codeMatchedAFinishedRide
-            ? 'That ride has already finished.'
-            : 'No ride found for code $normalizedCode. Check the code with your host.',
-      );
-    }
-
-    final rideId = (matchedRide['id'] ?? '').toString().trim();
-    final title =
-        (matchedRide['title'] ?? matchedRide['name'] ?? 'Ride')
-            .toString()
-            .trim();
-    final rideStatus = (matchedRide['status'] ?? '').toString().trim();
-    final hostId = _rideHostId(matchedRide);
-
-    if (hostId.isNotEmpty && hostId == normalizedUserId) {
-      throw Exception('This is your own ride.');
-    }
-
-    final participantRows = await _supabaseService.fetchParticipantsByUser(
-      normalizedUserId,
-    );
-    final alreadyJoined = participantRows.any(
-      (row) => (row['ride_id'] ?? '').toString().trim() == rideId,
-    );
-    if (alreadyJoined) {
-      return JoinByCodeResult(
-        status: JoinByCodeStatus.alreadyJoined,
-        rideId: rideId,
-        rideTitle: title.isNotEmpty ? title : 'Ride',
-        rideStatus: rideStatus,
-      );
-    }
-
-    // Typing the access code joins the ride outright. The code is the
-    // authorisation - a rider who has it was given it by the host - so there is
-    // nothing left to approve. This used to write a 'pending' row and report
-    // "join request sent", which no screen could ever clear.
-    await joinRide(
-      rideId: rideId,
-      userId: normalizedUserId,
-      suppressDuplicate: true,
-    );
+    final rideId = (matchedRide['ride_id'] ?? '').toString().trim();
+    final title = (matchedRide['title'] ?? 'Ride').toString().trim();
+    final rideStatus = (matchedRide['ride_status'] ?? '').toString().trim();
+    final rpcStatus = (matchedRide['status'] ?? 'joined').toString();
     return JoinByCodeResult(
-      status: JoinByCodeStatus.joinedDirectly,
+      status:
+          rpcStatus == 'already_joined'
+              ? JoinByCodeStatus.alreadyJoined
+              : rpcStatus == 'already_requested'
+              ? JoinByCodeStatus.alreadyRequested
+              : JoinByCodeStatus.joinedDirectly,
       rideId: rideId,
       rideTitle: title.isNotEmpty ? title : 'Ride',
       rideStatus: rideStatus,
@@ -581,24 +526,6 @@ class RideService {
 
   bool _looksLikeAccessCode(String code) {
     return RegExp(r'^JS-[A-Z0-9]{4}$').hasMatch(code);
-  }
-
-  String _rideCodeFromId(String id) {
-    final cleaned = id.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
-    if (cleaned.isEmpty) return "JS-0000";
-    final tail =
-        cleaned.length >= 4 ? cleaned.substring(cleaned.length - 4) : cleaned;
-    return "JS-$tail";
-  }
-
-  String _rideHostId(Map<String, dynamic> row) {
-    return (row['host_id'] ??
-            row['profile_id'] ??
-            row['creator_id'] ??
-            row['user_id'] ??
-            '')
-        .toString()
-        .trim();
   }
 
   bool _isDuplicateRow(PostgrestException error) {
