@@ -40,10 +40,21 @@ alter table if exists public.rides
 
 do $$
 declare
-  source_columns text;
+  source_expressions text;
+  host_id_type text;
 begin
-  select string_agg(format('%I', column_name), ', ')
-  into source_columns
+  select format_type(attribute.atttypid, attribute.atttypmod)
+  into host_id_type
+  from pg_attribute attribute
+  where attribute.attrelid = 'public.rides'::regclass
+    and attribute.attname = 'host_id'
+    and not attribute.attisdropped;
+
+  select string_agg(
+    format('nullif(%I::text, '''')::%s', column_name, host_id_type),
+    ', '
+  )
+  into source_expressions
   from unnest(array['host_id', 'creator_id', 'user_id', 'leader_id', 'ride_leader_id'])
     as candidate(column_name)
   where exists (
@@ -54,10 +65,10 @@ begin
       and column_name = candidate.column_name
   );
 
-  if source_columns is not null then
+  if source_expressions is not null then
     execute format(
       'update public.rides set host_id = coalesce(%s) where host_id is null',
-      source_columns
+      source_expressions
     );
   end if;
 end $$;
