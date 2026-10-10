@@ -96,6 +96,7 @@ class RealtimeCoordinator extends ChangeNotifier {
   RealtimeChannel? _rideAlertChannel;
   RealtimeChannel? _presenceChannel;
   Timer? _radarRefreshDebounce;
+  Timer? _radarPollTimer;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 10;
@@ -154,9 +155,12 @@ class RealtimeCoordinator extends ChangeNotifier {
     await _resolveRadarOrigin(requestPermissionIfNeeded);
     await _refreshRadar();
     _subscribeRadarChannels();
+    _startRadarPolling();
   }
 
   Future<void> stopRideRadar() async {
+    _radarPollTimer?.cancel();
+    _radarPollTimer = null;
     await _radarRideChannel?.unsubscribe();
     await _radarMemberChannel?.unsubscribe();
     _radarRideChannel = null;
@@ -547,7 +551,18 @@ class RealtimeCoordinator extends ChangeNotifier {
   void _resubscribeRadarChannels() {
     if (_radarProfileId.isEmpty) return;
     _subscribeRadarChannels();
+    _startRadarPolling();
     _debouncedRadarRefresh();
+  }
+
+  void _startRadarPolling() {
+    _radarPollTimer?.cancel();
+    _radarPollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (_radarProfileId.isNotEmpty &&
+          _connectionState != RealtimeConnectionState.offline) {
+        unawaited(_refreshRadar());
+      }
+    });
   }
 
   /// Handles ride lifecycle events and fires notifications.
@@ -1046,6 +1061,7 @@ class RealtimeCoordinator extends ChangeNotifier {
 
   Future<void> disposeCoordinator() async {
     _radarRefreshDebounce?.cancel();
+    _radarPollTimer?.cancel();
     _reconnectTimer?.cancel();
     await _connectivitySub?.cancel();
     _connectivitySub = null;

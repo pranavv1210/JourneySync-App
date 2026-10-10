@@ -562,7 +562,7 @@ class SupabaseService {
     final rows =
         excludeCreatorId.trim().isEmpty
             ? await _client
-                .from('rides')
+                .from('ride_discovery')
                 .select()
                 .order('created_at', ascending: false)
                 .limit(limit)
@@ -754,7 +754,7 @@ class SupabaseService {
     for (final creatorColumn in _rideCreatorColumns) {
       try {
         final rows = await _client
-            .from('rides')
+            .from('ride_discovery')
             .select()
             .not(creatorColumn, 'eq', creatorId)
             .order('created_at', ascending: false)
@@ -767,7 +767,7 @@ class SupabaseService {
     }
 
     final rows = await _client
-        .from('rides')
+        .from('ride_discovery')
         .select()
         .order('created_at', ascending: false)
         .limit(limit);
@@ -826,12 +826,21 @@ class SupabaseService {
   Future<void> addParticipant({
     required String rideId,
     required String userId,
-  }) {
-    return _writeRideMembership(
-      rideId: rideId,
-      userId: userId,
-      status: 'approved',
+  }) async {
+    // Identity is derived from auth.uid() by the RPC. userId is retained in the
+    // Dart signature for compatibility, but is deliberately not trusted.
+    await _client.rpc(
+      'request_ride_join',
+      params: {'p_ride_id': rideId.trim(), 'p_access_code': null},
     );
+  }
+
+  Future<Map<String, dynamic>> joinRideByAccessCode(String accessCode) async {
+    final row = await _client.rpc(
+      'join_ride_by_access_code',
+      params: {'p_access_code': accessCode.trim()},
+    );
+    return Map<String, dynamic>.from(row as Map);
   }
 
   Future<void> removeParticipant({
@@ -974,17 +983,6 @@ class SupabaseService {
       }
     }
     if (lastError != null) throw lastError;
-  }
-
-  Future<List<Map<String, dynamic>>> fetchRecentRidesForCodeLookup({
-    int limit = 250,
-  }) async {
-    final rows = await _client
-        .from('rides')
-        .select()
-        .order('created_at', ascending: false)
-        .limit(limit);
-    return List<Map<String, dynamic>>.from(rows);
   }
 
   Future<void> deleteRideAsCreator({
@@ -1175,39 +1173,14 @@ class SupabaseService {
 
     try {
       final rows = await _client
-          .from('profiles')
-          .select('id,phone,name,bike,avatar_url')
+          .from('profile_summaries')
+          .select('id,name,bike,avatar_url')
           .inFilter('id', ids);
       return {
         for (final row in rows)
           (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(row),
       };
-    } on PostgrestException catch (error) {
-      if (_isMissingColumnError(error)) {
-        try {
-          final rows = await _client
-              .from('profiles')
-              .select('id,phone,name')
-              .inFilter('id', ids);
-          return {
-            for (final row in rows)
-              (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(
-                row,
-              ),
-          };
-        } catch (_) {
-          final rows = await _client
-              .from('profiles')
-              .select('id,phone')
-              .inFilter('id', ids);
-          return {
-            for (final row in rows)
-              (row['id'] ?? '').toString().trim(): Map<String, dynamic>.from(
-                row,
-              ),
-          };
-        }
-      }
+    } on PostgrestException {
       rethrow;
     }
   }
