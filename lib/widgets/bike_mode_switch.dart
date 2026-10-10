@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 
+/// Website-inspired Ride Mode toggle: an animated orange ON state and a calm
+/// grey OFF state, with the motorcycle/call icon travelling inside the thumb.
 class BikeModeSwitch extends StatefulWidget {
   const BikeModeSwitch({
     super.key,
@@ -22,14 +24,13 @@ class BikeModeSwitch extends StatefulWidget {
 class _BikeModeSwitchState extends State<BikeModeSwitch>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  int _direction = 1;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 420),
       value: widget.value ? 1 : 0,
     );
   }
@@ -38,13 +39,12 @@ class _BikeModeSwitchState extends State<BikeModeSwitch>
   void didUpdateWidget(covariant BikeModeSwitch oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value == widget.value) return;
-    _direction = widget.value ? 1 : -1;
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     _controller.animateTo(
       widget.value ? 1 : 0,
-      duration: Duration(milliseconds: reduceMotion ? 80 : 280),
-      curve: Curves.linear,
+      duration: Duration(milliseconds: reduceMotion ? 1 : 420),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -62,30 +62,148 @@ class _BikeModeSwitchState extends State<BikeModeSwitch>
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Semantics(
       container: true,
+      button: true,
       toggled: widget.value,
       label: 'Ride Mode',
-      hint:
-          widget.value
-              ? 'Double tap to turn off call handling'
-              : 'Double tap to tell callers you are riding',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _toggle,
-        child: SizedBox(
-          width: 60,
-          height: 48,
-          child: Center(
+      value: widget.value ? 'On' : 'Off',
+      hint: widget.value
+          ? 'Double tap to turn off call handling'
+          : 'Double tap to enable call handling',
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _toggle,
+          child: SizedBox(
+            width: 132,
+            height: 54,
             child: AnimatedBuilder(
               animation: _controller,
               builder: (context, _) {
-                return CustomPaint(
-                  size: const Size(54, 32),
-                  painter: _BikeSwitchPainter(
-                    progress: _controller.value,
-                    direction: _direction,
-                    busy: widget.busy,
+                final t = _controller.value;
+                final activeColor = Color.lerp(
+                  const Color(0xFF9E9D98),
+                  AppColors.primary,
+                  t,
+                )!;
+                return AnimatedContainer(
+                  duration: Duration(milliseconds: reduceMotion ? 1 : 220),
+                  curve: Curves.easeOutCubic,
+                  decoration: BoxDecoration(
+                    color: activeColor,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: activeColor.withValues(alpha: 0.18),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Positioned(
+                        left: 15,
+                        child: Opacity(
+                          opacity: 1 - t,
+                          child: const Text(
+                            'OFF',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              letterSpacing: 0.7,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 15,
+                        child: Opacity(
+                          opacity: t,
+                          child: const Text(
+                            'ON',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              letterSpacing: 0.7,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.lerp(
+                          Alignment.centerLeft,
+                          Alignment.centerRight,
+                          Curves.easeOutCubic.transform(t),
+                        )!,
+                        child: Padding(
+                          padding: const EdgeInsets.all(5),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFEFA),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.12),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: AnimatedSwitcher(
+                              duration: Duration(
+                                milliseconds: reduceMotion ? 1 : 240,
+                              ),
+                              switchInCurve: Curves.easeOutBack,
+                              switchOutCurve: Curves.easeIn,
+                              transitionBuilder: (child, animation) =>
+                                  ScaleTransition(
+                                scale: animation,
+                                child: FadeTransition(
+                                  opacity: animation,
+                                  child: child,
+                                ),
+                              ),
+                              child: Icon(
+                                widget.value
+                                    ? Icons.two_wheeler_rounded
+                                    : Icons.phone_in_talk_rounded,
+                                key: ValueKey<bool>(widget.value),
+                                size: 23,
+                                color: AppColors.forest,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (widget.busy)
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.24),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 );
               },
@@ -94,131 +212,5 @@ class _BikeModeSwitchState extends State<BikeModeSwitch>
         ),
       ),
     );
-  }
-}
-
-class _BikeSwitchPainter extends CustomPainter {
-  const _BikeSwitchPainter({
-    required this.progress,
-    required this.direction,
-    required this.busy,
-  });
-
-  final double progress;
-  final int direction;
-  final bool busy;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const motionCurve = Cubic(0.23, 1, 0.32, 1);
-    final position =
-        direction > 0
-            ? motionCurve.transform(progress)
-            : 1 - motionCurve.transform(1 - progress);
-    final track = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(size.height / 2),
-    );
-    final background =
-        Color.lerp(const Color(0xFFAAA9A5), AppColors.primary, position)!;
-    canvas.drawRRect(track, Paint()..color = background);
-
-    final thumbRadius = 12.5;
-    final center = Offset(
-      thumbRadius + 3 + (size.width - (thumbRadius + 3) * 2) * position,
-      size.height / 2,
-    );
-    final activity = (progress * (1 - progress) * 4).clamp(0.0, 1.0);
-
-    if (activity > 0.02) {
-      final linePaint =
-          Paint()
-            ..color = Colors.white.withValues(alpha: 0.7 * activity)
-            ..strokeWidth = 1.25
-            ..strokeCap = StrokeCap.round;
-      final trailStart = direction > 0 ? center.dx - 18 : center.dx + 10;
-      final trailEnd = direction > 0 ? center.dx - 12 : center.dx + 16;
-      canvas.drawLine(
-        Offset(trailStart, center.dy - 4),
-        Offset(trailEnd, center.dy - 4),
-        linePaint,
-      );
-      canvas.drawLine(
-        Offset(trailStart + (direction > 0 ? 2 : -2), center.dy + 3),
-        Offset(trailEnd, center.dy + 3),
-        linePaint,
-      );
-    }
-
-    canvas.drawCircle(
-      center.translate(0, 1.5),
-      thumbRadius,
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.12)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
-    );
-    canvas.drawCircle(center, thumbRadius, Paint()..color = Colors.white);
-
-    if (activity > 0.02) {
-      _paintMotorcycle(canvas, center, activity, position);
-    }
-
-    if (busy) {
-      canvas.drawRRect(
-        track,
-        Paint()..color = Colors.white.withValues(alpha: 0.32),
-      );
-    }
-  }
-
-  void _paintMotorcycle(
-    Canvas canvas,
-    Offset center,
-    double opacity,
-    double active,
-  ) {
-    final dark = Color.lerp(
-      AppColors.textSecondary,
-      AppColors.primaryDark,
-      active,
-    )!.withValues(alpha: opacity);
-    final accent = AppColors.primary.withValues(alpha: opacity);
-    final line =
-        Paint()
-          ..color = dark
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.25
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round;
-
-    canvas.save();
-    canvas.translate(center.dx, center.dy - 0.5);
-    canvas.drawCircle(const Offset(-6, 4), 2.8, line);
-    canvas.drawCircle(const Offset(6, 4), 2.8, line);
-    canvas.drawOval(
-      const Rect.fromLTWH(-3.5, -1.5, 7, 4.5),
-      Paint()..color = accent,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(-6, 4)
-        ..lineTo(-2.5, 0)
-        ..lineTo(2.5, 2)
-        ..lineTo(6, 4)
-        ..moveTo(2.5, 2)
-        ..lineTo(4.7, -3.2)
-        ..lineTo(7.5, -3.2)
-        ..moveTo(-4, -2.2)
-        ..lineTo(0, -2.2),
-      line,
-    );
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _BikeSwitchPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.direction != direction ||
-        oldDelegate.busy != busy;
   }
 }
