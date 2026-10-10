@@ -9,6 +9,7 @@ import '../models/ride_route.dart';
 import '../models/rider_location.dart';
 import '../services/live_tracking_service.dart';
 import '../services/ride_service.dart';
+import '../services/ride_session_recovery.dart';
 import '../services/supabase_service.dart';
 import 'realtime_coordinator.dart' show RealtimeCoordinator;
 
@@ -94,14 +95,21 @@ class ActiveRideCoordinator extends ChangeNotifier {
     _restoring = true;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final rideId = (prefs.getString(_activeRideKey) ?? '').trim();
       final profileId = (prefs.getString('userId') ?? '').trim();
-      if (rideId.isEmpty || profileId.isEmpty) return;
+      if (profileId.isEmpty) return;
+
+      var rideId = (prefs.getString(_activeRideKey) ?? '').trim();
+      if (rideId.isEmpty) {
+        rideId = await _findServerActiveRide(profileId);
+        if (rideId.isEmpty) return;
+      }
 
       final ride = await _supabaseService.fetchRideById(rideId);
-      if (ride == null) {
+      final restoredStatus = _statusFromRide(ride ?? const <String, dynamic>{});
+      if (ride == null || restoredStatus != ActiveRideStatus.active) {
         await clear();
-        return;
+        rideId = await _findServerActiveRide(profileId);
+        if (rideId.isEmpty) return;
       }
 
       await attachRide(
@@ -111,6 +119,20 @@ class ActiveRideCoordinator extends ChangeNotifier {
       );
     } finally {
       _restoring = false;
+    }
+  }
+
+  Future<String> _findServerActiveRide(String profileId) async {
+    try {
+      final activeRides = await _supabaseService.fetchActiveRidesForProfile(
+        profileId,
+      );
+      return RideSessionRecovery.selectActiveRideId(activeRides);
+    } catch (error) {
+      // Recovery is best effort. A temporary network failure must not prevent
+      // the app from starting; My Rides can retry once connectivity returns.
+      debugPrint('Could not recover active ride from server: $error');
+      return '';
     }
   }
 

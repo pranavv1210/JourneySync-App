@@ -272,10 +272,16 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       final message = switch (status) {
         JoinByCodeStatus.requested =>
           'Join request sent. The host will approve it shortly.',
-        JoinByCodeStatus.joinedDirectly => 'Joined successfully.',
+        JoinByCodeStatus.joinedDirectly =>
+          ride.ride.isActive
+              ? 'Joined live ride. Opening Ride Mode…'
+              : 'Joined successfully.',
         JoinByCodeStatus.alreadyRequested =>
           'Your join request is already waiting for host approval.',
-        JoinByCodeStatus.alreadyJoined => 'You are already part of this ride.',
+        JoinByCodeStatus.alreadyJoined =>
+          ride.ride.isActive
+              ? 'Rejoining live ride…'
+              : 'You are already part of this ride.',
       };
 
       final joinedNow =
@@ -470,11 +476,17 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
         JoinByCodeStatus.requested =>
           'Join request sent for "${result.rideTitle}".',
         JoinByCodeStatus.joinedDirectly =>
-          'Joined "${result.rideTitle}" successfully.',
+          result.rideStatus.trim().toLowerCase() == 'active' ||
+                  result.rideStatus.trim().toLowerCase() == 'live'
+              ? 'Joined live ride "${result.rideTitle}". Opening Ride Mode…'
+              : 'Joined "${result.rideTitle}" successfully.',
         JoinByCodeStatus.alreadyRequested =>
           'You already requested to join "${result.rideTitle}".',
         JoinByCodeStatus.alreadyJoined =>
-          'You are already part of "${result.rideTitle}".',
+          result.rideStatus.trim().toLowerCase() == 'active' ||
+                  result.rideStatus.trim().toLowerCase() == 'live'
+              ? 'Rejoining live ride "${result.rideTitle}"…'
+              : 'You are already part of "${result.rideTitle}".',
       };
       showAppToast(context, message, type: AppToastType.success);
       final joinedNow =
@@ -1033,13 +1045,13 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
       // A host tapping their own blip wants the ride, not a join request. Their
       // ride is on the radar as confirmation it is broadcasting, so the action
       // has to go somewhere useful rather than sitting disabled on "Joined".
-      buttonLabel = isLive ? 'Open live ride' : 'Open ride lobby';
+      buttonLabel = isLive ? 'Resume live ride' : 'Open ride lobby';
     } else if (current.joined) {
-      buttonLabel = isLive ? 'Open live ride' : 'Open ride lobby';
+      buttonLabel = isLive ? 'Rejoin live ride' : 'Open ride lobby';
     } else if (pending) {
       buttonLabel = 'Request sent';
     } else {
-      buttonLabel = 'Join Ride';
+      buttonLabel = isLive ? 'Join live ride' : 'Join Ride';
     }
     final buttonLocked = !current.isOwnRide && pending;
 

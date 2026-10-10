@@ -531,6 +531,30 @@ class SupabaseService {
     return merged.take(limit).toList();
   }
 
+  /// Finds rides the profile can resume after an app restart or local cache
+  /// loss. Membership is authoritative; the host's own rides are included too.
+  Future<List<Map<String, dynamic>>> fetchActiveRidesForProfile(
+    String profileId,
+  ) async {
+    final normalized = profileId.trim();
+    if (normalized.isEmpty) return <Map<String, dynamic>>[];
+
+    final rides = await fetchRecentRidesByCreator(
+      creatorId: normalized,
+      limit: 100,
+    );
+    return rides
+        .where((ride) {
+          final status = (ride['status'] ?? '').toString().trim().toLowerCase();
+          final archived =
+              ride['archived_at'] != null ||
+              ride['is_archived'] == true ||
+              ride['archived'] == true;
+          return !archived && (status == 'active' || status == 'live');
+        })
+        .toList(growable: false);
+  }
+
   Future<List<Map<String, dynamic>>> fetchNearbyRides({
     required String excludeCreatorId,
     int limit = 5,
