@@ -35,7 +35,7 @@ void main() {
       ),
     );
 
-    expect(tester.getSize(find.byType(BikeModeSwitch)), const Size(60, 48));
+    expect(tester.getSize(find.byType(BikeModeSwitch)), const Size(132, 54));
     expect(find.bySemanticsLabel('Ride Mode'), findsOneWidget);
 
     await tester.tap(find.byType(BikeModeSwitch));
