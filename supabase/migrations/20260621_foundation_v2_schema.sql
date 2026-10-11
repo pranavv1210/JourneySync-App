@@ -241,27 +241,44 @@ begin
   end if;
 end $$;
 
-create table if not exists public.notifications (
-  id uuid primary key default gen_random_uuid(),
-  profile_id uuid not null references public.profiles(id) on delete cascade,
-  ride_id uuid references public.rides(id) on delete cascade,
-  type text not null,
-  title text not null,
-  body text not null default '',
-  read_at timestamptz,
-  created_at timestamptz not null default now()
-);
+do $$
+declare profile_id_type text;
+begin
+  select format_type(a.atttypid,a.atttypmod) into profile_id_type
+  from pg_attribute a
+  where a.attrelid='public.profiles'::regclass
+    and a.attname='id' and not a.attisdropped;
 
-create table if not exists public.ride_summaries (
-  ride_id uuid primary key references public.rides(id) on delete cascade,
-  host_id uuid references public.profiles(id) on delete set null,
-  distance_km double precision,
-  duration_seconds integer,
-  rider_count integer not null default 1,
-  route_points jsonb,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+  if to_regclass('public.notifications') is null then
+    execute format($sql$
+      create table public.notifications (
+        id uuid primary key default gen_random_uuid(),
+        profile_id %s not null references public.profiles(id) on delete cascade,
+        ride_id uuid references public.rides(id) on delete cascade,
+        type text not null,
+        title text not null,
+        body text not null default '',
+        read_at timestamptz,
+        created_at timestamptz not null default now()
+      )
+    $sql$, profile_id_type);
+  end if;
+
+  if to_regclass('public.ride_summaries') is null then
+    execute format($sql$
+      create table public.ride_summaries (
+        ride_id uuid primary key references public.rides(id) on delete cascade,
+        host_id %s references public.profiles(id) on delete set null,
+        distance_km double precision,
+        duration_seconds integer,
+        rider_count integer not null default 1,
+        route_points jsonb,
+        created_at timestamptz not null default now(),
+        updated_at timestamptz not null default now()
+      )
+    $sql$, profile_id_type);
+  end if;
+end $$;
 
 alter table public.profiles enable row level security;
 alter table public.ride_members enable row level security;

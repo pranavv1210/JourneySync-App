@@ -199,5 +199,23 @@ do $$ begin
     raise exception 'incompatible UUID users were copied into bigint profiles';
   end if;
 end $$;
+create table public.rides (id uuid primary key);
+do $$
+declare profile_id_type text;
+begin
+  select format_type(a.atttypid,a.atttypmod) into profile_id_type
+  from pg_attribute a where a.attrelid='public.profiles'::regclass and a.attname='id' and not a.attisdropped;
+  execute format('create table public.notifications(id uuid primary key, profile_id %s references public.profiles(id), ride_id uuid references public.rides(id))',profile_id_type);
+  execute format('create table public.ride_summaries(ride_id uuid primary key references public.rides(id), host_id %s references public.profiles(id))',profile_id_type);
+end $$;
+do $$ begin
+  if (select udt_name from information_schema.columns where table_schema='public' and table_name='notifications' and column_name='profile_id') <> 'int8'
+     or (select udt_name from information_schema.columns where table_schema='public' and table_name='ride_summaries' and column_name='host_id') <> 'int8' then
+    raise exception 'profile-dependent table keys did not inherit bigint profile identity';
+  end if;
+end $$;
+drop table public.notifications;
+drop table public.ride_summaries;
+drop table public.rides;
 drop table public.profiles;
 drop table public.users;
