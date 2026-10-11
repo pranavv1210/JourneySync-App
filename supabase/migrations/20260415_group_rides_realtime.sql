@@ -213,4 +213,16 @@ begin
   end if;
 end $$;
 
-alter publication supabase_realtime add table public.live_locations;
+do $$
+begin
+  if exists (
+    select 1 from pg_publication where pubname = 'supabase_realtime'
+  ) and not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'live_locations'
+  ) then
+    alter publication supabase_realtime add table public.live_locations;
+  end if;
+end $$;
