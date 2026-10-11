@@ -33,14 +33,24 @@ begin
   end if;
   if exists (
     select 1 from information_schema.columns
-    where table_schema='public' and (
-      (table_name='profiles' and column_name='id' and udt_name<>'uuid')
-      or (table_name='rides' and column_name='id' and udt_name<>'uuid')
-      or (table_name='ride_members' and column_name='member_id' and udt_name<>'uuid')
-      or (table_name='live_locations' and column_name='profile_id' and udt_name<>'uuid')
-    )
+    where table_schema='public' and table_name='rides'
+      and column_name='id' and udt_name<>'uuid'
   ) then
-    raise exception 'JourneySync RLS hardening aborted; canonical identity and ride keys must be uuid';
+    raise exception 'JourneySync RLS hardening aborted; rides.id must be uuid';
+  end if;
+  if exists (
+    select 1
+    from information_schema.columns profile_key
+    join information_schema.columns dependent_key
+      on dependent_key.table_schema='public'
+     and dependent_key.column_name in ('member_id','profile_id')
+     and dependent_key.table_name in ('ride_members','live_locations','ride_alerts')
+    where profile_key.table_schema='public'
+      and profile_key.table_name='profiles'
+      and profile_key.column_name='id'
+      and dependent_key.udt_name<>profile_key.udt_name
+  ) then
+    raise exception 'JourneySync RLS hardening aborted; profile foreign-key column types do not match profiles.id';
   end if;
 end $$;
 
@@ -84,12 +94,20 @@ as $$
   select public.js_current_profile_id() is not null and exists (
     select 1 from public.rides r
     where r.id = target_ride_id
-      and public.js_current_profile_id() = any (array[
+      and (
+        public.js_current_profile_id() = any (array[
         coalesce(to_jsonb(r)->>'host_id', ''),
         coalesce(to_jsonb(r)->>'profile_id', ''),
         coalesce(to_jsonb(r)->>'creator_id', ''),
         coalesce(to_jsonb(r)->>'user_id', '')
-      ])
+        ])
+        or auth.uid()::text = any (array[
+          coalesce(to_jsonb(r)->>'host_id', ''),
+          coalesce(to_jsonb(r)->>'profile_id', ''),
+          coalesce(to_jsonb(r)->>'creator_id', ''),
+          coalesce(to_jsonb(r)->>'user_id', '')
+        ])
+      )
   )
 $$;
 
@@ -248,7 +266,8 @@ begin
   end if;
 
   insert into public.ride_members(ride_id,member_id,role,status)
-  values(p_ride_id,rider_id::uuid,'member','approved')
+  select p_ride_id,p.id,'member','approved'
+  from public.profiles p where p.id::text=rider_id
   on conflict(ride_id,member_id) do update set status='approved', role='member';
   return 'joined';
 end $$;
@@ -317,7 +336,7 @@ create policy profiles_ride_peer_select on public.profiles for select to authent
       and public.js_is_ride_participant(rm.ride_id)
   ));
 create policy profiles_self_insert on public.profiles for insert to authenticated
-  with check (auth_user_id=auth.uid() and id::text=auth.uid()::text);
+  with check (auth_user_id=auth.uid());
 create policy profiles_self_update on public.profiles for update to authenticated
   using (id::text=public.js_current_profile_id())
   with check (id::text=public.js_current_profile_id() and auth_user_id=auth.uid());
@@ -353,7 +372,8 @@ where p.id::text=public.js_current_profile_id()
    or exists (
      select 1 from public.rides r
      where public.js_is_public_discoverable_ride(r.id)
-       and p.id::text=any(array[coalesce(to_jsonb(r)->>'host_id',''),coalesce(to_jsonb(r)->>'profile_id',''),coalesce(to_jsonb(r)->>'creator_id',''),coalesce(to_jsonb(r)->>'user_id','')])
+       and (p.id::text=any(array[coalesce(to_jsonb(r)->>'host_id',''),coalesce(to_jsonb(r)->>'profile_id',''),coalesce(to_jsonb(r)->>'creator_id',''),coalesce(to_jsonb(r)->>'user_id','')])
+         or coalesce(to_jsonb(p)->>'auth_user_id','')=any(array[coalesce(to_jsonb(r)->>'host_id',''),coalesce(to_jsonb(r)->>'profile_id',''),coalesce(to_jsonb(r)->>'creator_id',''),coalesce(to_jsonb(r)->>'user_id','')]))
    );
 revoke all on public.profile_summaries from public;
 grant select on public.profile_summaries to anon, authenticated;
@@ -361,7 +381,7 @@ grant select on public.profile_summaries to anon, authenticated;
 create policy rides_participant_select on public.rides for select to authenticated
   using (public.js_is_ride_participant(id));
 create policy rides_host_insert on public.rides for insert to authenticated
-  with check (public.js_current_profile_id() is not null and public.js_current_profile_id() = any(array[coalesce(to_jsonb(rides)->>'host_id',''),coalesce(to_jsonb(rides)->>'profile_id',''),coalesce(to_jsonb(rides)->>'creator_id',''),coalesce(to_jsonb(rides)->>'user_id','')]));
+  with check (public.js_current_profile_id() is not null and (public.js_current_profile_id() = any(array[coalesce(to_jsonb(rides)->>'host_id',''),coalesce(to_jsonb(rides)->>'profile_id',''),coalesce(to_jsonb(rides)->>'creator_id',''),coalesce(to_jsonb(rides)->>'user_id','')]) or auth.uid()::text = any(array[coalesce(to_jsonb(rides)->>'host_id',''),coalesce(to_jsonb(rides)->>'profile_id',''),coalesce(to_jsonb(rides)->>'creator_id',''),coalesce(to_jsonb(rides)->>'user_id','')])));
 create policy rides_host_update on public.rides for update to authenticated
   using (public.js_is_ride_host(id)) with check (public.js_is_ride_host(id));
 create policy rides_host_delete on public.rides for delete to authenticated
@@ -533,7 +553,7 @@ begin
   insert into public.ride_alerts(
     ride_id,profile_id,user_name,type,message,avatar_url,latitude,longitude,created_at
   ) values (
-    p_ride_id::uuid,p_profile_id::uuid,
+    p_ride_id::uuid,(select p.id from public.profiles p where p.id::text=p_profile_id),
     coalesce(nullif(trim(p_profile_name),''),'Rider'),
     case when p_broadcast_to_group then 'group_sos' else 'sos' end,
     case when p_broadcast_to_group then 'SOS alert broadcast to the ride group' else 'SOS alert triggered' end,

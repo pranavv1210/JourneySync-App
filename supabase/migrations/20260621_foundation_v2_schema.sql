@@ -15,16 +15,23 @@ create table if not exists public.profiles (
 );
 
 do $$
+declare profiles_id_type text;
+declare users_id_type text;
 begin
   if to_regclass('public.users') is not null then
-    insert into public.profiles (id, phone, name, bike, avatar_url, created_at)
-    select id, phone, name, bike, avatar_url, created_at
-    from public.users
-    on conflict (id) do update set
-      phone = excluded.phone,
-      name = excluded.name,
-      bike = excluded.bike,
-      avatar_url = excluded.avatar_url;
+    select format_type(a.atttypid,a.atttypmod) into profiles_id_type
+    from pg_attribute a where a.attrelid='public.profiles'::regclass and a.attname='id' and not a.attisdropped;
+    select format_type(a.atttypid,a.atttypmod) into users_id_type
+    from pg_attribute a where a.attrelid='public.users'::regclass and a.attname='id' and not a.attisdropped;
+    if profiles_id_type = users_id_type then
+      execute $sql$
+        insert into public.profiles (id, phone, name, bike, avatar_url, created_at)
+        select id, phone, name, bike, avatar_url, created_at from public.users
+        on conflict (id) do update set
+          phone=excluded.phone, name=excluded.name, bike=excluded.bike,
+          avatar_url=excluded.avatar_url
+      $sql$;
+    end if;
   end if;
 end $$;
 
@@ -101,25 +108,32 @@ begin
       and table_name = 'ride_members'
       and column_name = 'user_id'
   ) then
-    update public.ride_members
-    set member_id = user_id
-    where member_id is null and user_id is not null;
+    update public.ride_members rm
+    set member_id = p.id
+    from public.profiles p
+    where rm.member_id is null and rm.user_id is not null
+      and (p.id::text=rm.user_id::text
+        or coalesce(to_jsonb(p)->>'auth_user_id','')=rm.user_id::text);
   end if;
 end $$;
 
 insert into public.ride_members (ride_id, member_id, role, status)
-select id, host_id, 'host', 'approved'
-from public.rides
-where host_id is not null
+select r.id, p.id, 'host', 'approved'
+from public.rides r
+join public.profiles p on p.id::text=r.host_id::text
+  or coalesce(to_jsonb(p)->>'auth_user_id','')=r.host_id::text
+where r.host_id is not null
 on conflict (ride_id, member_id) do update set role = 'host', status = 'approved';
 
 do $$
 begin
   if to_regclass('public.participants') is not null then
     insert into public.ride_members (ride_id, member_id, role, status)
-    select ride_id, user_id, 'member', 'approved'
-    from public.participants
-    where user_id is not null
+    select legacy.ride_id, p.id, 'member', 'approved'
+    from public.participants legacy
+    join public.profiles p on p.id::text=legacy.user_id::text
+      or coalesce(to_jsonb(p)->>'auth_user_id','')=legacy.user_id::text
+    where legacy.user_id is not null
     on conflict (ride_id, member_id) do nothing;
   end if;
 end $$;
@@ -155,9 +169,12 @@ begin
       and table_name = 'live_locations'
       and column_name = 'user_id'
   ) then
-    update public.live_locations
-    set profile_id = user_id
-    where profile_id is null and user_id is not null;
+    update public.live_locations location
+    set profile_id = p.id
+    from public.profiles p
+    where location.profile_id is null and location.user_id is not null
+      and (p.id::text=location.user_id::text
+        or coalesce(to_jsonb(p)->>'auth_user_id','')=location.user_id::text);
   end if;
 end $$;
 
@@ -215,9 +232,12 @@ begin
       and table_name = 'ride_alerts'
       and column_name = 'user_id'
   ) then
-    update public.ride_alerts
-    set profile_id = user_id
-    where profile_id is null and user_id is not null;
+    update public.ride_alerts alert
+    set profile_id = p.id
+    from public.profiles p
+    where alert.profile_id is null and alert.user_id is not null
+      and (p.id::text=alert.user_id::text
+        or coalesce(to_jsonb(p)->>'auth_user_id','')=alert.user_id::text);
   end if;
 end $$;
 
@@ -260,8 +280,8 @@ begin
   ) then
     create policy profiles_owner_all on public.profiles
       for all to authenticated
-      using (auth.uid() = id)
-      with check (auth.uid() = id);
+      using (auth.uid()::text = coalesce(to_jsonb(profiles)->>'auth_user_id', id::text))
+      with check (auth.uid()::text = coalesce(to_jsonb(profiles)->>'auth_user_id', id::text));
   end if;
 
   if not exists (
