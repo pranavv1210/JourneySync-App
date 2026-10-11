@@ -55,3 +55,10 @@ jobs:
 
       - name: Validate production verification SQL
         run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/production_rls_verification.sql
+
+      - name: Test production-style bigint profile identity
+        run: |
+          createdb journeysync_rls_bigint_test
+          psql -v ON_ERROR_STOP=1 -d journeysync_rls_bigint_test -f supabase/tests/rls_bigint_identity_fixture.sql
+          psql -v ON_ERROR_STOP=1 -d journeysync_rls_bigint_test -f supabase/migrations/20261010_production_rls_security_hardening.sql
+          psql -v ON_ERROR_STOP=1 -d journeysync_rls_bigint_test -f supabase/tests/rls_bigint_identity_regression.sql
