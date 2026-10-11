@@ -41,8 +41,34 @@ alter table if exists public.rides
 do $$
 declare
   source_expressions text;
+  source_column text;
   host_id_type text;
 begin
+  -- Some legacy rides contain valid auth UUIDs before a matching legacy user
+  -- row exists. Preserve ownership and satisfy the host foreign key before
+  -- backfilling host_id; foundation_v2 later promotes these rows to profiles.
+  for source_column in
+    select candidate.column_name
+    from unnest(array['host_id', 'creator_id', 'user_id', 'leader_id', 'ride_leader_id'])
+      as candidate(column_name)
+    where exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'rides'
+        and column_name = candidate.column_name
+    )
+  loop
+    execute format(
+      'insert into public.users (id)
+       select distinct nullif(%1$I::text, '''')::uuid
+       from public.rides
+       where nullif(%1$I::text, '''') ~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''
+       on conflict (id) do nothing',
+      source_column
+    );
+  end loop;
+
   select format_type(attribute.atttypid, attribute.atttypmod)
   into host_id_type
   from pg_attribute attribute
