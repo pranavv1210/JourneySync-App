@@ -24,7 +24,7 @@ The landing site reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` when the
 Before launch, apply the latest beta signup migration in Supabase:
 
 ```sql
-supabase/migrations/20260702_beta_email_device_registration.sql
+supabase/migrations/20260702010000_beta_email_device_registration.sql
 ```
 
 That migration creates or updates `public.beta_applications`, enables RLS, allows anonymous inserts, and adds duplicate protection for email and device IDs.
