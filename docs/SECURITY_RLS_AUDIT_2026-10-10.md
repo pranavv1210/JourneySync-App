@@ -57,7 +57,7 @@ contents were recorded.
 
 ## Implemented repair
 
-- `20261010_production_rls_security_hardening.sql` performs strict schema
+- `20261010000000_production_rls_security_hardening.sql` performs strict schema
   precondition checks, drops every accumulated policy on protected resources,
   installs explicit per-command policies, restricts grants, and replaces unsafe
   helpers/RPCs.

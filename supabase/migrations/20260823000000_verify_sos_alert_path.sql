@@ -3,7 +3,7 @@
 -- WHY THIS FILE EXISTS
 --
 -- Everything public.ride_alerts needs was already written, but it lives in
--- 20260820_repair_ride_coordination_runtime.sql - a long script that also
+-- 20260820000000_repair_ride_coordination_runtime.sql - a long script that also
 -- rebuilds ride_members, live_locations and rides. If that file was never run,
 -- or aborted partway through on a legacy column type, the SOS insert fails and
 -- the rider sees "Could not send SOS. Please try again." with no way to tell
