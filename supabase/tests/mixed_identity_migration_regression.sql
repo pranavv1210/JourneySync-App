@@ -9,8 +9,31 @@ language plpgsql
 as $$
 declare
   source_expressions text;
+  source_column text;
   host_id_type text;
 begin
+  if to_regclass('public.users') is not null then
+    for source_column in
+      select candidate.column_name
+      from unnest(array['host_id', 'creator_id', 'user_id', 'leader_id', 'ride_leader_id'])
+        as candidate(column_name)
+      where exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'rides'
+          and column_name = candidate.column_name
+      )
+    loop
+      execute format(
+        'insert into public.users (id)
+         select distinct nullif(%1$I::text, '''')::uuid from public.rides
+         where nullif(%1$I::text, '''') ~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''
+         on conflict (id) do nothing',
+        source_column
+      );
+    end loop;
+  end if;
+
   select format_type(attribute.atttypid, attribute.atttypmod)
   into host_id_type
   from pg_attribute attribute
@@ -39,9 +62,10 @@ begin
   );
 end $$;
 
+create table public.users (id uuid primary key);
 create table public.rides (
   id uuid primary key,
-  host_id uuid,
+  host_id uuid references public.users(id),
   user_id text
 );
 insert into public.rides values (
@@ -54,9 +78,16 @@ do $$ begin
   if (select host_id from public.rides) <> '10000000-0000-0000-0000-000000000001'::uuid then
     raise exception 'text source was not safely converted to uuid host_id';
   end if;
+  if not exists (
+    select 1 from public.users
+    where id = '10000000-0000-0000-0000-000000000001'::uuid
+  ) then
+    raise exception 'missing legacy user was not preserved before host backfill';
+  end if;
 end $$;
 
 drop table public.rides;
+drop table public.users;
 create table public.rides (
   id uuid primary key,
   host_id text,
