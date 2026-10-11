@@ -107,3 +107,23 @@ end $$;
 
 drop table public.rides;
 drop function public.test_backfill_ride_host();
+
+-- Replaying the legacy bootstrap over a canonical membership table must not
+-- require or add the obsolete user_id column.
+create table public.ride_members (
+  id uuid primary key,
+  ride_id uuid not null,
+  member_id uuid not null
+);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'ride_members'
+      and column_name = 'user_id'
+  ) then
+    raise exception 'canonical membership fixture unexpectedly has user_id';
+  end if;
+end $$;
+drop table public.ride_members;

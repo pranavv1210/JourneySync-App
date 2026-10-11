@@ -107,16 +107,52 @@ create table if not exists public.ride_members (
   unique (ride_id, user_id)
 );
 
-insert into public.ride_members (ride_id, user_id)
-select r.id, r.host_id
-from public.rides r
-where r.host_id is not null
-on conflict (ride_id, user_id) do nothing;
+do $$
+begin
+  -- A current-schema ride_members table uses member_id. Do not introduce or
+  -- write the obsolete user_id shape when replaying history over that schema.
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'ride_members'
+      and column_name = 'user_id'
+  ) then
+    execute $sql$
+      insert into public.ride_members (ride_id, user_id)
+      select r.id, r.host_id
+      from public.rides r
+      where r.host_id is not null
+        and not exists (
+          select 1 from public.ride_members rm
+          where rm.ride_id = r.id and rm.user_id = r.host_id
+        )
+    $sql$;
 
-insert into public.ride_members (ride_id, user_id)
-select p.ride_id, p.user_id
-from public.participants p
-on conflict (ride_id, user_id) do nothing;
+    if to_regclass('public.participants') is not null
+       and exists (
+         select 1 from information_schema.columns
+         where table_schema = 'public'
+           and table_name = 'participants'
+           and column_name = 'ride_id'
+       )
+       and exists (
+         select 1 from information_schema.columns
+         where table_schema = 'public'
+           and table_name = 'participants'
+           and column_name = 'user_id'
+       ) then
+      execute $sql$
+        insert into public.ride_members (ride_id, user_id)
+        select p.ride_id, p.user_id
+        from public.participants p
+        where not exists (
+          select 1 from public.ride_members rm
+          where rm.ride_id = p.ride_id and rm.user_id = p.user_id
+        )
+      $sql$;
+    end if;
+  end if;
+end $$;
 
 create table if not exists public.live_locations (
   ride_id uuid not null references public.rides(id) on delete cascade,
