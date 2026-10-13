@@ -196,16 +196,32 @@ begin
 end $$;
 
 do $$
+declare
+  profiles_id_type text;
+  rides_host_type text;
 begin
-  begin
-    insert into public.profiles (id, auth_user_id, name, bike)
-    select distinct host_id, host_id, 'Rider', 'No bike added'
-    from public.rides
-    where host_id is not null
-    on conflict (id) do nothing;
-  exception
-    when foreign_key_violation then null;
-  end;
+  select format_type(a.atttypid, a.atttypmod)
+    into profiles_id_type
+    from pg_attribute a
+   where a.attrelid = 'public.profiles'::regclass
+     and a.attname = 'id'
+     and not a.attisdropped;
+  select format_type(a.atttypid, a.atttypmod)
+    into rides_host_type
+    from pg_attribute a
+   where a.attrelid = 'public.rides'::regclass
+     and a.attname = 'host_id'
+     and not a.attisdropped;
+
+  if profiles_id_type = rides_host_type and profiles_id_type = 'uuid' then
+    execute $sql$
+      insert into public.profiles (id, auth_user_id, name, bike)
+      select distinct host_id, host_id, 'Rider', 'No bike added'
+      from public.rides
+      where host_id is not null
+      on conflict (id) do nothing
+    $sql$;
+  end if;
 end $$;
 
 create table if not exists public.ride_members (
