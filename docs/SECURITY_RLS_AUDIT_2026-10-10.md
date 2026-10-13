@@ -57,10 +57,6 @@ contents were recorded.
 
 ## Implemented repair
 
-- The five migration identifiers already recorded in production remain intact.
-  `20260621000000_foundation_v2_schema_history_compat.sql` is intentionally a
-  no-op marker that reconciles a transient Supabase preview-history identifier
-  without replaying the foundation schema or changing application data.
 - `20261010000000_production_rls_security_hardening.sql` performs strict schema
   precondition checks, drops every accumulated policy on protected resources,
   installs explicit per-command policies, restricts grants, and replaces unsafe
