@@ -38,6 +38,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Validate migration version contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t migrations < <(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' | sort)
+          invalid=0
+          declare -A seen=()
+          for migration in "${migrations[@]}"; do
+            if [[ ! "$migration" =~ ^[0-9]{14}_[a-z0-9_]+\.sql$ ]]; then
+              echo "::error file=supabase/migrations/$migration::Migration filename must use a unique 14-digit timestamp and snake_case name"
+              invalid=1
+              continue
+            fi
+            version="${migration%%_*}"
+            if [[ -n "${seen[$version]:-}" ]]; then
+              echo "::error file=supabase/migrations/$migration::Duplicate migration version $version (also used by ${seen[$version]})"
+              invalid=1
+            fi
+            seen[$version]="$migration"
+          done
+          if (( invalid != 0 )); then
+            exit 1
+          fi
+          echo "Validated ${#migrations[@]} uniquely versioned migrations."
+
       - name: Create isolated test database
         run: createdb journeysync_rls_test
 

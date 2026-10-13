@@ -83,6 +83,10 @@ mapping inside a transaction:
 Do not reverse the mapping after later migrations have been deployed. Take a
 fresh ledger snapshot and investigate instead.
 
+The RLS regression workflow now rejects migration filenames that do not use a
+unique 14-digit timestamp. This prevents another date-only or duplicate-version
+file from reaching `main` and recreating the deployment-ledger mismatch.
+
 - `20261010000000_production_rls_security_hardening.sql` performs strict schema
   precondition checks, drops every accumulated policy on protected resources,
   installs explicit per-command policies, restricts grants, and replaces unsafe
