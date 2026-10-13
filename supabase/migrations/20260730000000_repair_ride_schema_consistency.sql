@@ -38,22 +38,38 @@ alter table if exists public.profiles
   add column if not exists updated_at timestamptz not null default now();
 
 do $$
+declare
+  profiles_id_type text;
+  users_id_type text;
 begin
   if to_regclass('public.users') is not null then
-    begin
-      insert into public.profiles (id, phone, name, bike, avatar_url, created_at)
-      select id, phone, coalesce(nullif(name, ''), 'Rider'),
-             coalesce(nullif(bike, ''), 'No bike added'), avatar_url,
-             coalesce(created_at, now())
-      from public.users
-      on conflict (id) do update set
-        phone = coalesce(public.profiles.phone, excluded.phone),
-        name = coalesce(nullif(public.profiles.name, ''), excluded.name),
-        bike = coalesce(nullif(public.profiles.bike, ''), excluded.bike),
-        avatar_url = coalesce(public.profiles.avatar_url, excluded.avatar_url);
-    exception
-      when foreign_key_violation then null;
-    end;
+    select format_type(a.atttypid, a.atttypmod)
+      into profiles_id_type
+      from pg_attribute a
+     where a.attrelid = 'public.profiles'::regclass
+       and a.attname = 'id'
+       and not a.attisdropped;
+    select format_type(a.atttypid, a.atttypmod)
+      into users_id_type
+      from pg_attribute a
+     where a.attrelid = 'public.users'::regclass
+       and a.attname = 'id'
+       and not a.attisdropped;
+
+    if profiles_id_type = users_id_type then
+      execute $sql$
+        insert into public.profiles (id, phone, name, bike, avatar_url, created_at)
+        select id, phone, coalesce(nullif(name, ''), 'Rider'),
+               coalesce(nullif(bike, ''), 'No bike added'), avatar_url,
+               coalesce(created_at, now())
+        from public.users
+        on conflict (id) do update set
+          phone = coalesce(public.profiles.phone, excluded.phone),
+          name = coalesce(nullif(public.profiles.name, ''), excluded.name),
+          bike = coalesce(nullif(public.profiles.bike, ''), excluded.bike),
+          avatar_url = coalesce(public.profiles.avatar_url, excluded.avatar_url)
+      $sql$;
+    end if;
   end if;
 end $$;
 
