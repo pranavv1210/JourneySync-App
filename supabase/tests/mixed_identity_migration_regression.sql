@@ -335,5 +335,34 @@ do $$ begin
   end if;
 end $$;
 drop table public.ride_members;
+
+create table public.live_locations (
+  profile_id bigint references public.profiles(id),
+  user_id text
+);
+create table public.ride_alerts (
+  profile_id bigint references public.profiles(id),
+  user_id text
+);
+insert into public.live_locations (user_id) values ('10000000-0000-0000-0000-000000000004');
+insert into public.ride_alerts (user_id) values ('10000000-0000-0000-0000-000000000004');
+update public.live_locations location
+set profile_id = profile.id
+from public.profiles profile
+where location.profile_id is null and location.user_id is not null
+  and profile.auth_user_id::text = location.user_id::text;
+update public.ride_alerts alert
+set profile_id = profile.id
+from public.profiles profile
+where alert.profile_id is null and alert.user_id is not null
+  and profile.auth_user_id::text = alert.user_id::text;
+do $$ begin
+  if (select profile_id from public.live_locations) <> 4004
+     or (select profile_id from public.ride_alerts) <> 4004 then
+    raise exception 'legacy location or alert identity was not mapped to bigint profile';
+  end if;
+end $$;
+drop table public.live_locations;
+drop table public.ride_alerts;
 drop table public.rides;
 drop table public.profiles;

@@ -392,14 +392,38 @@ alter table if exists public.live_locations
   add column if not exists updated_at timestamptz not null default now();
 
 do $$
+declare
+  profile_id_type text;
+  user_id_type text;
+  profiles_id_type text;
 begin
   if exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'live_locations' and column_name = 'user_id'
   ) then
-    update public.live_locations
-    set profile_id = user_id
-    where profile_id is null and user_id is not null;
+    select format_type(a.atttypid, a.atttypmod) into profile_id_type
+    from pg_attribute a
+    where a.attrelid = 'public.live_locations'::regclass and a.attname = 'profile_id' and not a.attisdropped;
+    select format_type(a.atttypid, a.atttypmod) into user_id_type
+    from pg_attribute a
+    where a.attrelid = 'public.live_locations'::regclass and a.attname = 'user_id' and not a.attisdropped;
+    select format_type(a.atttypid, a.atttypmod) into profiles_id_type
+    from pg_attribute a
+    where a.attrelid = 'public.profiles'::regclass and a.attname = 'id' and not a.attisdropped;
+
+    if profile_id_type = user_id_type then
+      execute 'update public.live_locations set profile_id = user_id
+        where profile_id is null and user_id is not null';
+    elsif profile_id_type = profiles_id_type and exists (
+      select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'profiles' and column_name = 'auth_user_id'
+    ) then
+      execute 'update public.live_locations location
+        set profile_id = profile.id
+        from public.profiles profile
+        where location.profile_id is null and location.user_id is not null
+          and profile.auth_user_id::text = location.user_id::text';
+    end if;
   end if;
 
   update public.live_locations
@@ -448,14 +472,38 @@ alter table if exists public.ride_alerts
   add column if not exists created_at timestamptz not null default now();
 
 do $$
+declare
+  profile_id_type text;
+  user_id_type text;
+  profiles_id_type text;
 begin
   if exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'ride_alerts' and column_name = 'user_id'
   ) then
-    update public.ride_alerts
-    set profile_id = user_id
-    where profile_id is null and user_id is not null;
+    select format_type(a.atttypid, a.atttypmod) into profile_id_type
+    from pg_attribute a
+    where a.attrelid = 'public.ride_alerts'::regclass and a.attname = 'profile_id' and not a.attisdropped;
+    select format_type(a.atttypid, a.atttypmod) into user_id_type
+    from pg_attribute a
+    where a.attrelid = 'public.ride_alerts'::regclass and a.attname = 'user_id' and not a.attisdropped;
+    select format_type(a.atttypid, a.atttypmod) into profiles_id_type
+    from pg_attribute a
+    where a.attrelid = 'public.profiles'::regclass and a.attname = 'id' and not a.attisdropped;
+
+    if profile_id_type = user_id_type then
+      execute 'update public.ride_alerts set profile_id = user_id
+        where profile_id is null and user_id is not null';
+    elsif profile_id_type = profiles_id_type and exists (
+      select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'profiles' and column_name = 'auth_user_id'
+    ) then
+      execute 'update public.ride_alerts alert
+        set profile_id = profile.id
+        from public.profiles profile
+        where alert.profile_id is null and alert.user_id is not null
+          and profile.auth_user_id::text = alert.user_id::text';
+    end if;
   end if;
 end $$;
 
