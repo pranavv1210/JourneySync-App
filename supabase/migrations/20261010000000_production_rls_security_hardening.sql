@@ -148,7 +148,7 @@ security definer
 set search_path = pg_catalog, public
 as $$
   select case
-    when target_ride_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    when target_ride_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       then public.js_is_ride_host(target_ride_id::uuid)
     else false
   end
@@ -162,7 +162,7 @@ security definer
 set search_path = pg_catalog, public
 as $$
   select case
-    when target_ride_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    when target_ride_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       then public.js_is_approved_ride_member(target_ride_id::uuid)
     else false
   end
@@ -176,7 +176,7 @@ security definer
 set search_path = pg_catalog, public
 as $$
   select case
-    when target_ride_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    when target_ride_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       then public.js_is_ride_participant(target_ride_id::uuid)
     else false
   end
