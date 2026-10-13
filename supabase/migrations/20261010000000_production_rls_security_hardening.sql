@@ -137,6 +137,51 @@ as $$
       or public.js_is_approved_ride_member(target_ride_id)
 $$;
 
+-- Some production-era tracking tables retained text ride identifiers even
+-- though rides.id is UUID. Keep policy calls type-safe without accepting an
+-- invalid identifier or weakening the canonical UUID authorization check.
+create or replace function public.js_is_ride_host(target_ride_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select case
+    when target_ride_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      then public.js_is_ride_host(target_ride_id::uuid)
+    else false
+  end
+$$;
+
+create or replace function public.js_is_approved_ride_member(target_ride_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select case
+    when target_ride_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      then public.js_is_approved_ride_member(target_ride_id::uuid)
+    else false
+  end
+$$;
+
+create or replace function public.js_is_ride_participant(target_ride_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select case
+    when target_ride_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      then public.js_is_ride_participant(target_ride_id::uuid)
+    else false
+  end
+$$;
+
 create or replace function public.js_is_public_discoverable_ride(target_ride_id uuid)
 returns boolean
 language sql
@@ -160,12 +205,18 @@ revoke all on function public.js_is_admin() from public, anon;
 revoke all on function public.js_is_ride_host(uuid) from public, anon;
 revoke all on function public.js_is_approved_ride_member(uuid) from public, anon;
 revoke all on function public.js_is_ride_participant(uuid) from public, anon;
+revoke all on function public.js_is_ride_host(text) from public, anon;
+revoke all on function public.js_is_approved_ride_member(text) from public, anon;
+revoke all on function public.js_is_ride_participant(text) from public, anon;
 revoke all on function public.js_is_public_discoverable_ride(uuid) from public;
 grant execute on function public.js_current_profile_id() to authenticated;
 grant execute on function public.js_is_admin() to authenticated;
 grant execute on function public.js_is_ride_host(uuid) to authenticated;
 grant execute on function public.js_is_approved_ride_member(uuid) to authenticated;
 grant execute on function public.js_is_ride_participant(uuid) to authenticated;
+grant execute on function public.js_is_ride_host(text) to authenticated;
+grant execute on function public.js_is_approved_ride_member(text) to authenticated;
+grant execute on function public.js_is_ride_participant(text) to authenticated;
 grant execute on function public.js_is_public_discoverable_ride(uuid) to anon, authenticated;
 
 -- Repair the legacy helper names because deployed clients and the SOS fallback

@@ -32,6 +32,8 @@ reset role;
 select set_config('request.jwt.claim.sub','a0000000-0000-0000-0000-000000000002',false);
 select set_config('request.jwt.claims','{"sub":"a0000000-0000-0000-0000-000000000002","role":"authenticated"}',false);
 set role authenticated;
+select public.test_assert(public.js_is_ride_participant('20000000-0000-0000-0000-0000000000a1'::text),'text ride id resolves through canonical authorization');
+select public.test_assert(not public.js_is_ride_participant('not-a-ride-id'::text),'invalid text ride id is rejected');
 select public.test_assert((select count(*) from live_locations where ride_id='20000000-0000-0000-0000-0000000000a1')=1,'member reads own ride GPS');
 select public.test_assert((select count(*) from live_locations where ride_id='20000000-0000-0000-0000-0000000000b2')=0,'cross-ride GPS isolation');
 select public.test_assert((select count(*) from ride_routes where ride_id='20000000-0000-0000-0000-0000000000b2')=0,'cross-ride route isolation');
