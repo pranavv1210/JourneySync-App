@@ -73,3 +73,5 @@ begin
   end if;
 end
 $test$;
+
+drop schema supabase_migrations cascade;
