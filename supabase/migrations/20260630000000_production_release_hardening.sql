@@ -14,9 +14,27 @@ create index if not exists live_locations_profile_updated_idx
   on public.live_locations (profile_id, updated_at desc)
   where profile_id is not null;
 
-create index if not exists ride_routes_host_updated_idx
-  on public.ride_routes (host_id, updated_at desc)
-  where host_id is not null;
+-- Older production schemas can have route rows keyed only by ride_id. Do not
+-- invent a second ownership column just to satisfy this optional index; the
+-- canonical ride host remains available through rides.host_id.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'ride_routes'
+      and column_name = 'host_id'
+  ) and exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'ride_routes'
+      and column_name = 'updated_at'
+  ) then
+    execute 'create index if not exists ride_routes_host_updated_idx
+      on public.ride_routes (host_id, updated_at desc)
+      where host_id is not null';
+  end if;
+end $$;
 
 create index if not exists ride_alerts_profile_created_idx
   on public.ride_alerts (profile_id, created_at desc)

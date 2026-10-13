@@ -1,5 +1,37 @@
 \set ON_ERROR_STOP on
 
+-- Production can have ride_routes keyed only by ride_id. The historical
+-- release-hardening migration must skip its optional host index in that shape.
+drop table if exists public.ride_routes cascade;
+create table public.ride_routes (
+  ride_id uuid primary key,
+  updated_at timestamptz not null default now()
+);
+
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'ride_routes' and column_name = 'host_id'
+  ) and exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'ride_routes' and column_name = 'updated_at'
+  ) then
+    execute 'create index if not exists ride_routes_host_updated_idx
+      on public.ride_routes (host_id, updated_at desc)
+      where host_id is not null';
+  end if;
+end $$;
+
+do $$
+begin
+  if to_regclass('public.ride_routes_host_updated_idx') is not null then
+    raise exception 'Optional ride route host index should not exist without host_id';
+  end if;
+end $$;
+
+drop table public.ride_routes;
+
 -- Historical JourneySync schemas used both text and uuid identity columns.
 -- Bootstrap migrations must normalize source values to the existing host_id
 -- type before coalescing them.
