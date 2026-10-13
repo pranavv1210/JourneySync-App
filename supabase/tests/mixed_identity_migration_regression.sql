@@ -291,5 +291,49 @@ do $$ begin
     raise exception 'incompatible UUID ride host was copied into bigint profiles';
   end if;
 end $$;
+insert into public.profiles (id, auth_user_id, name, bike) values (
+  4004, '10000000-0000-0000-0000-000000000004', 'Mapped host', 'Bike'
+);
+create table public.ride_members (
+  ride_id uuid not null,
+  member_id bigint not null references public.profiles(id),
+  role text not null,
+  status text not null,
+  unique (ride_id, member_id)
+);
+do $$
+declare
+  profiles_id_type text;
+  profiles_auth_type text;
+  rides_host_type text;
+begin
+  select format_type(a.atttypid, a.atttypmod) into profiles_id_type
+  from pg_attribute a
+  where a.attrelid = 'public.profiles'::regclass and a.attname = 'id' and not a.attisdropped;
+  select format_type(a.atttypid, a.atttypmod) into rides_host_type
+  from pg_attribute a
+  where a.attrelid = 'public.rides'::regclass and a.attname = 'host_id' and not a.attisdropped;
+  select format_type(a.atttypid, a.atttypmod) into profiles_auth_type
+  from pg_attribute a
+  where a.attrelid = 'public.profiles'::regclass and a.attname = 'auth_user_id' and not a.attisdropped;
+  if profiles_id_type = rides_host_type then
+    execute 'insert into public.ride_members select r.id, r.host_id, ''host'', ''approved''
+      from public.rides r join public.profiles p on p.id = r.host_id
+      on conflict(ride_id, member_id) do update set role=''host'', status=''approved''';
+  elsif profiles_auth_type = rides_host_type then
+    execute 'insert into public.ride_members select r.id, p.id, ''host'', ''approved''
+      from public.rides r join public.profiles p on p.auth_user_id = r.host_id
+      on conflict(ride_id, member_id) do update set role=''host'', status=''approved''';
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from public.ride_members
+    where member_id = 4004 and role = 'host' and status = 'approved'
+  ) then
+    raise exception 'UUID ride host was not mapped through profiles.auth_user_id';
+  end if;
+end $$;
+drop table public.ride_members;
 drop table public.rides;
 drop table public.profiles;

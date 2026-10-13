@@ -278,16 +278,42 @@ begin
   end if;
 end $$;
 
-insert into public.ride_members (ride_id, member_id, role, status)
-select id, host_id, 'host', 'approved'
-from public.rides
-where host_id is not null
-  and exists (
-    select 1
-    from public.profiles p
-    where p.id = public.rides.host_id
-  )
-on conflict (ride_id, member_id) do update set role = 'host', status = 'approved';
+do $$
+declare
+  profiles_id_type text;
+  profiles_auth_type text;
+  rides_host_type text;
+begin
+  select format_type(a.atttypid, a.atttypmod) into profiles_id_type
+  from pg_attribute a
+  where a.attrelid = 'public.profiles'::regclass and a.attname = 'id' and not a.attisdropped;
+  select format_type(a.atttypid, a.atttypmod) into rides_host_type
+  from pg_attribute a
+  where a.attrelid = 'public.rides'::regclass and a.attname = 'host_id' and not a.attisdropped;
+  select format_type(a.atttypid, a.atttypmod) into profiles_auth_type
+  from pg_attribute a
+  where a.attrelid = 'public.profiles'::regclass and a.attname = 'auth_user_id' and not a.attisdropped;
+
+  if profiles_id_type = rides_host_type then
+    execute $sql$
+      insert into public.ride_members (ride_id, member_id, role, status)
+      select r.id, r.host_id, 'host', 'approved'
+      from public.rides r
+      join public.profiles p on p.id = r.host_id
+      where r.host_id is not null
+      on conflict (ride_id, member_id) do update set role = 'host', status = 'approved'
+    $sql$;
+  elsif profiles_auth_type = rides_host_type then
+    execute $sql$
+      insert into public.ride_members (ride_id, member_id, role, status)
+      select r.id, p.id, 'host', 'approved'
+      from public.rides r
+      join public.profiles p on p.auth_user_id = r.host_id
+      where r.host_id is not null
+      on conflict (ride_id, member_id) do update set role = 'host', status = 'approved'
+    $sql$;
+  end if;
+end $$;
 
 create table if not exists public.ride_routes (
   ride_id uuid primary key references public.rides(id) on delete cascade,
