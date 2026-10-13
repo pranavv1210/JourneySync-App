@@ -41,6 +41,9 @@ jobs:
       - name: Create isolated test database
         run: createdb journeysync_rls_test
 
+      - name: Test production migration-history normalization
+        run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/tests/migration_history_normalization_regression.sql
+
       - name: Test mixed legacy identity migrations
         run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/tests/mixed_identity_migration_regression.sql
 

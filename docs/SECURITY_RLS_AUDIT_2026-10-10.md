@@ -57,6 +57,32 @@ contents were recorded.
 
 ## Implemented repair
 
+### Production migration-ledger normalization
+
+Five migrations that production recorded with legacy date-only identifiers now
+use unique 14-digit identifiers in the repository. Before the next production
+schema deployment, an authorized operator must run
+`supabase/operations/normalize_legacy_migration_versions.sql` in the JourneySync
+project SQL editor. The script is deliberately not an automatic migration: it
+checks for exactly five old identifiers and no normalized identifiers, updates
+only `supabase_migrations.schema_migrations.version`, verifies exactly five
+rows, and aborts the whole transaction if any precondition or postcondition
+fails.
+
+Recovery, if the deployment has not applied any later migration, is the inverse
+mapping inside a transaction:
+
+| Normalized version | Legacy version |
+| --- | --- |
+| `20260306000000` | `20260306` |
+| `20260326000000` | `20260326` |
+| `20260415000000` | `20260415` |
+| `20260527000000` | `20260527` |
+| `20260621000000` | `20260621` |
+
+Do not reverse the mapping after later migrations have been deployed. Take a
+fresh ledger snapshot and investigate instead.
+
 - `20261010000000_production_rls_security_hardening.sql` performs strict schema
   precondition checks, drops every accumulated policy on protected resources,
   installs explicit per-command policies, restricts grants, and replaces unsafe
