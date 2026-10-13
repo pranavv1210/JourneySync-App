@@ -326,6 +326,11 @@ begin
   end loop;
 end $$;
 
+-- The historical release migration used this compatibility helper only while
+-- its temporary policies were active. All of those policies were dropped
+-- above, so remove the helper before installing the authoritative model.
+drop function if exists public.js_release_profile_id();
+
 create policy profiles_self_select on public.profiles for select to authenticated
   using (id::text=public.js_current_profile_id());
 create policy profiles_ride_peer_select on public.profiles for select to authenticated

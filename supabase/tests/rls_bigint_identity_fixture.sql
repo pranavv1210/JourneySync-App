@@ -15,11 +15,11 @@ $$;
 grant usage on schema auth to anon,authenticated;
 grant execute on function auth.uid(),auth.jwt() to anon,authenticated;
 
-create table profiles(id bigint primary key, auth_user_id uuid unique, name text, bike text, avatar_url text);
+create table profiles(id bigint primary key, auth_user_id uuid unique, name text, bike text, avatar_url text, active_ride_id uuid);
 create table users(id uuid primary key, name text);
 create table rides(id uuid primary key, host_id uuid, title text, status text, ride_visibility text, max_riders int, created_at timestamptz, archived boolean default false, is_archived boolean default false, archived_at timestamptz);
 create table participants(ride_id uuid, user_id uuid);
-create table ride_members(id uuid primary key default gen_random_uuid(), ride_id uuid, member_id bigint, role text, status text, unique(ride_id,member_id));
+create table ride_members(id uuid primary key default gen_random_uuid(), ride_id uuid, member_id bigint, role text, status text, created_at timestamptz default now(), unique(ride_id,member_id));
 create table live_locations(ride_id uuid, profile_id bigint, latitude float8, longitude float8, is_leader boolean default false, updated_at timestamptz, primary key(ride_id,profile_id));
 create table ride_routes(ride_id uuid primary key, host_id bigint, start_label text, end_label text, stops jsonb, updated_at timestamptz);
 create table ride_alerts(id uuid primary key default gen_random_uuid(), ride_id uuid, profile_id bigint, user_name text, type text, message text, avatar_url text, latitude float8, longitude float8, acknowledged_by text, original_alert_id uuid, created_at timestamptz default now());
@@ -28,8 +28,8 @@ create table notifications(id uuid primary key default gen_random_uuid(), profil
 create table ride_summaries(ride_id uuid primary key, host_id bigint, created_at timestamptz default now());
 
 insert into profiles values
-  (101,'a0000000-0000-0000-0000-000000000001','Host','Bike',null),
-  (102,'a0000000-0000-0000-0000-000000000002','Rider','Bike',null);
+  (101,'a0000000-0000-0000-0000-000000000001','Host','Bike',null,null),
+  (102,'a0000000-0000-0000-0000-000000000002','Rider','Bike',null,null);
 insert into rides values('20000000-0000-0000-0000-0000000000a1','a0000000-0000-0000-0000-000000000001','Ride','active','public',10,now(),false,false,null);
 insert into ride_members(ride_id,member_id,role,status) values('20000000-0000-0000-0000-0000000000a1',101,'host','approved');
 

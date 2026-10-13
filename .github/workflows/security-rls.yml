@@ -88,5 +88,6 @@ jobs:
         run: |
           createdb journeysync_rls_bigint_test
           psql -v ON_ERROR_STOP=1 -d journeysync_rls_bigint_test -f supabase/tests/rls_bigint_identity_fixture.sql
+          psql -v ON_ERROR_STOP=1 -d journeysync_rls_bigint_test -f supabase/migrations/20260630000000_production_release_hardening.sql
           psql -v ON_ERROR_STOP=1 -d journeysync_rls_bigint_test -f supabase/migrations/20261010000000_production_rls_security_hardening.sql
           psql -v ON_ERROR_STOP=1 -d journeysync_rls_bigint_test -f supabase/tests/rls_bigint_identity_regression.sql

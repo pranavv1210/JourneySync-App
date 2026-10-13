@@ -47,6 +47,39 @@ create index if not exists ride_summaries_host_created_idx
 create index if not exists ride_summaries_created_idx
   on public.ride_summaries (created_at desc);
 
+-- Resolve auth.uid() to the application's profile key without assuming that
+-- profiles.id is itself a UUID. Production uses a bigint profile key with an
+-- auth_user_id UUID mapping; older installations used auth.uid() directly.
+create or replace function public.js_release_profile_id()
+returns text
+language plpgsql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  resolved text;
+begin
+  if auth.uid() is null then
+    return null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'profiles'
+      and column_name = 'auth_user_id'
+  ) then
+    execute 'select id::text from public.profiles where auth_user_id = $1 limit 1'
+      into resolved using auth.uid();
+  end if;
+
+  return coalesce(resolved, auth.uid()::text);
+end $$;
+
+revoke all on function public.js_release_profile_id() from public, anon;
+grant execute on function public.js_release_profile_id() to authenticated;
+
 do $$
 begin
   if not exists (
@@ -56,7 +89,7 @@ begin
   ) then
     create policy notifications_owner_select on public.notifications
       for select to authenticated
-      using (profile_id = auth.uid());
+      using (profile_id::text = public.js_release_profile_id());
   end if;
 
   if not exists (
@@ -66,8 +99,8 @@ begin
   ) then
     create policy notifications_owner_update on public.notifications
       for update to authenticated
-      using (profile_id = auth.uid())
-      with check (profile_id = auth.uid());
+      using (profile_id::text = public.js_release_profile_id())
+      with check (profile_id::text = public.js_release_profile_id());
   end if;
 
   if not exists (
@@ -78,12 +111,12 @@ begin
     create policy ride_summaries_authenticated_select on public.ride_summaries
       for select to authenticated
       using (
-        host_id = auth.uid()
+        host_id::text = public.js_release_profile_id()
         or exists (
           select 1
           from public.ride_members rm
           where rm.ride_id = ride_summaries.ride_id
-            and rm.member_id = auth.uid()
+            and rm.member_id::text = public.js_release_profile_id()
         )
       );
   end if;
@@ -95,7 +128,7 @@ begin
   ) then
     create policy ride_summaries_host_write on public.ride_summaries
       for all to authenticated
-      using (host_id = auth.uid())
-      with check (host_id = auth.uid());
+      using (host_id::text = public.js_release_profile_id())
+      with check (host_id::text = public.js_release_profile_id());
   end if;
 end $$;
