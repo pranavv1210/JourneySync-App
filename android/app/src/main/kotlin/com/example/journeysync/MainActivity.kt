@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import android.view.WindowManager
@@ -21,6 +23,8 @@ class MainActivity : FlutterActivity() {
     private val callScreeningRequestCode = 4701
     private val bikePermissionsRequestCode = 4702
     private var pendingBikeModeResult: MethodChannel.Result? = null
+    private var waitingForCallScreeningRole = false
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -69,7 +73,15 @@ class MainActivity : FlutterActivity() {
                     "getBikeModeState" -> result.success(bikeModeState())
                     "prepareBikeMode" -> prepareBikeMode(result)
                     "openCallerIdSettings" -> {
-                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        val roleManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            getSystemService(RoleManager::class.java)
+                        } else null
+                        val intent = if (
+                            roleManager?.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING) == true &&
+                            !roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+                        ) {
+                            roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                             Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
                         } else {
                             Intent(Settings.ACTION_SETTINGS)
@@ -140,6 +152,7 @@ class MainActivity : FlutterActivity() {
             return
         }
         if (!roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
+            waitingForCallScreeningRole = true
             startActivityForResult(
                 roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING),
                 callScreeningRequestCode,
@@ -168,8 +181,31 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun finishBikeModeSetup() {
+        waitingForCallScreeningRole = false
         pendingBikeModeResult?.success(bikeModeState())
         pendingBikeModeResult = null
+    }
+
+    private fun continueBikeModeSetupAfterRoleRequest(attempt: Int = 0) {
+        if (!waitingForCallScreeningRole || pendingBikeModeResult == null ||
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+        ) return
+        val roleGranted = getSystemService(RoleManager::class.java)
+            .isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+        if (roleGranted) {
+            waitingForCallScreeningRole = false
+            requestBikePermissionsIfNeeded()
+        } else if (attempt < 4) {
+            // Several OEM role pickers return before RoleManager publishes the
+            // new holder. Recheck on the main thread instead of immediately
+            // reporting that Ride Mode failed.
+            mainHandler.postDelayed(
+                { continueBikeModeSetupAfterRoleRequest(attempt + 1) },
+                350L * (attempt + 1),
+            )
+        } else {
+            finishBikeModeSetup()
+        }
     }
 
     private fun bikeModeState(): Map<String, Any> {
@@ -204,11 +240,23 @@ class MainActivity : FlutterActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == callScreeningRequestCode) {
-            val roleGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                getSystemService(RoleManager::class.java)
-                    .isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
-            } else false
-            if (roleGranted) requestBikePermissionsIfNeeded() else finishBikeModeSetup()
+            continueBikeModeSetupAfterRoleRequest()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (waitingForCallScreeningRole && pendingBikeModeResult != null) {
+            mainHandler.postDelayed({
+                if (waitingForCallScreeningRole && pendingBikeModeResult != null &&
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                    getSystemService(RoleManager::class.java)
+                        .isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+                ) {
+                    waitingForCallScreeningRole = false
+                    requestBikePermissionsIfNeeded()
+                }
+            }, 250L)
         }
     }
 
