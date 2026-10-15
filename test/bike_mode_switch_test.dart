@@ -6,9 +6,50 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:journeysync/services/bike_mode_service.dart';
 import 'package:journeysync/widgets/bike_mode_switch.dart';
+import 'package:journeysync/widgets/ride_mode_behavior_preview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets('Ride Mode behavior preview explains both animated states', (
+    tester,
+  ) async {
+    var enabled = false;
+    late StateSetter update;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: StatefulBuilder(
+                builder: (context, setState) {
+                  update = setState;
+                  return RideModeBehaviorPreview(enabled: enabled);
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Your phone is ringing'), findsOneWidget);
+    expect(find.text('Normal call behavior'), findsOneWidget);
+    expect(find.text('Riding reply paused'), findsOneWidget);
+    expect(find.text('PAUSED'), findsOneWidget);
+
+    update(() => enabled = true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Checking your Ride Mode rules...'), findsOneWidget);
+    expect(find.text('Call handled'), findsOneWidget);
+    expect(find.text('Riding reply ready'), findsOneWidget);
+    expect(find.text('READY'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Ride Mode switch is compact and toggles accessibly', (
     tester,
   ) async {

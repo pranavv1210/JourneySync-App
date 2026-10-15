@@ -29,7 +29,7 @@ class _BikeModeSwitchState extends State<BikeModeSwitch>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 380),
       value: widget.value ? 1 : 0,
     );
   }
@@ -43,8 +43,8 @@ class _BikeModeSwitchState extends State<BikeModeSwitch>
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     _controller.animateTo(
       widget.value ? 1 : 0,
-      duration: Duration(milliseconds: reduceMotion ? 80 : 280),
-      curve: Curves.linear,
+      duration: Duration(milliseconds: reduceMotion ? 80 : 380),
+      curve: reduceMotion ? Curves.linear : const Cubic(0.23, 1, 0.32, 1),
     );
   }
 

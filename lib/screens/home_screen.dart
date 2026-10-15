@@ -42,6 +42,7 @@ import '../coordinators/notification_coordinator.dart';
 import '../services/ride_analytics_engine.dart';
 import '../services/bike_mode_service.dart';
 import '../widgets/bike_mode_switch.dart';
+import '../widgets/ride_mode_behavior_preview.dart';
 import 'notification_center_screen.dart';
 import 'ride_mode_settings_screen.dart';
 
@@ -833,83 +834,95 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             enabled
                 ? AppColors.primary.withValues(alpha: 0.42)
                 : AppColors.divider,
-        child: Row(
+        child: Column(
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color:
-                    enabled
-                        ? AppColors.primary.withValues(alpha: 0.14)
-                        : AppColors.background,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(
-                Icons.two_wheeler_rounded,
-                color: enabled ? AppColors.primary : AppColors.textSecondary,
-                size: 25,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color:
+                        enabled
+                            ? AppColors.primary.withValues(alpha: 0.14)
+                            : AppColors.background,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: Icon(
+                    Icons.two_wheeler_rounded,
+                    color:
+                        enabled ? AppColors.primary : AppColors.textSecondary,
+                    size: 25,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          'Ride Mode',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.titleMedium.copyWith(
-                            color: AppColors.forest,
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              'Ride Mode',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.titleMedium.copyWith(
+                                color: AppColors.forest,
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  enabled
+                                      ? AppColors.primary.withValues(
+                                        alpha: 0.12,
+                                      )
+                                      : AppColors.background,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              status,
+                              style: AppTypography.caption.copyWith(
+                                color:
+                                    enabled
+                                        ? AppColors.primaryDark
+                                        : AppColors.textTertiary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              enabled
-                                  ? AppColors.primary.withValues(alpha: 0.12)
-                                  : AppColors.background,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          status,
-                          style: AppTypography.caption.copyWith(
-                            color:
-                                enabled
-                                    ? AppColors.primaryDark
-                                    : AppColors.textTertiary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      const SizedBox(height: 3),
+                      Text(
+                        detail,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    detail,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                BikeModeSwitch(
+                  value: enabled,
+                  busy: busy,
+                  onChanged: _setBikeMode,
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            BikeModeSwitch(value: enabled, busy: busy, onChanged: _setBikeMode),
+            RideModeBehaviorPreview(enabled: enabled),
           ],
         ),
       ),
