@@ -53,9 +53,9 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Disposition',
-            value: 'attachment; filename="JourneySync-Beta.apk"',
+            value: 'attachment; filename="JourneySync.apk"',
           },
-          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+          { key: 'Cache-Control', value: 'no-store, max-age=0' },
         ],
       },
     ];

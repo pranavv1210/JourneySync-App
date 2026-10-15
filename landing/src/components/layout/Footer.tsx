@@ -7,6 +7,13 @@ type FooterLink =
 export function Footer({ onInfo }: { onInfo: (key: string) => void }) {
   return (
     <footer className="site-footer">
+      <div className="container brand-signature" aria-label="Ride farther. Together. Crafted with care in Bengaluru, India.">
+        <p className="brand-signature-headline">Ride farther.<br />Together.</p>
+        <p className="brand-signature-origin">
+          Crafted with <span aria-label="care">♥</span> in Bengaluru, India
+        </p>
+      </div>
+
       <div className="container footer-grid">
         <div className="footer-brand">
           <div className="brand-mark">

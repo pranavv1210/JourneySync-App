@@ -43,7 +43,7 @@ export function DownloadModal({
         </ul>
 
         <div className="download-modal-actions">
-          <a href="/journeysync.apk?v=1.6.0" download className="download-modal-primary">
+          <a href="/journeysync.apk?v=1.7.0" download className="download-modal-primary">
             <span className="material-icons-round">download</span>
             Download Android beta
           </a>
@@ -55,6 +55,12 @@ export function DownloadModal({
             Request beta access
           </a>
         </div>
+
+        <p className="download-install-help">
+          If Android says the package is invalid, delete the earlier downloaded APK and download
+          this version again in Chrome. If a development build is already installed, uninstall that
+          build first; Android will not replace an app signed by a different developer certificate.
+        </p>
       </div>
     </AppModal>
   );

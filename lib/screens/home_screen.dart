@@ -42,6 +42,7 @@ import '../coordinators/notification_coordinator.dart';
 import '../services/ride_analytics_engine.dart';
 import '../services/bike_mode_service.dart';
 import '../widgets/bike_mode_switch.dart';
+import '../widgets/brand_signature.dart';
 import '../widgets/ride_mode_behavior_preview.dart';
 import 'notification_center_screen.dart';
 import 'ride_mode_settings_screen.dart';
@@ -600,7 +601,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           _buildResumeRideCard(),
                           const SizedBox(height: 24),
                           _buildRecentJourneys(),
-                          const SizedBox(height: 16),
+                          const BrandSignature(),
                         ],
                       ),
                     ),

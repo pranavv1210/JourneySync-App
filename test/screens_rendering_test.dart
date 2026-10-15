@@ -6,10 +6,31 @@ import 'package:journeysync/services/app_config.dart';
 import 'package:journeysync/screens/login_screen.dart';
 import 'package:journeysync/screens/home_screen.dart';
 import 'package:journeysync/screens/ride_mode_settings_screen.dart';
+import 'package:journeysync/widgets/brand_signature.dart';
 import 'package:journeysync/widgets/premium/premium_button.dart';
 import 'package:journeysync/widgets/ride_loading_indicator.dart';
 
 void main() {
+  testWidgets('JourneySync brand signature remains readable on mobile', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: SingleChildScrollView(child: BrandSignature())),
+      ),
+    );
+
+    expect(find.text('Ride farther.\nTogether.'), findsOneWidget);
+    expect(find.text('Crafted with'), findsOneWidget);
+    expect(find.text('in Bengaluru, India'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   setUpAll(() async {
     // Initialize standard widget binding mock
     TestWidgetsFlutterBinding.ensureInitialized();

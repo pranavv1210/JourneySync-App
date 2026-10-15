@@ -26,6 +26,20 @@ for (const directive of ["default-src 'self'", "object-src 'none'", "frame-ances
   if (!csp.includes(directive)) throw new Error(`CSP is missing: ${directive}`);
 }
 
+const apkRule = vercel.headers?.find((rule) => rule.source === '/journeysync.apk');
+const apkHeaders = new Map(
+  (apkRule?.headers ?? []).map(({ key, value }) => [key.toLowerCase(), value]),
+);
+if (apkHeaders.get('content-type') !== 'application/vnd.android.package-archive') {
+  throw new Error('APK content type is not configured correctly');
+}
+if (!apkHeaders.get('content-disposition')?.includes('attachment')) {
+  throw new Error('APK is not configured as a download attachment');
+}
+if (!apkHeaders.get('cache-control')?.includes('no-store')) {
+  throw new Error('APK cache control must prevent stale installer downloads');
+}
+
 const sourceFiles = [
   'next.config.ts',
   'vercel.json',

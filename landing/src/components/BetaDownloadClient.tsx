@@ -35,10 +35,16 @@ export function BetaDownloadClient() {
             </div>
           </div>
 
-          <a href="/journeysync.apk?v=1.6.0" download className="beta-download-primary">
+          <a href="/journeysync.apk?v=1.7.0" download className="beta-download-primary">
             <span className="material-icons-round">download</span>
             Download APK
           </a>
+
+          <p className="beta-download-note">
+            Installation problem? Delete any older downloaded APK and download again in Chrome. If
+            you previously installed a development build, uninstall it before installing this signed
+            beta because Android cannot update across different signing certificates.
+          </p>
 
           <p className="beta-download-note">
             iOS TestFlight is not public yet. For iOS access, email{' '}
