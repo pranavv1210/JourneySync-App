@@ -13,6 +13,7 @@ import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../services/app_navigation.dart';
 import '../models/ride_route.dart';
+import '../models/ride_record.dart';
 import '../services/ride_service.dart';
 import '../services/ride_geometry_service.dart';
 import '../services/supabase_service.dart';
@@ -25,6 +26,13 @@ class CreateRideScreen extends StatefulWidget {
     this.initialDestination,
     this.initialMaxRiders,
   });
+
+  factory CreateRideScreen.repeat(RideRecord ride) {
+    return CreateRideScreen(
+      initialRideName: ride.title,
+      initialDestination: ride.endLocation,
+    );
+  }
 
   final String? initialRideName;
   final String? initialDestination;

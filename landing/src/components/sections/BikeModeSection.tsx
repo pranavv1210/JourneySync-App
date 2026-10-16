@@ -14,10 +14,10 @@ export function BikeModeSection() {
     <section id="bike-mode" className="bike-mode-chapter">
       <div className="container bike-mode-layout">
         <div className="bike-mode-copy">
-          <p className="eyebrow">Ride Mode Ã‚Â· v1.7.0</p>
+          <p className="eyebrow">Ride Mode Ãƒâ€šÃ‚Â· v1.8.0</p>
           <h2>Keep your hands on the bars and callers in the loop.</h2>
           <p>
-            Try the switch. The preview shows what JourneySync does when Ride Mode is onÃ¢â‚¬â€and
+            Try the switch. The preview shows what JourneySync does when Ride Mode is onÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Âand
             what changes the moment you turn it off.
           </p>
           <ul>
@@ -53,7 +53,7 @@ export function BikeModeSection() {
             <div className="bike-mode-call-row">
               <motion.div className="bike-mode-caller" animate={{ scale: enabled ? 0.92 : 1, y: enabled ? -2 : 0 }} transition={transition}><span className="material-icons-round" aria-hidden="true">person</span></motion.div>
               <div className="bike-mode-call-copy">
-                <small>Incoming call</small><strong>Weekend Crew</strong><span>{enabled ? 'Checking your Ride Mode rulesÃ¢â‚¬Â¦' : 'Your phone is ringing'}</span>
+                <small>Incoming call</small><strong>Weekend Crew</strong><span>{enabled ? 'Checking your Ride Mode rulesÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦' : 'Your phone is ringing'}</span>
               </div>
               <motion.span className={`bike-mode-call-action ${enabled ? 'declined' : 'ringing'}`} animate={{ rotate: enabled ? 135 : [0, -8, 8, 0], scale: enabled ? 0.9 : 1 }} transition={reduceMotion ? { duration: 0.12 } : enabled ? spring : { duration: 0.7, repeat: Infinity, repeatDelay: 1.1 }}>
                 <span className="material-icons-round" aria-hidden="true">phone</span>

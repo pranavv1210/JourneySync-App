@@ -42,8 +42,6 @@ import '../coordinators/notification_coordinator.dart';
 import '../services/ride_analytics_engine.dart';
 import '../services/bike_mode_service.dart';
 import '../widgets/bike_mode_switch.dart';
-import '../widgets/brand_signature.dart';
-import '../widgets/ride_mode_behavior_preview.dart';
 import 'notification_center_screen.dart';
 import 'ride_mode_settings_screen.dart';
 
@@ -601,7 +599,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                           _buildResumeRideCard(),
                           const SizedBox(height: 24),
                           _buildRecentJourneys(),
-                          const BrandSignature(),
                         ],
                       ),
                     ),
@@ -788,12 +785,52 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             : 'Ride Mode call rejection is not supported on this phone.',
         type: PremiumToastType.warning,
       );
+      if (capability.callScreeningAvailable) {
+        await _showRideModeAccessRecovery();
+      }
     } else {
       showPremiumToast(
         context,
         !capability.contactsGranted
             ? 'Ride Mode is active. Allow Contacts so saved callers are handled too.'
             : 'Ride Mode is active. Call rejection works, but automatic SMS still needs access.',
+        type: PremiumToastType.warning,
+      );
+    }
+  }
+
+  Future<void> _showRideModeAccessRecovery() async {
+    final openSettings = await showAppConfirmDialog(
+      context,
+      title: 'Select JourneySync',
+      message:
+          'Android did not grant caller ID & spam access. On the next screen, choose JourneySync as the Caller ID & spam app, return here, then turn Ride Mode on again.',
+      confirmLabel: 'Open Android settings',
+      cancelLabel: 'Not now',
+    );
+    if (openSettings != true || !mounted) return;
+    await BikeModeService.instance.openCallerIdSettings();
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    final service = BikeModeService.instance;
+    await service.refreshCapability();
+    if (!mounted) return;
+    if (service.capability.callScreeningGranted) {
+      final capability = await service.setEnabled(true);
+      if (!mounted) return;
+      showPremiumToast(
+        context,
+        capability.callScreeningGranted && service.enabled
+            ? 'Ride Mode active. Incoming calls will be declined.'
+            : 'Access changed, but Ride Mode still needs setup.',
+        type:
+            capability.callScreeningGranted && service.enabled
+                ? PremiumToastType.success
+                : PremiumToastType.warning,
+      );
+    } else {
+      showPremiumToast(
+        context,
+        'JourneySync is still not selected as the caller ID & spam app.',
         type: PremiumToastType.warning,
       );
     }
@@ -835,95 +872,83 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             enabled
                 ? AppColors.primary.withValues(alpha: 0.42)
                 : AppColors.divider,
-        child: Column(
+        child: Row(
           children: [
-            Row(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color:
-                        enabled
-                            ? AppColors.primary.withValues(alpha: 0.14)
-                            : AppColors.background,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: Icon(
-                    Icons.two_wheeler_rounded,
-                    color:
-                        enabled ? AppColors.primary : AppColors.textSecondary,
-                    size: 25,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color:
+                    enabled
+                        ? AppColors.primary.withValues(alpha: 0.14)
+                        : AppColors.background,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(
+                Icons.two_wheeler_rounded,
+                color: enabled ? AppColors.primary : AppColors.textSecondary,
+                size: 25,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Ride Mode',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.titleMedium.copyWith(
-                                color: AppColors.forest,
-                              ),
-                            ),
+                      Flexible(
+                        child: Text(
+                          'Ride Mode',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.forest,
                           ),
-                          const SizedBox(width: 8),
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 220),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  enabled
-                                      ? AppColors.primary.withValues(
-                                        alpha: 0.12,
-                                      )
-                                      : AppColors.background,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              status,
-                              style: AppTypography.caption.copyWith(
-                                color:
-                                    enabled
-                                        ? AppColors.primaryDark
-                                        : AppColors.textTertiary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        detail,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
+                      const SizedBox(width: 8),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              enabled
+                                  ? AppColors.primary.withValues(alpha: 0.12)
+                                  : AppColors.background,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          status,
+                          style: AppTypography.caption.copyWith(
+                            color:
+                                enabled
+                                    ? AppColors.primaryDark
+                                    : AppColors.textTertiary,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                BikeModeSwitch(
-                  value: enabled,
-                  busy: busy,
-                  onChanged: _setBikeMode,
-                ),
-              ],
+                  const SizedBox(height: 3),
+                  Text(
+                    detail,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            RideModeBehaviorPreview(enabled: enabled),
+            const SizedBox(width: 8),
+            BikeModeSwitch(value: enabled, busy: busy, onChanged: _setBikeMode),
           ],
         ),
       ),

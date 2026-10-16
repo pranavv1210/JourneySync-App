@@ -15,6 +15,7 @@ import '../widgets/ride_loading_indicator.dart';
 import 'ride_lobby_screen.dart';
 import 'ride_mode_screen.dart';
 import 'ride_summary_screen.dart';
+import 'create_ride_screen.dart';
 
 class MyRidesScreen extends StatefulWidget {
   const MyRidesScreen({super.key});
@@ -102,6 +103,11 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
         buildAppRoute(RideLobbyScreen(rideId: ride.id)),
       );
     }
+  }
+
+  Future<void> _repeatRide(RideRecord ride) async {
+    await Navigator.push(context, buildAppRoute(CreateRideScreen.repeat(ride)));
+    await _loadRides();
   }
 
   Future<void> _openActiveRide(String rideId) async {
@@ -399,10 +405,22 @@ class _MyRidesScreenState extends State<MyRidesScreen> {
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textTertiary,
-            ),
+            if (ride.isCompleted)
+              Semantics(
+                button: true,
+                label: 'Repeat ${title.trim()}',
+                child: IconButton(
+                  tooltip: 'Repeat ride',
+                  onPressed: () => _repeatRide(ride),
+                  icon: const Icon(Icons.replay_rounded),
+                  color: AppColors.primary,
+                ),
+              )
+            else
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textTertiary,
+              ),
           ],
         ),
       ),

@@ -18,6 +18,7 @@ import '../services/app_navigation.dart';
 import '../services/ride_analytics_engine.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
+import 'create_ride_screen.dart';
 
 class RideSummaryScreen extends StatefulWidget {
   const RideSummaryScreen({super.key, required this.rideId});
@@ -963,6 +964,30 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
       children: [
         SizedBox(
           width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _repeatRide,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            icon: const Icon(Icons.replay_rounded),
+            label: const Text(
+              'Repeat this ride',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                fontFamily: AppTypography.fontFamily,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: _shareRideProgress,
             style: OutlinedButton.styleFrom(
@@ -987,18 +1012,17 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
         const SizedBox(height: 10),
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton(
+          child: OutlinedButton(
             onPressed: () {
               unawaited(replaceAllWithAppRoute(context, const HomeScreen()));
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primary,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.forest,
+              side: BorderSide(color: AppColors.forest.withValues(alpha: 0.3)),
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
-              elevation: 6,
-              shadowColor: primary.withValues(alpha: 0.25),
             ),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1008,17 +1032,31 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: AppColors.forest,
                     fontFamily: AppTypography.fontFamily,
                   ),
                 ),
                 SizedBox(width: 8),
-                Icon(Icons.arrow_forward, color: Colors.white),
+                Icon(Icons.arrow_forward, color: AppColors.forest),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _repeatRide() async {
+    final maxRiders = int.tryParse((ride?['max_riders'] ?? '').toString());
+    await Navigator.push(
+      context,
+      buildAppRoute(
+        CreateRideScreen(
+          initialRideName: _rideName(),
+          initialDestination: _destinationLabel(),
+          initialMaxRiders: maxRiders,
+        ),
+      ),
     );
   }
 
