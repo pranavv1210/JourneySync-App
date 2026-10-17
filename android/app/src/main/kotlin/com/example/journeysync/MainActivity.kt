@@ -131,6 +131,14 @@ class MainActivity : FlutterActivity() {
                         }
                         result.success(true)
                     }
+                    "clearBikeModeState" -> {
+                        getSharedPreferences(bikeModePreferences, MODE_PRIVATE)
+                            .edit()
+                            .clear()
+                            .commit()
+                        BikeModeMonitorService.stop(applicationContext)
+                        result.success(true)
+                    }
                     else -> result.notImplemented()
                 }
             }

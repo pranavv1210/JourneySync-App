@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/app_navigation.dart';
 import '../services/auth_service.dart';
@@ -15,6 +16,14 @@ const String journeySyncAdminEmail = 'journeysync.app@gmail.com';
 
 bool isJourneySyncAdminEmail(String email) {
   return email.trim().toLowerCase() == journeySyncAdminEmail;
+}
+
+bool isJourneySyncAdminIdentity({
+  required String email,
+  required Map<String, dynamic> appMetadata,
+}) {
+  return isJourneySyncAdminEmail(email) &&
+      (appMetadata['role'] ?? '').toString().trim().toLowerCase() == 'admin';
 }
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -36,6 +45,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<Map<String, dynamic>> _feedback = const <Map<String, dynamic>>[];
   List<Map<String, dynamic>> _deletionRequests = const <Map<String, dynamic>>[];
   String _busyRequestId = '';
+  DateTime? _lastSyncedAt;
 
   @override
   void initState() {
@@ -49,11 +59,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _error = '';
     });
     try {
-      final feedback = await _supabaseService.fetchAdminFeedback(limit: 30);
-      final deletionRequests = await _supabaseService
-          .fetchAccountDeletionRequests(limit: 30);
-      final profiles = await _countBestEffort('profiles');
-      final rides = await _countBestEffort('rides');
+      final authUser = Supabase.instance.client.auth.currentUser;
+      if (authUser == null ||
+          !isJourneySyncAdminIdentity(
+            email: authUser.email ?? '',
+            appMetadata: authUser.appMetadata,
+          )) {
+        throw StateError('Owner authorization is missing.');
+      }
+      final results = await Future.wait<Object>([
+        _supabaseService.fetchAdminFeedback(limit: 30),
+        _supabaseService.fetchAccountDeletionRequests(limit: 30),
+        _countBestEffort('profiles'),
+        _countBestEffort('rides'),
+      ]);
+      final feedback = results[0] as List<Map<String, dynamic>>;
+      final deletionRequests = results[1] as List<Map<String, dynamic>>;
+      final profiles = results[2] as int;
+      final rides = results[3] as int;
       if (!mounted) return;
       setState(() {
         _profiles = profiles;
@@ -62,12 +85,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _deletionRequestCount = deletionRequests.length;
         _feedback = feedback;
         _deletionRequests = deletionRequests;
+        _lastSyncedAt = DateTime.now();
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _error =
-            'Dashboard data is blocked. Apply the admin feedback RLS migration.';
+            'Owner access could not be verified. Sign in with the JourneySync owner account and confirm its server-side admin role.';
       });
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -104,13 +128,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 eyebrow: 'OWNER DASHBOARD',
                 title: 'JourneySync',
                 subtitle: journeySyncAdminEmail,
-                trailing: IconButton(
-                  onPressed: _signOut,
-                  icon: const Icon(Icons.logout_rounded),
-                  color: AppColors.primary,
-                ),
+                trailing: _OwnerBadge(lastSyncedAt: _lastSyncedAt),
               ),
               const SizedBox(height: AppSpacing.xl),
+              const _IntegrityCard(),
+              const SizedBox(height: AppSpacing.lg),
               if (_loading)
                 const LinearProgressIndicator(color: AppColors.primary)
               else ...[
@@ -206,6 +228,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   label: 'Refresh dashboard',
                   icon: Icons.refresh_rounded,
                   onPressed: _loadDashboard,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                PremiumButton(
+                  label: 'Sign out securely',
+                  icon: Icons.logout_rounded,
+                  variant: PremiumButtonVariant.danger,
+                  onPressed: _signOut,
                 ),
               ],
             ],
@@ -393,6 +422,7 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final target = int.tryParse(value) ?? 0;
     return GlassCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
@@ -401,16 +431,96 @@ class _MetricCard extends StatelessWidget {
         children: [
           Icon(icon, color: AppColors.primary, size: 24),
           const SizedBox(height: AppSpacing.md),
-          Text(
-            value,
-            style: AppTypography.headlineMedium.copyWith(
-              color: AppColors.textPrimary,
-            ),
+          TweenAnimationBuilder<int>(
+            tween: IntTween(begin: 0, end: target),
+            duration: const Duration(milliseconds: 420),
+            curve: Curves.easeOutCubic,
+            builder:
+                (context, animatedValue, _) => Text(
+                  animatedValue.toString(),
+                  style: AppTypography.headlineMedium.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
           ),
           Text(
             label,
             style: AppTypography.caption.copyWith(
               color: AppColors.textTertiary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OwnerBadge extends StatelessWidget {
+  const _OwnerBadge({required this.lastSyncedAt});
+
+  final DateTime? lastSyncedAt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message:
+          lastSyncedAt == null
+              ? 'Owner access'
+              : 'Synced ${lastSyncedAt!.hour.toString().padLeft(2, '0')}:${lastSyncedAt!.minute.toString().padLeft(2, '0')}',
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: AppColors.success.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.24)),
+        ),
+        child: const Icon(
+          Icons.verified_user_rounded,
+          color: AppColors.success,
+          size: 21,
+        ),
+      ),
+    );
+  }
+}
+
+class _IntegrityCard extends StatelessWidget {
+  const _IntegrityCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.forest.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: const Icon(Icons.shield_rounded, color: AppColors.forest),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Owner access verified',
+                  style: AppTypography.titleMedium.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  'Dashboard reads are authorized by server policies, not by this screen.',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

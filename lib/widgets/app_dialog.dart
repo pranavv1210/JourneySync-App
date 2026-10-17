@@ -18,6 +18,7 @@ Future<bool?> showAppConfirmDialog(
     context: context,
     barrierDismissible: true,
     barrierLabel: title,
+    barrierColor: AppColors.scrim,
     transitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (context, _, __) {
       return Center(
@@ -60,6 +61,7 @@ Future<String?> showAppInputDialog(
     context: context,
     barrierDismissible: true,
     barrierLabel: title,
+    barrierColor: AppColors.scrim,
     transitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (context, _, __) {
       return Center(

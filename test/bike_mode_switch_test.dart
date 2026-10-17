@@ -58,6 +58,7 @@ void main() {
     final nativeStates = <bool>[];
     final nativeArguments = <Map<String, dynamic>>[];
     var openedCallerIdSettings = false;
+    var clearedNativeState = false;
     SharedPreferences.setMockInitialValues({'bikeModeEnabled': false});
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
 
@@ -84,6 +85,9 @@ void main() {
               return setupResult.future;
             case 'openCallerIdSettings':
               openedCallerIdSettings = true;
+              return true;
+            case 'clearBikeModeState':
+              clearedNativeState = true;
               return true;
           }
           return null;
@@ -141,6 +145,11 @@ void main() {
       expect(nativeArguments.last['autoTurnOff'], isTrue);
       expect(nativeArguments.last['stationaryMinutes'], 15);
       await service.setEnabled(false);
+      await service.clearForSignOut();
+      final clearedPrefs = await SharedPreferences.getInstance();
+      expect(clearedPrefs.getBool('bikeModeEnabled'), isNull);
+      expect(clearedPrefs.getStringList('bikeModeMessages'), isNull);
+      expect(clearedNativeState, isTrue);
     } finally {
       debugDefaultTargetPlatformOverride = null;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

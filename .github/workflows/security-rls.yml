@@ -78,6 +78,12 @@ jobs:
       - name: Apply forward security migration
         run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/migrations/20261010000000_production_rls_security_hardening.sql
 
+      - name: Apply owner-only admin authorization migration
+        run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/migrations/20261017000000_owner_only_admin_authorization.sql
+
+      - name: Test owner-only admin authorization
+        run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/tests/admin_owner_authorization_regression.sql
+
       - name: Run attacker and regression assertions
         run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/tests/rls_security_regression.sql
 

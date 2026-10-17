@@ -13,7 +13,6 @@ import '../services/photo_crop_service.dart';
 import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../widgets/app_dialog.dart';
-import '../widgets/brand_signature.dart';
 import '../widgets/journey_screen.dart';
 import '../widgets/ride_loading_indicator.dart';
 import 'edit_profile_screen.dart';
@@ -1152,7 +1151,6 @@ class _ProfileScreenState extends State<ProfileScreen>
             ],
           ),
         ),
-        const BrandSignature(),
       ],
     );
   }

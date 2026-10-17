@@ -263,6 +263,10 @@ svg {
   transform: translateY(-2px);
 }
 
+.cta-button:active {
+  transform: translateY(0) scale(0.97);
+}
+
 .cta-primary {
   color: white;
   background: linear-gradient(135deg, var(--js-orange-2), var(--js-orange-dark));

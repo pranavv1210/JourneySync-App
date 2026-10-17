@@ -10,6 +10,7 @@ import '../widgets/premium/glass_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_toast.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/brand_signature.dart';
 import '../widgets/feedback_sheet.dart';
 import '../widgets/journey_screen.dart';
 import '../services/app_navigation.dart';
@@ -278,21 +279,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ]),
 
-                    const SizedBox(height: 32),
-
-                    // Logout
-                    PremiumButton(
-                      label: 'Sign Out',
-                      variant: PremiumButtonVariant.secondary,
-                      icon: Icons.logout_rounded,
-                      onPressed: _logout,
-                    ),
+                    const BrandSignature(),
+                    _buildSignOutPanel(),
                   ],
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSignOutPanel() {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.045),
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: AppColors.error,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Leaving for now?',
+                      style: AppTypography.titleMedium.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Your synced rides stay safely attached to your account.',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          PremiumButton(
+            label: 'Sign out securely',
+            variant: PremiumButtonVariant.danger,
+            icon: Icons.logout_rounded,
+            onPressed: _logout,
+          ),
+        ],
       ),
     );
   }

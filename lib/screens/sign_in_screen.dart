@@ -105,7 +105,21 @@ class _SignInScreenState extends State<SignInScreen> {
               .toString()
               .trim()
               .toLowerCase();
-      if (isJourneySyncAdminEmail(email)) {
+      final authUser = Supabase.instance.client.auth.currentUser;
+      if (isJourneySyncAdminEmail(email) &&
+          !isJourneySyncAdminIdentity(
+            email: email,
+            appMetadata: authUser?.appMetadata ?? const <String, dynamic>{},
+          )) {
+        throw Exception('Owner account is missing its server-side admin role.');
+      }
+      if (isJourneySyncAdminIdentity(
+        email: email,
+        appMetadata: authUser?.appMetadata ?? const <String, dynamic>{},
+      )) {
+        final session = Supabase.instance.client.auth.currentSession;
+        if (session == null) throw Exception('Owner session is missing.');
+        await _authService.saveAdminSession(session: session);
         if (!mounted) return;
         unawaited(
           replaceAllWithAppRoute(context, const AdminDashboardScreen()),

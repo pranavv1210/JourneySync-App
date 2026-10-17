@@ -70,10 +70,14 @@ class _SplashScreenState extends State<SplashScreen>
               .toString()
               .trim()
               .toLowerCase();
+      final authUser = Supabase.instance.client.auth.currentUser;
       unawaited(
         replaceWithAppRoute(
           context,
-          isJourneySyncAdminEmail(email)
+          isJourneySyncAdminIdentity(
+                email: email,
+                appMetadata: authUser?.appMetadata ?? const <String, dynamic>{},
+              )
               ? const AdminDashboardScreen()
               : const HomeScreen(),
         ),

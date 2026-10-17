@@ -85,6 +85,8 @@ class _PremiumButtonState extends State<PremiumButton>
 
     final sizeConfig = _sizeConfig();
     final colors = _colors();
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     Widget button = AnimatedBuilder(
       animation: _scaleAnimation,
@@ -97,7 +99,7 @@ class _PremiumButtonState extends State<PremiumButton>
         onTapUp: isActive ? _onTapUp : null,
         onTapCancel: isActive ? _onTapCancel : null,
         child: AnimatedContainer(
-          duration: AppDurations.fast,
+          duration: reduceMotion ? Duration.zero : AppDurations.fast,
           constraints:
               widget.expand
                   ? BoxConstraints(
@@ -123,46 +125,63 @@ class _PremiumButtonState extends State<PremiumButton>
                     ]
                     : null,
           ),
-          child: Row(
-            mainAxisSize: widget.expand ? MainAxisSize.max : MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              if (widget.loading)
-                _LoadingIndicator(color: colors.textColor)
-              else ...[
-                if (widget.customIcon != null) ...[
-                  widget.customIcon!,
-                  SizedBox(width: sizeConfig.iconGap),
-                ] else if (widget.icon != null) ...[
-                  Icon(
-                    widget.icon,
-                    color: colors.textColor,
-                    size: sizeConfig.iconSize,
-                  ),
-                  SizedBox(width: sizeConfig.iconGap),
-                ],
-                Flexible(
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: AppTypography.fontFamily,
-                      fontSize: sizeConfig.fontSize,
-                      fontWeight: FontWeight.w700,
-                      color:
-                          effectiveDisabled
-                              ? colors.textColor.withValues(alpha: 0.72)
-                              : colors.textColor,
-                      letterSpacing: 0,
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _isPressed && isActive ? 1 : 0,
+                    duration: reduceMotion ? Duration.zero : AppDurations.fast,
+                    child: CustomPaint(
+                      painter: _RideLinePainter(color: colors.textColor),
                     ),
                   ),
                 ),
-                if (widget.trailing != null) ...[
-                  const SizedBox(width: 8),
-                  widget.trailing!,
+              ),
+              Row(
+                mainAxisSize:
+                    widget.expand ? MainAxisSize.max : MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (widget.loading)
+                    _LoadingIndicator(color: colors.textColor)
+                  else ...[
+                    if (widget.customIcon != null) ...[
+                      widget.customIcon!,
+                      SizedBox(width: sizeConfig.iconGap),
+                    ] else if (widget.icon != null) ...[
+                      Icon(
+                        widget.icon,
+                        color: colors.textColor,
+                        size: sizeConfig.iconSize,
+                      ),
+                      SizedBox(width: sizeConfig.iconGap),
+                    ],
+                    Flexible(
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: AppTypography.fontFamily,
+                          fontSize: sizeConfig.fontSize,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              effectiveDisabled
+                                  ? colors.textColor.withValues(alpha: 0.72)
+                                  : colors.textColor,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ),
+                    if (widget.trailing != null) ...[
+                      const SizedBox(width: 8),
+                      widget.trailing!,
+                    ],
+                  ],
                 ],
-              ],
+              ),
             ],
           ),
         ),
@@ -302,6 +321,48 @@ class _PremiumButtonState extends State<PremiumButton>
         );
     }
   }
+}
+
+class _RideLinePainter extends CustomPainter {
+  const _RideLinePainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = color.withValues(alpha: 0.18)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4
+          ..strokeCap = StrokeCap.round;
+    final path =
+        Path()
+          ..moveTo(-8, size.height * 0.76)
+          ..cubicTo(
+            size.width * 0.28,
+            size.height * 0.2,
+            size.width * 0.7,
+            size.height * 0.9,
+            size.width + 8,
+            size.height * 0.24,
+          );
+    canvas.drawPath(path, paint);
+    canvas.drawCircle(
+      Offset(size.width * 0.22, size.height * 0.38),
+      2.2,
+      Paint()..color = color.withValues(alpha: 0.24),
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.78, size.height * 0.58),
+      2.2,
+      Paint()..color = color.withValues(alpha: 0.24),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _RideLinePainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 enum PremiumButtonVariant { primary, secondary, outline, glass, danger }

@@ -251,6 +251,57 @@ class BikeModeService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> clearForSignOut() async {
+    _enabled = false;
+    _profileId = '';
+    _messages = const <String>[defaultMessage];
+    _selectedMessage = defaultMessage;
+    _sendSms = true;
+    _allowEmergencyContacts = true;
+    _allowFavorites = true;
+    _allowRepeatCallers = true;
+    _allowRideMembers = true;
+    _remindWhenStopped = true;
+    _autoTurnOff = false;
+    _stationaryMinutes = 10;
+    _restoreCallerIdAfterRide = true;
+    _activatedAt = null;
+    _emergencyNumbers = const <String>[];
+    _rideMemberNumbers = const <String>[];
+
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in <String>[
+      _enabledKey,
+      _messagesKey,
+      _selectedMessageKey,
+      _sendSmsKey,
+      _allowEmergencyKey,
+      _allowFavoritesKey,
+      _allowRepeatKey,
+      _allowRideMembersKey,
+      _remindWhenStoppedKey,
+      _autoTurnOffKey,
+      _stationaryMinutesKey,
+      _activatedAtKey,
+      _restoreCallerIdKey,
+      'activeRideMemberPhones',
+    ]) {
+      await prefs.remove(key);
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        await _channel.invokeMethod<void>('clearBikeModeState');
+      } on PlatformException catch (error) {
+        debugPrint(
+          '[BikeMode] Could not clear Android state: ${error.message}',
+        );
+      } on MissingPluginException {
+        // Expected in tests and on unsupported platforms.
+      }
+    }
+    notifyListeners();
+  }
+
   Future<BikeModeCapability> prepareAccess() async {
     if (defaultTargetPlatform != TargetPlatform.android) return _capability;
     _busy = true;

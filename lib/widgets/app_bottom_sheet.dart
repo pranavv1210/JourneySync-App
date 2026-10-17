@@ -11,6 +11,7 @@ Future<T?> showAppBottomSheet<T>(
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
+    barrierColor: AppColors.scrim,
     backgroundColor: Colors.transparent,
     builder: (context) {
       return Padding(
