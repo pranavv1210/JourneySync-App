@@ -9,6 +9,12 @@ grant execute on function public.test_assert(boolean,text) to authenticated;
 set role authenticated;
 
 select set_config(
+  'request.jwt.claim.sub',
+  'a0000000-0000-0000-0000-000000000001',
+  false
+);
+
+select set_config(
   'request.jwt.claims',
   '{"sub":"a0000000-0000-0000-0000-000000000001","email":"attacker@example.com","role":"authenticated","app_metadata":{"role":"admin"}}',
   false
