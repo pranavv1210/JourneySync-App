@@ -90,7 +90,7 @@ jobs:
       - name: Apply future Data API default-deny migration
         run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/migrations/20261018000000_default_deny_future_data_api_objects.sql
 
-      - name: Test future Data API default privileges
+      - name: Test future Data API table and sequence defaults
         run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/tests/default_privileges_regression.sql
 
       - name: Test owner-only admin authorization

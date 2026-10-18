@@ -1,7 +1,7 @@
 # Supabase Data API authorization contract
 
-JourneySync adopted default-deny privileges for future `public` schema objects
-before Supabase's October 30, 2026 rollout. Existing objects are intentionally
+JourneySync adopted default-deny table and sequence privileges before
+Supabase's October 30, 2026 rollout. Existing objects are intentionally
 unchanged; the production RLS hardening migration remains their authority.
 
 For every new table migration:
@@ -22,8 +22,10 @@ revoke all on table public.example from public, anon, authenticated;
 grant select, insert on table public.example to authenticated;
 ```
 
-For every new RPC, revoke PostgreSQL's default public execution and grant only
-the intended caller:
+PostgreSQL's built-in function `PUBLIC EXECUTE` default is global; a
+schema-scoped default privilege cannot safely override it only for `public`.
+Therefore every new RPC must revoke execution inside the same atomic migration
+and grant only the intended caller. CI rejects new functions that omit this:
 
 ```sql
 create function public.example_rpc() returns void ...;
