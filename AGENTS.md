@@ -39,3 +39,15 @@ prompt by itself; this file is the durable instruction that tells compatible
 agents to run the workflow after making changes.
 
 Never print or commit `.env`, signing keys, tokens, or `dart_defines.local.json`.
+
+## Supabase Data API grants
+
+- Every new `public` table must deliberately declare its Data API exposure in
+  the same forward migration. Enable RLS, revoke access from `public` and
+  `anon`, then grant only the commands the intended roles require.
+- Every new `public` function must revoke the PostgreSQL default `PUBLIC`
+  execute privilege and explicitly grant execution only to intended roles.
+- Do not rely on Supabase's historical automatic grants and do not use blanket
+  grants across all tables or functions.
+- Run `scripts/check-supabase-migration-grants.ps1` before committing a
+  migration. CI enforces this rule from migration `20261018000000` onward.

@@ -35,7 +35,7 @@ export function BetaDownloadClient() {
             </div>
           </div>
 
-          <a href="/journeysync.apk?v=1.9.0" download className="beta-download-primary">
+          <a href="/journeysync.apk?v=1.9.1" download className="beta-download-primary">
             <span className="material-icons-round">download</span>
             Download APK
           </a>

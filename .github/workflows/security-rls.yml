@@ -5,11 +5,13 @@ on:
     branches: [main, dev]
     paths:
       - 'supabase/**'
+      - 'scripts/check-supabase-migration-grants.ps1'
       - '.github/workflows/security-rls.yml'
   pull_request:
     branches: [main, dev]
     paths:
       - 'supabase/**'
+      - 'scripts/check-supabase-migration-grants.ps1'
       - '.github/workflows/security-rls.yml'
 
 jobs:
@@ -37,6 +39,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Validate explicit Data API grants
+        shell: pwsh
+        run: ./scripts/check-supabase-migration-grants.ps1
 
       - name: Validate migration version contract
         shell: bash
@@ -80,6 +86,12 @@ jobs:
 
       - name: Apply owner-only admin authorization migration
         run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/migrations/20261017000000_owner_only_admin_authorization.sql
+
+      - name: Apply future Data API default-deny migration
+        run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/migrations/20261018000000_default_deny_future_data_api_objects.sql
+
+      - name: Test future Data API default privileges
+        run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/tests/default_privileges_regression.sql
 
       - name: Test owner-only admin authorization
         run: psql -v ON_ERROR_STOP=1 -d journeysync_rls_test -f supabase/tests/admin_owner_authorization_regression.sql
