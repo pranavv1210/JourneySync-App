@@ -38,15 +38,18 @@ class _RideModeSettingsScreenState extends State<RideModeSettingsScreen> {
   }
 
   Future<void> _requestAccess() async {
-    final capability = await service.prepareAccess();
+    final capability =
+        service.enabled
+            ? await service.prepareAccess()
+            : await service.setEnabled(true);
     if (!mounted) return;
     showPremiumToast(
       context,
-      capability.callScreeningGranted
-          ? 'Call rejection access is ready.'
+      capability.callScreeningGranted && service.enabled
+          ? 'Ride Mode is active. Incoming calls will be declined.'
           : 'JourneySync was not selected for call-screening access.',
       type:
-          capability.callScreeningGranted
+          capability.callScreeningGranted && service.enabled
               ? PremiumToastType.success
               : PremiumToastType.warning,
     );

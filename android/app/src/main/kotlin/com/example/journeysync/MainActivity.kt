@@ -22,8 +22,10 @@ class MainActivity : FlutterActivity() {
     private val bikeModePreferences = "journeysync_bike_mode"
     private val callScreeningRequestCode = 4701
     private val bikePermissionsRequestCode = 4702
+    private val callScreeningSettingsRequestCode = 4703
     private var pendingBikeModeResult: MethodChannel.Result? = null
     private var waitingForCallScreeningRole = false
+    private var openedCallScreeningSettingsFallback = false
     private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -154,6 +156,7 @@ class MainActivity : FlutterActivity() {
             return
         }
         pendingBikeModeResult = result
+        openedCallScreeningSettingsFallback = false
         val roleManager = getSystemService(RoleManager::class.java)
         if (!roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) {
             finishBikeModeSetup()
@@ -190,8 +193,28 @@ class MainActivity : FlutterActivity() {
 
     private fun finishBikeModeSetup() {
         waitingForCallScreeningRole = false
+        openedCallScreeningSettingsFallback = false
         pendingBikeModeResult?.success(bikeModeState())
         pendingBikeModeResult = null
+    }
+
+    private fun openCallScreeningSettingsFallback() {
+        if (pendingBikeModeResult == null || openedCallScreeningSettingsFallback) {
+            finishBikeModeSetup()
+            return
+        }
+        openedCallScreeningSettingsFallback = true
+        waitingForCallScreeningRole = true
+        val settingsIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+        } else {
+            Intent(Settings.ACTION_SETTINGS)
+        }
+        runCatching {
+            startActivityForResult(settingsIntent, callScreeningSettingsRequestCode)
+        }.onFailure {
+            finishBikeModeSetup()
+        }
     }
 
     private fun continueBikeModeSetupAfterRoleRequest(attempt: Int = 0) {
@@ -212,7 +235,11 @@ class MainActivity : FlutterActivity() {
                 350L * (attempt + 1),
             )
         } else {
-            finishBikeModeSetup()
+            // Some OEM role controllers (including several Vivo/iQOO builds)
+            // close the role prompt without presenting the eligible app. Take
+            // the rider to Default Apps so Caller ID & spam can be selected,
+            // then verify the role again when they return.
+            openCallScreeningSettingsFallback()
         }
     }
 
@@ -249,6 +276,16 @@ class MainActivity : FlutterActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == callScreeningRequestCode) {
             continueBikeModeSetupAfterRoleRequest()
+        } else if (requestCode == callScreeningSettingsRequestCode) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                getSystemService(RoleManager::class.java)
+                    .isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+            ) {
+                waitingForCallScreeningRole = false
+                requestBikePermissionsIfNeeded()
+            } else {
+                finishBikeModeSetup()
+            }
         }
     }
 

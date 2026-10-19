@@ -800,32 +800,23 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   Future<void> _showRideModeAccessRecovery() async {
-    final openSettings = await showAppConfirmDialog(
+    final retrySetup = await showAppConfirmDialog(
       context,
       title: 'Select JourneySync',
       message:
-          'Android did not grant caller ID & spam access. On the next screen, choose JourneySync as the Caller ID & spam app, return here, then turn Ride Mode on again.',
-      confirmLabel: 'Open Android settings',
+          'Android did not grant caller ID & spam access. Continue and choose JourneySync. If your phone skips that prompt, JourneySync will open Default apps so you can select Caller ID & spam, then return automatically.',
+      confirmLabel: 'Continue setup',
       cancelLabel: 'Not now',
     );
-    if (openSettings != true || !mounted) return;
-    await BikeModeService.instance.openCallerIdSettings();
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+    if (retrySetup != true || !mounted) return;
     final service = BikeModeService.instance;
-    await service.refreshCapability();
+    final capability = await service.setEnabled(true);
     if (!mounted) return;
-    if (service.capability.callScreeningGranted) {
-      final capability = await service.setEnabled(true);
-      if (!mounted) return;
+    if (capability.callScreeningGranted && service.enabled) {
       showPremiumToast(
         context,
-        capability.callScreeningGranted && service.enabled
-            ? 'Ride Mode active. Incoming calls will be declined.'
-            : 'Access changed, but Ride Mode still needs setup.',
-        type:
-            capability.callScreeningGranted && service.enabled
-                ? PremiumToastType.success
-                : PremiumToastType.warning,
+        'Ride Mode active. Incoming calls will be declined.',
+        type: PremiumToastType.success,
       );
     } else {
       showPremiumToast(

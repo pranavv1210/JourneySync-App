@@ -78,7 +78,6 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.telecom.CallScreeningService" />
-                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </service>
         <receiver
