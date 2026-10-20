@@ -56,6 +56,8 @@ class BikeModeService extends ChangeNotifier {
   static const String _stationaryMinutesKey = 'rideModeStationaryMinutes';
   static const String _activatedAtKey = 'rideModeActivatedAt';
   static const String _restoreCallerIdKey = 'rideModeRestoreCallerId';
+  static const String _exceptionDefaultsMigratedKey =
+      'rideModeExceptionDefaultsMigratedV2';
 
   bool _initialized = false;
   bool _enabled = false;
@@ -65,15 +67,18 @@ class BikeModeService extends ChangeNotifier {
   String _selectedMessage = defaultMessage;
   BikeModeCapability _capability = const BikeModeCapability.unavailable();
   bool _sendSms = true;
-  bool _allowEmergencyContacts = true;
-  bool _allowFavorites = true;
-  bool _allowRepeatCallers = true;
-  bool _allowRideMembers = true;
+  bool _allowEmergencyContacts = false;
+  bool _allowFavorites = false;
+  bool _allowRepeatCallers = false;
+  bool _allowRideMembers = false;
   bool _remindWhenStopped = true;
   bool _autoTurnOff = false;
   int _stationaryMinutes = 10;
   bool _restoreCallerIdAfterRide = true;
   DateTime? _activatedAt;
+  DateTime? _lastScreenedAt;
+  String _lastScreenedAction = '';
+  String _lastScreenedReason = '';
   List<String> _emergencyNumbers = const [];
   List<String> _rideMemberNumbers = const [];
 
@@ -92,6 +97,9 @@ class BikeModeService extends ChangeNotifier {
   int get stationaryMinutes => _stationaryMinutes;
   bool get restoreCallerIdAfterRide => _restoreCallerIdAfterRide;
   DateTime? get activatedAt => _activatedAt;
+  DateTime? get lastScreenedAt => _lastScreenedAt;
+  String get lastScreenedAction => _lastScreenedAction;
+  String get lastScreenedReason => _lastScreenedReason;
 
   Future<void> initialize({String? profileId}) async {
     final normalizedId = profileId?.trim() ?? '';
@@ -127,10 +135,31 @@ class BikeModeService extends ChangeNotifier {
               ? storedSelection
               : _messages.first;
       _sendSms = prefs.getBool(_sendSmsKey) ?? true;
-      _allowEmergencyContacts = prefs.getBool(_allowEmergencyKey) ?? true;
-      _allowFavorites = prefs.getBool(_allowFavoritesKey) ?? true;
-      _allowRepeatCallers = prefs.getBool(_allowRepeatKey) ?? true;
-      _allowRideMembers = prefs.getBool(_allowRideMembersKey) ?? true;
+      _allowEmergencyContacts = prefs.getBool(_allowEmergencyKey) ?? false;
+      _allowFavorites = prefs.getBool(_allowFavoritesKey) ?? false;
+      _allowRepeatCallers = prefs.getBool(_allowRepeatKey) ?? false;
+      _allowRideMembers = prefs.getBool(_allowRideMembersKey) ?? false;
+      // Older Ride Mode builds silently enabled every exception. Migrate only
+      // that exact legacy-default combination; any user-customized combination
+      // is preserved. Exceptions remain available as explicit opt-ins.
+      if (prefs.getBool(_exceptionDefaultsMigratedKey) != true) {
+        if (_allowEmergencyContacts &&
+            _allowFavorites &&
+            _allowRepeatCallers &&
+            _allowRideMembers) {
+          _allowEmergencyContacts = false;
+          _allowFavorites = false;
+          _allowRepeatCallers = false;
+          _allowRideMembers = false;
+          await Future.wait<void>([
+            prefs.setBool(_allowEmergencyKey, false),
+            prefs.setBool(_allowFavoritesKey, false),
+            prefs.setBool(_allowRepeatKey, false),
+            prefs.setBool(_allowRideMembersKey, false),
+          ]);
+        }
+        await prefs.setBool(_exceptionDefaultsMigratedKey, true);
+      }
       _remindWhenStopped = prefs.getBool(_remindWhenStoppedKey) ?? true;
       _autoTurnOff = prefs.getBool(_autoTurnOffKey) ?? false;
       _stationaryMinutes = (prefs.getInt(_stationaryMinutesKey) ?? 10).clamp(
@@ -257,10 +286,10 @@ class BikeModeService extends ChangeNotifier {
     _messages = const <String>[defaultMessage];
     _selectedMessage = defaultMessage;
     _sendSms = true;
-    _allowEmergencyContacts = true;
-    _allowFavorites = true;
-    _allowRepeatCallers = true;
-    _allowRideMembers = true;
+    _allowEmergencyContacts = false;
+    _allowFavorites = false;
+    _allowRepeatCallers = false;
+    _allowRideMembers = false;
     _remindWhenStopped = true;
     _autoTurnOff = false;
     _stationaryMinutes = 10;
@@ -284,6 +313,7 @@ class BikeModeService extends ChangeNotifier {
       _stationaryMinutesKey,
       _activatedAtKey,
       _restoreCallerIdKey,
+      _exceptionDefaultsMigratedKey,
       'activeRideMemberPhones',
     ]) {
       await prefs.remove(key);
@@ -420,6 +450,16 @@ class BikeModeService extends ChangeNotifier {
           await prefs.remove(_activatedAtKey);
           _activatedAt = null;
         }
+        final screenedAt = raw['lastScreenedAt'];
+        final screenedAtMs = screenedAt is num ? screenedAt.toInt() : 0;
+        _lastScreenedAt =
+            screenedAtMs > 0
+                ? DateTime.fromMillisecondsSinceEpoch(screenedAtMs)
+                : null;
+        _lastScreenedAction =
+            (raw['lastScreenedAction'] ?? '').toString().trim();
+        _lastScreenedReason =
+            (raw['lastScreenedReason'] ?? '').toString().trim();
       }
       await _pushNativeState();
     } on PlatformException catch (error) {

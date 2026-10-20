@@ -1,6 +1,6 @@
 class AppVersion {
   static const name = 'JourneySync';
-  static const version = '1.9.2';
+  static const version = '1.9.3';
   static const build = '10';
   static const label = '$name v$version';
 }

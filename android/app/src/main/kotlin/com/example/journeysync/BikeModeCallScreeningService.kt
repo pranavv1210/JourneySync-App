@@ -11,10 +11,12 @@ import androidx.core.content.ContextCompat
 
 class BikeModeCallScreeningService : CallScreeningService() {
     override fun onScreenCall(details: Call.Details) {
+        val receivedAt = System.currentTimeMillis()
         val incoming = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
             details.callDirection == Call.Details.DIRECTION_INCOMING
         val preferences = getSharedPreferences("journeysync_bike_mode", MODE_PRIVATE)
         if (!incoming || !preferences.getBoolean("enabled", false)) {
+            recordDecision(preferences, receivedAt, "not_rejected", if (incoming) "ride_mode_off" else "outgoing_call")
             respondToCall(details, CallResponse.Builder().build())
             return
         }
@@ -22,15 +24,15 @@ class BikeModeCallScreeningService : CallScreeningService() {
         val number = details.handle?.schemeSpecificPart?.trim().orEmpty()
         val normalized = normalizeNumber(number)
         val now = System.currentTimeMillis()
-        val allowEmergency = preferences.getBoolean("allow_emergency", true) &&
+        val allowEmergency = preferences.getBoolean("allow_emergency", false) &&
             matchesAny(normalized, preferences.getStringSet("emergency_numbers", emptySet()).orEmpty())
-        val allowRideMember = preferences.getBoolean("allow_ride_members", true) &&
+        val allowRideMember = preferences.getBoolean("allow_ride_members", false) &&
             matchesAny(normalized, preferences.getStringSet("ride_member_numbers", emptySet()).orEmpty())
-        val allowFavorite = preferences.getBoolean("allow_favorites", true) &&
+        val allowFavorite = preferences.getBoolean("allow_favorites", false) &&
             number.isNotEmpty() && isFavoriteContact(number)
         val previousNumber = preferences.getString("last_incoming_number", "").orEmpty()
         val previousAt = preferences.getLong("last_incoming_at", 0L)
-        val allowRepeat = preferences.getBoolean("allow_repeat", true) &&
+        val allowRepeat = preferences.getBoolean("allow_repeat", false) &&
             normalized.isNotEmpty() && normalizeNumber(previousNumber) == normalized &&
             now - previousAt <= 3 * 60 * 1000L
 
@@ -40,10 +42,21 @@ class BikeModeCallScreeningService : CallScreeningService() {
             .apply()
 
         if (allowEmergency || allowRideMember || allowFavorite || allowRepeat) {
+            val reason = when {
+                allowEmergency -> "emergency_contact"
+                allowRideMember -> "ride_member"
+                allowFavorite -> "favorite_contact"
+                else -> "repeat_caller"
+            }
+            recordDecision(preferences, receivedAt, "allowed", reason)
             respondToCall(details, CallResponse.Builder().build())
             return
         }
 
+        // Record the decision before responding. The UI can now distinguish a
+        // call that Android delivered to JourneySync from one the OEM dialer
+        // never sent to the screening service.
+        recordDecision(preferences, receivedAt, "rejected", "ride_mode")
         respondToCall(
             details,
             CallResponse.Builder()
@@ -80,6 +93,19 @@ class BikeModeCallScreeningService : CallScreeningService() {
                 .putLong("last_sms_at", now)
                 .apply()
         }
+    }
+
+    private fun recordDecision(
+        preferences: android.content.SharedPreferences,
+        at: Long,
+        action: String,
+        reason: String,
+    ) {
+        preferences.edit()
+            .putLong("last_screened_at", at)
+            .putString("last_screened_action", action)
+            .putString("last_screened_reason", reason)
+            .apply()
     }
 
     private fun normalizeNumber(number: String): String {

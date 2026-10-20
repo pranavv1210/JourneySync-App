@@ -59,7 +59,13 @@ void main() {
     final nativeArguments = <Map<String, dynamic>>[];
     var openedCallerIdSettings = false;
     var clearedNativeState = false;
-    SharedPreferences.setMockInitialValues({'bikeModeEnabled': false});
+    SharedPreferences.setMockInitialValues({
+      'bikeModeEnabled': false,
+      'rideModeAllowEmergency': true,
+      'rideModeAllowFavorites': true,
+      'rideModeAllowRepeatCallers': true,
+      'rideModeAllowRideMembers': true,
+    });
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -73,6 +79,9 @@ void main() {
                 'contactsGranted': false,
                 'directSmsSupported': false,
                 'enabled': false,
+                'lastScreenedAt': 1700000000000,
+                'lastScreenedAction': 'allowed',
+                'lastScreenedReason': 'favorite_contact',
               };
             case 'setBikeModeState':
               final arguments = Map<String, dynamic>.from(
@@ -96,6 +105,13 @@ void main() {
     final service = BikeModeService.instance;
     try {
       await service.initialize();
+      expect(service.lastScreenedAt, isNotNull);
+      expect(service.lastScreenedAction, 'allowed');
+      expect(service.lastScreenedReason, 'favorite_contact');
+      expect(service.allowEmergencyContacts, isFalse);
+      expect(service.allowFavorites, isFalse);
+      expect(service.allowRepeatCallers, isFalse);
+      expect(service.allowRideMembers, isFalse);
       final enabling = service.setEnabled(true);
       await tester.pump();
 

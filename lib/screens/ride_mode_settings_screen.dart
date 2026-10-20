@@ -373,7 +373,7 @@ class _RideModeSettingsScreenState extends State<RideModeSettingsScreen> {
                 ),
                 Text(
                   active
-                      ? 'Incoming calls are being handled.'
+                      ? 'Calls are rejected unless an enabled exception matches.'
                       : 'Calls will ring normally.',
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.textSecondary,

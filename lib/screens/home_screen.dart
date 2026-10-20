@@ -963,14 +963,16 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     return 'Active for $time - $action';
   }
 
-  Future<void> _showRideModeDetails() {
+  Future<void> _showRideModeDetails() async {
+    await BikeModeService.instance.refreshCapability();
+    if (!mounted) return;
     return showAppBottomSheet<void>(
       context,
       builder: (sheetContext) {
         final service = BikeModeService.instance;
-        final capability = service.capability;
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final capability = service.capability;
             Future<void> openSettings() async {
               Navigator.pop(context);
               await Navigator.push(
@@ -1028,8 +1030,46 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                         capability.directSmsSupported && capability.smsGranted,
                     unavailable: !capability.directSmsSupported,
                   ),
+                  if (service.lastScreenedAt != null) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _lastCallDecisionColor(
+                          service,
+                        ).withValues(alpha: 0.09),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            _lastCallDecisionIcon(service),
+                            size: 20,
+                            color: _lastCallDecisionColor(service),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _lastCallDecisionText(service),
+                              style: AppTypography.labelLarge.copyWith(
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
-                  Text('Selected reply', style: AppTypography.labelMedium),
+                  Text(
+                    'Selected reply',
+                    style: AppTypography.labelMedium.copyWith(
+                      color: AppColors.forest,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     service.selectedMessage,
@@ -1040,23 +1080,28 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: testMode,
-                          icon: const Icon(Icons.fact_check_outlined),
-                          label: const Text('Test Ride Mode'),
-                        ),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: testMode,
+                      icon: const Icon(Icons.phone_in_talk_rounded),
+                      label: const Text(
+                        'Test Ride Mode',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: openSettings,
-                          child: const Text('Settings'),
-                        ),
-                      ),
-                    ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: FilledButton.icon(
+                      onPressed: openSettings,
+                      icon: const Icon(Icons.tune_rounded),
+                      label: const Text('Ride Mode settings'),
+                    ),
                   ),
                   if (service.enabled) ...[
                     const SizedBox(height: 10),
@@ -1079,6 +1124,36 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         );
       },
     );
+  }
+
+  Color _lastCallDecisionColor(BikeModeService service) =>
+      service.lastScreenedAction == 'rejected'
+          ? AppColors.success
+          : service.lastScreenedAction == 'allowed'
+          ? AppColors.warning
+          : AppColors.textTertiary;
+
+  IconData _lastCallDecisionIcon(BikeModeService service) =>
+      service.lastScreenedAction == 'rejected'
+          ? Icons.phone_disabled_rounded
+          : Icons.phone_in_talk_rounded;
+
+  String _lastCallDecisionText(BikeModeService service) {
+    final reason = switch (service.lastScreenedReason) {
+      'emergency_contact' => 'an emergency-contact exception',
+      'ride_member' => 'a current ride-member exception',
+      'favorite_contact' => 'a favorite-contact exception',
+      'repeat_caller' => 'the repeat-caller exception',
+      'ride_mode_off' => 'Ride Mode was off',
+      _ => '',
+    };
+    if (service.lastScreenedAction == 'rejected') {
+      return 'Last incoming call: rejected by JourneySync.';
+    }
+    if (service.lastScreenedAction == 'allowed' && reason.isNotEmpty) {
+      return 'Last incoming call: allowed because of $reason.';
+    }
+    return 'Last call reached JourneySync but was not rejected.';
   }
 
   Widget _buildQuickStatus() {
@@ -2104,6 +2179,7 @@ class _RideModeCheckRow extends StatelessWidget {
             child: Text(
               label,
               style: AppTypography.bodyMedium.copyWith(
+                fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
               ),
             ),

@@ -109,10 +109,10 @@ class MainActivity : FlutterActivity() {
                             .putBoolean("enabled", enabled)
                             .putString("message", message)
                             .putBoolean("send_sms", call.argument<Boolean>("sendSms") == true)
-                            .putBoolean("allow_emergency", call.argument<Boolean>("allowEmergencyContacts") != false)
-                            .putBoolean("allow_favorites", call.argument<Boolean>("allowFavorites") != false)
-                            .putBoolean("allow_repeat", call.argument<Boolean>("allowRepeatCallers") != false)
-                            .putBoolean("allow_ride_members", call.argument<Boolean>("allowRideMembers") != false)
+                            .putBoolean("allow_emergency", call.argument<Boolean>("allowEmergencyContacts") == true)
+                            .putBoolean("allow_favorites", call.argument<Boolean>("allowFavorites") == true)
+                            .putBoolean("allow_repeat", call.argument<Boolean>("allowRepeatCallers") == true)
+                            .putBoolean("allow_ride_members", call.argument<Boolean>("allowRideMembers") == true)
                             .putBoolean("remind_when_stopped", call.argument<Boolean>("remindWhenStopped") != false)
                             .putBoolean("auto_turn_off", call.argument<Boolean>("autoTurnOff") == true)
                             .putInt("stationary_minutes", call.argument<Int>("stationaryMinutes") ?: 10)
@@ -254,8 +254,8 @@ class MainActivity : FlutterActivity() {
             PackageManager.PERMISSION_GRANTED
         val contactsGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) ==
             PackageManager.PERMISSION_GRANTED
-        val enabled = getSharedPreferences(bikeModePreferences, MODE_PRIVATE)
-            .getBoolean("enabled", false)
+        val preferences = getSharedPreferences(bikeModePreferences, MODE_PRIVATE)
+        val enabled = preferences.getBoolean("enabled", false)
         return mapOf(
             "callScreeningAvailable" to roleAvailable,
             "callScreeningGranted" to roleGranted,
@@ -263,6 +263,9 @@ class MainActivity : FlutterActivity() {
             "directSmsSupported" to BuildConfig.BIKE_AUTO_SMS_ENABLED,
             "contactsGranted" to contactsGranted,
             "enabled" to enabled,
+            "lastScreenedAt" to preferences.getLong("last_screened_at", 0L),
+            "lastScreenedAction" to preferences.getString("last_screened_action", "").orEmpty(),
+            "lastScreenedReason" to preferences.getString("last_screened_reason", "").orEmpty(),
         )
     }
 
