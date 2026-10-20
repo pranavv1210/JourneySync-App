@@ -1326,7 +1326,7 @@ class _NearbyRidesScreenState extends State<NearbyRidesScreen>
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),

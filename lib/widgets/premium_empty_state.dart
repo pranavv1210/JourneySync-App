@@ -118,7 +118,7 @@ class PremiumEmptyState extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                   color: foregroundColor.withValues(alpha: 0.4),
                   height: 1.3,
                 ),
