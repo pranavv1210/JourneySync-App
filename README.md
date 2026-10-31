@@ -140,6 +140,12 @@ Location, camera, and photo permission descriptions are configured in `ios/Runne
 - Use Supabase Row Level Security for user data access.
 - Report security issues using [SECURITY.md](./SECURITY.md).
 
+Current engineering evidence and release limitations are tracked in the
+[comprehensive audit](./docs/JOURNEYSYNC_COMPREHENSIVE_AUDIT.md),
+[security audit](./docs/JOURNEYSYNC_SECURITY_AUDIT.md), and
+[test report](./docs/JOURNEYSYNC_TEST_REPORT.md). A repository build does not
+by itself verify production RLS state or physical-device background behavior.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).

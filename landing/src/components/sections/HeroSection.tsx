@@ -64,7 +64,7 @@ export function HeroSection({ onJoinBeta }: { onJoinBeta: () => void }) {
             </div>
             <div>
               <dt>Safety</dt>
-              <dd>SOS armed</dd>
+              <dd>Help ready</dd>
             </div>
           </dl>
         </motion.div>
@@ -167,7 +167,7 @@ export function HeroSection({ onJoinBeta }: { onJoinBeta: () => void }) {
           >
             <span className="material-icons-round">shield</span>
             <div>
-              <strong>SOS ready</strong>
+              <strong>Get Help ready</strong>
               <small>Emergency context attached</small>
             </div>
           </motion.article>

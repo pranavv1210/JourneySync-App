@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/app_notification.dart';
 import '../models/presence_info.dart';
+import '../models/assistance_category.dart';
 import '../models/ride_member.dart';
 import '../models/ride_record.dart';
 import '../models/ride_route.dart';
@@ -333,16 +334,14 @@ class RealtimeCoordinator extends ChangeNotifier {
     double? latitude,
     double? longitude,
     bool broadcastToGroup = false,
+    AssistanceCategory category = AssistanceCategory.general,
   }) async {
     final payload = <String, dynamic>{
       'ride_id': rideId.trim(),
       'profile_id': profileId.trim(),
       'user_name': profileName.trim().isEmpty ? 'Rider' : profileName.trim(),
       'type': broadcastToGroup ? alertTypeGroupSos : alertTypeSos,
-      'message':
-          broadcastToGroup
-              ? 'SOS alert broadcast to the ride group'
-              : 'SOS alert triggered',
+      'message': category.alertMessage,
       'avatar_url': avatarUrl.trim(),
       'latitude': latitude,
       'longitude': longitude,
@@ -420,6 +419,7 @@ class RealtimeCoordinator extends ChangeNotifier {
     String? originalAlertId,
     double? latitude,
     double? longitude,
+    AssistanceCategory category = AssistanceCategory.general,
   }) async {
     final payload = <String, dynamic>{
       'ride_id': rideId.trim(),
@@ -427,7 +427,7 @@ class RealtimeCoordinator extends ChangeNotifier {
       'user_name':
           sosProfileName.trim().isEmpty ? 'Rider' : sosProfileName.trim(),
       'type': alertTypeGroupSos,
-      'message': 'SOS alert broadcast to the ride group',
+      'message': category.alertMessage,
       'avatar_url': sosAvatarUrl.trim(),
       'acknowledged_by': hostProfileId.trim(),
       if ((originalAlertId ?? '').trim().isNotEmpty)

@@ -13,6 +13,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/rider_location.dart';
+import '../models/assistance_category.dart';
 import '../coordinators/active_ride_coordinator.dart';
 import '../coordinators/realtime_coordinator.dart' hide unawaited;
 import '../services/live_tracking_service.dart' hide unawaited;
@@ -28,6 +29,7 @@ import '../services/weather_service.dart';
 import '../services/bike_mode_service.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/app_bottom_sheet.dart';
 import '../widgets/realtime_ride_hud.dart';
 import '../widgets/connection_status_bar.dart';
 import '../widgets/rider_marker.dart';
@@ -976,29 +978,100 @@ class _RideModeScreenState extends State<RideModeScreen>
       return;
     }
 
+    final category = await _chooseAssistanceCategory();
+    if (category == null || !mounted) return;
     final others = _otherRiderCount;
     // An emergency broadcast is not something to fire from one stray tap in a
     // jacket pocket, and the rider should know what it will actually do.
     final confirmed = await showAppConfirmDialog(
       context,
-      title: 'Send SOS alert?',
+      title: 'Send ${category.label}?',
       message:
           others > 0
               ? 'Your live location will be sent to $others '
                   '${others == 1 ? 'rider' : 'riders'} on this ride, and the '
-                  'emergency call options will open.'
+                  'help and call options will open.'
               : 'Nobody else is live on this ride right now, so the alert will '
                   'be recorded and the emergency call options will open. '
-                  'Riders who come online will see it.',
-      confirmLabel: 'Send SOS',
+                  'Riders who come online will see it. JourneySync does not '
+                  'contact emergency services automatically.',
+      confirmLabel: 'Send help alert',
       cancelLabel: 'Cancel',
       destructive: true,
     );
     if (confirmed != true) return;
-    await _triggerSOS();
+    await _triggerSOS(category);
   }
 
-  Future<void> _triggerSOS() async {
+  Future<AssistanceCategory?> _chooseAssistanceCategory() {
+    return showAppBottomSheet<AssistanceCategory>(
+      context,
+      builder:
+          (sheetContext) => SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Get Help',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Choose what you need. Your selection and latest location are '
+                  'shared with riders in this ride.',
+                ),
+                const SizedBox(height: 16),
+                for (final category in AssistanceCategory.values)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: ListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      leading: Icon(
+                        _assistanceIcon(category),
+                        color: Colors.red,
+                      ),
+                      title: Text(
+                        category.label,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => Navigator.pop(sheetContext, category),
+                    ),
+                  ),
+                const Divider(height: 24),
+                OutlinedButton.icon(
+                  onPressed:
+                      () => launchUrl(
+                        Uri(scheme: 'tel', path: '112'),
+                        mode: LaunchMode.externalApplication,
+                      ),
+                  icon: const Icon(Icons.call_rounded),
+                  label: const Text('Call India emergency services — 112'),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '112 is India\'s pan-India emergency response number. A '
+                  'JourneySync help alert is not the same as calling 112.',
+                  style: TextStyle(fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
+  IconData _assistanceIcon(AssistanceCategory category) => switch (category) {
+    AssistanceCategory.medical => Icons.medical_services_rounded,
+    AssistanceCategory.breakdown => Icons.build_rounded,
+    AssistanceCategory.separated => Icons.person_search_rounded,
+    AssistanceCategory.general => Icons.support_rounded,
+  };
+
+  Future<void> _triggerSOS(AssistanceCategory category) async {
     unawaited(HapticFeedback.heavyImpact());
     setState(() => _sosBusy = true);
     try {
@@ -1012,6 +1085,7 @@ class _RideModeScreenState extends State<RideModeScreen>
         latitude: _currentPosition?.latitude,
         longitude: _currentPosition?.longitude,
         broadcastToGroup: _leaderId == _currentUserId,
+        category: category,
       );
       await _realtimeCoordinator.updateMyPresence(
         profileId: _currentUserId,
@@ -1043,7 +1117,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       setState(() => _sosBusy = false);
       showAppToast(
         context,
-        'Could not send SOS. Please try again.',
+        'Could not send the help alert. Please try again.',
         type: AppToastType.error,
       );
     }
@@ -2323,6 +2397,7 @@ class _RideModeScreenState extends State<RideModeScreen>
         sosProfileId: _activeSosRiderId(),
         sosProfileName: (alert['user_name'] ?? 'Rider').toString(),
         sosAvatarUrl: _activeSosAvatarUrl(),
+        category: AssistanceCategory.fromAlert(alert),
         hostProfileId: _currentUserId,
         originalAlertId: (alert['id'] ?? '').toString(),
         latitude: (alert['latitude'] as num?)?.toDouble(),
@@ -2453,7 +2528,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'SOS',
+                        'GET HELP',
                         style: TextStyle(
                           color: Color.lerp(
                             Colors.white,
@@ -2490,10 +2565,10 @@ class _RideModeScreenState extends State<RideModeScreen>
                       const SizedBox(height: 16),
                       Text(
                         isMine
-                            ? 'YOUR SOS IS LIVE'
+                            ? 'YOUR HELP ALERT IS LIVE'
                             : isGroupAlert
                             ? 'GROUP SOS ALERT'
-                            : 'CRITICAL SOS ALERT',
+                            : 'RIDER NEEDS HELP',
                         style: const TextStyle(
                           color: Colors.red,
                           fontFamily: AppTypography.fontFamily,
@@ -2537,6 +2612,10 @@ class _RideModeScreenState extends State<RideModeScreen>
                             _buildSOSDetailRow(
                               'Rider',
                               riderName.isEmpty ? 'Rider' : riderName,
+                            ),
+                            _buildSOSDetailRow(
+                              'Assistance',
+                              AssistanceCategory.fromAlert(_activeAlert).label,
                             ),
                             _buildSOSDetailRow(
                               'Location',

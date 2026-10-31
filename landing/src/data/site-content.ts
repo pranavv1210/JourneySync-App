@@ -24,7 +24,7 @@ export type ComparisonRow = {
 export type FaqItem = { question: string; answer: string };
 export type BuiltByBullet = { text: string; icon: string };
 
-export const appVersion = 'v1.9.6';
+export const appVersion = 'v1.10.0';
 export const siteUrl = 'https://journeysyncrideapp.in';
 
 export const navItems: NavItem[] = [
@@ -59,7 +59,7 @@ export const storySteps: StoryStep[] = [
     phase: 'Safety',
     title: 'When something goes wrong, context matters.',
     description:
-      'SOS, location, rider status, and emergency contacts need to exist inside the active ride, not in a separate panic flow.',
+      'Help alerts, location, rider status, and emergency contacts need to exist inside the active ride, not in a separate panic flow.',
     signal: 'Protect',
   },
   {
@@ -155,10 +155,10 @@ export const comparisonRows: ComparisonRow[] = [
     journeysync: 'Lobby, riders, stops, and synced route',
   },
   {
-    category: 'SOS',
+    category: 'Get Help',
     googleMaps: 'Not ride-aware',
     whatsapp: 'Manual calls',
-    journeysync: 'Emergency context inside the ride',
+    journeysync: 'Categorised help alerts inside the ride',
   },
   {
     category: 'Weather + fuel',
@@ -191,16 +191,16 @@ export const builtByBullets: BuiltByBullet[] = [
 
 export const safetyFeatures = [
   {
-    icon: 'sensors',
-    title: 'Crash detection support',
+    icon: 'medical_services',
+    title: 'Clear assistance categories',
     description:
-      'Phone-sensor based detection can help surface emergency context when a rider may not be able to respond.',
+      'Choose medical emergency, motorcycle breakdown, group separation, or general assistance so riders know what is needed.',
   },
   {
     icon: 'sos',
-    title: 'SOS inside ride mode',
+    title: 'Get Help inside ride mode',
     description:
-      'One-tap emergency signaling keeps location and ride context attached to the active session.',
+      'Confirmed help alerts keep location and ride context attached to the active session, with direct access to India\'s 112 number.',
   },
   {
     icon: 'verified_user',
@@ -214,7 +214,7 @@ export const faqs: FaqItem[] = [
   {
     question: 'Is JourneySync available now?',
     answer:
-      'JourneySync v1.9.6 adds join-in-progress and automatic live-ride recovery, and is available as a direct Android APK download. iOS compatibility is planned through TestFlight.',
+      'JourneySync v1.10.0 adds join-in-progress and automatic live-ride recovery, and is available as a direct Android APK download. iOS compatibility is planned through TestFlight.',
   },
   {
     question: 'Does it replace Google Maps?',
