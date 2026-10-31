@@ -2,14 +2,6 @@
 
 @font-face {
   font-family: "Gilroy";
-  src: url("/fonts/Gilroy-Light.otf") format("opentype");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Gilroy";
   src: url("/fonts/Gilroy-ExtraBold.otf") format("opentype");
   font-weight: 800;
   font-style: normal;
@@ -86,6 +78,7 @@ body {
     BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
+  font-weight: 600;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   scrollbar-width: none;
