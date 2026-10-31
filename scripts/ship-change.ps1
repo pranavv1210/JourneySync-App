@@ -65,12 +65,22 @@ if ($Bump -ne 'none') {
     )
     foreach ($relativePath in $versionFiles) {
         $path = Join-Path $repoRoot $relativePath
-        $content = Get-Content -LiteralPath $path -Raw
+        $content = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
         $content = $content.Replace($oldVersion, $newVersion)
         if ($relativePath -eq 'pubspec.yaml') {
             $content = [regex]::Replace($content, '^version:\s*\d+\.\d+\.\d+\+\d+\s*$', "version: $newVersion+$build", 'Multiline')
         }
         Set-Utf8NoBom $path $content
+    }
+}
+
+Invoke-Checked 'Landing text encoding check' {
+    Push-Location (Join-Path $repoRoot 'landing')
+    try {
+        node scripts/verify-text-encoding.mjs
+    }
+    finally {
+        Pop-Location
     }
 }
 
