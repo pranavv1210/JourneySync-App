@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { featureMoments } from '@/data/site-content';
+import Image from 'next/image';
 
 export function FeaturesSection() {
   const [activeId, setActiveId] = useState(featureMoments[0].id);
@@ -60,7 +61,7 @@ export function FeaturesSection() {
 
             <div className={`feature-device ${active.id}`} aria-hidden="true">
               <div className="feature-device-map">
-                <img src="/map_bg.png" alt="" />
+                <Image src="/map_bg.png" alt="" fill sizes="(max-width: 768px) 80vw, 320px" />
                 <svg viewBox="0 0 260 360" preserveAspectRatio="none">
                   <motion.path
                     d="M18 302 C 88 270, 68 166, 144 158 C 205 151, 200 74, 242 42"

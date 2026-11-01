@@ -149,7 +149,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             children: [
               _metric('Live', 'tracking'),
               const SizedBox(width: AppSpacing.md),
-              _metric('SOS', 'alerts'),
+              _metric('Get Help', 'alerts'),
               const SizedBox(width: AppSpacing.md),
               _metric('Route', 'sync'),
             ],

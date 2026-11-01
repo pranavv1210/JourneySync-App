@@ -235,7 +235,9 @@ class GroupRideIntelligence {
       }
 
       if (rider.distanceFromLeaderMeters > 1800 &&
-          rider.status != RiderLiveStatus.offline) {
+          rider.status != RiderLiveStatus.offline &&
+          rider.location.hasReliableAccuracy &&
+          (snapshot.leader?.location.hasReliableAccuracy ?? true)) {
         _addAlert(
           alerts,
           rider,
@@ -354,6 +356,10 @@ class GroupRideIntelligence {
   String _gpsQuality(RiderLocation rider) {
     final age = DateTime.now().difference(rider.updatedAt);
     if (age > const Duration(minutes: 2)) return 'Weak';
+    final accuracy = rider.accuracy;
+    if (accuracy == null) return 'Unknown';
+    if (accuracy > 100) return 'Weak';
+    if (accuracy > 40) return 'Medium';
     final speed = rider.speed ?? 0;
     if (speed > 1 && rider.heading == null) return 'Medium';
     return 'Strong';

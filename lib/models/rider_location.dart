@@ -18,6 +18,7 @@ class RiderLocation {
     this.battery,
     this.signal,
     this.avatarUrl,
+    this.accuracy,
   });
 
   final String userId;
@@ -50,6 +51,12 @@ class RiderLocation {
   /// Avatar URL from the users table. Null if not loaded.
   final String? avatarUrl;
 
+  /// Horizontal GPS accuracy radius in metres. Null means the source did not
+  /// report accuracy, not that the fix was exact.
+  final double? accuracy;
+
+  bool get hasReliableAccuracy => accuracy != null && accuracy! <= 100;
+
   /// True when the last update was more than 2 minutes ago (rider offline/stale).
   bool get isStale =>
       DateTime.now().difference(updatedAt) > const Duration(minutes: 2);
@@ -75,6 +82,7 @@ class RiderLocation {
     String? battery,
     String? signal,
     String? avatarUrl,
+    double? accuracy,
   }) {
     return RiderLocation(
       userId: userId ?? this.userId,
@@ -90,6 +98,7 @@ class RiderLocation {
       battery: battery ?? this.battery,
       signal: signal ?? this.signal,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      accuracy: accuracy ?? this.accuracy,
     );
   }
 

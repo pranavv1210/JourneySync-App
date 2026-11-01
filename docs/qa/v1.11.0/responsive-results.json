@@ -1,0 +1,65 @@
+[
+  {
+    "width": 320,
+    "viewport": 320,
+    "scrollWidth": 320,
+    "hasHorizontalOverflow": false,
+    "menuVisible": true
+  },
+  {
+    "width": 360,
+    "viewport": 360,
+    "scrollWidth": 360,
+    "hasHorizontalOverflow": false,
+    "menuVisible": true
+  },
+  {
+    "width": 375,
+    "viewport": 375,
+    "scrollWidth": 375,
+    "hasHorizontalOverflow": false,
+    "menuVisible": true
+  },
+  {
+    "width": 390,
+    "viewport": 390,
+    "scrollWidth": 390,
+    "hasHorizontalOverflow": false,
+    "menuVisible": true
+  },
+  {
+    "width": 414,
+    "viewport": 414,
+    "scrollWidth": 414,
+    "hasHorizontalOverflow": false,
+    "menuVisible": true
+  },
+  {
+    "width": 430,
+    "viewport": 430,
+    "scrollWidth": 430,
+    "hasHorizontalOverflow": false,
+    "menuVisible": true
+  },
+  {
+    "width": 768,
+    "viewport": 768,
+    "scrollWidth": 768,
+    "hasHorizontalOverflow": false,
+    "menuVisible": true
+  },
+  {
+    "width": 1024,
+    "viewport": 1024,
+    "scrollWidth": 1024,
+    "hasHorizontalOverflow": false,
+    "menuVisible": true
+  },
+  {
+    "width": 1440,
+    "viewport": 1440,
+    "scrollWidth": 1440,
+    "hasHorizontalOverflow": false,
+    "menuVisible": false
+  }
+]

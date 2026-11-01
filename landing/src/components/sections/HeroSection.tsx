@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import { CtaButton } from '@/components/ui/CtaButton';
+import Image from 'next/image';
 
 export function HeroSection({ onJoinBeta }: { onJoinBeta: () => void }) {
   const reduceMotion = useReducedMotion();
@@ -85,7 +86,7 @@ export function HeroSection({ onJoinBeta }: { onJoinBeta: () => void }) {
             <div className="phone-metal" />
             <div className="phone-screen">
               <div className="map-layer">
-                <img src="/map_bg.png" alt="" />
+                <Image src="/map_bg.png" alt="" fill sizes="(max-width: 768px) 82vw, 340px" priority />
                 <svg viewBox="0 0 300 560" preserveAspectRatio="none" aria-hidden="true">
                   <motion.path
                     className="phone-route-shadow"

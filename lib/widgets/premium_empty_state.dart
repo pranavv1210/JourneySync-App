@@ -159,7 +159,7 @@ class PremiumEmptyState extends StatelessWidget {
       icon: Icons.notifications_active_outlined,
       title: 'All clear',
       tagline:
-          'No notifications yet.\nRide invites, SOS alerts, and route '
+          'No notifications yet.\nRide invites, Get Help alerts, and route '
           'changes will land here.',
       action:
           onRefresh != null
@@ -215,7 +215,7 @@ class PremiumEmptyState extends StatelessWidget {
     return PremiumEmptyState(
       icon: Icons.shield_rounded,
       title: 'No alerts',
-      tagline: 'All clear. No SOS alerts or warnings.\nYour ride is safe.',
+      tagline: 'All clear. No Get Help alerts or warnings.\nYour ride is safe.',
     );
   }
 

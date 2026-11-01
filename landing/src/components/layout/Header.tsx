@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { navItems } from '@/data/site-content';
 import { CtaButton } from '@/components/ui/CtaButton';
+import Image from 'next/image';
 
 export function Header({ onJoinBeta }: { onJoinBeta: () => void }) {
   const [scrolled, setScrolled] = useState(false);
@@ -34,7 +35,7 @@ export function Header({ onJoinBeta }: { onJoinBeta: () => void }) {
       <header className={`site-header ${scrolled ? 'is-scrolled' : ''}`}>
         <div className="container header-inner">
           <a href="#top" className="brand" aria-label="JourneySync home">
-            <img src="/logo.png" alt="JourneySync logo" width={40} height={40} />
+            <Image src="/logo.png" alt="JourneySync logo" width={40} height={40} priority />
             <span>JourneySync</span>
           </a>
 

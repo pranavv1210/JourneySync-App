@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, useReducedMotion } from 'framer-motion';
 import { appVersion } from '@/data/site-content';
 
@@ -17,7 +18,7 @@ export function BetaDownloadClient() {
           className="beta-download-card"
         >
           <Link href="/" className="beta-download-brand">
-            <img src="/logo.png" alt="JourneySync logo" width={32} height={32} />
+            <Image src="/logo.png" alt="JourneySync logo" width={32} height={32} />
             JourneySync
           </Link>
 
@@ -35,7 +36,7 @@ export function BetaDownloadClient() {
             </div>
           </div>
 
-          <a href="/journeysync.apk?v=1.10.0" download className="beta-download-primary">
+          <a href="/journeysync.apk?v=1.11.0" download className="beta-download-primary">
             <span className="material-icons-round">download</span>
             Download APK
           </a>

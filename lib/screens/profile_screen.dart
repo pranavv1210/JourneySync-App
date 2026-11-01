@@ -1473,8 +1473,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         'unlocked': _hasAchievement('Group Leader') || groupRidesCompleted > 0,
       },
       {
-        'title': 'SOS Hero',
-        'desc': 'Acknowledge another rider\'s SOS',
+        'title': 'Get Help Hero',
+        'desc': 'Acknowledge another rider\'s help alert',
         'icon': '❤️',
         'unlocked': _hasAchievement('SOS Helper'),
       },

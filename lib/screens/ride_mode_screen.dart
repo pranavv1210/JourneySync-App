@@ -467,6 +467,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       isLeader: _leaderId == _currentUserId,
       heading: pos.heading >= 0 ? pos.heading : null,
       speed: pos.speed >= 0 ? pos.speed : null,
+      accuracy: pos.accuracy >= 0 ? pos.accuracy : null,
       avatarUrl: _currentUserAvatarUrl,
     );
   }
@@ -1129,7 +1130,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       context,
       title: 'Mark yourself safe?',
       message:
-          'This clears your SOS for everyone on the ride. Only do this if you '
+          'This clears your Get Help alert for everyone on the ride. Only do this if you '
           'no longer need help.',
       confirmLabel: "I'm safe",
       cancelLabel: 'Keep alert on',
@@ -1164,13 +1165,16 @@ class _RideModeScreenState extends State<RideModeScreen>
         _hostAcknowledgedActiveSos = false;
         _groupAlertedActiveSos = false;
       });
-      showAppToast(context, 'SOS cleared. Riders have been told you are safe.');
+      showAppToast(
+        context,
+        'Help alert cleared. Riders have been told you are safe.',
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _sosBusy = false);
       showAppToast(
         context,
-        'Could not clear the SOS. Your alert is still live.',
+        'Could not clear the help alert. Your alert is still live.',
         type: AppToastType.error,
       );
     }
@@ -1194,6 +1198,10 @@ class _RideModeScreenState extends State<RideModeScreen>
           heading:
               _currentPosition!.heading >= 0 ? _currentPosition!.heading : null,
           speed: _currentSpeed / 3.6,
+          accuracy:
+              _currentPosition!.accuracy >= 0
+                  ? _currentPosition!.accuracy
+                  : null,
           avatarUrl: _currentUserAvatarUrl,
         ),
       );
@@ -2039,6 +2047,10 @@ class _RideModeScreenState extends State<RideModeScreen>
                         ? _currentPosition!.heading
                         : null,
                 speed: _currentSpeed / 3.6,
+                accuracy:
+                    _currentPosition!.accuracy >= 0
+                        ? _currentPosition!.accuracy
+                        : null,
                 avatarUrl: _currentUserAvatarUrl,
               ),
               isCurrentUser: true,
@@ -2351,7 +2363,7 @@ class _RideModeScreenState extends State<RideModeScreen>
             .split(RegExp(r'\s+'))
             .where((part) => part.isNotEmpty)
             .toList();
-    if (parts.isEmpty) return 'SOS';
+    if (parts.isEmpty) return 'HELP';
     final initials = parts.take(2).map((part) => part[0]).join();
     return initials.toUpperCase();
   }
@@ -2381,7 +2393,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       setState(() => _sosBusy = false);
       showAppToast(
         context,
-        'Could not acknowledge SOS. Please try again.',
+        'Could not acknowledge the help alert. Please try again.',
         type: AppToastType.error,
       );
     }
@@ -2447,7 +2459,7 @@ class _RideModeScreenState extends State<RideModeScreen>
       setState(() => _sosBusy = false);
       showAppToast(
         context,
-        'Could not acknowledge the group SOS.',
+        'Could not acknowledge the group help alert.',
         type: AppToastType.error,
       );
     }
@@ -2567,7 +2579,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                         isMine
                             ? 'YOUR HELP ALERT IS LIVE'
                             : isGroupAlert
-                            ? 'GROUP SOS ALERT'
+                            ? 'GROUP HELP ALERT'
                             : 'RIDER NEEDS HELP',
                         style: const TextStyle(
                           color: Colors.red,
@@ -2824,7 +2836,7 @@ class _RideModeScreenState extends State<RideModeScreen>
                                     setState(() => _activeAlert = null);
                                   },
                           child: Text(
-                            isMine ? "I'm safe - clear my SOS" : 'Hide',
+                            isMine ? "I'm safe - clear my alert" : 'Hide',
                             style: const TextStyle(
                               color: Colors.white70,
                               fontFamily: AppTypography.fontFamily,

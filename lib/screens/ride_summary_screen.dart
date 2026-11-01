@@ -237,7 +237,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
 
     if (data.sosEvents > 0) {
       sentences.add(
-        '${data.sosEvents} SOS '
+        '${data.sosEvents} help '
         '${data.sosEvents == 1 ? 'alert was' : 'alerts were'} raised during '
         'this ride.',
       );
@@ -634,7 +634,7 @@ class _RideSummaryScreenState extends State<RideSummaryScreen> {
                 child: _miniMetric('Weather', data.weatherSummary ?? '--'),
               ),
               Expanded(child: _miniMetric('Members', '${data.memberCount}')),
-              Expanded(child: _miniMetric('SOS', '${data.sosEvents}')),
+              Expanded(child: _miniMetric('Help alerts', '${data.sosEvents}')),
             ],
           ),
         ],

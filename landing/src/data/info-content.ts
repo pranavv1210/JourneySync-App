@@ -130,7 +130,7 @@ export const infoContent: Record<string, InfoContent> = {
       {
         heading: 'Emergency usage',
         body: [
-          'SOS and safety-related features are support tools and may depend on battery, network connectivity, permissions, location accuracy, third-party services, and service availability. In emergencies, contact local emergency services directly.',
+          'Get Help and safety-related features are support tools and may depend on battery, network connectivity, permissions, location accuracy, third-party services, and service availability. In emergencies, contact local emergency services directly.',
         ],
       },
       {

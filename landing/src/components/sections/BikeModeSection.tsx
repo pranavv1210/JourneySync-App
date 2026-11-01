@@ -14,7 +14,7 @@ export function BikeModeSection() {
     <section id="bike-mode" className="bike-mode-chapter">
       <div className="container bike-mode-layout">
         <div className="bike-mode-copy">
-          <p className="eyebrow">Ride Mode &middot; v1.10.0</p>
+          <p className="eyebrow">Ride Mode &middot; v1.11.0</p>
           <h2>Keep your hands on the bars and callers in the loop.</h2>
           <p>
             Try the switch. The preview shows what JourneySync does when Ride Mode is on and what

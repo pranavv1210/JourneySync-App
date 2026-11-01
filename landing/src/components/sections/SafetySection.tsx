@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { safetyFeatures } from '@/data/site-content';
 import { SectionHeading } from '@/components/ui/SectionHeading';
+import Image from 'next/image';
 
 export function SafetySection() {
   const reduceMotion = useReducedMotion();
@@ -49,17 +50,17 @@ export function SafetySection() {
               <div className="sos-core">
                 <span className="material-icons-round">sos</span>
               </div>
-              <h3>Crash detected</h3>
-              <p>
-                Sending alert in <strong>14s</strong>
-              </p>
-              <button type="button" className="sos-cancel">
-                I&apos;m okay - cancel
-              </button>
-              <button type="button" className="sos-emergency">
-                Call emergency now
-              </button>
-              <img src="/map_bg.png" alt="" className="safety-map" />
+              <h3>Get Help</h3>
+              <p>Choose the assistance you need and confirm before sharing it.</p>
+              <div className="sos-cancel">Motorcycle breakdown</div>
+              <div className="sos-emergency">Call India emergency services — 112</div>
+              <Image
+                src="/map_bg.png"
+                alt=""
+                className="safety-map"
+                fill
+                sizes="(max-width: 768px) 82vw, 340px"
+              />
             </div>
           </div>
         </motion.div>

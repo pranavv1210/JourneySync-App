@@ -1,4 +1,5 @@
 import { appVersion, footerGroups } from '@/data/site-content';
+import Image from 'next/image';
 
 type FooterLink =
   | { label: string; href: string }
@@ -17,7 +18,7 @@ export function Footer({ onInfo }: { onInfo: (key: string) => void }) {
       <div className="container footer-grid">
         <div className="footer-brand">
           <div className="brand-mark">
-            <img src="/logo.png" alt="JourneySync logo" width={34} height={34} />
+            <Image src="/logo.png" alt="JourneySync logo" width={34} height={34} />
             <h3>JourneySync</h3>
           </div>
           <p>

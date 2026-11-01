@@ -7,15 +7,23 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
+import '../coordinators/realtime_coordinator.dart';
+import '../models/assistance_category.dart';
+import '../utils/app_logger.dart';
 import '../widgets/app_error_state.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/journey_screen.dart';
 import '../widgets/ride_loading_indicator.dart';
 
 class SosAlertScreen extends StatefulWidget {
-  const SosAlertScreen({super.key, required this.rideId});
+  const SosAlertScreen({
+    super.key,
+    required this.rideId,
+    this.initialAlert = const <String, dynamic>{},
+  });
 
   final String rideId;
+  final Map<String, dynamic> initialAlert;
 
   @override
   State<SosAlertScreen> createState() => _SosAlertScreenState();
@@ -52,16 +60,14 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
       userAvatarUrl = prefs.getString("userAvatarUrl") ?? "";
 
       final data =
-          await supabase
-              .from('rides')
-              .select()
-              .eq('id', widget.rideId)
-              .maybeSingle();
+          widget.initialAlert.isNotEmpty
+              ? Map<String, dynamic>.from(widget.initialAlert)
+              : await _loadLatestAlert();
 
       if (data == null) {
         if (!mounted) return;
         setState(() {
-          loadError = "SOS data unavailable for this ride.";
+          loadError = "Get Help alert data is unavailable for this ride.";
           loading = false;
         });
         return;
@@ -77,13 +83,31 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
         loading = false;
       });
       _fitMapToAlert();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Could not load Get Help alert details',
+        error,
+        stackTrace,
+        'GetHelp',
+      );
       if (!mounted) return;
       setState(() {
-        loadError = "Could not load SOS details.";
+        loadError = "Could not load Get Help details.";
         loading = false;
       });
     }
+  }
+
+  Future<Map<String, dynamic>?> _loadLatestAlert() async {
+    final rows = await supabase
+        .from('ride_alerts')
+        .select()
+        .eq('ride_id', widget.rideId)
+        .inFilter('type', const ['sos', 'group_sos'])
+        .order('created_at', ascending: false)
+        .limit(1);
+    final alerts = List<Map<String, dynamic>>.from(rows);
+    return alerts.isEmpty ? null : alerts.first;
   }
 
   Future<void> _loadCurrentPosition() async {
@@ -104,16 +128,19 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
           timeLimit: Duration(seconds: 8),
         ),
       );
-    } catch (_) {}
+    } catch (error) {
+      AppLogger.warning('Current location unavailable: $error', 'GetHelp');
+    }
   }
 
   bool get isSelfAlert {
-    final alertBy = ride?['alert_by']?.toString() ?? "";
-    return alertBy.isNotEmpty && alertBy == userPhone;
+    final alertBy = (ride?['profile_id'] ?? '').toString().trim();
+    return alertBy.isNotEmpty && alertBy == userId.trim();
   }
 
   String _alertName() {
-    final name = ride?['alert_by_name']?.toString().trim();
+    final name =
+        (ride?['user_name'] ?? ride?['alert_by_name'])?.toString().trim();
     if (name != null && name.isNotEmpty) return name;
     return userName.trim().isEmpty ? "Rider" : userName.trim();
   }
@@ -138,9 +165,9 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
 
   DateTime? _alertAt() {
     final candidates = [
+      ride?['created_at'],
       ride?['alert_at'],
       ride?['location_updated_at'],
-      ride?['created_at'],
     ];
     for (final raw in candidates) {
       final parsed = DateTime.tryParse((raw ?? '').toString());
@@ -161,10 +188,10 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
 
   String _signalDetectedLabel() {
     final parsed = _alertAt();
-    if (parsed == null) return "Signal detected recently";
+    if (parsed == null) return "Location update time unavailable";
     final time =
         "${parsed.hour % 12 == 0 ? 12 : parsed.hour % 12}:${parsed.minute.toString().padLeft(2, '0')} ${parsed.hour >= 12 ? 'PM' : 'AM'}";
-    return "Signal detected $_alertSince() • $time";
+    return "Updated $_alertSince() • $time";
   }
 
   double? _toDouble(dynamic value) {
@@ -176,12 +203,14 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
   LatLng? _alertLatLng() {
     final lat = _toDouble(
       ride?['alert_lat'] ??
+          ride?['latitude'] ??
           ride?['current_lat'] ??
           ride?['lat'] ??
           ride?['start_lat'],
     );
     final lng = _toDouble(
       ride?['alert_lng'] ??
+          ride?['longitude'] ??
           ride?['current_lng'] ??
           ride?['lng'] ??
           ride?['start_lng'],
@@ -278,7 +307,14 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
       row['current_speed_mps'] ??= user['current_speed_mps'];
       row['alert_at'] ??= user['location_updated_at'];
       row['location_updated_at'] ??= user['location_updated_at'];
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Could not hydrate Get Help sender details',
+        error,
+        stackTrace,
+        'GetHelp',
+      );
+    }
   }
 
   void _fitMapToAlert() {
@@ -368,11 +404,29 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
 
   Future<void> _cancelAlert() async {
     try {
-      await supabase
-          .from('rides')
-          .update({'alert_status': 'cleared'})
-          .eq('id', widget.rideId);
-    } catch (_) {}
+      await RealtimeCoordinator.instance.clearSOS(
+        rideId: widget.rideId,
+        profileId: userId,
+        profileName: userName,
+        avatarUrl: userAvatarUrl,
+        latitude: _currentPosition?.latitude,
+        longitude: _currentPosition?.longitude,
+      );
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Could not cancel Get Help alert',
+        error,
+        stackTrace,
+        'GetHelp',
+      );
+      if (!mounted) return;
+      showAppToast(
+        context,
+        'Could not cancel the alert. It remains active.',
+        type: AppToastType.error,
+      );
+      return;
+    }
     if (!mounted) return;
     Navigator.pop(context);
   }
@@ -389,7 +443,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
     if (loading) {
       return const Scaffold(
         backgroundColor: AppColors.background,
-        body: Center(child: RideLoadingIndicator(label: 'Opening SOS')),
+        body: Center(child: RideLoadingIndicator(label: 'Opening Get Help')),
       );
     }
 
@@ -458,7 +512,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isSelfAlert ? "Alert Active" : "Rider Down",
+                  isSelfAlert ? "Your Help Alert" : "Rider Needs Help",
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
@@ -468,7 +522,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                 ),
                 Text(
                   isSelfAlert
-                      ? "Emergency alert is live"
+                      ? "JourneySync group alert is live"
                       : _signalDetectedLabel(),
                   style: TextStyle(
                     fontSize: 13,
@@ -745,8 +799,12 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         _statusChip(
-                          isSelf ? "Alert Active" : "Needs Attention",
+                          isSelf ? "Help Alert Active" : "Needs Attention",
                           color: danger,
+                        ),
+                        _statusChip(
+                          AssistanceCategory.fromAlert(ride).label,
+                          color: forest,
                         ),
                         Text(
                           isSelf
@@ -827,7 +885,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _outlinedButton(
-                    label: "SOS Services",
+                    label: "Call 112",
                     icon: Icons.local_hospital_rounded,
                     color: danger,
                     onTap: _callEmergencyServices,
@@ -844,7 +902,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
             ),
             const SizedBox(height: 10),
             _secondaryButton(
-              label: "Call Emergency Services",
+              label: "Open 112 Dialler",
               icon: Icons.call_rounded,
               onTap: _callEmergencyServices,
             ),

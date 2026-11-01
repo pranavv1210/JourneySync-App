@@ -359,8 +359,8 @@ class RealtimeCoordinator extends ChangeNotifier {
     try {
       await _notificationCoordinator.persist(
         profileId: profileId,
-        title: 'SOS alert sent',
-        body: 'Emergency alert is live for your ride.',
+        title: 'Get Help alert sent',
+        body: '${category.label} alert is live for your ride.',
         category: AppNotificationCategory.sos,
         rideId: rideId,
         data: insertedPayload,
@@ -371,8 +371,8 @@ class RealtimeCoordinator extends ChangeNotifier {
 
     try {
       await _notificationService.showLocal(
-        title: 'SOS alert sent',
-        body: 'Emergency alert is live for your ride.',
+        title: 'Get Help alert sent',
+        body: '${category.label} alert is live for your ride.',
       );
     } catch (error) {
       debugPrint('[Realtime] SOS local notification failed: $error');
@@ -826,7 +826,7 @@ class RealtimeCoordinator extends ChangeNotifier {
             if (isSos) {
               unawaited(
                 _notificationService.showLocal(
-                  title: 'Ride SOS alert',
+                  title: 'Ride Get Help alert',
                   body: '${alert['user_name'] ?? 'A rider'} needs help now.',
                 ),
               );

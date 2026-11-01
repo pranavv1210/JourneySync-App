@@ -389,6 +389,10 @@ svg {
   line-height: 0.86;
 }
 
+.hero-copy {
+  min-width: 0;
+}
+
 .hero-lede,
 .hero-copy > p:not(.eyebrow) {
   max-width: 42rem;
@@ -2526,7 +2530,7 @@ svg {
 
 @media (max-width: 720px) {
   :root {
-    --container: min(100% - 32px, 1180px);
+    --container: min(calc(100% - 32px), 1180px);
   }
 
   .brand-signature {
@@ -2545,6 +2549,21 @@ svg {
     max-width: 11ch;
     font-size: clamp(2.7rem, 12.5vw, 3.85rem);
     line-height: 0.95;
+  }
+
+  .hero-copy h1,
+  .hero-copy > p {
+    max-width: 100%;
+    overflow-wrap: break-word;
+  }
+
+  .hero-cta-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .hero-cta-row .cta-button {
+    width: 100%;
   }
 
   .hero-telemetry,
@@ -2643,5 +2662,30 @@ svg {
     right: 16px;
     bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px);
     max-width: none;
+  }
+}
+
+@media (max-width: 360px) {
+  :root {
+    --container: calc(100% - 32px);
+  }
+
+  .header-inner {
+    min-width: 0;
+    gap: 0.35rem;
+  }
+
+  .brand {
+    min-width: 0;
+  }
+
+  .brand span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hero-copy h1 {
+    font-size: 2.55rem;
+    letter-spacing: -0.055em;
   }
 }

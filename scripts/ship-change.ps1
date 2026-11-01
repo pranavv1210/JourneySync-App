@@ -16,6 +16,7 @@ $definesPath = Join-Path $repoRoot 'dart_defines.local.json'
 $keyPropertiesPath = Join-Path $repoRoot 'android\key.properties'
 $apkPath = Join-Path $repoRoot 'build\app\outputs\flutter-apk\app-sideload-release.apk'
 $landingApkPath = Join-Path $repoRoot 'landing\public\journeysync.apk'
+$v111ReleaseReportPath = Join-Path $repoRoot 'docs\V1_11_0_RELEASE_REPORT.md'
 
 function Invoke-Checked([string]$Label, [scriptblock]$Command) {
     Write-Host "`n==> $Label"
@@ -89,7 +90,18 @@ Invoke-Checked 'Flutter analysis' { flutter analyze }
 Invoke-Checked 'Flutter tests' { flutter test }
 Invoke-Checked 'Landing lint' { npm --prefix landing run lint }
 Invoke-Checked 'Landing production build' { npm --prefix landing run build }
-Invoke-Checked 'Signed Android release build' { flutter build apk --flavor sideload --release --dart-define-from-file=dart_defines.local.json }
+Invoke-Checked 'Signed Android release build' {
+    # Gradle's Windows wrapper enables command echoing when DEBUG is non-empty.
+    # That would print base64-encoded dart defines into release logs.
+    $previousDebug = $env:DEBUG
+    try {
+        $env:DEBUG = ''
+        flutter build apk --flavor sideload --release --dart-define-from-file=dart_defines.local.json
+    }
+    finally {
+        $env:DEBUG = $previousDebug
+    }
+}
 
 Copy-Item -LiteralPath $apkPath -Destination $landingApkPath -Force
 $buildHash = (Get-FileHash -LiteralPath $apkPath -Algorithm SHA256).Hash
@@ -108,6 +120,30 @@ if ($badging -notmatch "name='com\.journeysync\.app'" -or $badging -notmatch "ve
     throw "APK metadata did not match com.journeysync.app $newVersion. Found: $badging"
 }
 Invoke-Checked 'APK signature verification' { & $apkSigner verify $apkPath }
+
+if (Test-Path -LiteralPath $v111ReleaseReportPath) {
+    $apkLength = (Get-Item -LiteralPath $apkPath).Length
+    $releaseEvidence = @"
+<!-- RELEASE:BEGIN -->
+## Verified artifact
+
+- Version: $newVersion+$build
+- Package: com.journeysync.app
+- APK: build/app/outputs/flutter-apk/app-sideload-release.apk
+- Published APK: landing/public/journeysync.apk
+- Size: $apkLength bytes
+- SHA-256: $buildHash
+- Signature: PASS (apksigner verify)
+<!-- RELEASE:END -->
+"@
+    $reportContent = [System.IO.File]::ReadAllText($v111ReleaseReportPath, [System.Text.Encoding]::UTF8)
+    $reportContent = [regex]::Replace(
+        $reportContent,
+        '(?s)<!-- RELEASE:BEGIN -->.*?<!-- RELEASE:END -->',
+        $releaseEvidence.Trim()
+    )
+    Set-Utf8NoBom $v111ReleaseReportPath $reportContent
+}
 
 Invoke-Checked 'Diff whitespace validation' { git -C $repoRoot diff --check }
 Invoke-Checked 'Stage intended repository changes' { git -C $repoRoot add -A }

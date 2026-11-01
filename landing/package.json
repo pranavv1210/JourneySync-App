@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "node scripts/verify-text-encoding.mjs && eslint",
-    "security:check": "node scripts/verify-security.mjs"
+    "security:check": "node scripts/verify-security.mjs",
+    "qa:responsive": "node scripts/capture-responsive-qa.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

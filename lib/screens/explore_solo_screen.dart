@@ -85,7 +85,7 @@ class _ExploreSoloScreenState extends State<ExploreSoloScreen> {
             eyebrow: 'PRIVATE RIDE',
             title: 'Explore Solo',
             subtitle:
-                'A private ride journal for navigation, SOS, stats, achievements, and memories.',
+                'A private ride journal for navigation, Get Help, stats, achievements, and memories.',
           ),
           const SizedBox(height: AppSpacing.xl),
           JourneyHeroBand(
@@ -133,10 +133,7 @@ class _ExploreSoloScreenState extends State<ExploreSoloScreen> {
                   Icons.query_stats_rounded,
                   'Records distance, duration, and ride stats',
                 ),
-                _soloPromise(
-                  Icons.sos_rounded,
-                  'Keeps emergency SOS available',
-                ),
+                _soloPromise(Icons.sos_rounded, 'Keeps Get Help available'),
               ],
             ),
           ),

@@ -264,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onTap:
                             () => _showInfoDialog(
                               'Notifications',
-                              'Ride alerts, SOS messages, and route updates are enabled in-app. Push notifications require Firebase configuration on production builds.',
+                              'Ride alerts, Get Help messages, and route updates are enabled in-app. Push notifications require Firebase configuration on production builds.',
                             ),
                       ),
                       _buildSettingTile(
@@ -274,7 +274,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onTap:
                             () => _showInfoDialog(
                               'About JourneySync',
-                              '${AppVersion.label}\nBuilt for group rides, live tracking, SOS alerts, and ride coordination.',
+                              '${AppVersion.label}\nBuilt for group rides, live tracking, Get Help alerts, and ride coordination.',
                             ),
                       ),
                     ]),
@@ -773,7 +773,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'These contacts are saved to your profile and shown first when SOS is triggered during a ride.',
+                        'These contacts are saved to your profile and shown first when Get Help is triggered during a ride.',
                         style: AppTypography.bodyMedium.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -1430,7 +1430,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _privacyPoint(
                     Icons.security_rounded,
                     'Sensitive areas',
-                    'Authentication, sessions, Supabase RLS, GPS, SOS, and media access are treated as security-sensitive surfaces.',
+                    'Authentication, sessions, Supabase RLS, GPS, Get Help, and media access are treated as security-sensitive surfaces.',
                   ),
                   _privacyPoint(
                     Icons.report_gmailerrorred_rounded,

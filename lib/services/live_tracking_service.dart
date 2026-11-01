@@ -363,6 +363,7 @@ class LiveTrackingService {
       'heading': position.heading >= 0 ? position.heading : null,
       'speed': position.speed >= 0 ? position.speed : null,
       'speed_mps': position.speed >= 0 ? position.speed : null,
+      'accuracy': position.accuracy >= 0 ? position.accuracy : null,
       'battery': battery,
       'signal': signal,
       'user_name': _syncUserName ?? 'Rider',
@@ -503,6 +504,7 @@ class LiveTrackingService {
       'heading': pos.heading >= 0 ? pos.heading : null,
       'speed': pos.speed >= 0 ? pos.speed : null,
       'speed_mps': pos.speed >= 0 ? pos.speed : null, // backward compat
+      'accuracy': pos.accuracy >= 0 ? pos.accuracy : null,
       'battery': battery,
       'updated_at': DateTime.now().toIso8601String(),
     };
@@ -737,6 +739,7 @@ class LiveTrackingService {
               ? null
               : row['signal'].toString().trim(),
       avatarUrl: (avatarUrl != null && avatarUrl.isNotEmpty) ? avatarUrl : null,
+      accuracy: (row['accuracy'] as num?)?.toDouble(),
     );
   }
 

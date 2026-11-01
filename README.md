@@ -146,6 +146,11 @@ Current engineering evidence and release limitations are tracked in the
 [test report](./docs/JOURNEYSYNC_TEST_REPORT.md). A repository build does not
 by itself verify production RLS state or physical-device background behavior.
 
+The v1.11.0 reliability evidence is indexed by
+[the initial audit](./docs/V1_11_0_INITIAL_AUDIT.md),
+[responsive QA](./docs/LANDING_PAGE_QA.md), and
+[final scorecard](./docs/V1_11_0_FINAL_SCORECARD.md).
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { appVersion } from '@/data/site-content';
 import { CtaButton } from '@/components/ui/CtaButton';
+import Image from 'next/image';
 
 export function DownloadSection({ onDownload }: { onDownload: () => void }) {
   const reduceMotion = useReducedMotion();
@@ -11,7 +12,7 @@ export function DownloadSection({ onDownload }: { onDownload: () => void }) {
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      const apkUrl = new URL('/journeysync.apk?v=1.10.0', window.location.origin).href;
+      const apkUrl = new URL('/journeysync.apk?v=1.11.0', window.location.origin).href;
       setQrSrc(
         `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=${encodeURIComponent(apkUrl)}`,
       );
@@ -31,7 +32,7 @@ export function DownloadSection({ onDownload }: { onDownload: () => void }) {
         >
           <div className="download-copy">
             <div className="download-badge">
-              <img src="/logo.png" alt="" width={32} height={32} />
+              <Image src="/logo.png" alt="" width={32} height={32} />
               <span>JourneySync {appVersion}</span>
             </div>
             <h2>Join the closed beta and test the Android build.</h2>
@@ -67,8 +68,11 @@ export function DownloadSection({ onDownload }: { onDownload: () => void }) {
 
           <div className="download-qr">
             <div className="download-qr-phone">
-              <a href="/journeysync.apk?v=1.10.0" download aria-label="Scan to download JourneySync APK">
+              <a href="/journeysync.apk?v=1.11.0" download aria-label="Scan to download JourneySync APK">
                 {qrSrc ? (
+                  // The QR provider response is runtime-generated and should
+                  // not be proxied through the Next image optimiser.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={qrSrc} alt="QR code to download JourneySync Android beta APK" />
                 ) : (
                   <div className="download-qr-placeholder" aria-hidden="true" />

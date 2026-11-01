@@ -73,7 +73,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       eyebrow: 'SIGNAL CENTER',
                       title: 'Notifications',
                       subtitle:
-                          'Ride invites, SOS alerts, route changes, and weather updates.',
+                          'Ride invites, Get Help alerts, route changes, and weather updates.',
                       trailing: _NotificationMenu(coordinator: _coordinator),
                     );
                   }
@@ -104,7 +104,8 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             leading: JourneyBackButton(),
             eyebrow: 'SIGNAL CENTER',
             title: 'Notifications',
-            subtitle: 'SOS alerts, ride changes, invites, and route updates.',
+            subtitle:
+                'Get Help alerts, ride changes, invites, and route updates.',
           ),
         ),
         Expanded(
@@ -148,7 +149,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Your ride signal feed is quiet. SOS alerts, crew joins, route changes, and weekend ride nudges will land here.',
+                    'Your ride signal feed is quiet. Get Help alerts, crew joins, route changes, and weekend ride nudges will land here.',
                     textAlign: TextAlign.center,
                     style: AppTypography.bodyMedium.copyWith(
                       color: AppColors.textSecondary,
@@ -300,7 +301,11 @@ class _NotificationCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => SosAlertScreen(rideId: notification.rideId!),
+              builder:
+                  (_) => SosAlertScreen(
+                    rideId: notification.rideId!,
+                    initialAlert: notification.data,
+                  ),
             ),
           );
         }
@@ -447,7 +452,7 @@ class _NotificationCard extends StatelessWidget {
 
   String _categoryLabel(AppNotificationCategory category) {
     return switch (category) {
-      AppNotificationCategory.sos => 'SOS',
+      AppNotificationCategory.sos => 'Get Help',
       AppNotificationCategory.rideStarted => 'Started',
       AppNotificationCategory.rideEnded => 'Ended',
       AppNotificationCategory.routeChanged => 'Route',
